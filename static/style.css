@@ -1,0 +1,41 @@
+body {
+    padding: 0;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.container {
+    position: relative;
+}
+
+#localVideo {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 160px;
+    height: 120px;
+}
+
+.info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 160px;
+    height: 110px;
+    line-height: 20px;
+}
+
+.info p {
+    margin: 5px 0;
+}
+
+#remoteVideos {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#remoteVideos video {
+    width: 600px;
+    height: 450px;
+    margin-bottom: 10px;
+}
