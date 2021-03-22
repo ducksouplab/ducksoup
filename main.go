@@ -166,7 +166,7 @@ func signalPeerConnections() {
 				}
 			}
 
-			// Don't receive videos we are sending, make sure we don't have loopback
+			// Don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
 			for _, receiver := range peerConnections[i].peerConnection.GetReceivers() {
 				if receiver.Track() == nil {
 					continue

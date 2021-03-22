@@ -38,10 +38,38 @@ go build
 ./webrtc-transform --cert certs/cert.pem --key certs/key.pem
 ```
 
+Open [https://localhost:8080](https://localhost:8080) in several tabs.
+
 ### Run without TLS
 
 ```
 ./webrtc-transform
 ```
 
-And then open [https://localhost:8080](https://localhost:8080) in several tabs.
+Open [http://localhost:8080](https//localhost:8080) in several tabs.
+
+### Run with Docker
+
+Generate certs (see above) and then:
+
+```
+docker build -t webrtc-transform:latest .
+docker container run -p 8080:8080 -rm webrtc-transform:latest
+# or enter the container
+docker container run -p 8080:8080 -it --entrypoint /bin/bash webrtc-transform:latest
+```
+
+To try without certs:
+
+```
+docker build -f Dockerfile.no-tls -t webrtc-transform:latest .
+docker container run -p 8080:8080 -rm webrtc-transform:latest
+```
+
+### Issues with Docker
+
+`Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)
+
+Hint for multi-debian: debug go execution, and check for relevant gstreamer runtime dependencies (try to add same apt dependencies in build and run stages, then clean up)
+
+Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first

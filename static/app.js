@@ -26,7 +26,10 @@ const configuration = {
 };
 
 // Signaling websocket channel
-const signaling = new WebSocket(`wss://${window.location.host}/signaling`);
+const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+const signaling = new WebSocket(
+  `${wsProtocol}://${window.location.host}/signaling`
+);
 signaling.onclose = function (evt) {
   console.log("Websocket has closed");
 };
