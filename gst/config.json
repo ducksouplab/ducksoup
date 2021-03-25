@@ -13,14 +13,14 @@
     },
     "vp8": {
         "prefix": "application/x-rtp, encoding-name=VP8-DRAFT-IETF-01 ! rtpvp8depay ! ",
-        "suffix": "avenc_g722 ! "
+        "suffix": "vp8enc error-resilient=partitions keyframe-max-dist=10 auto-alt-ref=true cpu-used=5 deadline=1 ! "
     },
     "vp9": {
         "prefix": "application/x-rtp ! rtpvp9depay ! ",
-        "suffix": "avenc_g722 ! "
+        "suffix": "vp9enc ! "
     },
     "h264": {
         "prefix": "application/x-rtp ! rtph264depay ! ",
-        "suffix": "avenc_g722 ! "
+        "suffix": "video/x-raw,format=I420 ! x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 ! video/x-h264,stream-format=byte-stream ! "
     }
 }

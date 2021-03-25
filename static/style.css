@@ -4,38 +4,25 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-.container {
-    position: relative;
+.tm {
+    margin-top: 12px;
 }
 
-#localVideo {
-    position: absolute;
-    top: 0;
-    right: 0;
+#local-video {
     width: 160px;
-    height: 120px;
+    display: inline-block;
 }
 
 .info {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 160px;
-    height: 110px;
-    line-height: 20px;
+    
+    display: inline-block;
 }
 
 .info p {
     margin: 5px 0;
 }
 
-#remoteVideos {
-    display: flex;
-    flex-wrap: wrap;
-}
-
-#remoteVideos video {
-    width: 600px;
-    height: 450px;
+#remote video {
+    max-width: 100%;
     margin-bottom: 10px;
 }

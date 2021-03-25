@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -71,6 +72,7 @@ var pipelinesLock sync.Mutex
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *Pipeline {
+	codecName = strings.ToLower(codecName)
 	pipelineStr := config.SrcPrefix
 	// videoPipelineStr := "decodebin ! videoconvert ! warptv ! videoconvert"
 	var clockRate float32
@@ -85,7 +87,7 @@ func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *
 	case "h264":
 		pipelineStr += config.H264.Prefix + config.VideoPipe + config.H264.Suffix
 		clockRate = videoClockRate
-	case "G722":
+	case "g722":
 		pipelineStr += config.G722.Prefix + config.AudioPipe + config.G722.Suffix
 		clockRate = audioClockRate
 	case "opus":
