@@ -267,7 +267,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close() //nolint
 
 	// Create new PeerConnection
-	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},})
 	if err != nil {
 		log.Print(err)
 		return
@@ -330,6 +334,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	peerConnection.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		buf := make([]byte, 1500)
+		fmt.Println("-", track.Kind(), track.Codec())
+
 		if track.Kind().String() == "audio" {
 			// Create a track to fan out our incoming video to all peers
 			audioTrack := addAudioTrack(track)

@@ -48,6 +48,7 @@ func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *
 	// videoPipelineStr := "decodebin ! videoconvert ! warptv ! videoconvert"
 	videoPipelineStr := "decodebin ! videoconvert"
 	var clockRate float32
+	fmt.Println(codecName)
 
 	switch codecName {
 	case "vp8":

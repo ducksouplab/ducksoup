@@ -46,12 +46,6 @@ signaling.onmessage = async function (evt) {
       }
       pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
-      //   answer.sdp = answer.sdp.replace(
-      //     "useinbandfec=1",
-      //     "useinbandfec=1; maxaveragebitrate=510000"
-      //   );
-      console.log("-- anwser.sdp");
-      console.log(answer.sdp);
       pc.setLocalDescription(answer);
       signaling.send(
         JSON.stringify({

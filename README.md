@@ -54,7 +54,7 @@ Generate certs (see above) and then:
 
 ```
 docker build -t webrtc-transform:latest .
-docker container run -p 8080:8080 -rm webrtc-transform:latest
+docker container run -p 8080:8080 --rm webrtc-transform:latest
 # or enter the container
 docker container run -p 8080:8080 -it --entrypoint /bin/bash webrtc-transform:latest
 ```
@@ -66,10 +66,16 @@ docker build -f Dockerfile.no-tls -t webrtc-transform:latest .
 docker container run -p 8080:8080 -rm webrtc-transform:latest
 ```
 
+### TODO
+
+- [ ] assess performance/latency/jitter
+- [ ] process video
+- [ ] sync audio/video (RTC tracks + GStreamer)
+
 ### Issues with Docker
 
 `Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)
 
 Hint for multi-debian: debug go execution, and check for relevant gstreamer runtime dependencies (try to add same apt dependencies in build and run stages, then clean up)
 
-Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first
+Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first. See https://github.com/pion/ion/blob/master/docker/sfu.Dockerfile
