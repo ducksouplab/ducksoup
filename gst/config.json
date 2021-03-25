@@ -1,0 +1,26 @@
+{
+    "srcPrefix": "appsrc format=time is-live=true do-timestamp=true name=src ! ",
+    "sinkSuffix": "appsink name=appsink",
+    "audioPipe": "decodebin ! audioconvert ! pitch pitch=0.8 ! audioconvert ! ",
+    "videoPipe": "decodebin ! videoconvert ! ",
+    "opus": {
+        "prefix": "application/x-rtp, payload=96, encoding-name=OPUS ! rtpopusdepay ! ",
+        "suffix": "opusenc ! "
+    },
+    "g722": {
+        "prefix": "application/x-rtp clock-rate=8000 ! rtpg722depay ! ",
+        "suffix": "avenc_g722 ! "
+    },
+    "vp8": {
+        "prefix": "application/x-rtp, encoding-name=VP8-DRAFT-IETF-01 ! rtpvp8depay ! ",
+        "suffix": "avenc_g722 ! "
+    },
+    "vp9": {
+        "prefix": "application/x-rtp ! rtpvp9depay ! ",
+        "suffix": "avenc_g722 ! "
+    },
+    "h264": {
+        "prefix": "application/x-rtp ! rtph264depay ! ",
+        "suffix": "avenc_g722 ! "
+    }
+}

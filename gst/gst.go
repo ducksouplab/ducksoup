@@ -7,7 +7,9 @@ package gst
 */
 import "C"
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"time"
 	"unsafe"
@@ -16,8 +18,37 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
+type codecPipe struct {
+	Prefix	string `json:"prefix"`
+	Suffix	string `json:"suffix"`
+}
+
+type pluginConfig struct {
+	SrcPrefix	string `json:"srcPrefix"`
+	SinkSuffix	string `json:"sinkSuffix"`
+    AudioPipe   string `json:"audioPipe"`
+    VideoPipe   string `json:"videoPipe"`
+	Opus		codecPipe `json:"opus"`
+	G722		codecPipe `json:"g722"`
+	VP8		codecPipe `json:"vp8"`
+	VP9		codecPipe `json:"vp9"`
+	H264		codecPipe `json:"h264"`
+}
+
+var config pluginConfig
+
 func init() {
+	// gst
 	go C.gstreamer_send_start_mainloop()
+	// config
+	file, err := ioutil.ReadFile("./gst/config.json")
+	if err != nil {
+      fmt.Print(err)
+    }
+	err = json.Unmarshal(file, &config)
+	if err != nil {
+        fmt.Println("error:", err)
+    }
 }
 
 // Pipeline is a wrapper for a GStreamer Pipeline
@@ -29,49 +60,44 @@ type Pipeline struct {
 	clockRate float32
 }
 
-var pipelines = make(map[int]*Pipeline)
-var pipelinesLock sync.Mutex
-
 const (
 	videoClockRate = 90000
 	audioClockRate = 48000
 	pcmClockRate   = 8000
 )
 
+var pipelines = make(map[int]*Pipeline)
+var pipelinesLock sync.Mutex
+
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *Pipeline {
-	pipelineStr := "appsrc format=time is-live=true do-timestamp=true name=src ! application/x-rtp"
-	// suffixPipelineStr := "autoaudiosink"
-	suffixPipelineStr := "appsink name=appsink"
-	// audioPipelineStr := "decodebin ! audioconvert ! audiochebband mode=band-pass lower-frequency=2000 upper-frequency=3000 poles=4 ! freeverb ! audioconvert"
-	audioPipelineStr := "decodebin ! audioconvert ! pitch pitch=0.8 ! audioconvert"
+	pipelineStr := config.SrcPrefix
 	// videoPipelineStr := "decodebin ! videoconvert ! warptv ! videoconvert"
-	videoPipelineStr := "decodebin ! videoconvert"
 	var clockRate float32
-	fmt.Println(codecName)
 
 	switch codecName {
 	case "vp8":
-		// pipelineStr += ", media=video, clock-rate=90000, encoding-name=VP8-DRAFT-IETF-01, payload=100 ! rtpvp8depay ! vp8dec ! vp8enc error-resilient=partitions keyframe-max-dist=10 auto-alt-ref=true cpu-used=5 deadline=1 ! " + suffixPipelineStr
-		pipelineStr += ", encoding-name=VP8-DRAFT-IETF-01 ! rtpvp8depay ! vp8dec ! vp8enc error-resilient=partitions keyframe-max-dist=10 auto-alt-ref=true cpu-used=5 deadline=1 ! " + suffixPipelineStr
+		pipelineStr += config.VP8.Prefix + config.VideoPipe + config.VP8.Suffix
 		clockRate = videoClockRate
 	case "vp9":
-		pipelineStr += " ! rtpvp9depay ! " + videoPipelineStr + " ! vp9enc ! " + suffixPipelineStr
+		pipelineStr += config.VP9.Prefix + config.VideoPipe + config.VP9.Suffix
 		clockRate = videoClockRate
 	case "h264":
-		pipelineStr += " ! rtph264depay ! " + videoPipelineStr + " ! video/x-raw,format=I420 ! x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 ! video/x-h264,stream-format=byte-stream ! " + suffixPipelineStr
+		pipelineStr += config.H264.Prefix + config.VideoPipe + config.H264.Suffix
 		clockRate = videoClockRate
 	case "G722":
-		pipelineStr += " clock-rate=8000 ! rtpg722depay ! " + videoPipelineStr + " ! avenc_g722 ! " + suffixPipelineStr
+		pipelineStr += config.G722.Prefix + config.AudioPipe + config.G722.Suffix
 		clockRate = audioClockRate
 	case "opus":
-		pipelineStr += ", payload=96, encoding-name=OPUS ! rtpopusdepay ! " + audioPipelineStr + " ! opusenc ! " + suffixPipelineStr
+		pipelineStr += config.Opus.Prefix + config.AudioPipe + config.Opus.Suffix
 		clockRate = audioClockRate
 
 	default:
 		panic("Unhandled codec " + codecName)
 	}
 
+	pipelineStr += config.SinkSuffix
+	fmt.Println(pipelineStr)
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
