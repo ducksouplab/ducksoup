@@ -14,14 +14,12 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-const processVideos = true 
 
 var (
 	// lock for peerConnections and trackLocals
 	tracksLock      sync.RWMutex
 	peerConnections []peerConnectionState
-	videoTracksFwd  map[string]*webrtc.TrackLocalStaticRTP
-	videoTracks     map[string]*webrtc.TrackLocalStaticSample
+	videoTracks  	map[string]*webrtc.TrackLocalStaticRTP
 	audioTracks     map[string]*webrtc.TrackLocalStaticSample
 )
 
@@ -42,8 +40,7 @@ type threadSafeWriter struct {
 }
 
 func init() {
-	videoTracksFwd = map[string]*webrtc.TrackLocalStaticRTP{}
-	videoTracks = map[string]*webrtc.TrackLocalStaticSample{}
+	videoTracks = map[string]*webrtc.TrackLocalStaticRTP{}
 	audioTracks = map[string]*webrtc.TrackLocalStaticSample{}
 
 	// request a keyframe every 3 seconds
@@ -62,7 +59,7 @@ func (t *threadSafeWriter) WriteJSON(v interface{}) error {
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func addVideoTrackFwd(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
+func addVideoTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	tracksLock.Lock()
 	defer func() {
 		tracksLock.Unlock()
@@ -75,41 +72,12 @@ func addVideoTrackFwd(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 		panic(err)
 	}
 
-	videoTracksFwd[t.ID()] = track
-	return track
-}
-
-// Remove from list of tracks and fire renegotation for all PeerConnections
-func removeVideoTrackFwd(t *webrtc.TrackLocalStaticRTP) {
-	tracksLock.Lock()
-	defer func() {
-		tracksLock.Unlock()
-		signalPeerConnections()
-	}()
-
-	delete(videoTracksFwd, t.ID())
-}
-
-// Add to list of tracks and fire renegotation for all PeerConnections
-func addVideoTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticSample {
-	tracksLock.Lock()
-	defer func() {
-		tracksLock.Unlock()
-		signalPeerConnections()
-	}()
-
-	// Create a new TrackLocal with the same codec as our incoming
-	track, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, t.ID(), t.StreamID())
-	if err != nil {
-		panic(err)
-	}
-
 	videoTracks[t.ID()] = track
 	return track
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func removeVideoTrack(t *webrtc.TrackLocalStaticSample) {
+func removeVideoTrack(t *webrtc.TrackLocalStaticRTP) {
 	tracksLock.Lock()
 	defer func() {
 		tracksLock.Unlock()
@@ -172,12 +140,7 @@ func signalPeerConnections() {
 				existingSenders[sender.Track().ID()] = true
 
 				// If we have a RTPSender that doesn't map to a existing track remove and signal
-				var videoOk bool
-				if processVideos {
-					_, videoOk = videoTracks[sender.Track().ID()]
-				} else {
-					_, videoOk = videoTracksFwd[sender.Track().ID()]
-				}
+				_, videoOk := videoTracks[sender.Track().ID()]
 				_, audioOk := audioTracks[sender.Track().ID()]
 				if !videoOk && !audioOk {
 					if err := peerConnections[i].peerConnection.RemoveTrack(sender); err != nil {
@@ -196,20 +159,11 @@ func signalPeerConnections() {
 			}
 
 			// Add all track we aren't sending yet to the PeerConnection
-			if processVideos {
-				for trackID := range videoTracks {
-					if _, ok := existingSenders[trackID]; !ok {
-						if _, err := peerConnections[i].peerConnection.AddTrack(videoTracks[trackID]); err != nil {
-							return true
-						}
-					}
-				}
-			} else {
-				for trackID := range videoTracksFwd {
-					if _, ok := existingSenders[trackID]; !ok {
-						if _, err := peerConnections[i].peerConnection.AddTrack(videoTracksFwd[trackID]); err != nil {
-							return true
-						}
+
+			for trackID := range videoTracks {
+				if _, ok := existingSenders[trackID]; !ok {
+					if _, err := peerConnections[i].peerConnection.AddTrack(videoTracks[trackID]); err != nil {
+						return true
 					}
 				}
 			}
@@ -365,7 +319,7 @@ func NewPeer(unsafeConn *websocket.Conn) {
 			defer removeAudioTrack(audioTrack)
 
 			for {
-				pipelineAudio := gst.CreatePipeline(codecName, []*webrtc.TrackLocalStaticSample{audioTrack})
+				pipelineAudio := gst.CreatePipeline(codecName, audioTrack)
 				pipelineAudio.Start()
 
 				for {
@@ -379,40 +333,23 @@ func NewPeer(unsafeConn *websocket.Conn) {
 			}
 
 		} else {
-			if processVideos {
-				// Create a track to fan out our incoming video to all peers
-				videoTrack := addVideoTrack(track)
-				defer removeVideoTrack(videoTrack)
+			// Create a track to fan out our incoming video to all peers
+			videoTrack := addVideoTrack(track)
+			defer removeVideoTrack(videoTrack)
+
+			for {
+				pipelineVideo := gst.CreatePipeline(codecName, videoTrack)
+				pipelineVideo.Start()
 
 				for {
-					pipelineVideo := gst.CreatePipeline(codecName, []*webrtc.TrackLocalStaticSample{videoTrack})
-					pipelineVideo.Start()
-
-					for {
-						i, _, readErr := track.Read(buf)
-						if readErr != nil {
-							return
-						}
-
-						pipelineVideo.Push(buf[:i])
-					}
-				}
-			} else {
-				// Create a track to fan out our incoming video to all peers
-				videoTrack := addVideoTrackFwd(track)
-				defer removeVideoTrackFwd(videoTrack)
-	
-				for {
-					i, _, err := track.Read(buf)
-					if err != nil {
+					i, _, readErr := track.Read(buf)
+					if readErr != nil {
 						return
 					}
-	
-					if _, err = videoTrack.Write(buf[:i]); err != nil {
-						return
-					}
+
+					pipelineVideo.Push(buf[:i])
 				}
-			}
+			}	
 		}
 	})
 

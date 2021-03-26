@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -55,7 +56,7 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	Pipeline  *C.GstElement
-	tracks    []*webrtc.TrackLocalStaticSample
+	track     webrtc.TrackLocal
 	id        int
 	codecName string
 	clockRate float32
@@ -70,36 +71,53 @@ const (
 var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
 
-// CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *Pipeline {
+func randomEffect() string {
+	rand.Seed(time.Now().Unix())
+	options := []string{
+		"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
+	}
+	return options[rand.Intn(len(options))]
+}
+
+func newPipelineStr(codecName string) (pipelineStr string, clockRate float32) {
 	codecName = strings.ToLower(codecName)
-	pipelineStr := config.SrcPrefix
-	// videoPipelineStr := "decodebin ! videoconvert ! warptv ! videoconvert"
-	var clockRate float32
+	pipelineStr = config.SrcPrefix
+	isVideo := false
 
 	switch codecName {
 	case "vp8":
 		pipelineStr += config.VP8.Prefix + config.VideoPipe + config.VP8.Suffix
 		clockRate = videoClockRate
+		isVideo = true
 	case "vp9":
 		pipelineStr += config.VP9.Prefix + config.VideoPipe + config.VP9.Suffix
 		clockRate = videoClockRate
+		isVideo = true
 	case "h264":
 		pipelineStr += config.H264.Prefix + config.VideoPipe + config.H264.Suffix
 		clockRate = videoClockRate
+		isVideo = true
 	case "g722":
 		pipelineStr += config.G722.Prefix + config.AudioPipe + config.G722.Suffix
 		clockRate = audioClockRate
 	case "opus":
 		pipelineStr += config.Opus.Prefix + config.AudioPipe + config.Opus.Suffix
 		clockRate = audioClockRate
-
 	default:
 		panic("Unhandled codec " + codecName)
 	}
-
+	if isVideo {
+		pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
+	}
 	pipelineStr += config.SinkSuffix
+	return
+}
+
+// CreatePipeline creates a GStreamer Pipeline
+func CreatePipeline(codecName string, track webrtc.TrackLocal) *Pipeline {
+	pipelineStr, clockRate := newPipelineStr(codecName)
 	fmt.Println(pipelineStr)
+
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
@@ -108,7 +126,7 @@ func CreatePipeline(codecName string, tracks []*webrtc.TrackLocalStaticSample) *
 
 	pipeline := &Pipeline{
 		Pipeline:  C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
-		tracks:    tracks,
+		track:     track,
 		id:        len(pipelines),
 		codecName: codecName,
 		clockRate: clockRate,
@@ -135,8 +153,12 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 	pipelinesLock.Unlock()
 
 	if ok {
-		for _, t := range pipeline.tracks {
-			if err := t.WriteSample(media.Sample{Data: C.GoBytes(buffer, bufferLen), Duration: time.Duration(duration)}); err != nil {
+		if trackSample, isSample := pipeline.track.(*webrtc.TrackLocalStaticSample); isSample {
+			if err := trackSample.WriteSample(media.Sample{Data: C.GoBytes(buffer, bufferLen), Duration: time.Duration(duration)}); err != nil {
+				panic(err)
+			}
+		} else if trackRTP, isRTP := pipeline.track.(*webrtc.TrackLocalStaticRTP); isRTP {
+			if _, err := trackRTP.Write(C.GoBytes(buffer, bufferLen)); err != nil {
 				panic(err)
 			}
 		}
