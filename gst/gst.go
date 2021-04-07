@@ -21,20 +21,20 @@ import (
 )
 
 type codecPipe struct {
-	Prefix	string `json:"prefix"`
-	Suffix	string `json:"suffix"`
+	Prefix string `json:"prefix"`
+	Suffix string `json:"suffix"`
 }
 
 type pluginConfig struct {
-	SrcPrefix	string `json:"srcPrefix"`
-	SinkSuffix	string `json:"sinkSuffix"`
-    AudioPipe   string `json:"audioPipe"`
-    VideoPipe   string `json:"videoPipe"`
-	Opus		codecPipe `json:"opus"`
-	G722		codecPipe `json:"g722"`
-	VP8		codecPipe `json:"vp8"`
-	VP9		codecPipe `json:"vp9"`
-	H264		codecPipe `json:"h264"`
+	SrcPrefix  string    `json:"srcPrefix"`
+	SinkSuffix string    `json:"sinkSuffix"`
+	AudioPipe  string    `json:"audioPipe"`
+	VideoPipe  string    `json:"videoPipe"`
+	Opus       codecPipe `json:"opus"`
+	G722       codecPipe `json:"g722"`
+	VP8        codecPipe `json:"vp8"`
+	VP9        codecPipe `json:"vp9"`
+	H264       codecPipe `json:"h264"`
 }
 
 var config pluginConfig
@@ -45,12 +45,12 @@ func init() {
 	// config
 	file, err := ioutil.ReadFile("./gst/config.json")
 	if err != nil {
-      fmt.Print(err)
-    }
+		fmt.Print(err)
+	}
 	err = json.Unmarshal(file, &config)
 	if err != nil {
-        fmt.Println("error:", err)
-    }
+		fmt.Println("error:", err)
+	}
 }
 
 // Pipeline is a wrapper for a GStreamer Pipeline
@@ -73,9 +73,10 @@ var pipelinesLock sync.Mutex
 
 func randomEffect() string {
 	rand.Seed(time.Now().Unix())
-	options := []string{
-		"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
-	}
+	// options := []string{
+	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
+	// }
+	options := []string{"edgetv"}
 	return options[rand.Intn(len(options))]
 }
 
