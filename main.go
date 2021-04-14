@@ -4,8 +4,9 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"webrtc-transform/sfu"
 
+	"github.com/creamlab/webrtc-transform/sfu"
+	"github.com/creamlab/webrtc-transform/gst"
 	"github.com/gorilla/websocket"
 )
 
@@ -18,7 +19,7 @@ var (
 	}
 )
 
-func main() {
+func app() {
 	// Parse the flags passed to program
 	flag.Parse()
 
@@ -40,7 +41,7 @@ func main() {
 		log.Println("Listening on http://", *addr)
 		log.Fatal(http.ListenAndServe(*addr, nil))
 	}
-
+	select {}
 }
 
 // Handle incoming websockets
@@ -56,4 +57,9 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	defer unsafeConn.Close() //nolint
 
 	sfu.NewPeer(unsafeConn)
+}
+
+func main() {
+	go app()
+	gst.StartMainLoop()
 }

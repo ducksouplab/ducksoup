@@ -1,4 +1,4 @@
-module webrtc-transform
+module github.com/creamlab/webrtc-transform
 
 go 1.16
 

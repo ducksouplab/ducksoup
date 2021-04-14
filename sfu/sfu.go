@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"webrtc-transform/gst"
 
+	"github.com/creamlab/webrtc-transform/gst"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"

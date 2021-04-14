@@ -40,8 +40,6 @@ type pluginConfig struct {
 var config pluginConfig
 
 func init() {
-	// gst
-	go C.gstreamer_send_start_mainloop()
 	// config
 	file, err := ioutil.ReadFile("./gst/config.json")
 	if err != nil {
@@ -51,6 +49,10 @@ func init() {
 	if err != nil {
 		fmt.Println("error:", err)
 	}
+}
+
+func StartMainLoop() {
+	C.gstreamer_send_start_mainloop()
 }
 
 // Pipeline is a wrapper for a GStreamer Pipeline

@@ -1,7 +1,7 @@
 {
     "srcPrefix": "appsrc format=time is-live=true do-timestamp=true name=src ! ",
     "sinkSuffix": "appsink name=appsink",
-    "audioPipe": "decodebin ! audioconvert ! pitch pitch=0.8 ! audioconvert ! ",
+    "audioPipe": "decodebin ! audioconvert ! avocoder ! audioconvert ! ",
     "videoPipe": "decodebin ! videoconvert ! %s ! videoconvert ! ",
     "opus": {
         "prefix": "application/x-rtp, payload=96, encoding-name=OPUS ! rtpopusdepay ! ",

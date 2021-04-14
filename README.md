@@ -72,6 +72,12 @@ docker container run -p 8080:8080 -rm webrtc-transform:latest
 - [ ] process video
 - [ ] sync audio/video (RTC tracks + GStreamer)
 
+### AV
+
+mkdir -p lib
+export PROJECT_BUILD=`pwd`/lib
+export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
+
 ### Issues with Docker
 
 `Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)

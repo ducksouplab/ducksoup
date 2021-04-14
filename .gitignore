@@ -1,3 +1,8 @@
-certs/
+certs
 webrtc-transform
 .DS_Store
+
+# license and SDK
+lib
+*.uid
+*.key
