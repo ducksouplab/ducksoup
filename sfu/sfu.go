@@ -20,7 +20,7 @@ var (
 	tracksLock      sync.RWMutex
 	peerConnections []peerConnectionState
 	videoTracks  	map[string]*webrtc.TrackLocalStaticRTP
-	audioTracks     map[string]*webrtc.TrackLocalStaticSample
+	audioTracks     map[string]*webrtc.TrackLocalStaticRTP
 )
 
 type peerConnectionState struct {
@@ -41,7 +41,7 @@ type threadSafeWriter struct {
 
 func init() {
 	videoTracks = map[string]*webrtc.TrackLocalStaticRTP{}
-	audioTracks = map[string]*webrtc.TrackLocalStaticSample{}
+	audioTracks = map[string]*webrtc.TrackLocalStaticRTP{}
 
 	// request a keyframe every 3 seconds
 	go func() {
@@ -87,7 +87,7 @@ func removeVideoTrack(t *webrtc.TrackLocalStaticRTP) {
 	delete(videoTracks, t.ID())
 }
 
-func addAudioTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticSample {
+func addAudioTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	tracksLock.Lock()
 	defer func() {
 		tracksLock.Unlock()
@@ -95,7 +95,7 @@ func addAudioTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticSample {
 	}()
 
 	// Create a new TrackLocal with the same codec as our incoming
-	track, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, t.ID(), t.StreamID())
+	track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, t.ID(), t.StreamID())
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func addAudioTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticSample {
 	return track
 }
 
-func removeAudioTrack(t *webrtc.TrackLocalStaticSample) {
+func removeAudioTrack(t *webrtc.TrackLocalStaticRTP) {
 	tracksLock.Lock()
 	defer func() {
 		tracksLock.Unlock()
