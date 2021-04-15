@@ -14,12 +14,11 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-
 var (
 	// lock for peerConnections and trackLocals
 	tracksLock      sync.RWMutex
 	peerConnections []peerConnectionState
-	videoTracks  	map[string]*webrtc.TrackLocalStaticRTP
+	videoTracks     map[string]*webrtc.TrackLocalStaticRTP
 	audioTracks     map[string]*webrtc.TrackLocalStaticRTP
 )
 
@@ -245,10 +244,10 @@ func NewPeer(unsafeConn *websocket.Conn) {
 
 	// Create new PeerConnection
 	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
-			},
-		},})
+		{
+			URLs: []string{"stun:stun.l.google.com:19302"},
+		},
+	}})
 	if err != nil {
 		log.Print(err)
 		return
@@ -349,7 +348,7 @@ func NewPeer(unsafeConn *websocket.Conn) {
 
 					pipelineVideo.Push(buf[:i])
 				}
-			}	
+			}
 		}
 	})
 
