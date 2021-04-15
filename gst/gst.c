@@ -83,7 +83,7 @@ void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId)
     gst_bus_add_watch(bus, gstreamer_send_bus_call, NULL);
     gst_object_unref(bus);
 
-    GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink");
+    GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");
     g_object_set(appsink, "emit-signals", TRUE, NULL);
     g_signal_connect(appsink, "new-sample", G_CALLBACK(gstreamer_send_new_sample_handler), s);
     gst_object_unref(appsink);

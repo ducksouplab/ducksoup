@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/creamlab/webrtc-transform/sfu"
 	"github.com/creamlab/webrtc-transform/gst"
+	"github.com/creamlab/webrtc-transform/sfu"
 	"github.com/gorilla/websocket"
 )
 
@@ -41,7 +41,6 @@ func app() {
 		log.Println("Listening on http://", *addr)
 		log.Fatal(http.ListenAndServe(*addr, nil))
 	}
-	select {}
 }
 
 // Handle incoming websockets

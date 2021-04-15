@@ -94,7 +94,14 @@ func addAudioTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	}()
 
 	// Create a new TrackLocal with the same codec as our incoming
-	track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, t.ID(), t.StreamID())
+	track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+		MimeType:     "audio/opus",
+		ClockRate:    48000,
+		Channels:     0,
+		SDPFmtpLine:  "stereo=0;minptime=10;useinbandfec=1",
+		RTCPFeedback: nil,
+	}, t.ID(), t.StreamID())
+
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +130,8 @@ func signalPeerConnections() {
 
 	attemptSync := func() (tryAgain bool) {
 		for i := range peerConnections {
-			if peerConnections[i].peerConnection.ConnectionState() == webrtc.PeerConnectionStateClosed {
+			pc := peerConnections[i].peerConnection
+			if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
 				peerConnections = append(peerConnections[:i], peerConnections[i+1:]...)
 				return true // We modified the slice, start from the beginning
 			}
@@ -131,7 +139,7 @@ func signalPeerConnections() {
 			// map of sender we already are sending, so we don't double send
 			existingSenders := map[string]bool{}
 
-			for _, sender := range peerConnections[i].peerConnection.GetSenders() {
+			for _, sender := range pc.GetSenders() {
 				if sender.Track() == nil {
 					continue
 				}
@@ -142,44 +150,42 @@ func signalPeerConnections() {
 				_, videoOk := videoTracks[sender.Track().ID()]
 				_, audioOk := audioTracks[sender.Track().ID()]
 				if !videoOk && !audioOk {
-					if err := peerConnections[i].peerConnection.RemoveTrack(sender); err != nil {
+					if err := pc.RemoveTrack(sender); err != nil {
 						return true
 					}
 				}
 			}
 
 			// Don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-			for _, receiver := range peerConnections[i].peerConnection.GetReceivers() {
+			for _, receiver := range pc.GetReceivers() {
 				if receiver.Track() == nil {
 					continue
 				}
-
 				existingSenders[receiver.Track().ID()] = true
 			}
 
 			// Add all track we aren't sending yet to the PeerConnection
-
 			for trackID := range videoTracks {
 				if _, ok := existingSenders[trackID]; !ok {
-					if _, err := peerConnections[i].peerConnection.AddTrack(videoTracks[trackID]); err != nil {
+					if _, err := pc.AddTrack(videoTracks[trackID]); err != nil {
 						return true
 					}
 				}
 			}
 			for trackID := range audioTracks {
 				if _, ok := existingSenders[trackID]; !ok {
-					if _, err := peerConnections[i].peerConnection.AddTrack(audioTracks[trackID]); err != nil {
+					if _, err := pc.AddTrack(audioTracks[trackID]); err != nil {
 						return true
 					}
 				}
 			}
 
-			offer, err := peerConnections[i].peerConnection.CreateOffer(nil)
+			offer, err := pc.CreateOffer(nil)
 			if err != nil {
 				return true
 			}
 
-			if err = peerConnections[i].peerConnection.SetLocalDescription(offer); err != nil {
+			if err = pc.SetLocalDescription(offer); err != nil {
 				return true
 			}
 
@@ -248,6 +254,7 @@ func NewPeer(unsafeConn *websocket.Conn) {
 			URLs: []string{"stun:stun.l.google.com:19302"},
 		},
 	}})
+
 	if err != nil {
 		log.Print(err)
 		return

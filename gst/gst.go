@@ -56,9 +56,9 @@ func StartMainLoop() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline  *C.GstElement
-	track     *webrtc.TrackLocalStaticRTP
-	id        int
+	Pipeline *C.GstElement
+	track    *webrtc.TrackLocalStaticRTP
+	id       int
 }
 
 var pipelines = make(map[int]*Pipeline)
@@ -69,7 +69,7 @@ func randomEffect() string {
 	// options := []string{
 	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
 	// }
-	options := []string{"identity"}
+	options := []string{"edgetv"}
 	return options[rand.Intn(len(options))]
 }
 
@@ -114,9 +114,9 @@ func CreatePipeline(codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeli
 	defer pipelinesLock.Unlock()
 
 	pipeline := &Pipeline{
-		Pipeline:  C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
-		track:     track,
-		id:        len(pipelines),
+		Pipeline: C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
+		track:    track,
+		id:       len(pipelines),
 	}
 
 	pipelines[pipeline.id] = pipeline

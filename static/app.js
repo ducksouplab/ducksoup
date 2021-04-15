@@ -34,7 +34,6 @@ const DEFAULT_PEER_CONFIGURATION = {
 const init = async () => {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    console.log(devices);
     const audioSelect = document.getElementById("audio-select");
     for (let i = 0; i !== devices.length; ++i) {
       const device = devices[i];
@@ -55,6 +54,17 @@ const init = async () => {
     console.error(err);
   }
 };
+
+const processSDP = (sdp) => {
+  if(!window.navigator.userAgent.includes("Mozilla")) return sdp;
+  return sdp.split('\r\n').map(line => {
+    if(line.startsWith("a=fmtp:111")) {
+      return line.replace("stereo=1", "stereo=0");
+    } else {
+      return line;
+    }
+  }).join('\r\n');
+}
 
 const startRTC = async () => {
   // UX
@@ -82,6 +92,7 @@ const startRTC = async () => {
         }
         pc.setRemoteDescription(offer);
         const answer = await pc.createAnswer();
+        answer.sdp = processSDP(answer.sdp);
         pc.setLocalDescription(answer);
         signaling.send(
           JSON.stringify({
