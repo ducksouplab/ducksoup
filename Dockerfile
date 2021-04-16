@@ -7,7 +7,7 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-ugly \
     libgstreamer-plugins-base1.0-dev
 
-WORKDIR $GOPATH/src/github.com/creamlab/webrt-transform
+WORKDIR $GOPATH/src/github.com/creamlab/webrtc-transform
 
 COPY go.mod .
 COPY go.sum .

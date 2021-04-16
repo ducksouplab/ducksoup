@@ -69,7 +69,7 @@ func randomEffect() string {
 	// options := []string{
 	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
 	// }
-	options := []string{"edgetv"}
+	options := []string{"identity"}
 	return options[rand.Intn(len(options))]
 }
 
