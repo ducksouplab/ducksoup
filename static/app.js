@@ -1,6 +1,6 @@
 // State
 const state = {
-  audioIn: null
+  audioIn: null,
 };
 
 // Config
@@ -37,15 +37,15 @@ const init = async () => {
     const audioSelect = document.getElementById("audio-select");
     for (let i = 0; i !== devices.length; ++i) {
       const device = devices[i];
-      if (device.kind === 'audioinput') {
-        const li = document.createElement('li');
-        const a = document.createElement('a');
+      if (device.kind === "audioinput") {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
         a.href = "#";
         a.text = device.label || `microphone ${audioInputSelect.length + 1}`;
         a.addEventListener("click", () => {
           state.audioIn = device.deviceId;
           document.getElementById("audio-in-label").textContent = device.label;
-        })
+        });
         li.appendChild(a);
         audioSelect.appendChild(li);
       }
@@ -56,20 +56,38 @@ const init = async () => {
 };
 
 const processSDP = (sdp) => {
-  if(!window.navigator.userAgent.includes("Mozilla")) return sdp;
-  return sdp.split('\r\n').map(line => {
-    if(line.startsWith("a=fmtp:111")) {
-      return line.replace("stereo=1", "stereo=0");
-    } else {
-      return line;
-    }
-  }).join('\r\n');
-}
+  if (!window.navigator.userAgent.includes("Mozilla")) return sdp;
+  return sdp
+    .split("\r\n")
+    .map((line) => {
+      if (line.startsWith("a=fmtp:111")) {
+        return line.replace("stereo=1", "stereo=0");
+      } else {
+        return line;
+      }
+    })
+    .join("\r\n");
+};
 
 const startRTC = async () => {
   // UX
   document.getElementById("start-container").classList.add("hide");
   document.getElementById("stop-container").classList.remove("hide");
+
+  // RTCPeerConnection
+  const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
+  // Add local tracks before signaling
+  const constraints = { ...DEFAULT_CONSTRAINTS };
+  if (state.audioIn) {
+    constraints.audio = {
+      ...constraints.audio,
+      deviceId: { ideal: state.audioIn },
+    };
+  }
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  const localVideoEl = document.getElementById("local-video");
+  localVideoEl.srcObject = stream;
+  stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
   // Signaling
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -116,9 +134,6 @@ const startRTC = async () => {
     console.error("signaling: " + evt.data);
   };
 
-  // RTCPeerConnection
-  const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
-
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
     signaling.send(
@@ -132,10 +147,10 @@ const startRTC = async () => {
   pc.ontrack = function (event) {
     let el = document.createElement(event.track.kind);
     el.id = event.track.id;
-    console.log(event.streams)
+    console.log(event.streams);
     el.srcObject = event.streams[0];
     el.autoplay = true;
-    if(event.track.kind === "video") {
+    if (event.track.kind === "video") {
       el.classList.add("responsive-video");
       el.classList.add("col");
       el.classList.add("s6");
@@ -144,23 +159,13 @@ const startRTC = async () => {
 
     event.streams[0].onremovetrack = ({ track }) => {
       const el = document.getElementById(track.id);
-      if(el) el.parentNode.removeChild(el);
+      if (el) el.parentNode.removeChild(el);
     };
   };
 
-  // Local tracks
-  const constraints = { ...DEFAULT_CONSTRAINTS };
-  if(state.audioIn) {
-    constraints.audio = { ...constraints.audio, deviceId: { ideal: state.audioIn }}
-  }
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  const localVideoEl = document.getElementById("local-video");
-  localVideoEl.srcObject = stream;
-  stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
   // Stats
   setInterval(() => logStats(pc), 1000);
-}
+};
 
 let now = Date.now();
 let audioBytesSent = 0;
@@ -228,8 +233,10 @@ const logStats = async (pc) => {
 document.addEventListener("DOMContentLoaded", init);
 // UX
 document.addEventListener("DOMContentLoaded", () => {
-  const elems = document.querySelectorAll('.dropdown-trigger');
+  const elems = document.querySelectorAll(".dropdown-trigger");
   const instances = M.Dropdown.init(elems, { constrainWidth: false });
   document.getElementById("start").addEventListener("click", startRTC);
-  document.getElementById("stop").addEventListener("click", () => location.reload());
+  document
+    .getElementById("stop")
+    .addEventListener("click", () => location.reload());
 });
