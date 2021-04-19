@@ -1,0 +1,11 @@
+appsrc format=time is-live=true do-timestamp=true name=src ! 
+application/x-rtp,payload=111,channels=1,encoding-name=OPUS ! 
+queue ! 
+rtpopusdepay ! 
+decodebin ! 
+audioconvert ! 
+pitch pitch=1.5 ! 
+audioconvert ! 
+opusenc ! 
+rtpopuspay !
+appsink name=sink

@@ -7,47 +7,23 @@ package gst
 */
 import "C"
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/creamlab/webrtc-transform/helpers"
 	"github.com/pion/webrtc/v3"
 )
 
-type codecPipe struct {
-	Prefix string `json:"prefix"`
-	Suffix string `json:"suffix"`
-}
-
-type pluginConfig struct {
-	SrcPrefix  string    `json:"srcPrefix"`
-	SinkSuffix string    `json:"sinkSuffix"`
-	AudioPipe  string    `json:"audioPipe"`
-	VideoPipe  string    `json:"videoPipe"`
-	Opus       codecPipe `json:"opus"`
-	G722       codecPipe `json:"g722"`
-	VP8        codecPipe `json:"vp8"`
-	VP9        codecPipe `json:"vp9"`
-	H264       codecPipe `json:"h264"`
-}
-
-var config pluginConfig
+var vp8Pipeline string
+var opusPipeline string
 
 func init() {
-	// config
-	file, err := ioutil.ReadFile("./gst/config.json")
-	if err != nil {
-		fmt.Print(err)
-	}
-	err = json.Unmarshal(file, &config)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
+	vp8Pipeline = helpers.ReadConfig("vp8")
+	opusPipeline = helpers.ReadConfig("opus")
 }
 
 func StartMainLoop() {
@@ -69,36 +45,22 @@ func randomEffect() string {
 	// options := []string{
 	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
 	// }
-	options := []string{"identity"}
+	options := []string{"edgetv"}
 	return options[rand.Intn(len(options))]
 }
 
 func newPipelineStr(codecName string) (pipelineStr string) {
 	codecName = strings.ToLower(codecName)
-	pipelineStr = config.SrcPrefix
-	isVideo := false
 
 	switch codecName {
 	case "vp8":
-		pipelineStr += config.VP8.Prefix + config.VideoPipe + config.VP8.Suffix
-		isVideo = true
-	case "vp9":
-		pipelineStr += config.VP9.Prefix + config.VideoPipe + config.VP9.Suffix
-		isVideo = true
-	case "h264":
-		pipelineStr += config.H264.Prefix + config.VideoPipe + config.H264.Suffix
-		isVideo = true
-	case "g722":
-		pipelineStr += config.G722.Prefix + config.AudioPipe + config.G722.Suffix
+		pipelineStr = vp8Pipeline
+		pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
 	case "opus":
-		pipelineStr += config.Opus.Prefix + config.AudioPipe + config.Opus.Suffix
+		pipelineStr = opusPipeline
 	default:
 		panic("Unhandled codec " + codecName)
 	}
-	if isVideo {
-		pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
-	}
-	pipelineStr += config.SinkSuffix
 	return
 }
 
