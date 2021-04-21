@@ -1,16 +1,12 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpvp8depay ! 
-tee name=teein ! queue max-size-time=5000000000 max-size-buffers=0 ! webmmux ! filesink location=logs/in-video-${uid}.webm 
-teein. ! 
 queue ! 
 vp8dec ! 
 videoconvert ! 
 coloreffects preset=xpro ! 
 videoconvert ! 
 vp8enc keyframe-max-dist=32 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
-tee name=teeout ! queue max-size-time=5000000000 max-size-buffers=0 ! webmmux ! filesink location=logs/out-video-${uid}.webm 
-teeout. ! 
 queue ! 
 rtpvp8pay !
 appsink name=sink qos=true

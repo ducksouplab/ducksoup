@@ -62,7 +62,7 @@ docker container run -p 8080:8080 -it --entrypoint /bin/bash webrtc-transform:la
 To try without certs:
 
 ```
-docker build -f Dockerfile.no-tls -t webrtc-transform:latest .
+docker build -f docker/Dockerfile.no-tls -t webrtc-transform:latest .
 docker container run -p 8080:8080 -rm webrtc-transform:latest
 ```
 
