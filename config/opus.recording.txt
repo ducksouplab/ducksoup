@@ -1,7 +1,7 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,payload=111,channels=1,encoding-name=OPUS ! 
 rtpopusdepay ! 
-tee name=teein ! queue ! opusparse ! oggmux ! filesink location=logs/in-audio-${uid}.ogg 
+tee name=teein ! queue ! oggmux ! filesink location=logs/in-audio-${uid}.ogg 
 teein. ! 
 queue ! 
 decodebin ! 
@@ -9,6 +9,8 @@ audioconvert !
 pitch pitch=1.25 ! 
 audioconvert ! 
 opusenc ! 
+tee name=teeout ! queue ! oggmux ! filesink location=logs/out-audio-${uid}.ogg 
+teeout. ! 
 queue ! 
 rtpopuspay !
 appsink name=sink

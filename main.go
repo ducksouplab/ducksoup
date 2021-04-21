@@ -55,7 +55,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// When this frame returns close the Websocket
 	defer unsafeConn.Close() //nolint
 
-	sfu.NewPeer(unsafeConn)
+	sfu.NewPeerServer(unsafeConn)
 }
 
 func main() {

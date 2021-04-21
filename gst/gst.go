@@ -35,6 +35,7 @@ type Pipeline struct {
 	Pipeline *C.GstElement
 	track    *webrtc.TrackLocalStaticRTP
 	id       int
+	uid      string
 }
 
 var pipelines = make(map[int]*Pipeline)
@@ -45,29 +46,29 @@ func randomEffect() string {
 	// options := []string{
 	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
 	// }
-	options := []string{"edgetv"}
+	options := []string{"identity"}
 	return options[rand.Intn(len(options))]
 }
 
-func newPipelineStr(codecName string) (pipelineStr string) {
+func newPipelineStr(uid string, codecName string) (pipelineStr string) {
 	codecName = strings.ToLower(codecName)
 
 	switch codecName {
 	case "vp8":
 		pipelineStr = vp8Pipeline
-		pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
+		//pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
 	case "opus":
 		pipelineStr = opusPipeline
 	default:
 		panic("Unhandled codec " + codecName)
 	}
+	pipelineStr = strings.Replace(pipelineStr, "${uid}", uid, -1)
 	return
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeline {
-	pipelineStr := newPipelineStr(codecName)
-	fmt.Println(pipelineStr)
+func CreatePipeline(uid string, codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeline {
+	pipelineStr := newPipelineStr(uid, codecName)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
@@ -79,6 +80,7 @@ func CreatePipeline(codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeli
 		Pipeline: C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
 		track:    track,
 		id:       len(pipelines),
+		uid:      uid,
 	}
 
 	pipelines[pipeline.id] = pipeline
@@ -87,11 +89,13 @@ func CreatePipeline(codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeli
 
 // Start starts the GStreamer Pipeline
 func (p *Pipeline) Start() {
+	fmt.Printf("Pipeline started: %d %s\n", p.id, p.uid)
 	C.gstreamer_send_start_pipeline(p.Pipeline, C.int(p.id))
 }
 
 // Stop stops the GStreamer Pipeline
 func (p *Pipeline) Stop() {
+	fmt.Printf("Pipeline stopped: %d %s\n", p.id, p.uid)
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
 }
 

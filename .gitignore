@@ -2,6 +2,9 @@ certs
 webrtc-transform
 .DS_Store
 
+# logs and recorded data
+logs
+
 # license and SDK
 lib
 *.uid
