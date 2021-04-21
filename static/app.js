@@ -7,8 +7,8 @@ const state = {
 
 const DEFAULT_CONSTRAINTS = {
   video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
+    width: { ideal: 640 },
+    height: { ideal: 480 },
     frameRate: { ideal: 30 },
     facingMode: { ideal: "user" },
   },
@@ -55,7 +55,7 @@ const init = async () => {
   }
 };
 
-const processSDP = (sdp) => {
+const forceMozillaMono = (sdp) => {
   if (!window.navigator.userAgent.includes("Mozilla")) return sdp;
   return sdp
     .split("\r\n")
@@ -67,6 +67,11 @@ const processSDP = (sdp) => {
       }
     })
     .join("\r\n");
+};
+
+const processSDP = (sdp) => {
+  const output = forceMozillaMono(sdp);
+  return output;
 };
 
 const startRTC = async () => {
@@ -150,11 +155,6 @@ const startRTC = async () => {
     console.log(event.streams);
     el.srcObject = event.streams[0];
     el.autoplay = true;
-    if (event.track.kind === "video") {
-      el.classList.add("responsive-video");
-      el.classList.add("col");
-      el.classList.add("s6");
-    }
     document.getElementById("remote").appendChild(el);
 
     event.streams[0].onremovetrack = ({ track }) => {
