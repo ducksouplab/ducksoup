@@ -10,36 +10,36 @@ import (
 )
 
 // Helper to make Gorilla Websockets threadsafe
-type Conn struct {
+type WebsocketConn struct {
 	*websocket.Conn
 	sync.Mutex
 }
 
-func (c *Conn) WriteJSON(v interface{}) error {
-	c.Lock()
-	defer c.Unlock()
+type Message struct {
+	Event string `json:"event"`
+	Data  string `json:"data"`
+}
 
-	return c.Conn.WriteJSON(v)
+func (w *WebsocketConn) WriteJSON(v interface{}) error {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.Conn.WriteJSON(v)
 }
 
 // Handle incoming websockets
 func NewPeerServer(unsafeConn *websocket.Conn) {
-	conn := &Conn{unsafeConn, sync.Mutex{}}
-	defer conn.Close()
+	room := GetRoom("main")
 
-	peerConnection := NewPeerConnection(conn)
-	defer peerConnection.Close()
+	wsConn := &WebsocketConn{unsafeConn, sync.Mutex{}}
+	defer wsConn.Close()
 
-	// Add our new PeerConnection to global list
-	tracksLock.Lock()
-	peerConnections = append(peerConnections, peerConnectionState{peerConnection, conn})
-	tracksLock.Unlock()
+	rtcConn := NewPeerConnection(room, wsConn)
+	defer rtcConn.Close()
 
-	signalingUpdate()
-
-	message := &websocketMessage{}
+	message := &Message{}
 	for {
-		_, raw, err := conn.ReadMessage()
+		_, raw, err := wsConn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
@@ -56,7 +56,7 @@ func NewPeerServer(unsafeConn *websocket.Conn) {
 				return
 			}
 
-			if err := peerConnection.AddICECandidate(candidate); err != nil {
+			if err := rtcConn.AddICECandidate(candidate); err != nil {
 				log.Println(err)
 				return
 			}
@@ -67,7 +67,7 @@ func NewPeerServer(unsafeConn *websocket.Conn) {
 				return
 			}
 
-			if err := peerConnection.SetRemoteDescription(answer); err != nil {
+			if err := rtcConn.SetRemoteDescription(answer); err != nil {
 				log.Println(err)
 				return
 			}

@@ -11,7 +11,10 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
+func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerConnection) {
+	// unique id
+	peerUid := uid.HumanUid()
+
 	// Prepare the configuration
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -22,7 +25,7 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 	}
 
 	// Create a new RTCPeerConnection
-	peerConnection, err := webrtc.NewPeerConnection(config)
+	rtcConn, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Print(err)
 		return
@@ -30,7 +33,7 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 
 	// Accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-		if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
+		if _, err := rtcConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		}); err != nil {
 			log.Print(err)
@@ -39,12 +42,12 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 	}
 
 	// Notify when peer has connected/disconnected
-	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+	rtcConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("Connection State has changed %s \n", connectionState.String())
 	})
 
 	// Trickle ICE. Emit server candidate to client
-	peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
+	rtcConn.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
 			return
 		}
@@ -55,7 +58,7 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 			return
 		}
 
-		if writeErr := conn.WriteJSON(&websocketMessage{
+		if writeErr := wsConn.WriteJSON(&Message{
 			Event: "candidate",
 			Data:  string(candidateString),
 		}); writeErr != nil {
@@ -64,32 +67,25 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 	})
 
 	// If PeerConnection is closed remove it from global list
-	peerConnection.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
+	rtcConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
-			if err := peerConnection.Close(); err != nil {
+			if err := rtcConn.Close(); err != nil {
 				log.Print(err)
 			}
 		case webrtc.PeerConnectionStateClosed:
-			signalingUpdate()
+			room.SignalingUpdate()
 		}
 	})
 
-	peerConnection.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+	rtcConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		buf := make([]byte, 1500)
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		uid := uid.HumanUid()
 
-		var localTrack *webrtc.TrackLocalStaticRTP
-		if remoteTrack.Kind().String() == "audio" {
-			localTrack = addAudioTrack(remoteTrack)
-			defer removeAudioTrack(localTrack)
-		} else {
-			localTrack = addVideoTrack(remoteTrack)
-			defer removeVideoTrack(localTrack)
-		}
+		processedTrack := room.AddProcessedTrack(remoteTrack)
+		defer room.RemoveProcessedTrack(processedTrack)
 
-		pipeline := gst.CreatePipeline(uid, codecName, localTrack)
+		pipeline := gst.CreatePipeline(peerUid, codecName, processedTrack)
 		pipeline.Start()
 		defer pipeline.Stop()
 
@@ -102,6 +98,10 @@ func NewPeerConnection(conn *Conn) (peerConnection *webrtc.PeerConnection) {
 		}
 
 	})
+
+	// Add our new PeerConnection to room
+	room.AddPeer(rtcConn, wsConn)
+	room.SignalingUpdate()
 
 	return
 }
