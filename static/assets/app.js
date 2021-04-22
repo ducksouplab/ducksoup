@@ -30,8 +30,26 @@ const DEFAULT_PEER_CONFIGURATION = {
   ],
 };
 
-// Init
+const getQueryVariable = (key) => {
+  var query = window.location.search.substring(1);
+  var vars = query.split("&");
+  for (var i = 0; i < vars.length; i++) {
+    var pair = vars[i].split("=");
+    if (decodeURIComponent(pair[0]) == key) {
+      return decodeURIComponent(pair[1]);
+    }
+  }
+};
+
 const init = async () => {
+  // Init state
+  const room = getQueryVariable("room");
+  const user = getQueryVariable("user");
+  if (!room || !user) window.location.href = "/";
+  window.history.replaceState({}, document.title, "/live/");
+  state.room = room;
+  state.user = user;
+  // Init UX
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const audioSelect = document.getElementById("audio-select");
@@ -96,20 +114,33 @@ const startRTC = async () => {
 
   // Signaling
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const signaling = new WebSocket(
-    `${wsProtocol}://${window.location.host}/signaling`
-  );
-  signaling.onclose = function (evt) {
+  const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
+
+  ws.onopen = function () {
+    const { user, room } = state;
+    ws.send(
+      JSON.stringify({
+        type: "join",
+        payload: JSON.stringify({ user, room }),
+      })
+    );
+  };
+
+  ws.onclose = function (evt) {
     console.log("Websocket has closed");
   };
 
-  signaling.onmessage = async function (evt) {
+  ws.onerror = function (evt) {
+    console.error("ws: " + evt.data);
+  };
+
+  ws.onmessage = async function (evt) {
     let msg = JSON.parse(evt.data);
     if (!msg) return console.error("failed to parse msg");
 
-    switch (msg.event) {
-      case "offer":
-        const offer = JSON.parse(msg.data);
+    switch (msg.type) {
+      case "offer": {
+        const offer = JSON.parse(msg.payload);
         if (!offer) {
           return console.error("failed to parse answer");
         }
@@ -117,34 +148,39 @@ const startRTC = async () => {
         const answer = await pc.createAnswer();
         answer.sdp = processSDP(answer.sdp);
         pc.setLocalDescription(answer);
-        signaling.send(
+        ws.send(
           JSON.stringify({
-            event: "answer",
-            data: JSON.stringify(answer),
+            type: "answer",
+            payload: JSON.stringify(answer),
           })
         );
-        return;
-
-      case "candidate":
-        const candidate = JSON.parse(msg.data);
+        break;
+      }
+      case "candidate": {
+        const candidate = JSON.parse(msg.payload);
         if (!candidate) {
           return console.error("failed to parse candidate");
         }
-
         pc.addIceCandidate(candidate);
+        break;
+      }
+      case "stop": {
+        window.location.href = "/end/";
+        break;
+      }
+      case "error": {
+        window.location.href = "/full/";
+        break;
+      }
     }
-  };
-
-  signaling.onerror = function (evt) {
-    console.error("signaling: " + evt.data);
   };
 
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
-    signaling.send(
+    ws.send(
       JSON.stringify({
-        event: "candidate",
-        data: JSON.stringify(e.candidate),
+        type: "candidate",
+        payload: JSON.stringify(e.candidate),
       })
     );
   };
@@ -152,7 +188,6 @@ const startRTC = async () => {
   pc.ontrack = function (event) {
     let el = document.createElement(event.track.kind);
     el.id = event.track.id;
-    console.log(event.streams);
     el.srcObject = event.streams[0];
     el.autoplay = true;
     document.getElementById("remote").appendChild(el);

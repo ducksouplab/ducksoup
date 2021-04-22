@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>webrtc-transform | live</title>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js"></script>
+</head>
+
+<body>
+  <nav>
+    <div class="row nav-wrapper green darken-1">
+      <div class="col s12">
+        <a href="#" class="brand-logo">webrtc-transform</a>
+        <ul class="right">
+          <li>
+            <a class="dropdown-trigger" href="#!" data-target="audio-select">
+              <span id="audio-in-label">Audio in</span><i class="material-icons right">arrow_drop_down</i>
+            </a>
+          </li>
+          <li id="start-container">
+            <a class="waves-effect waves-light btn green lighten-2" id="start">
+              Start <i class="material-icons right">play_arrow</i></a>
+          </li>
+          <li id="stop-container" class="hide">
+            <a class="waves-effect waves-light btn green lighten-2" id="stop">
+              Stop <i class="material-icons right">stop</i></a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="row tm">
+      <div class="col s6">
+        <video id="local-video" autoplay muted></video>
+      </div>
+      <div class="col s6">
+        <div class="info right">
+          <p>audio ↑ <span id="audio-up">0.0</span> kb/s ↓ <span id="audio-down">0.0</span> kb/s</p>
+          <p>video ↑ <span id="video-up">0.0</span> kb/s ↓ <span id="video-down">0.0</span> kb/s</p>
+        </div>
+      </div>
+    </div>
+    <div class="row tm">
+      <div id="remote"></div>
+    </div>
+  </div>
+  <ul id="audio-select" class="dropdown-content">
+  </ul>
+</body>
+
+</html>

@@ -22,7 +22,7 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
     {
 
     case GST_MESSAGE_EOS:
-        g_print("End of stream\n");
+        g_print("[gst.c] end of stream\n");
         gst_element_set_state(pipeline, GST_STATE_NULL);
         break;
 

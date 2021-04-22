@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 
@@ -11,9 +10,9 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerConnection) {
+func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *webrtc.PeerConnection) {
 	// unique id
-	peerUid := uid.HumanUid()
+	peerUid := uid.HumanUid() + "-" + userName
 
 	// Prepare the configuration
 	config := webrtc.Configuration{
@@ -25,7 +24,7 @@ func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerC
 	}
 
 	// Create a new RTCPeerConnection
-	rtcConn, err := webrtc.NewPeerConnection(config)
+	peerConn, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Print(err)
 		return
@@ -33,7 +32,7 @@ func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerC
 
 	// Accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-		if _, err := rtcConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
+		if _, err := peerConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		}); err != nil {
 			log.Print(err)
@@ -42,12 +41,12 @@ func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerC
 	}
 
 	// Notify when peer has connected/disconnected
-	rtcConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		fmt.Printf("Connection State has changed %s \n", connectionState.String())
+	peerConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		log.Printf("[peerConn] has changed: %s \n", connectionState.String())
 	})
 
 	// Trickle ICE. Emit server candidate to client
-	rtcConn.OnICECandidate(func(i *webrtc.ICECandidate) {
+	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
 			return
 		}
@@ -59,18 +58,18 @@ func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerC
 		}
 
 		if writeErr := wsConn.WriteJSON(&Message{
-			Event: "candidate",
-			Data:  string(candidateString),
+			Type:    "candidate",
+			Payload: string(candidateString),
 		}); writeErr != nil {
 			log.Println(writeErr)
 		}
 	})
 
 	// If PeerConnection is closed remove it from global list
-	rtcConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
+	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
-			if err := rtcConn.Close(); err != nil {
+			if err := peerConn.Close(); err != nil {
 				log.Print(err)
 			}
 		case webrtc.PeerConnectionStateClosed:
@@ -78,30 +77,44 @@ func NewPeerConnection(room *Room, wsConn *WebsocketConn) (rtcConn *webrtc.PeerC
 		}
 	})
 
-	rtcConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		buf := make([]byte, 1500)
+	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track ready for user " + userName)
+		room.readyCh <- struct{}{}
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
 		pipeline := gst.CreatePipeline(peerUid, codecName, processedTrack)
+
+		<-room.holdOnCh
+
 		pipeline.Start()
 		defer pipeline.Stop()
 
+		buf := make([]byte, 1500)
+
+	loop:
 		for {
-			i, _, readErr := remoteTrack.Read(buf)
-			if readErr != nil {
-				return
+			select {
+			case <-room.stopCh:
+				if writeErr := wsConn.WriteJSON(&Message{
+					Type:    "stop",
+					Payload: "timeout",
+				}); writeErr != nil {
+					log.Println(writeErr)
+				}
+				break loop
+			default:
+				i, _, readErr := remoteTrack.Read(buf)
+				if readErr != nil {
+					break loop
+				}
+				pipeline.Push(buf[:i])
 			}
-			pipeline.Push(buf[:i])
 		}
 
 	})
-
-	// Add our new PeerConnection to room
-	room.AddPeer(rtcConn, wsConn)
-	room.SignalingUpdate()
 
 	return
 }

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>webrtc-transform | join</title>
+    <title>webrtc-transform | full</title>
     <meta charset="utf-8">
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -23,19 +23,12 @@
             <form class="col s4 offset-s4 card" action="/live/" method="link">
                 <div class="row">
                     <div class="input-field col s12">
-                        <input id="user" name="user" type="text" minlength="2" required class="validate">
-                        <label for="user" class="active">User name</label>
+                        <p>Limit of attendees reached</p>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="input-field col s12">
-                        <input id="room" name="room" type="text" minlength="2" required>
-                        <label for="room">Room</label>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="input-field col s12 right-align">
-                        <button class="btn waves-effect waves-light green" type="submit">join</button>
+                    <div class="col s12 right-align">
+                        <a href="/" class="btn waves-effect waves-light green">retry</a>
                     </div>
                 </div>
             </form>

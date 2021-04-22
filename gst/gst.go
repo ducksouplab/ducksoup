@@ -7,7 +7,7 @@ package gst
 */
 import "C"
 import (
-	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"sync"
@@ -56,7 +56,7 @@ func newPipelineStr(uid string, codecName string) (pipelineStr string) {
 	switch codecName {
 	case "vp8":
 		pipelineStr = vp8Pipeline
-		//pipelineStr = fmt.Sprintf(pipelineStr, randomEffect())
+		//pipelineStr = log.Sprintf(pipelineStr, randomEffect())
 	case "opus":
 		pipelineStr = opusPipeline
 	default:
@@ -89,13 +89,13 @@ func CreatePipeline(uid string, codecName string, track *webrtc.TrackLocalStatic
 
 // Start starts the GStreamer Pipeline
 func (p *Pipeline) Start() {
-	fmt.Printf("Pipeline started: %d %s\n", p.id, p.uid)
+	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.uid)
 	C.gstreamer_send_start_pipeline(p.Pipeline, C.int(p.id))
 }
 
 // Stop stops the GStreamer Pipeline
 func (p *Pipeline) Stop() {
-	fmt.Printf("Pipeline stopped: %d %s\n", p.id, p.uid)
+	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.uid)
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
 }
 
@@ -110,7 +110,7 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 			panic(err)
 		}
 	} else {
-		fmt.Printf("discarding buffer, no pipeline with id %d", int(pipelineID))
+		log.Printf("discarding buffer, no pipeline with id %d", int(pipelineID))
 	}
 	C.free(buffer)
 }

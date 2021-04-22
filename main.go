@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/creamlab/webrtc-transform/gst"
 	"github.com/creamlab/webrtc-transform/sfu"
@@ -23,22 +24,23 @@ func app() {
 	// Parse the flags passed to program
 	flag.Parse()
 
-	// Init other state
-	log.SetFlags(0)
+	// Init logging
+	log.SetFlags(log.Lmicroseconds)
+	log.SetOutput(os.Stdout)
 
 	// Server static files
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
 
 	// websocket handler
-	http.HandleFunc("/signaling", websocketHandler)
+	http.HandleFunc("/ws", websocketHandler)
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Println("Listening on https://", *addr)
+		log.Println("[main] listening on https://", *addr)
 		log.Fatal(http.ListenAndServeTLS(*addr, *cert, *key, nil))
 	} else {
-		log.Println("Listening on http://", *addr)
+		log.Println("[main] listening on http://", *addr)
 		log.Fatal(http.ListenAndServe(*addr, nil))
 	}
 }
@@ -55,7 +57,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// When this frame returns close the Websocket
 	defer unsafeConn.Close() //nolint
 
-	sfu.NewPeerServer(unsafeConn)
+	sfu.RunPeerServer(unsafeConn)
 }
 
 func main() {

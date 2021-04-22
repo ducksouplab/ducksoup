@@ -1,9 +1,9 @@
-// sfu global state (tracks & peers) providing functions for files in same package
 package sfu
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -11,22 +11,35 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+const (
+	DefaultSize          = 2
+	DefaultTracksPerPeer = 2
+	DefaultDuration      = 30
+)
+
 // global state
 var (
-	mu    sync.Mutex
+	mu    sync.Mutex // TODO init here
 	rooms map[string]*Room
 )
 
-type Peer struct {
-	rtcConn *webrtc.PeerConnection
-	wsConn  *WebsocketConn
-}
-
+// Room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type Room struct {
+	// embedded
 	sync.Mutex
-	id              string
-	peers           []Peer
-	processedTracks map[string]*webrtc.TrackLocalStaticRTP
+	// channels
+	readyCh  chan struct{}
+	holdOnCh chan struct{}
+	stopCh   chan struct{}
+	// state
+	id               string
+	peerServers      []*PeerServer
+	processedTracks  map[string]*webrtc.TrackLocalStaticRTP
+	size             uint
+	peerCount        uint
+	tracksPerPeer    uint
+	tracksReadyCount uint
+	duration         uint
 }
 
 func init() {
@@ -34,42 +47,88 @@ func init() {
 	rooms = make(map[string]*Room)
 }
 
-func GetRoom(id string) *Room {
+func (r *Room) incTracksReadyCount() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if r, ok := rooms[id]; ok {
-		fmt.Println("Exists room")
-		return r
-	} else {
-		fmt.Println("Creates room")
-		newRoom := NewRoom(id)
-		rooms[id] = newRoom
-		return newRoom
+	r.tracksReadyCount += 1
+}
+
+func (r *Room) readyLoop() {
+	for {
+		<-r.readyCh
+		r.incTracksReadyCount()
+
+		log.Printf("[room] ready update %d\n", r.tracksReadyCount)
+
+		if r.tracksReadyCount == r.size*r.tracksPerPeer {
+			close(r.holdOnCh)
+			go r.planStop()
+			return
+		}
 	}
 }
 
-func NewRoom(id string) *Room {
+func (r *Room) planStop() {
+	timer := time.NewTimer(time.Duration(r.duration) * time.Second)
+	<-timer.C
+	close(r.stopCh)
+	r.Delete()
+}
+
+func newRoom(id string) *Room {
 	room := &Room{
-		id:              id,
-		processedTracks: map[string]*webrtc.TrackLocalStaticRTP{},
+		readyCh:          make(chan struct{}),
+		holdOnCh:         make(chan struct{}),
+		stopCh:           make(chan struct{}),
+		id:               id,
+		processedTracks:  map[string]*webrtc.TrackLocalStaticRTP{},
+		size:             DefaultSize,
+		peerCount:        1,
+		tracksPerPeer:    DefaultTracksPerPeer,
+		tracksReadyCount: 0,
+		duration:         DefaultDuration,
 	}
 
-	// request a keyframe every 3 seconds
-	go func() {
-		for range time.NewTicker(time.Second * 3).C {
-			room.DispatchKeyFrame()
-		}
-	}()
+	go room.readyLoop()
 
 	return room
 }
 
-func (r *Room) AddPeer(rtcConn *webrtc.PeerConnection, wsConn *WebsocketConn) {
+func JoinRoom(id string) (*Room, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if r, ok := rooms[id]; ok {
+		if r.peerCount == r.size {
+			return nil, errors.New("limit reached")
+		} else {
+			r.Lock()
+			defer r.Unlock()
+			r.peerCount += 1
+			log.Printf("[ws] joined existing room: %s\n", id)
+			return r, nil
+		}
+	} else {
+		log.Printf("[ws] joined new room: %s\n", id)
+		newRoom := newRoom(id)
+		rooms[id] = newRoom
+		return newRoom, nil
+	}
+}
+
+func (r *Room) Delete() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	delete(rooms, r.id)
+}
+
+func (r *Room) AddPeerServer(ps *PeerServer) {
 	r.Lock()
 	defer r.Unlock()
 
-	r.peers = append(r.peers, Peer{rtcConn, wsConn})
+	r.peerServers = append(r.peerServers, ps)
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
@@ -110,10 +169,10 @@ func (r *Room) SignalingUpdate() {
 	}()
 
 	attemptSync := func() (tryAgain bool) {
-		for i := range r.peers {
-			pc := r.peers[i].rtcConn
+		for i := range r.peerServers {
+			pc := r.peerServers[i].peerConn
 			if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
-				r.peers = append(r.peers[:i], r.peers[i+1:]...)
+				r.peerServers = append(r.peerServers[:i], r.peerServers[i+1:]...)
 				return true // We modified the slice, start from the beginning
 			}
 
@@ -167,9 +226,9 @@ func (r *Room) SignalingUpdate() {
 				return true
 			}
 
-			if err = r.peers[i].wsConn.WriteJSON(&Message{
-				Event: "offer",
-				Data:  string(offerString),
+			if err = r.peerServers[i].wsConn.WriteJSON(&Message{
+				Type:    "offer",
+				Payload: string(offerString),
 			}); err != nil {
 				return true
 			}
@@ -199,13 +258,13 @@ func (r *Room) DispatchKeyFrame() {
 	r.Lock()
 	defer r.Unlock()
 
-	for i := range r.peers {
-		for _, receiver := range r.peers[i].rtcConn.GetReceivers() {
+	for i := range r.peerServers {
+		for _, receiver := range r.peerServers[i].peerConn.GetReceivers() {
 			if receiver.Track() == nil {
 				continue
 			}
 
-			_ = r.peers[i].rtcConn.WriteRTCP([]rtcp.Packet{
+			_ = r.peerServers[i].peerConn.WriteRTCP([]rtcp.Packet{
 				&rtcp.PictureLossIndication{
 					MediaSSRC: uint32(receiver.Track().SSRC()),
 				},
