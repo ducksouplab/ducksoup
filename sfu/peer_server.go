@@ -3,6 +3,7 @@ package sfu
 import (
 	"encoding/json"
 	"log"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
@@ -53,29 +54,25 @@ func (ps *PeerServer) loop() {
 // Handle incoming websockets
 func RunPeerServer(unsafeConn *websocket.Conn) {
 
-	wsConn := NewWsConn(unsafeConn)
+	wsConn := &WsConn{sync.Mutex{}, unsafeConn}
 	defer wsConn.Close()
 
 	// First message must be a join request
-	roomName, userName, err := wsConn.ReadJoin()
+	joinRequest, err := wsConn.ReadJoin()
 	if err != nil {
 		log.Println("[ws] join failed")
 		return
 	}
 
-	room, err := JoinRoom(roomName)
-
-	if err != nil {
-		if writeErr := wsConn.WriteJSON(&Message{
+	room, joinErr := JoinRoom(joinRequest.Room)
+	if joinErr != nil { // joinErr is meaningful to client
+		wsConn.WriteJSON(&Message{
 			Type:    "error",
-			Payload: err.Error(),
-		}); writeErr != nil {
-			log.Println(writeErr)
-		}
-		return
+			Payload: joinErr.Error(),
+		})
 	}
 
-	peerConn := NewPeerConnection(room, wsConn, userName)
+	peerConn := NewPeerConnection(room, wsConn, joinRequest.User)
 	defer peerConn.Close()
 
 	peerServer := &PeerServer{peerConn, wsConn}

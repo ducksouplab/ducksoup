@@ -40,11 +40,6 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 		}
 	}
 
-	// Notify when peer has connected/disconnected
-	peerConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		log.Printf("[peerConn] has changed: %s \n", connectionState.String())
-	})
-
 	// Trickle ICE. Emit server candidate to client
 	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
@@ -57,16 +52,15 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 			return
 		}
 
-		if writeErr := wsConn.WriteJSON(&Message{
+		wsConn.WriteJSON(&Message{
 			Type:    "candidate",
 			Payload: string(candidateString),
-		}); writeErr != nil {
-			log.Println(writeErr)
-		}
+		})
 	})
 
 	// If PeerConnection is closed remove it from global list
 	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
+		log.Printf("[peerConn] connection state change: %s \n", p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := peerConn.Close(); err != nil {
@@ -74,12 +68,13 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 			}
 		case webrtc.PeerConnectionStateClosed:
 			room.SignalingUpdate()
+			room.PeerQuit()
 		}
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track ready for user " + userName)
-		room.readyCh <- struct{}{}
+		room.IncTracksReadyCount()
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		processedTrack := room.AddProcessedTrack(remoteTrack)
@@ -98,12 +93,10 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 		for {
 			select {
 			case <-room.stopCh:
-				if writeErr := wsConn.WriteJSON(&Message{
+				wsConn.WriteJSON(&Message{
 					Type:    "stop",
 					Payload: "timeout",
-				}); writeErr != nil {
-					log.Println(writeErr)
-				}
+				})
 				break loop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

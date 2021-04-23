@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -23,29 +24,25 @@ type JoinPayload struct {
 	User string `json:"user"`
 }
 
-func NewWsConn(unsafeConn *websocket.Conn) *WsConn {
-	return &WsConn{sync.Mutex{}, unsafeConn}
-}
-
-func (w *WsConn) WriteJSON(v interface{}) error {
+func (w *WsConn) WriteJSON(v interface{}) (err error) {
 	w.Lock()
 	defer w.Unlock()
 
-	return w.Conn.WriteJSON(v)
+	if err := w.Conn.WriteJSON(v); err != nil {
+		log.Println(err)
+	}
+	return
 }
 
-func (w *WsConn) ReadJoin() (roomName string, userName string, err error) {
+func (w *WsConn) ReadJoin() (joinPayload JoinPayload, err error) {
 	var message Message
-	var joinPayload JoinPayload
 
 	// First message must be a join
 	err = w.ReadJSON(&message)
 	if err != nil || message.Type != "join" {
 		return
 	}
-	if err = json.Unmarshal([]byte(message.Payload), &joinPayload); err == nil {
-		roomName = joinPayload.Room
-		userName = joinPayload.User
-	}
+
+	err = json.Unmarshal([]byte(message.Payload), &joinPayload)
 	return
 }

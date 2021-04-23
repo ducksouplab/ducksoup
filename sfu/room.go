@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/rtcp"
@@ -23,23 +24,23 @@ var (
 	rooms map[string]*Room
 )
 
-// Room holds all the resources of a given experiment, accepting an exact number of *size* attendees
+// room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type Room struct {
-	// embedded
 	sync.Mutex
+	// guarded by mutex
+	peerServers     []*PeerServer
+	processedTracks map[string]*webrtc.TrackLocalStaticRTP
+	// atomic operations only
+	tracksReadyCount uint32
+	peerCount        uint32
 	// channels
-	readyCh  chan struct{}
 	holdOnCh chan struct{}
 	stopCh   chan struct{}
-	// state
-	id               string
-	peerServers      []*PeerServer
-	processedTracks  map[string]*webrtc.TrackLocalStaticRTP
-	size             uint
-	peerCount        uint
-	tracksPerPeer    uint
-	tracksReadyCount uint
-	duration         uint
+	// other
+	id            string
+	size          uint32
+	tracksPerPeer uint32
+	duration      uint32
 }
 
 func init() {
@@ -47,25 +48,14 @@ func init() {
 	rooms = make(map[string]*Room)
 }
 
-func (r *Room) incTracksReadyCount() {
-	mu.Lock()
-	defer mu.Unlock()
+func (r *Room) IncTracksReadyCount() {
+	atomic.AddUint32(&r.tracksReadyCount, 1)
+	log.Printf("[room] track ready update %d\n", r.tracksReadyCount)
 
-	r.tracksReadyCount += 1
-}
-
-func (r *Room) readyLoop() {
-	for {
-		<-r.readyCh
-		r.incTracksReadyCount()
-
-		log.Printf("[room] ready update %d\n", r.tracksReadyCount)
-
-		if r.tracksReadyCount == r.size*r.tracksPerPeer {
-			close(r.holdOnCh)
-			go r.planStop()
-			return
-		}
+	if r.tracksReadyCount == r.size*r.tracksPerPeer {
+		close(r.holdOnCh)
+		go r.planStop()
+		return
 	}
 }
 
@@ -78,7 +68,6 @@ func (r *Room) planStop() {
 
 func newRoom(id string) *Room {
 	room := &Room{
-		readyCh:          make(chan struct{}),
 		holdOnCh:         make(chan struct{}),
 		stopCh:           make(chan struct{}),
 		id:               id,
@@ -90,12 +79,11 @@ func newRoom(id string) *Room {
 		duration:         DefaultDuration,
 	}
 
-	go room.readyLoop()
-
 	return room
 }
 
 func JoinRoom(id string) (*Room, error) {
+	// guard `rooms`
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -103,9 +91,7 @@ func JoinRoom(id string) (*Room, error) {
 		if r.peerCount == r.size {
 			return nil, errors.New("limit reached")
 		} else {
-			r.Lock()
-			defer r.Unlock()
-			r.peerCount += 1
+			atomic.AddUint32(&r.peerCount, 1)
 			log.Printf("[ws] joined existing room: %s\n", id)
 			return r, nil
 		}
@@ -118,6 +104,7 @@ func JoinRoom(id string) (*Room, error) {
 }
 
 func (r *Room) Delete() {
+	// guard `rooms`
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -131,6 +118,13 @@ func (r *Room) AddPeerServer(ps *PeerServer) {
 	r.peerServers = append(r.peerServers, ps)
 }
 
+func (r *Room) PeerQuit() {
+	if r.peerCount == 1 {
+		r.Delete()
+	}
+	// else let the room run and let the possibility to recover if same user joins again (TODO)
+}
+
 // Add to list of tracks and fire renegotation for all PeerConnections
 func (r *Room) AddProcessedTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
@@ -139,7 +133,7 @@ func (r *Room) AddProcessedTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStatic
 		r.SignalingUpdate()
 	}()
 
-	// Create a new TrackLocal with the same codec as our incoming
+	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
 		panic(err)
@@ -162,6 +156,7 @@ func (r *Room) RemoveProcessedTrack(t *webrtc.TrackLocalStaticRTP) {
 
 // Update each PeerConnection so that it is getting all the expected media tracks
 func (r *Room) SignalingUpdate() {
+	log.Println("[room] signaling update")
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -170,8 +165,9 @@ func (r *Room) SignalingUpdate() {
 
 	attemptSync := func() (tryAgain bool) {
 		for i := range r.peerServers {
-			pc := r.peerServers[i].peerConn
-			if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
+			peerServer := r.peerServers[i]
+			peerConn := peerServer.peerConn
+			if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
 				r.peerServers = append(r.peerServers[:i], r.peerServers[i+1:]...)
 				return true // We modified the slice, start from the beginning
 			}
@@ -179,7 +175,7 @@ func (r *Room) SignalingUpdate() {
 			// map of sender we already are sending, so we don't double send
 			existingSenders := map[string]bool{}
 
-			for _, sender := range pc.GetSenders() {
+			for _, sender := range peerConn.GetSenders() {
 				if sender.Track() == nil {
 					continue
 				}
@@ -189,14 +185,14 @@ func (r *Room) SignalingUpdate() {
 				// If we have a RTPSender that doesn't map to a existing track remove and signal
 				_, ok := r.processedTracks[sender.Track().ID()]
 				if !ok {
-					if err := pc.RemoveTrack(sender); err != nil {
+					if err := peerConn.RemoveTrack(sender); err != nil {
 						return true
 					}
 				}
 			}
 
 			// Don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-			for _, receiver := range pc.GetReceivers() {
+			for _, receiver := range peerConn.GetReceivers() {
 				if receiver.Track() == nil {
 					continue
 				}
@@ -206,18 +202,17 @@ func (r *Room) SignalingUpdate() {
 			// Add all track we aren't sending yet to the PeerConnection
 			for trackID := range r.processedTracks {
 				if _, ok := existingSenders[trackID]; !ok {
-					if _, err := pc.AddTrack(r.processedTracks[trackID]); err != nil {
+					if _, err := peerConn.AddTrack(r.processedTracks[trackID]); err != nil {
 						return true
 					}
 				}
 			}
 
-			offer, err := pc.CreateOffer(nil)
+			offer, err := peerConn.CreateOffer(nil)
 			if err != nil {
 				return true
 			}
-
-			if err = pc.SetLocalDescription(offer); err != nil {
+			if err = peerConn.SetLocalDescription(offer); err != nil {
 				return true
 			}
 
