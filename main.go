@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/creamlab/webrtc-transform/gst"
+	"github.com/creamlab/webrtc-transform/helpers"
 	"github.com/creamlab/webrtc-transform/sfu"
 	"github.com/gorilla/websocket"
 )
@@ -19,6 +20,10 @@ var (
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 )
+
+func init() {
+	helpers.EnsureDir("./logs")
+}
 
 func app() {
 	// Parse the flags passed to program
