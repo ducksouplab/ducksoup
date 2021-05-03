@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/creamlab/webrtc-transform/gst"
-	"github.com/gouniverse/uid"
 	"github.com/pion/webrtc/v3"
 )
 
 func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *webrtc.PeerConnection) {
-	// unique id
-	peerUid := uid.HumanUid() + "-" + userName
-
 	// Prepare the configuration
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -96,8 +93,11 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
+		// Set unique id containing time description till milliseconds and user identifier
+		uid := time.Now().Format("20060102-15:04:05.000") + "-" + userName
+
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		pipeline := gst.CreatePipeline(peerUid, codecName, processedTrack)
+		pipeline := gst.CreatePipeline(uid, codecName, processedTrack)
 		pipeline.Start()
 		defer pipeline.Stop()
 
