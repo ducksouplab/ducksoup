@@ -74,22 +74,35 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track ready for user " + userName)
+		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
-		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
+		// Wait for other peers to be ready (read and discard track buffer while waiting)
+	waitLoop:
+		for {
+			select {
+			case <-room.waitForAllCh:
+				break waitLoop
+			default:
+				_, _, readErr := remoteTrack.Read(buf)
+				if readErr != nil {
+					break waitLoop
+				}
+			}
+		}
+
+		// Prepare GStreamer pipeline
+		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track started for user " + userName)
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
+		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 		pipeline := gst.CreatePipeline(peerUid, codecName, processedTrack)
-
-		<-room.holdOnCh
-
 		pipeline.Start()
 		defer pipeline.Stop()
 
-		buf := make([]byte, 1500)
-
-	loop:
+		// Read and process track
+	processLoop:
 		for {
 			select {
 			case <-room.stopCh:
@@ -97,16 +110,15 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 					Type:    "stop",
 					Payload: "timeout",
 				})
-				break loop
+				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)
 				if readErr != nil {
-					break loop
+					break processLoop
 				}
 				pipeline.Push(buf[:i])
 			}
 		}
-
 	})
 
 	return

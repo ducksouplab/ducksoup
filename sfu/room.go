@@ -34,8 +34,8 @@ type Room struct {
 	tracksReadyCount uint32
 	peerCount        uint32
 	// channels
-	holdOnCh chan struct{}
-	stopCh   chan struct{}
+	waitForAllCh chan struct{}
+	stopCh       chan struct{}
 	// other
 	id            string
 	size          uint32
@@ -53,7 +53,7 @@ func (r *Room) IncTracksReadyCount() {
 	log.Printf("[room] track ready update %d\n", r.tracksReadyCount)
 
 	if r.tracksReadyCount == r.size*r.tracksPerPeer {
-		close(r.holdOnCh)
+		close(r.waitForAllCh)
 		go r.planStop()
 		return
 	}
@@ -68,7 +68,7 @@ func (r *Room) planStop() {
 
 func newRoom(id string) *Room {
 	room := &Room{
-		holdOnCh:         make(chan struct{}),
+		waitForAllCh:     make(chan struct{}),
 		stopCh:           make(chan struct{}),
 		id:               id,
 		processedTracks:  map[string]*webrtc.TrackLocalStaticRTP{},

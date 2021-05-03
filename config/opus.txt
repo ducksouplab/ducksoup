@@ -4,7 +4,7 @@ rtpopusdepay !
 queue max-size-bytes=0 max-size-buffers=0 ! 
 decodebin ! 
 audioconvert ! 
-pitch pitch=1.25 ! 
+pitch pitch=0.8 ! 
 audioconvert ! 
 opusenc ! 
 queue max-size-bytes=0 max-size-buffers=0 ! 
