@@ -20,11 +20,27 @@ type Message struct {
 }
 
 type JoinPayload struct {
-	Room string `json:"room"`
-	User string `json:"user"`
+	Room     string `json:"room"`
+	Name     string `json:"name"`
+	Proc     bool   `json:"proc"`
+	Duration uint32 `json:"duration"`
+	Uid      string `json:"uid"`
 }
 
-func (w *WsConn) WriteJSON(v interface{}) (err error) {
+func (w *WsConn) Send(text string) (err error) {
+	w.Lock()
+	defer w.Unlock()
+
+	message := &Message{
+		Type: text,
+	}
+	if err := w.Conn.WriteJSON(message); err != nil {
+		log.Println(err)
+	}
+	return
+}
+
+func (w *WsConn) SendJSON(v interface{}) (err error) {
 	w.Lock()
 	defer w.Unlock()
 

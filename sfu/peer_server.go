@@ -12,6 +12,7 @@ import (
 type PeerServer struct {
 	peerConn *webrtc.PeerConnection
 	wsConn   *WsConn
+	room     *Room
 }
 
 func (ps *PeerServer) loop() {
@@ -20,6 +21,7 @@ func (ps *PeerServer) loop() {
 		err := ps.wsConn.ReadJSON(&message)
 
 		if err != nil {
+			ps.room.PeerQuit()
 			log.Println("[ws] reading JSON failed")
 			return
 		}
@@ -58,24 +60,23 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	defer wsConn.Close()
 
 	// First message must be a join request
-	joinRequest, err := wsConn.ReadJoin()
+	joinPayload, err := wsConn.ReadJoin()
 	if err != nil {
+		log.Print(err)
 		log.Println("[ws] join failed")
 		return
 	}
 
-	room, joinErr := JoinRoom(joinRequest.Room)
+	room, joinErr := JoinRoom(joinPayload)
 	if joinErr != nil { // joinErr is meaningful to client
-		wsConn.WriteJSON(&Message{
-			Type:    "error",
-			Payload: joinErr.Error(),
-		})
+		wsConn.Send("error")
 	}
 
-	peerConn := NewPeerConnection(room, wsConn, joinRequest.User)
+	userId := joinPayload.Uid + "-" + joinPayload.Name
+	peerConn := NewPeerConnection(room, wsConn, userId)
 	defer peerConn.Close()
 
-	peerServer := &PeerServer{peerConn, wsConn}
+	peerServer := &PeerServer{peerConn, wsConn, room}
 
 	// Link room and PeerServer
 	room.AddPeerServer(peerServer)

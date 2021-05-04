@@ -49,7 +49,7 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 			return
 		}
 
-		wsConn.WriteJSON(&Message{
+		wsConn.SendJSON(&Message{
 			Type:    "candidate",
 			Payload: string(candidateString),
 		})
@@ -83,7 +83,7 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 			default:
 				_, _, readErr := remoteTrack.Read(buf)
 				if readErr != nil {
-					break waitLoop
+					return
 				}
 			}
 		}
@@ -106,15 +106,12 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 		for {
 			select {
 			case <-room.stopCh:
-				wsConn.WriteJSON(&Message{
-					Type:    "stop",
-					Payload: "timeout",
-				})
+				wsConn.Send("stop")
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)
 				if readErr != nil {
-					break processLoop
+					return
 				}
 				pipeline.Push(buf[:i])
 			}

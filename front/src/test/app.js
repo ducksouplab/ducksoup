@@ -4,6 +4,7 @@ const state = {
 };
 
 // Config
+const FRONT_PREFIX = '/test/';
 
 const DEFAULT_CONSTRAINTS = {
   video: {
@@ -31,10 +32,10 @@ const DEFAULT_PEER_CONFIGURATION = {
 };
 
 const getQueryVariable = (key) => {
-  var query = window.location.search.substring(1);
-  var vars = query.split("&");
-  for (var i = 0; i < vars.length; i++) {
-    var pair = vars[i].split("=");
+  const query = window.location.search.substring(1);
+  const vars = query.split("&");
+  for (let i = 0; i < vars.length; i++) {
+    const pair = vars[i].split("=");
     if (decodeURIComponent(pair[0]) == key) {
       return decodeURIComponent(pair[1]);
     }
@@ -44,11 +45,11 @@ const getQueryVariable = (key) => {
 const init = async () => {
   // Init state
   const room = getQueryVariable("room");
-  const user = getQueryVariable("user");
-  if (!room || !user) window.location.href = "/";
-  window.history.replaceState({}, document.title, "/live/");
+  const name = getQueryVariable("name");
+  if (!room || !name) window.location.href = FRONT_PREFIX;
+  window.history.replaceState({}, document.title, `${FRONT_PREFIX}live/`);
   state.room = room;
-  state.user = user;
+  state.name = name;
   // Init UX
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -92,6 +93,8 @@ const processSDP = (sdp) => {
   return output;
 };
 
+const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
+
 const startRTC = async () => {
   // UX
   document.getElementById("start-container").classList.add("hide");
@@ -117,11 +120,11 @@ const startRTC = async () => {
   const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
   ws.onopen = function () {
-    const { user, room } = state;
+    const { name, room } = state;
     ws.send(
       JSON.stringify({
         type: "join",
-        payload: JSON.stringify({ user, room }),
+        payload: JSON.stringify({ name, room, proc: true, uid: randomId() }),
       })
     );
   };
@@ -165,11 +168,11 @@ const startRTC = async () => {
         break;
       }
       case "stop": {
-        window.location.href = "/end/";
+        window.location.href = `${FRONT_PREFIX}end/`;
         break;
       }
       case "error": {
-        window.location.href = "/full/";
+        window.location.href = `${FRONT_PREFIX}full/`;
         break;
       }
     }

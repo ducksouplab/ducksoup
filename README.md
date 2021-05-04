@@ -85,3 +85,20 @@ export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 Hint for multi-debian: debug go execution, and check for relevant gstreamer runtime dependencies (try to add same apt dependencies in build and run stages, then clean up)
 
 Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first. See https://github.com/pion/ion/blob/master/docker/sfu.Dockerfile
+
+### Front-ends
+
+Several front-ends are available:
+
+- static/test is a generic project intended to test the back-end behavior
+- static/\*others are tailored to a given experiment setup
+
+Building js file (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
+
+When `./webrtc-transform` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
+
+It's also possible to watch changes and rebuild those files by adding a environment variable:
+
+```
+APP_ENV=DEV ./webrtc-transform
+```

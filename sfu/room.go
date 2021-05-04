@@ -16,6 +16,7 @@ const (
 	DefaultSize          = 2
 	DefaultTracksPerPeer = 2
 	DefaultDuration      = 30
+	MaxDuration          = 1200
 )
 
 // global state
@@ -54,6 +55,9 @@ func (r *Room) IncTracksReadyCount() {
 
 	if r.tracksReadyCount == r.size*r.tracksPerPeer {
 		close(r.waitForAllCh)
+		for _, ps := range r.peerServers {
+			go ps.wsConn.Send("start")
+		}
 		go r.planStop()
 		return
 	}
@@ -66,27 +70,36 @@ func (r *Room) planStop() {
 	r.Delete()
 }
 
-func newRoom(id string) *Room {
+func newRoom(joinPayload JoinPayload) *Room {
+	// process duration
+	duration := joinPayload.Duration
+	if duration < 1 {
+		duration = DefaultDuration
+	} else if duration > MaxDuration {
+		duration = MaxDuration
+	}
+
 	room := &Room{
 		waitForAllCh:     make(chan struct{}),
 		stopCh:           make(chan struct{}),
-		id:               id,
+		id:               joinPayload.Room,
 		processedTracks:  map[string]*webrtc.TrackLocalStaticRTP{},
 		size:             DefaultSize,
 		peerCount:        1,
 		tracksPerPeer:    DefaultTracksPerPeer,
 		tracksReadyCount: 0,
-		duration:         DefaultDuration,
+		duration:         duration,
 	}
 
 	return room
 }
 
-func JoinRoom(id string) (*Room, error) {
+func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 	// guard `rooms`
 	mu.Lock()
 	defer mu.Unlock()
 
+	id := joinPayload.Room
 	if r, ok := rooms[id]; ok {
 		if r.peerCount == r.size {
 			return nil, errors.New("limit reached")
@@ -97,7 +110,7 @@ func JoinRoom(id string) (*Room, error) {
 		}
 	} else {
 		log.Printf("[ws] joined new room: %s\n", id)
-		newRoom := newRoom(id)
+		newRoom := newRoom(joinPayload)
 		rooms[id] = newRoom
 		return newRoom, nil
 	}
@@ -221,7 +234,7 @@ func (r *Room) SignalingUpdate() {
 				return true
 			}
 
-			if err = r.peerServers[i].wsConn.WriteJSON(&Message{
+			if err = r.peerServers[i].wsConn.SendJSON(&Message{
 				Type:    "offer",
 				Payload: string(offerString),
 			}); err != nil {

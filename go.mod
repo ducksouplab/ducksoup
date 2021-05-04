@@ -3,6 +3,8 @@ module github.com/creamlab/webrtc-transform
 go 1.16
 
 require (
+	github.com/evanw/esbuild v0.11.18 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/pion/ice/v2 v2.1.4 // indirect
 	github.com/pion/rtcp v1.2.6
