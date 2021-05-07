@@ -91,7 +91,7 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 
 	// link with room
 	room.AddPeer(peerServer)
-	room.SignalingUpdate()
+	room.UpdateSignaling()
 
 	// blocking
 	peerServer.loop()

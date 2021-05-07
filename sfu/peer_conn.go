@@ -75,7 +75,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 				log.Print(err)
 			}
 		case webrtc.PeerConnectionStateClosed:
-			room.SignalingUpdate()
+			room.UpdateSignaling()
 			room.RemovePeer(joinPayload.UserId)
 		}
 	})

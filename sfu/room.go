@@ -202,7 +202,7 @@ func (r *Room) AddProcessedTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStatic
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.SignalingUpdate()
+		r.UpdateSignaling()
 	}()
 
 	// Create a new TrackLocal with the same codec as the incoming one
@@ -220,14 +220,14 @@ func (r *Room) RemoveProcessedTrack(t *webrtc.TrackLocalStaticRTP) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.SignalingUpdate()
+		r.UpdateSignaling()
 	}()
 
 	delete(r.trackIndex, t.ID())
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (r *Room) SignalingUpdate() {
+func (r *Room) UpdateSignaling() {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -235,15 +235,17 @@ func (r *Room) SignalingUpdate() {
 	}()
 
 	log.Printf("[room #%s] signaling update\n", r.id)
-	attemptSync := func() (tryAgain bool) {
+	tryUpdateSignaling := func() (success bool) {
 		for userId, ps := range r.peerServerIndex {
+
 			peerConn := ps.peerConn
+
 			if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
 				delete(r.peerServerIndex, userId)
-				return true // We modified the slice, start from the beginning
+				break
 			}
 
-			// map of sender we already are sending, so we don't double send
+			// map of sender we are already sending, so we don't double send
 			existingSenders := map[string]bool{}
 
 			for _, sender := range peerConn.GetSenders() {
@@ -253,16 +255,16 @@ func (r *Room) SignalingUpdate() {
 
 				existingSenders[sender.Track().ID()] = true
 
-				// If we have a RTPSender that doesn't map to a existing track remove and signal
+				// if we have a RTPSender that doesn't map to an existing track remove and signal
 				_, ok := r.trackIndex[sender.Track().ID()]
 				if !ok {
 					if err := peerConn.RemoveTrack(sender); err != nil {
-						return true
+						return false
 					}
 				}
 			}
 
-			// Don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
+			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
 			for _, receiver := range peerConn.GetReceivers() {
 				if receiver.Track() == nil {
 					continue
@@ -270,50 +272,51 @@ func (r *Room) SignalingUpdate() {
 				existingSenders[receiver.Track().ID()] = true
 			}
 
-			// Add all track we aren't sending yet to the PeerConnection
+			// add all track we aren't sending yet to the PeerConnection
 			for trackID := range r.trackIndex {
 				if _, ok := existingSenders[trackID]; !ok {
 					if _, err := peerConn.AddTrack(r.trackIndex[trackID]); err != nil {
-						return true
+						return false
 					}
 				}
 			}
 
 			offer, err := peerConn.CreateOffer(nil)
 			if err != nil {
-				return true
+				return false
 			}
+
 			if err = peerConn.SetLocalDescription(offer); err != nil {
-				return true
+				return false
 			}
 
 			offerString, err := json.Marshal(offer)
 			if err != nil {
-				return true
+				return false
 			}
 
 			if err = ps.wsConn.SendJSON(&Message{
 				Type:    "offer",
 				Payload: string(offerString),
 			}); err != nil {
-				return true
+				return false
 			}
 		}
 
-		return
+		return true
 	}
 
-	for syncAttempt := 0; ; syncAttempt++ {
-		if syncAttempt == 25 {
-			// Release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
+	for tries := 0; ; tries++ {
+		if tries == 25 {
+			// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
 			go func() {
 				time.Sleep(time.Second * 3)
-				r.SignalingUpdate()
+				r.UpdateSignaling()
 			}()
 			return
 		}
-
-		if !attemptSync() {
+		// don't try again if succeeded
+		if tryUpdateSignaling() {
 			break
 		}
 	}
