@@ -97,6 +97,7 @@ const init = async () => {
             await startRTC();
         } catch (err) {
             console.error(err);
+            stop();
         }
     }
 };
@@ -120,6 +121,11 @@ const processSDP = (sdp) => {
     return output;
 };
 
+const stop = (succeeded) => {
+    state.stream.getTracks().forEach((track) => track.stop());
+    sendToParent(succeeded ? "stop" : "error");
+}
+
 const startRTC = async () => {
     // RTCPeerConnection
     const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
@@ -139,27 +145,32 @@ const startRTC = async () => {
     }
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    state.stream = stream;
 
     // Signaling
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
     ws.onopen = function () {
-        const { room, name, proc, duration, uid } = state;
+        const { room, name, proc: rawProc, duration, uid } = state;
+        // "0" -> false
+        const proc = Boolean(parseInt(rawProc));
         ws.send(
             JSON.stringify({
                 type: "join",
-                payload: JSON.stringify({ room, name, proc: Boolean(proc), duration, uid }),
+                payload: JSON.stringify({ room, name, duration, uid, proc }),
             })
         );
     };
 
     ws.onclose = function (evt) {
         console.log("Websocket has closed");
+        stop();
     };
 
     ws.onerror = function (evt) {
         console.error("ws: " + evt.data);
+        stop();
     };
 
     ws.onmessage = async function (evt) {
@@ -202,12 +213,11 @@ const startRTC = async () => {
                 break;
             }
             case "stop": {
-                sendToParent("stop");
-                stream.getTracks().forEach((track) => track.stop());
+                stop(true);
                 break;
             }
             case "error": {
-                sendToParent("error");
+                stop();
                 break;
             }
         }

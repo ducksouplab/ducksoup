@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -10,7 +11,17 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *webrtc.PeerConnection) {
+func filePrefix(joinPayload JoinPayload, room *Room) string {
+	connectionCount := room.UserJoinedCount(joinPayload.UserId)
+	// time room user count
+	return time.Now().Format("20060102-150405.000") +
+		"-r-" + joinPayload.Room +
+		"-u-" + joinPayload.UserId + "-" + joinPayload.Name +
+		"-c-" + fmt.Sprint(connectionCount)
+}
+
+func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
+	userDisplay := joinPayload.UserId + "-" + joinPayload.Name
 	// Prepare the configuration
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -57,7 +68,7 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 
 	// If PeerConnection is closed remove it from global list
 	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[peerConn] connection state change: %s \n", p.String())
+		log.Printf("[user #%s] peerConn> state change: %s \n", userDisplay, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := peerConn.Close(); err != nil {
@@ -65,12 +76,12 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 			}
 		case webrtc.PeerConnectionStateClosed:
 			room.SignalingUpdate()
-			room.PeerQuit()
+			room.RemovePeer(joinPayload.UserId)
 		}
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track ready for user " + userName)
+		log.Printf("[user #%s] peerConn> new %s track \n", userDisplay, remoteTrack.Kind().String())
 		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
 
@@ -89,16 +100,19 @@ func NewPeerConnection(room *Room, wsConn *WsConn, userName string) (peerConn *w
 		}
 
 		// Prepare GStreamer pipeline
-		log.Println("[peerConn] " + remoteTrack.Kind().String() + " track started for user " + userName)
+		log.Printf("[user #%s] peerConn> %s track started\n", userDisplay, remoteTrack.Kind().String())
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
-		// Set unique id containing time description till milliseconds and user identifier
-		uid := time.Now().Format("20060102-15:04:05.000") + "-" + userName
-
+		mediaFilePrefix := filePrefix(joinPayload, room)
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		pipeline := gst.CreatePipeline(uid, codecName, processedTrack)
+		pipeline := gst.CreatePipeline(mediaFilePrefix, codecName, joinPayload.Proc, processedTrack)
 		pipeline.Start()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[user #%s] peerConn> recover OnTrack\n", userDisplay)
+			}
+		}()
 		defer pipeline.Stop()
 
 		// Read and process track

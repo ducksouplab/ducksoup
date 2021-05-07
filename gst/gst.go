@@ -18,12 +18,16 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-var vp8Pipeline string
-var opusPipeline string
+var vp8ProcPipeline string
+var vp8RawPipeline string
+var opusProcPipeline string
+var opusRawPipeline string
 
 func init() {
-	vp8Pipeline = helpers.ReadConfig("vp8")
-	opusPipeline = helpers.ReadConfig("opus")
+	vp8ProcPipeline = helpers.ReadConfig("vp8-norec")
+	vp8RawPipeline = helpers.ReadConfig("vp8-norec")
+	opusProcPipeline = helpers.ReadConfig("opus-norec")
+	opusRawPipeline = helpers.ReadConfig("opus-norec")
 }
 
 func StartMainLoop() {
@@ -32,10 +36,10 @@ func StartMainLoop() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline *C.GstElement
-	track    *webrtc.TrackLocalStaticRTP
-	id       int
-	uid      string
+	Pipeline   *C.GstElement
+	track      *webrtc.TrackLocalStaticRTP
+	id         int
+	filePrefix string
 }
 
 var pipelines = make(map[int]*Pipeline)
@@ -50,25 +54,32 @@ func randomEffect() string {
 	return options[rand.Intn(len(options))]
 }
 
-func newPipelineStr(uid string, codecName string) (pipelineStr string) {
+func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr string) {
 	codecName = strings.ToLower(codecName)
 
 	switch codecName {
 	case "vp8":
-		pipelineStr = vp8Pipeline
-		//pipelineStr = log.Sprintf(pipelineStr, randomEffect())
+		if proc {
+			pipelineStr = vp8ProcPipeline
+		} else {
+			pipelineStr = vp8RawPipeline
+		}
 	case "opus":
-		pipelineStr = opusPipeline
+		if proc {
+			pipelineStr = opusProcPipeline
+		} else {
+			pipelineStr = opusRawPipeline
+		}
 	default:
 		panic("Unhandled codec " + codecName)
 	}
-	pipelineStr = strings.Replace(pipelineStr, "${uid}", uid, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
 	return
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(uid string, codecName string, track *webrtc.TrackLocalStaticRTP) *Pipeline {
-	pipelineStr := newPipelineStr(uid, codecName)
+func CreatePipeline(filePrefix string, codecName string, proc bool, track *webrtc.TrackLocalStaticRTP) *Pipeline {
+	pipelineStr := newPipelineStr(filePrefix, codecName, proc)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
@@ -77,10 +88,10 @@ func CreatePipeline(uid string, codecName string, track *webrtc.TrackLocalStatic
 	defer pipelinesLock.Unlock()
 
 	pipeline := &Pipeline{
-		Pipeline: C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
-		track:    track,
-		id:       len(pipelines),
-		uid:      uid,
+		Pipeline:   C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
+		track:      track,
+		id:         len(pipelines),
+		filePrefix: filePrefix,
 	}
 
 	pipelines[pipeline.id] = pipeline
@@ -89,13 +100,13 @@ func CreatePipeline(uid string, codecName string, track *webrtc.TrackLocalStatic
 
 // Start starts the GStreamer Pipeline
 func (p *Pipeline) Start() {
-	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.uid)
+	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_send_start_pipeline(p.Pipeline, C.int(p.id))
 }
 
 // Stop stops the GStreamer Pipeline
 func (p *Pipeline) Stop() {
-	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.uid)
+	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
 }
 

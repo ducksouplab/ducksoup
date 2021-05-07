@@ -24,7 +24,7 @@ type JoinPayload struct {
 	Name     string `json:"name"`
 	Proc     bool   `json:"proc"`
 	Duration uint32 `json:"duration"`
-	Uid      string `json:"uid"`
+	UserId   string `json:"uid"`
 }
 
 func (w *WsConn) Send(text string) (err error) {

@@ -1,0 +1,9 @@
+appsrc format=time is-live=true do-timestamp=true name=src ! 
+application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
+rtpjitterbuffer latency=50 | 
+rtpvp8depay ! 
+tee name=teein ! queue max-size-bytes=0 ! webmmux ! filesink location=logs/${prefix}-video-raw.webm 
+teein. ! 
+queue max-size-bytes=0 ! 
+rtpvp8pay !
+appsink name=sink qos=true

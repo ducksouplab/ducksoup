@@ -1,0 +1,17 @@
+appsrc format=time is-live=true do-timestamp=true name=src ! 
+application/x-rtp,payload=111,channels=1,encoding-name=OPUS ! 
+rtpjitterbuffer latency=50 | 
+rtpopusdepay ! 
+tee name=teein ! queue max-size-buffers=0 max-size-bytes=0 ! oggmux ! filesink location=logs/${prefix}-audio-in.ogg 
+teein. ! 
+queue max-size-buffers=0 max-size-bytes=0 ! 
+decodebin ! 
+audioconvert ! 
+pitch pitch=1.25 ! 
+audioconvert ! 
+opusenc ! 
+tee name=teeout ! queue max-size-buffers=0 max-size-bytes=0 ! oggmux ! filesink location=logs/${prefix}-audio-out.ogg 
+teeout. ! 
+queue max-size-buffers=0 max-size-bytes=0 ! 
+rtpopuspay !
+appsink name=sink

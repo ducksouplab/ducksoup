@@ -10,9 +10,21 @@ import (
 )
 
 type PeerServer struct {
+	userId   string
+	room     *Room
 	peerConn *webrtc.PeerConnection
 	wsConn   *WsConn
-	room     *Room
+}
+
+func NewPeerServer(
+	joinPayload JoinPayload,
+	room *Room,
+	peerConn *webrtc.PeerConnection,
+	wsConn *WsConn) *PeerServer {
+
+	userId := joinPayload.UserId
+	peerServer := &PeerServer{userId, room, peerConn, wsConn}
+	return peerServer
 }
 
 func (ps *PeerServer) loop() {
@@ -21,7 +33,7 @@ func (ps *PeerServer) loop() {
 		err := ps.wsConn.ReadJSON(&message)
 
 		if err != nil {
-			ps.room.PeerQuit()
+			ps.room.RemovePeer(ps.userId)
 			log.Println("[ws] reading JSON failed")
 			return
 		}
@@ -53,13 +65,13 @@ func (ps *PeerServer) loop() {
 	}
 }
 
-// Handle incoming websockets
+// handle incoming websockets
 func RunPeerServer(unsafeConn *websocket.Conn) {
 
 	wsConn := &WsConn{sync.Mutex{}, unsafeConn}
 	defer wsConn.Close()
 
-	// First message must be a join request
+	// first message must be a join request
 	joinPayload, err := wsConn.ReadJoin()
 	if err != nil {
 		log.Print(err)
@@ -72,15 +84,15 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 		wsConn.Send("error")
 	}
 
-	userId := joinPayload.Uid + "-" + joinPayload.Name
-	peerConn := NewPeerConnection(room, wsConn, userId)
+	peerConn := NewPeerConnection(joinPayload, room, wsConn)
 	defer peerConn.Close()
 
-	peerServer := &PeerServer{peerConn, wsConn, room}
+	peerServer := NewPeerServer(joinPayload, room, peerConn, wsConn)
 
-	// Link room and PeerServer
-	room.AddPeerServer(peerServer)
+	// link with room
+	room.AddPeer(peerServer)
 	room.SignalingUpdate()
 
+	// blocking
 	peerServer.loop()
 }

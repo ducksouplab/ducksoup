@@ -28,9 +28,11 @@ document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin) {
         return;
-    }
-    if (event.data === "stop") {
+    } else if (event.data === "stop") {
         document.getElementById("stopped").classList.remove("d-none");
+        document.getElementById("embed").classList.add("d-none");
+    } else if (event.data === "error") {
+        document.getElementById("failed").classList.remove("d-none");
         document.getElementById("embed").classList.add("d-none");
     }
 });

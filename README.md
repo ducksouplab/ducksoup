@@ -102,3 +102,12 @@ It's also possible to watch changes and rebuild those files by adding a environm
 ```
 APP_ENV=DEV ./webrtc-transform
 ```
+
+### Concepts in Go code
+
+On each connection to the websocket endpoint in `server.go` a new PeerServer (see `peer_server.go`) is created:
+
+- it manages further client communication through websocket (see `ws_conn.go`) and RTC (see `peer_conn.go`)
+- join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
+
+Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
