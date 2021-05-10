@@ -24,10 +24,10 @@ var opusProcPipeline string
 var opusRawPipeline string
 
 func init() {
-	vp8ProcPipeline = helpers.ReadConfig("vp8-norec")
-	vp8RawPipeline = helpers.ReadConfig("vp8-norec")
-	opusProcPipeline = helpers.ReadConfig("opus-norec")
-	opusRawPipeline = helpers.ReadConfig("opus-norec")
+	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
+	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
+	opusProcPipeline = helpers.ReadConfig("opus-proc-rec")
+	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
 }
 
 func StartMainLoop() {
@@ -119,7 +119,7 @@ func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int,
 	if ok {
 		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
-			// we may store a callback on the Pipeline struct (callback would remove peers and update signaling)
+			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
 			log.Printf("[gst] error: %v", err)
 		}
 	} else {

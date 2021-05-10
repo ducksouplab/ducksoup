@@ -1,12 +1,10 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpvp8depay ! 
-queue ! 
 vp8dec ! 
 videoconvert ! 
 coloreffects preset=xpro ! 
 videoconvert ! 
 vp8enc keyframe-max-dist=32 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
-queue ! 
 rtpvp8pay !
 appsink name=sink qos=true
