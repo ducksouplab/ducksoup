@@ -34,7 +34,7 @@ func StartMainLoop() {
 	C.gstreamer_send_start_mainloop()
 }
 
-// Pipeline is a wrapper for a GStreamer Pipeline
+// Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
 	Pipeline   *C.GstElement
 	track      *webrtc.TrackLocalStaticRTP
@@ -77,8 +77,8 @@ func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr
 	return
 }
 
-// CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(filePrefix string, codecName string, proc bool, track *webrtc.TrackLocalStaticRTP) *Pipeline {
+// create a GStreamer pipeline
+func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, codecName string, proc bool) *Pipeline {
 	pipelineStr := newPipelineStr(filePrefix, codecName, proc)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
@@ -98,35 +98,38 @@ func CreatePipeline(filePrefix string, codecName string, proc bool, track *webrt
 	return pipeline
 }
 
-// Start starts the GStreamer Pipeline
+// start the GStreamer pipeline
 func (p *Pipeline) Start() {
 	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_send_start_pipeline(p.Pipeline, C.int(p.id))
 }
 
-// Stop stops the GStreamer Pipeline
+// stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
 }
 
-//export goHandlePipelineBuffer
-func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.int, pipelineID C.int) {
+//export goHandleNewSample
+func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	pipelinesLock.Lock()
-	pipeline, ok := pipelines[int(pipelineID)]
+	pipeline, ok := pipelines[int(pipelineId)]
 	pipelinesLock.Unlock()
 
 	if ok {
 		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
-			panic(err)
+			// TODO err contains the ID of the failing PeerConnections
+			// we may store a callback on the Pipeline struct (callback would remove peers and update signaling)
+			log.Printf("[gst] error: %v", err)
 		}
 	} else {
-		log.Printf("discarding buffer, no pipeline with id %d", int(pipelineID))
+		// TODO return error to gst.c and stop processing?
+		log.Printf("[gst] discarding buffer, no pipeline with id %d", int(pipelineId))
 	}
 	C.free(buffer)
 }
 
-// Push pushes a buffer on the appsrc of the GStreamer Pipeline
+// push a buffer on the appsrc of the GStreamer Pipeline
 func (p *Pipeline) Push(buffer []byte) {
 	b := C.CBytes(buffer)
 	defer C.free(b)

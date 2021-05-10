@@ -16,39 +16,41 @@ const (
 	DefaultTracksPerPeer = 2
 	DefaultDuration      = 30
 	MaxDuration          = 1200
+	Finishing            = 10
 )
 
 // global state
 var (
-	mu    sync.Mutex // TODO init here
-	rooms map[string]*Room
+	mu        sync.Mutex // TODO init here
+	roomIndex map[string]*Room
 )
 
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type Room struct {
-	sync.Mutex
+	sync.RWMutex
 	// guarded by mutex
 	peerServerIndex  map[string]*PeerServer
 	connectedIndex   map[string]bool // undefined: never connected, false: previously connected, true: connected
-	joinedCountIndex map[string]uint32
+	joinedCountIndex map[string]int
 	trackIndex       map[string]*webrtc.TrackLocalStaticRTP
-	// atomic operations only
-	tracksReadyCount uint32
-	peerCount        uint32
+	startedAt        time.Time
+	tracksReadyCount int
 	// channels (safe)
 	waitForAllCh chan struct{}
-	stopCh       chan struct{}
+	finishCh     chan struct{}
 	// other (written only when initializing)
 	id            string
-	size          uint32
-	tracksPerPeer uint32
-	duration      uint32
+	size          int
+	tracksPerPeer int
+	duration      int
 }
 
 func init() {
 	mu = sync.Mutex{}
-	rooms = make(map[string]*Room)
+	roomIndex = make(map[string]*Room)
 }
+
+// private > not guarded by mutex locks, since called by other guarded methods
 
 func newRoom(joinPayload JoinPayload) *Room {
 	// process duration
@@ -62,7 +64,7 @@ func newRoom(joinPayload JoinPayload) *Room {
 	// room initialized with one connected peer
 	connectedIndex := make(map[string]bool)
 	connectedIndex[joinPayload.UserId] = true
-	joinedCountIndex := make(map[string]uint32)
+	joinedCountIndex := make(map[string]int)
 	joinedCountIndex[joinPayload.UserId] = 1
 
 	return &Room{
@@ -71,65 +73,78 @@ func newRoom(joinPayload JoinPayload) *Room {
 		joinedCountIndex: joinedCountIndex,
 		trackIndex:       map[string]*webrtc.TrackLocalStaticRTP{},
 		waitForAllCh:     make(chan struct{}),
-		stopCh:           make(chan struct{}),
+		finishCh:         make(chan struct{}),
 		id:               joinPayload.Room,
 		size:             DefaultSize,
-		peerCount:        1,
 		tracksPerPeer:    DefaultTracksPerPeer,
 		tracksReadyCount: 0,
 		duration:         duration,
 	}
 }
 
+func (r *Room) delete() {
+	// guard `roomIndex`
+	mu.Lock()
+	defer mu.Unlock()
+
+	log.Printf("[room #%s] deleted\n", r.id)
+	delete(roomIndex, r.id)
+}
+
+func (r *Room) userCount() int {
+	return len(r.connectedIndex)
+}
+
+func (r *Room) countdown() {
+	// blocking "finish" event and delete
+	finishTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
+	<-finishTimer.C
+	log.Printf("[room #%s] finish\n", r.id)
+	close(r.finishCh)
+	r.delete()
+}
+
+// API read-write
+
 func JoinRoom(joinPayload JoinPayload) (*Room, error) {
-	// guard `rooms`
+	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
 
 	roomId := joinPayload.Room
 	userId := joinPayload.UserId
 
-	if r, ok := rooms[roomId]; ok {
+	if r, ok := roomIndex[roomId]; ok {
 		r.Lock()
 		defer r.Unlock()
-		if connected, ok := r.connectedIndex[userId]; ok {
-			// same user has previously connected
+		connected, ok := r.connectedIndex[userId]
+		if ok {
+			// ok -> same user has previously connected
 			if connected {
-				// forbidden (for instance: second browser tab)
-				return nil, errors.New("already connected")
+				// user is currently connected (second browser tab or device) -> forbidden
+				return nil, errors.New("duplicate")
 			} else {
 				// reconnects (for instance: page reload)
 				r.connectedIndex[userId] = true
 				r.joinedCountIndex[userId]++
-				r.peerCount++
 				return r, nil
 			}
-		} else if r.peerCount == r.size {
+		} else if r.userCount() == r.size {
 			// room limit reached
-			return nil, errors.New("limit reached")
+			return nil, errors.New("full")
 		} else {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			r.peerCount++
 			log.Printf("[room #%s] joined\n", roomId)
 			return r, nil
 		}
 	} else {
 		log.Printf("[room #%s] created\n", roomId)
 		newRoom := newRoom(joinPayload)
-		rooms[roomId] = newRoom
+		roomIndex[roomId] = newRoom
 		return newRoom, nil
 	}
-}
-
-func (r *Room) Delete() {
-	// guard `rooms`
-	mu.Lock()
-	defer mu.Unlock()
-
-	log.Printf("[room #%s] deleted\n", r.id)
-	delete(rooms, r.id)
 }
 
 func (r *Room) IncTracksReadyCount() {
@@ -151,50 +166,37 @@ func (r *Room) IncTracksReadyCount() {
 	if r.tracksReadyCount == neededTracks {
 		log.Printf("[room #%s] closing waitForAllCh\n", r.id)
 		close(r.waitForAllCh)
+		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
 			go ps.wsConn.Send("start")
 		}
-		go r.timeLimit()
+		go r.countdown()
 		return
 	}
 }
 
-func (r *Room) timeLimit() {
-	timer := time.NewTimer(time.Duration(r.duration) * time.Second)
-	<-timer.C
-	log.Printf("[room #%s] closing stopCh\n", r.id)
-	close(r.stopCh)
-	r.Delete()
-}
-
-func (r *Room) AddPeer(ps *PeerServer) {
+func (r *Room) Bind(ps *PeerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *Room) RemovePeer(userId string) {
+func (r *Room) DisconnectUser(userId string) {
 	r.Lock()
 	defer r.Unlock()
 
 	// protects decrementing since RemovePeer maybe called several times for same user
 	if r.connectedIndex[userId] {
-		if r.peerCount == 1 {
-			r.Delete()
-		} else {
-			delete(r.peerServerIndex, userId)
-			r.connectedIndex[userId] = false
-			r.peerCount--
+		// remove user current connection details (=peerServer)
+		delete(r.peerServerIndex, userId)
+		// mark disconnected, but keep track of her
+		r.connectedIndex[userId] = false
+		if r.userCount() == 1 {
+			// don't keep this room
+			r.delete()
 		}
 	}
-}
-
-func (r *Room) UserJoinedCount(userId string) uint32 {
-	r.Lock()
-	defer r.Unlock()
-
-	return r.joinedCountIndex[userId]
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
@@ -322,10 +324,33 @@ func (r *Room) UpdateSignaling() {
 	}
 }
 
+// API read
+
+func (r *Room) JoinedCountForUser(userId string) int {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.joinedCountIndex[userId]
+}
+
+func (r *Room) FinishingDelay() (delay int) {
+	r.RLock()
+	defer r.RUnlock()
+
+	elapsed := time.Since(r.startedAt)
+
+	remaining := r.duration - int(elapsed.Seconds())
+	delay = remaining - Finishing
+	if delay < 1 {
+		delay = 1
+	}
+	return
+}
+
 // dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
 func (r *Room) DispatchKeyFrame() {
-	r.Lock()
-	defer r.Unlock()
+	r.RLock()
+	defer r.RUnlock()
 
 	for _, ps := range r.peerServerIndex {
 		for _, receiver := range ps.peerConn.GetReceivers() {

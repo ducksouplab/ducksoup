@@ -97,7 +97,7 @@ const init = async () => {
             await startRTC();
         } catch (err) {
             console.error(err);
-            stop();
+            stop("error");
         }
     }
 };
@@ -121,9 +121,9 @@ const processSDP = (sdp) => {
     return output;
 };
 
-const stop = (succeeded) => {
+const stop = (reason) => {
     state.stream.getTracks().forEach((track) => track.stop());
-    sendToParent(succeeded ? "stop" : "error");
+    sendToParent(reason);
 }
 
 const startRTC = async () => {
@@ -165,61 +165,45 @@ const startRTC = async () => {
 
     ws.onclose = function (evt) {
         console.log("Websocket has closed");
-        stop();
+        stop("disconnected");
     };
 
     ws.onerror = function (evt) {
         console.error("ws: " + evt.data);
-        stop();
+        stop("error");
     };
 
     ws.onmessage = async function (evt) {
         let msg = JSON.parse(evt.data);
         if (!msg) return console.error("failed to parse msg");
 
-        switch (msg.type) {
-            case "offer": {
-                const offer = JSON.parse(msg.payload);
-                if (!offer) {
-                    return console.error("failed to parse answer");
-                }
-                pc.setRemoteDescription(offer);
-                const answer = await pc.createAnswer();
-                answer.sdp = processSDP(answer.sdp);
-                pc.setLocalDescription(answer);
-                ws.send(
-                    JSON.stringify({
-                        type: "answer",
-                        payload: JSON.stringify(answer),
-                    })
-                );
-                break;
+        if (msg.type === "offer") {
+            const offer = JSON.parse(msg.payload);
+            if (!offer) {
+                return console.error("failed to parse answer");
             }
-            case "candidate": {
-                const candidate = JSON.parse(msg.payload);
-                if (!candidate) {
-                    return console.error("failed to parse candidate");
-                }
-                pc.addIceCandidate(candidate);
-                break;
+            pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            answer.sdp = processSDP(answer.sdp);
+            pc.setLocalDescription(answer);
+            ws.send(
+                JSON.stringify({
+                    type: "answer",
+                    payload: JSON.stringify(answer),
+                })
+            );
+        } else if (msg.type === "candidate") {
+            const candidate = JSON.parse(msg.payload);
+            if (!candidate) {
+                return console.error("failed to parse candidate");
             }
-            case "start": {
-                const finishingDelay = (state.duration - 10) * 1000;
-                if (finishingDelay > 0) {
-                    setTimeout(() => {
-                        document.getElementById("finishing").classList.remove("d-none");
-                    }, finishingDelay)
-                }
-                break;
-            }
-            case "stop": {
-                stop(true);
-                break;
-            }
-            case "error": {
-                stop();
-                break;
-            }
+            pc.addIceCandidate(candidate);
+        } else if (msg.type === "start") {
+            console.log("start")
+        } else if (msg.type === "finishing") {
+            document.getElementById("finishing").classList.remove("d-none");
+        } else if (msg.type.startsWith("error") || msg.type === "finish") {
+            stop(msg.type);
         }
     };
 

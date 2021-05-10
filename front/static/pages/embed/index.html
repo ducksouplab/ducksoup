@@ -19,14 +19,15 @@
             <p>Un ou plusieurs query parameters de l'URL sont manquants ou incorrects:</p>
             <ul>
                 <li>room (nom du groupe / de la conversation)</li>
+                <li>uid (id unique l'utilisateur)</li>
                 <li>name (nom de l'utilisateur)</li>
                 <li>proc (contrôle de la transformation, 0 ou 1)</li>
                 <li>duration (durée de la conversation en secondes)</li>
             </ul>
-            <p>Exemple : /embed/?room=hall&name=jane&proc=0&duration=30</p>
+            <p>Exemple : /embed/?room=hall&uid=1234&name=jane&proc=0&duration=30</p>
         </div>
         <div id="stopped" class="d-none">
-            <p>Conversation terminée</p>
+            <p id="stopped-message">Conversation terminée</p>
         </div>
         <div id="failed" class="d-none">
             <p>Erreur</p>

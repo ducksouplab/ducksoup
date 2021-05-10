@@ -12,7 +12,7 @@ import (
 )
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
-	connectionCount := room.UserJoinedCount(joinPayload.UserId)
+	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
 	// time room user count
 	return time.Now().Format("20060102-150405.000") +
 		"-r-" + joinPayload.Room +
@@ -76,7 +76,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			}
 		case webrtc.PeerConnectionStateClosed:
 			room.UpdateSignaling()
-			room.RemovePeer(joinPayload.UserId)
+			room.DisconnectUser(joinPayload.UserId)
 		}
 	})
 
@@ -106,7 +106,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 		mediaFilePrefix := filePrefix(joinPayload, room)
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		pipeline := gst.CreatePipeline(mediaFilePrefix, codecName, joinPayload.Proc, processedTrack)
+		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, codecName, joinPayload.Proc)
 		pipeline.Start()
 		defer func() {
 			if r := recover(); r != nil {
@@ -115,13 +115,17 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		}()
 		defer pipeline.Stop()
 
-		// Read and process track
+		finishingCh := time.After(time.Duration(room.FinishingDelay()) * time.Second)
+
 	processLoop:
 		for {
 			select {
-			case <-room.stopCh:
-				wsConn.Send("stop")
+			case <-room.finishCh:
+				wsConn.Send("finish")
 				break processLoop
+			case <-finishingCh:
+				log.Println("finishing")
+				wsConn.Send("finishing")
 			default:
 				i, _, readErr := remoteTrack.Read(buf)
 				if readErr != nil {

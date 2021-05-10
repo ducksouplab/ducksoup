@@ -23,7 +23,7 @@ type JoinPayload struct {
 	Room     string `json:"room"`
 	Name     string `json:"name"`
 	Proc     bool   `json:"proc"`
-	Duration uint32 `json:"duration"`
+	Duration int    `json:"duration"`
 	UserId   string `json:"uid"`
 }
 

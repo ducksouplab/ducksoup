@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 
@@ -33,7 +34,7 @@ func (ps *PeerServer) loop() {
 		err := ps.wsConn.ReadJSON(&message)
 
 		if err != nil {
-			ps.room.RemovePeer(ps.userId)
+			ps.room.DisconnectUser(ps.userId)
 			log.Println("[ws] reading JSON failed")
 			return
 		}
@@ -75,13 +76,16 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	joinPayload, err := wsConn.ReadJoin()
 	if err != nil {
 		log.Print(err)
-		log.Println("[ws] join failed")
+		log.Println("[ws] join payload corrupted")
 		return
 	}
 
 	room, joinErr := JoinRoom(joinPayload)
-	if joinErr != nil { // joinErr is meaningful to client
-		wsConn.Send("error")
+	if joinErr != nil {
+		// joinErr is meaningful to client
+		log.Printf("[user #%s-%s] join failed", joinPayload.UserId, joinPayload.Name)
+		wsConn.Send(fmt.Sprintf("error-%s", joinErr))
+		return
 	}
 
 	peerConn := NewPeerConnection(joinPayload, room, wsConn)
@@ -89,10 +93,10 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 
 	peerServer := NewPeerServer(joinPayload, room, peerConn, wsConn)
 
-	// link with room
-	room.AddPeer(peerServer)
+	// bind and signal
+	room.Bind(peerServer)
 	room.UpdateSignaling()
 
-	// blocking
+	// block
 	peerServer.loop()
 }
