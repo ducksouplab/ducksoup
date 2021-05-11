@@ -38,7 +38,7 @@ type Room struct {
 	// channels (safe)
 	waitForAllCh chan struct{}
 	finishCh     chan struct{}
-	// other (written only when initializing)
+	// other (written only during initialization)
 	id            string
 	size          int
 	tracksPerPeer int
@@ -150,8 +150,6 @@ func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 func (r *Room) IncTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
-
-	log.Printf("[room #%s] new track, current count: %d\n", r.id, r.tracksReadyCount)
 
 	neededTracks := r.size * r.tracksPerPeer
 

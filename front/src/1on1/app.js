@@ -164,24 +164,25 @@ const startRTC = async () => {
     };
 
     ws.onclose = function (evt) {
-        console.log("Websocket has closed");
+        console.log("[ws] closed");
         stop("disconnected");
     };
 
     ws.onerror = function (evt) {
-        console.error("ws: " + evt.data);
+        console.error("[ws] error: " + evt.data);
         stop("error");
     };
 
     ws.onmessage = async function (evt) {
         let msg = JSON.parse(evt.data);
-        if (!msg) return console.error("failed to parse msg");
+        if (!msg) return console.error("[ws] can't parse message");
 
         if (msg.type === "offer") {
             const offer = JSON.parse(msg.payload);
             if (!offer) {
-                return console.error("failed to parse answer");
+                return console.error("[ws] can't parse offer");
             }
+            console.log("[ws] received offer");
             pc.setRemoteDescription(offer);
             const answer = await pc.createAnswer();
             answer.sdp = processSDP(answer.sdp);
@@ -195,12 +196,14 @@ const startRTC = async () => {
         } else if (msg.type === "candidate") {
             const candidate = JSON.parse(msg.payload);
             if (!candidate) {
-                return console.error("failed to parse candidate");
+                return console.error("[ws] can't parse candidate");
             }
+            console.log("[ws] candidate");
             pc.addIceCandidate(candidate);
         } else if (msg.type === "start") {
-            console.log("start")
+            console.log("[ws] start");
         } else if (msg.type === "finishing") {
+            console.log("[ws] finishing");
             document.getElementById("finishing").classList.remove("d-none");
         } else if (msg.type.startsWith("error") || msg.type === "finish") {
             stop(msg.type);

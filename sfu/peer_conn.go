@@ -21,8 +21,7 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 }
 
 func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
-	userDisplay := joinPayload.UserId + "-" + joinPayload.Name
-	// Prepare the configuration
+	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -30,15 +29,13 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			},
 		},
 	}
-
-	// Create a new RTCPeerConnection
 	peerConn, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	// Accept one audio and one video incoming tracks
+	// accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
 		if _, err := peerConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
@@ -48,7 +45,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		}
 	}
 
-	// Trickle ICE. Emit server candidate to client
+	// trickle ICE. Emit server candidate to client
 	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
 			return
@@ -66,9 +63,9 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		})
 	})
 
-	// If PeerConnection is closed remove it from global list
+	// if PeerConnection is closed remove it from global list
 	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[user #%s] peerConn> state change: %s \n", userDisplay, p.String())
+		log.Printf("[user #%s] peerConn> state change: %s \n", joinPayload.UserId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := peerConn.Close(); err != nil {
@@ -81,26 +78,14 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		log.Printf("[user #%s] peerConn> new %s track \n", userDisplay, remoteTrack.Kind().String())
+		log.Printf("[user #%s] peerConn> new %s track\n", joinPayload.UserId, remoteTrack.Kind().String())
 		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
 
-		// Wait for other peers to be ready (read and discard track buffer while waiting)
-	waitLoop:
-		for {
-			select {
-			case <-room.waitForAllCh:
-				break waitLoop
-			default:
-				_, _, readErr := remoteTrack.Read(buf)
-				if readErr != nil {
-					return
-				}
-			}
-		}
+		<-room.waitForAllCh
 
-		// Prepare GStreamer pipeline
-		log.Printf("[user #%s] peerConn> %s track started\n", userDisplay, remoteTrack.Kind().String())
+		// prepare GStreamer pipeline
+		log.Printf("[user #%s] peerConn> %s track started\n", joinPayload.UserId, remoteTrack.Kind().String())
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
@@ -110,12 +95,10 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		pipeline.Start()
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[user #%s] peerConn> recover OnTrack\n", userDisplay)
+				log.Printf("[user #%s] peerConn> recover OnTrack\n", joinPayload.UserId)
 			}
 		}()
 		defer pipeline.Stop()
-
-		finishingCh := time.After(time.Duration(room.FinishingDelay()) * time.Second)
 
 	processLoop:
 		for {
@@ -123,9 +106,6 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			case <-room.finishCh:
 				wsConn.Send("finish")
 				break processLoop
-			case <-finishingCh:
-				log.Println("finishing")
-				wsConn.Send("finishing")
 			default:
 				i, _, readErr := remoteTrack.Read(buf)
 				if readErr != nil {

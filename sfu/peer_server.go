@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
@@ -30,6 +31,15 @@ func NewPeerServer(
 
 func (ps *PeerServer) loop() {
 	var message Message
+
+	// sends "finishing" message before rooms does finish
+	go func() {
+		<-ps.room.waitForAllCh
+		<-time.After(time.Duration(ps.room.FinishingDelay()) * time.Second)
+		log.Printf("[user #%s] wsConn> finishing\n", ps.userId)
+		ps.wsConn.Send("finishing")
+	}()
+
 	for {
 		err := ps.wsConn.ReadJSON(&message)
 
