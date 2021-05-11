@@ -5,6 +5,7 @@ decodebin !
 videoconvert ! 
 coloreffects preset=xpro ! 
 videoconvert ! 
-x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 qos=1 ! video/x-h264,stream-format=byte-stream !
+x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 qos=1 ! 
+video/x-h264,stream-format=byte-stream !
 rtph264pay !
 appsink name=sink qos=true

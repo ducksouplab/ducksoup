@@ -2,14 +2,21 @@ appsrc format=time is-live=true do-timestamp=true name=src !
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpvp8depay ! 
 vp8dec ! 
-tee name=teein ! queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! vp8enc ! webmmux ! filesink location=logs/${prefix}-video-in.webm 
+tee name=teein ! 
+queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+vp8enc keyframe-max-dist=128 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
+webmmux ! 
+filesink location=logs/${prefix}-video-in.webm 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
 videoconvert ! 
 coloreffects preset=xpro ! 
 videoconvert ! 
-vp8enc keyframe-max-dist=32 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
-tee name=teeout ! queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! webmmux ! filesink location=logs/${prefix}-video-out.webm 
+vp8enc keyframe-max-dist=128 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
+tee name=teeout ! 
+queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+webmmux ! 
+filesink location=logs/${prefix}-video-out.webm 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
 rtpvp8pay !
