@@ -18,16 +18,20 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-var vp8ProcPipeline string
-var vp8RawPipeline string
 var opusProcPipeline string
 var opusRawPipeline string
+var vp8ProcPipeline string
+var vp8RawPipeline string
+var h264ProcPipeline string
+var h264RawPipeline string
 
 func init() {
+	opusProcPipeline = helpers.ReadConfig("opus-proc-rec")
+	opusRawPipeline = helpers.ReadConfig("opus-proc2-rec")
 	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
 	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
-	opusProcPipeline = helpers.ReadConfig("opus-proc-rec")
-	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
+	h264ProcPipeline = helpers.ReadConfig("h264-norec")
+	h264RawPipeline = helpers.ReadConfig("h264-norec")
 }
 
 func StartMainLoop() {
@@ -58,17 +62,23 @@ func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr
 	codecName = strings.ToLower(codecName)
 
 	switch codecName {
+	case "opus":
+		if proc {
+			pipelineStr = opusProcPipeline
+		} else {
+			pipelineStr = opusRawPipeline
+		}
 	case "vp8":
 		if proc {
 			pipelineStr = vp8ProcPipeline
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
-	case "opus":
+	case "h264":
 		if proc {
-			pipelineStr = opusProcPipeline
+			pipelineStr = h264ProcPipeline
 		} else {
-			pipelineStr = opusRawPipeline
+			pipelineStr = h264RawPipeline
 		}
 	default:
 		panic("Unhandled codec " + codecName)

@@ -29,13 +29,17 @@ const DEFAULT_PEER_CONFIGURATION = {
     ],
 };
 
-const getQueryVariable = (key) => {
+const SUPPORT_SET_CODEC = window.RTCRtpTransceiver &&
+    'setCodecPreferences' in window.RTCRtpTransceiver.prototype;
+
+const getQueryVariable = (key, deserializeFunc) => {
     const query = window.location.search.substring(1);
     const vars = query.split("&");
     for (let i = 0; i < vars.length; i++) {
         const pair = vars[i].split("=");
         if (decodeURIComponent(pair[0]) == key) {
-            return decodeURIComponent(pair[1]);
+            const value = decodeURIComponent(pair[1]);
+            return deserializeFunc ? deserializeFunc(value) : value;
         }
     }
 };
@@ -66,20 +70,34 @@ const sendToParent = (message) => {
     }
 }
 
+// "1" -> true
+const toBool = (v) => Boolean(parseInt(v))
+
 const init = async () => {
     // required state
     const room = getQueryVariable("room");
     const name = getQueryVariable("name");
-    const proc = getQueryVariable("proc");
+    const proc = getQueryVariable("proc", toBool);
     const duration = parseInt(getQueryVariable("duration"), 10);
     const uid = getQueryVariable("uid");
+    const h264 = getQueryVariable("h264", toBool);
     // optional
     const audioDeviceId = getQueryVariable("aid");
     const videoDeviceId = getQueryVariable("vid");
 
-    if (typeof room === 'undefined' || typeof name === 'undefined' || !["0", "1"].includes(proc) || isNaN(duration) || typeof uid === 'undefined') {
+    if (typeof room === 'undefined' || typeof name === 'undefined' || typeof proc === 'undefined' || isNaN(duration) || typeof uid === 'undefined') {
         document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
+        // prefer H264
+        if (SUPPORT_SET_CODEC && h264) {
+            const { codecs } = RTCRtpSender.getCapabilities('video');
+            state.preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
+                if (mt1.includes("264")) return -1;
+                if (mt2.includes("264")) return 1;
+                return 0;
+            })
+        }
+
         state = {
             ...state,
             room,
@@ -88,7 +106,8 @@ const init = async () => {
             duration,
             uid,
             audioDeviceId,
-            videoDeviceId
+            videoDeviceId,
+            h264
         };
 
         try {
@@ -146,15 +165,18 @@ const startRTC = async () => {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     state.stream = stream;
+    if (SUPPORT_SET_CODEC && state.h264) {
+        const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
+        transceiver.setCodecPreferences(state.preferredCodecs);
+    }
 
     // Signaling
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
     ws.onopen = function () {
-        const { room, name, proc: rawProc, duration, uid } = state;
-        // "0" -> false
-        const proc = Boolean(parseInt(rawProc));
+        const { room, name, proc, duration, uid } = state;
+        console.log({ room, name, proc, duration, uid })
         ws.send(
             JSON.stringify({
                 type: "join",

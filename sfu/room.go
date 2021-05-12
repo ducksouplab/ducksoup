@@ -283,6 +283,7 @@ func (r *Room) UpdateSignaling() {
 
 			offer, err := peerConn.CreateOffer(nil)
 			if err != nil {
+				log.Printf("[room #%s] CreateOffer failed: %v\n", r.id, err)
 				return false
 			}
 

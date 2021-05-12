@@ -21,6 +21,13 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 }
 
 func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
+
+	api, err := NewAPI([]string{"vp8", "opus"})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -29,7 +36,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			},
 		},
 	}
-	peerConn, err := webrtc.NewPeerConnection(config)
+	peerConn, err = api.NewPeerConnection(config)
 	if err != nil {
 		log.Print(err)
 		return
@@ -78,7 +85,8 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		log.Printf("[user #%s] peerConn> new %s track\n", joinPayload.UserId, remoteTrack.Kind().String())
+		log.Printf("[user #%s] peerConn> new %s track\n", joinPayload.UserId, remoteTrack.Codec().RTPCodecCapability.MimeType)
+
 		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
 

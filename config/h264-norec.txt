@@ -1,11 +1,9 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
-application/x-rtp,encoding-name=H264 ! 
+application/x-rtp,payload=96,encoding-name=H264,media=video,clock-rate=90000 ! 
 rtph264depay ! 
-decodebin ! 
-videoconvert ! 
-coloreffects preset=xpro ! 
-videoconvert ! 
-x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 qos=1 ! 
+avdec_h264 !
+videoconvert !
+x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 qos=true ! 
 video/x-h264,stream-format=byte-stream !
 rtph264pay !
 appsink name=sink qos=true
