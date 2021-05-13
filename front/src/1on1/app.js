@@ -1,3 +1,28 @@
+// A marshalled params javascript object needs to be sent to DuckSoup
+// - attended marshalling is encodeURI(btoa(JSON.stringify(params)))
+// - params must contain:
+//   - uid (string) a unique user identifier
+//   - name (string) the user display name
+//   - room (string) the room display name
+//   - proc (boolean) to ask for media processing
+//   - duration (integer) the duration of the experiment in seconds
+// - params may contain:
+//   - h264 (boolean) if h264 encoding should be preferred (vp8 is default)
+//   - audio (object) merged with DuckSoup default constraints and passed to getUserMedia 
+//   - video (object) merged with DuckSoup default constraints and passed to getUserMedia 
+
+// Example :
+// const params = {
+//     uid: "uniqueId",
+//     name: "nickname",
+//     room: "hall",
+//     proc: false,
+//     duration: 30,
+//     audio: {
+//         deviceId: { ideal: "deviceId" }
+//     }
+// };
+
 // State
 let state = {
     audioIn: null,
@@ -44,6 +69,15 @@ const getQueryVariable = (key, deserializeFunc) => {
     }
 };
 
+const unmarshallParams = (str) => {
+    try {
+        return JSON.parse(atob(decodeURI(str)));
+    } catch(err) {
+        console.log(err);
+        return null;
+    }
+}
+
 const displayDevices = async () => {
     // needed for safari: getUserMedia before enumerateDevices
     await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -70,26 +104,23 @@ const sendToParent = (message) => {
     }
 }
 
-// "1" -> true
-const toBool = (v) => Boolean(parseInt(v))
+const areParamsValid = ({room, name, proc, duration, uid}) => {
+    return  typeof room !== 'undefined' &&
+            typeof uid !== 'undefined' &&
+            typeof name !== 'undefined' &&
+            typeof proc !== 'undefined' &&
+            !isNaN(duration);
+}
 
 const init = async () => {
     // required state
-    const room = getQueryVariable("room");
-    const name = getQueryVariable("name");
-    const proc = getQueryVariable("proc", toBool);
-    const duration = parseInt(getQueryVariable("duration"), 10);
-    const uid = getQueryVariable("uid");
-    const h264 = getQueryVariable("h264", toBool);
-    // optional
-    const audioDeviceId = getQueryVariable("aid");
-    const videoDeviceId = getQueryVariable("vid");
+    const params = unmarshallParams(getQueryVariable("params"));
 
-    if (typeof room === 'undefined' || typeof name === 'undefined' || typeof proc === 'undefined' || isNaN(duration) || typeof uid === 'undefined') {
+    if (!areParamsValid(params)) {
         document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
         // prefer H264
-        if (SUPPORT_SET_CODEC && h264) {
+        if (SUPPORT_SET_CODEC && params.h264) {
             const { codecs } = RTCRtpSender.getCapabilities('video');
             state.preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
                 if (mt1.includes("264")) return -1;
@@ -97,18 +128,7 @@ const init = async () => {
                 return 0;
             })
         }
-
-        state = {
-            ...state,
-            room,
-            name,
-            proc,
-            duration,
-            uid,
-            audioDeviceId,
-            videoDeviceId,
-            h264
-        };
+        state = { ...state, ...params };
 
         try {
             // Init UX
@@ -148,23 +168,16 @@ const stop = (reason) => {
 const startRTC = async () => {
     // RTCPeerConnection
     const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
+
     // Add local tracks before signaling
-    const constraints = { ...DEFAULT_CONSTRAINTS };
-    if (state.audioDeviceId) {
-        constraints.audio = {
-            ...constraints.audio,
-            deviceId: { ideal: state.audioDeviceId },
-        };
-    }
-    if (state.videoDeviceId) {
-        constraints.video = {
-            ...constraints.video,
-            deviceId: { ideal: state.videoDeviceId },
-        };
-    }
+    const constraints = {
+        audio: { ...DEFAULT_CONSTRAINTS.audio, ...state.audio },
+        video: { ...DEFAULT_CONSTRAINTS.video, ...state.video },
+    };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     state.stream = stream;
+
     if (SUPPORT_SET_CODEC && state.h264) {
         const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
         transceiver.setCodecPreferences(state.preferredCodecs);
@@ -175,12 +188,11 @@ const startRTC = async () => {
     const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
     ws.onopen = function () {
-        const { room, name, proc, duration, uid } = state;
-        console.log({ room, name, proc, duration, uid })
+        const { room, name, proc, duration, uid, h264 } = state;
         ws.send(
             JSON.stringify({
                 type: "join",
-                payload: JSON.stringify({ room, name, duration, uid, proc }),
+                payload: JSON.stringify({ room, name, duration, uid, proc, h264 }),
             })
         );
     };

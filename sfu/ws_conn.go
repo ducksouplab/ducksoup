@@ -22,9 +22,10 @@ type Message struct {
 type JoinPayload struct {
 	Room     string `json:"room"`
 	Name     string `json:"name"`
-	Proc     bool   `json:"proc"`
 	Duration int    `json:"duration"`
 	UserId   string `json:"uid"`
+	Proc     bool   `json:"proc"`
+	H264     bool   `json:"h264"`
 }
 
 func (w *WsConn) Send(text string) (err error) {
