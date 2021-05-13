@@ -29,10 +29,11 @@ var (
 type Room struct {
 	sync.RWMutex
 	// guarded by mutex
-	peerServerIndex  map[string]*PeerServer
-	connectedIndex   map[string]bool // undefined: never connected, false: previously connected, true: connected
-	joinedCountIndex map[string]int
-	trackIndex       map[string]*webrtc.TrackLocalStaticRTP
+	peerServerIndex  map[string]*PeerServer // per user id
+	connectedIndex   map[string]bool // per user id, undefined: never connected, false: previously connected, true: connected
+	joinedCountIndex map[string]int // per user id
+	filesIndex       map[string][]string // per user id, contains media file names
+	trackIndex       map[string]*webrtc.TrackLocalStaticRTP // per track id
 	startedAt        time.Time
 	tracksReadyCount int
 	// channels (safe)
@@ -69,6 +70,7 @@ func newRoom(joinPayload JoinPayload) *Room {
 
 	return &Room{
 		peerServerIndex:  make(map[string]*PeerServer),
+		filesIndex:       make(map[string][]string),
 		connectedIndex:   connectedIndex,
 		joinedCountIndex: joinedCountIndex,
 		trackIndex:       map[string]*webrtc.TrackLocalStaticRTP{},
@@ -226,6 +228,13 @@ func (r *Room) RemoveProcessedTrack(t *webrtc.TrackLocalStaticRTP) {
 	delete(r.trackIndex, t.ID())
 }
 
+func (r *Room) AddFiles(userId string, files []string) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.filesIndex[userId] = append(r.filesIndex[userId], files...)
+}
+
 // Update each PeerConnection so that it is getting all the expected media tracks
 func (r *Room) UpdateSignaling() {
 	r.Lock()
@@ -330,6 +339,13 @@ func (r *Room) JoinedCountForUser(userId string) int {
 	defer r.RUnlock()
 
 	return r.joinedCountIndex[userId]
+}
+
+func (r *Room) Files(userId string) []string {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.filesIndex[userId]
 }
 
 func (r *Room) FinishingDelay() (delay int) {

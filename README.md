@@ -111,3 +111,13 @@ On each connection to the websocket endpoint in `server.go` a new PeerServer (se
 - join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
 
 Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
+
+
+### ws-protocol
+
+Events from server to client:
+
+- type `offer` and `candidate` for signaling (with payloads)
+- type `start` when all peers and tracks are ready
+- type `finishing` when the room will soon be destroyed
+- type `finish` when time is over (payload contains a concatenated list of media files recorded for this experiment)

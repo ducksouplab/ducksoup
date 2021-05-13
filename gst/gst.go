@@ -41,6 +41,7 @@ func StartMainLoop() {
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
 	Pipeline   *C.GstElement
+	Files	   []string
 	track      *webrtc.TrackLocalStaticRTP
 	id         int
 	filePrefix string
@@ -87,8 +88,20 @@ func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr
 	return
 }
 
+func fileName(prefix string, kind string, suffix string) string {
+	return prefix + "-" + kind + "-" + suffix
+}
+
+func allFiles(prefix string, kind string, proc bool) []string {
+	if proc {
+		return []string{fileName(prefix, kind, "in"), fileName(prefix, kind, "out")}
+	} else {
+		return []string{fileName(prefix, kind, "raw")}
+	}
+}
+
 // create a GStreamer pipeline
-func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, codecName string, proc bool) *Pipeline {
+func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, proc bool) *Pipeline {
 	pipelineStr := newPipelineStr(filePrefix, codecName, proc)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
@@ -99,6 +112,7 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, codecN
 
 	pipeline := &Pipeline{
 		Pipeline:   C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
+		Files:      allFiles(filePrefix, kind, proc),
 		track:      track,
 		id:         len(pipelines),
 		filePrefix: filePrefix,

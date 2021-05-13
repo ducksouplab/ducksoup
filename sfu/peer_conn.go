@@ -21,6 +21,7 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 }
 
 func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
+	userId := joinPayload.UserId
 	// create RTC API with given set of codecs
 	codecs := []string{"vp8", "opus"}
 	if joinPayload.H264 {
@@ -76,7 +77,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 	// if PeerConnection is closed remove it from global list
 	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[user #%s] peerConn> state change: %s \n", joinPayload.UserId, p.String())
+		log.Printf("[user #%s] peerConn> state change: %s \n", userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := peerConn.Close(); err != nil {
@@ -84,12 +85,12 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			}
 		case webrtc.PeerConnectionStateClosed:
 			room.UpdateSignaling()
-			room.DisconnectUser(joinPayload.UserId)
+			room.DisconnectUser(userId)
 		}
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		log.Printf("[user #%s] peerConn> new %s track\n", joinPayload.UserId, remoteTrack.Codec().RTPCodecCapability.MimeType)
+		log.Printf("[user #%s] peerConn> new %s track\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 
 		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
@@ -97,17 +98,18 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		<-room.waitForAllCh
 
 		// prepare GStreamer pipeline
-		log.Printf("[user #%s] peerConn> %s track started\n", joinPayload.UserId, remoteTrack.Kind().String())
+		log.Printf("[user #%s] peerConn> %s track started\n", userId, remoteTrack.Kind().String())
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
 		mediaFilePrefix := filePrefix(joinPayload, room)
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, codecName, joinPayload.Proc)
+		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, remoteTrack.Kind().String(), codecName, joinPayload.Proc)
 		pipeline.Start()
+		room.AddFiles(userId, pipeline.Files)
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[user #%s] peerConn> recover OnTrack\n", joinPayload.UserId)
+				log.Printf("[user #%s] peerConn> recover OnTrack\n", userId)
 			}
 		}()
 		defer pipeline.Stop()
@@ -116,7 +118,10 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		for {
 			select {
 			case <-room.finishCh:
-				wsConn.Send("finish")
+				wsConn.SendJSON(&Message{
+					Type:    "finish",
+					Payload: strings.Join(room.Files(userId), ";"),
+				})
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

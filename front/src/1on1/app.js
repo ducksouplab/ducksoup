@@ -24,9 +24,7 @@
 // };
 
 // State
-let state = {
-    audioIn: null,
-};
+let state = {};
 
 // Config
 const DEFAULT_CONSTRAINTS = {
@@ -161,8 +159,9 @@ const processSDP = (sdp) => {
 };
 
 const stop = (reason) => {
+    const message = typeof reason === "string" ? { type: reason } : reason;
     state.stream.getTracks().forEach((track) => track.stop());
-    sendToParent(reason);
+    sendToParent(message);
 }
 
 const startRTC = async () => {
@@ -208,11 +207,11 @@ const startRTC = async () => {
     };
 
     ws.onmessage = async function (evt) {
-        let msg = JSON.parse(evt.data);
-        if (!msg) return console.error("[ws] can't parse message");
+        let message = JSON.parse(evt.data);
+        if (!message) return console.error("[ws] can't parse message");
 
-        if (msg.type === "offer") {
-            const offer = JSON.parse(msg.payload);
+        if (message.type === "offer") {
+            const offer = JSON.parse(message.payload);
             if (!offer) {
                 return console.error("[ws] can't parse offer");
             }
@@ -227,20 +226,20 @@ const startRTC = async () => {
                     payload: JSON.stringify(answer),
                 })
             );
-        } else if (msg.type === "candidate") {
-            const candidate = JSON.parse(msg.payload);
+        } else if (message.type === "candidate") {
+            const candidate = JSON.parse(message.payload);
             if (!candidate) {
                 return console.error("[ws] can't parse candidate");
             }
             console.log("[ws] candidate");
             pc.addIceCandidate(candidate);
-        } else if (msg.type === "start") {
+        } else if (message.type === "start") {
             console.log("[ws] start");
-        } else if (msg.type === "finishing") {
+        } else if (message.type === "finishing") {
             console.log("[ws] finishing");
             document.getElementById("finishing").classList.remove("d-none");
-        } else if (msg.type.startsWith("error") || msg.type === "finish") {
-            stop(msg.type);
+        } else if (message.type.startsWith("error") || message.type === "finish") {
+            stop(message);
         }
     };
 
