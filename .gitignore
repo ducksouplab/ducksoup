@@ -9,3 +9,6 @@ logs
 lib
 *.uid
 *.key
+
+# front build assets
+front/static/assets/scripts
