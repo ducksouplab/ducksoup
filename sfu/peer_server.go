@@ -18,7 +18,7 @@ type PeerServer struct {
 	wsConn   *WsConn
 }
 
-func NewPeerServer(
+func newPeerServer(
 	joinPayload JoinPayload,
 	room *Room,
 	peerConn *webrtc.PeerConnection,
@@ -76,6 +76,8 @@ func (ps *PeerServer) loop() {
 	}
 }
 
+// API
+
 // handle incoming websockets
 func RunPeerServer(unsafeConn *websocket.Conn) {
 
@@ -101,12 +103,11 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	peerConn := NewPeerConnection(joinPayload, room, wsConn)
 	defer peerConn.Close()
 
-	peerServer := NewPeerServer(joinPayload, room, peerConn, wsConn)
+	peerServer := newPeerServer(joinPayload, room, peerConn, wsConn)
 
 	// bind and signal
 	room.Bind(peerServer)
 	room.UpdateSignaling()
 
-	// block
-	peerServer.loop()
+	peerServer.loop() // blocking
 }

@@ -29,10 +29,10 @@ var (
 type Room struct {
 	sync.RWMutex
 	// guarded by mutex
-	peerServerIndex  map[string]*PeerServer // per user id
-	connectedIndex   map[string]bool // per user id, undefined: never connected, false: previously connected, true: connected
-	joinedCountIndex map[string]int // per user id
-	filesIndex       map[string][]string // per user id, contains media file names
+	peerServerIndex  map[string]*PeerServer                 // per user id
+	connectedIndex   map[string]bool                        // per user id, undefined: never connected, false: previously connected, true: connected
+	joinedCountIndex map[string]int                         // per user id
+	filesIndex       map[string][]string                    // per user id, contains media file names
 	trackIndex       map[string]*webrtc.TrackLocalStaticRTP // per track id
 	startedAt        time.Time
 	tracksReadyCount int
@@ -51,7 +51,16 @@ func init() {
 	roomIndex = make(map[string]*Room)
 }
 
-// private > not guarded by mutex locks, since called by other guarded methods
+func (r *Room) delete() {
+	// guard `roomIndex`
+	mu.Lock()
+	defer mu.Unlock()
+
+	log.Printf("[room #%s] deleted\n", r.id)
+	delete(roomIndex, r.id)
+}
+
+// private and not guarded by mutex locks, since called by other guarded methods
 
 func newRoom(joinPayload JoinPayload) *Room {
 	// process duration
@@ -82,15 +91,6 @@ func newRoom(joinPayload JoinPayload) *Room {
 		tracksReadyCount: 0,
 		duration:         duration,
 	}
-}
-
-func (r *Room) delete() {
-	// guard `roomIndex`
-	mu.Lock()
-	defer mu.Unlock()
-
-	log.Printf("[room #%s] deleted\n", r.id)
-	delete(roomIndex, r.id)
 }
 
 func (r *Room) userCount() int {

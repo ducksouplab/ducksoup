@@ -17,6 +17,8 @@ func init() {
 	}
 }
 
+// API
+
 func Build() {
 	buildOptions := api.BuildOptions{
 		EntryPoints:       []string{"front/src/1on1/app.js", "front/src/test/app.js", "front/src/embed/app.js"},

@@ -3,7 +3,7 @@ application/x-rtp,payload=111,encoding-name=OPUS !
 rtpopusdepay ! 
 decodebin !
 audioconvert ! 
-avocoder pitch=1.25 ! 
+pitch pitch=1.25 ! 
 audioconvert ! 
 opusenc ! 
 rtpopuspay !

@@ -27,21 +27,17 @@ var h264RawPipeline string
 
 func init() {
 	opusProcPipeline = helpers.ReadConfig("opus-proc-rec")
-	opusRawPipeline = helpers.ReadConfig("opus-proc2-rec")
+	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
 	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
 	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
 	h264ProcPipeline = helpers.ReadConfig("h264-norec")
 	h264RawPipeline = helpers.ReadConfig("h264-norec")
 }
 
-func StartMainLoop() {
-	C.gstreamer_send_start_mainloop()
-}
-
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
 	Pipeline   *C.GstElement
-	Files	   []string
+	Files      []string
 	track      *webrtc.TrackLocalStaticRTP
 	id         int
 	filePrefix string
@@ -100,6 +96,31 @@ func allFiles(prefix string, kind string, proc bool) []string {
 	}
 }
 
+//export goHandleNewSample
+func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+	pipelinesLock.Lock()
+	pipeline, ok := pipelines[int(pipelineId)]
+	pipelinesLock.Unlock()
+
+	if ok {
+		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
+			// TODO err contains the ID of the failing PeerConnections
+			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
+			log.Printf("[gst] error: %v", err)
+		}
+	} else {
+		// TODO return error to gst.c and stop processing?
+		log.Printf("[gst] discarding buffer, no pipeline with id %d", int(pipelineId))
+	}
+	C.free(buffer)
+}
+
+// API
+
+func StartMainLoop() {
+	C.gstreamer_send_start_mainloop()
+}
+
 // create a GStreamer pipeline
 func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, proc bool) *Pipeline {
 	pipelineStr := newPipelineStr(filePrefix, codecName, proc)
@@ -132,25 +153,6 @@ func (p *Pipeline) Start() {
 func (p *Pipeline) Stop() {
 	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
-}
-
-//export goHandleNewSample
-func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	pipelinesLock.Lock()
-	pipeline, ok := pipelines[int(pipelineId)]
-	pipelinesLock.Unlock()
-
-	if ok {
-		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
-			// TODO err contains the ID of the failing PeerConnections
-			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
-			log.Printf("[gst] error: %v", err)
-		}
-	} else {
-		// TODO return error to gst.c and stop processing?
-		log.Printf("[gst] discarding buffer, no pipeline with id %d", int(pipelineId))
-	}
-	C.free(buffer)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline
