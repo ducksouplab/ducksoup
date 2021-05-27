@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/creamlab/webrtc-transform/engine"
 	"github.com/creamlab/webrtc-transform/gst"
 	"github.com/pion/webrtc/v3"
 )
@@ -29,7 +30,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	if joinPayload.H264 {
 		codecs = []string{"h264", "opus"}
 	}
-	api, err := NewAPI(codecs)
+	api, err := engine.NewWebRTCAPI(codecs)
 	if err != nil {
 		log.Print(err)
 		return

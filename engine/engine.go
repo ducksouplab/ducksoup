@@ -1,4 +1,4 @@
-package sfu
+package engine
 
 import (
 	"github.com/creamlab/webrtc-transform/helpers"
@@ -7,7 +7,7 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func NewAPI(names []string) (*webrtc.API, error) {
+func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
@@ -106,9 +106,24 @@ func NewAPI(names []string) (*webrtc.API, error) {
 					MimeType:     "video/H264",
 					ClockRate:    90000,
 					Channels:     0,
-					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42001f",
+					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42e01f",
 					RTCPFeedback: videoRTCPFeedback},
-				PayloadType: 127,
+				PayloadType: 108,
+			},
+			webrtc.RTPCodecTypeVideo,
+		); err != nil {
+			return nil, err
+		}
+
+		if err := m.RegisterCodec(
+			webrtc.RTPCodecParameters{
+				RTPCodecCapability: webrtc.RTPCodecCapability{
+					MimeType:     "video/H264",
+					ClockRate:    90000,
+					Channels:     0,
+					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640032",
+					RTCPFeedback: videoRTCPFeedback},
+				PayloadType: 123,
 			},
 			webrtc.RTPCodecTypeVideo,
 		); err != nil {
@@ -136,24 +151,9 @@ func NewAPI(names []string) (*webrtc.API, error) {
 					MimeType:     "video/H264",
 					ClockRate:    90000,
 					Channels:     0,
-					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42e01f",
+					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42001f",
 					RTCPFeedback: videoRTCPFeedback},
-				PayloadType: 108,
-			},
-			webrtc.RTPCodecTypeVideo,
-		); err != nil {
-			return nil, err
-		}
-
-		if err := m.RegisterCodec(
-			webrtc.RTPCodecParameters{
-				RTPCodecCapability: webrtc.RTPCodecCapability{
-					MimeType:     "video/H264",
-					ClockRate:    90000,
-					Channels:     0,
-					SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640032",
-					RTCPFeedback: videoRTCPFeedback},
-				PayloadType: 123,
+				PayloadType: 127,
 			},
 			webrtc.RTPCodecTypeVideo,
 		); err != nil {
