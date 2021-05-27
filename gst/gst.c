@@ -34,9 +34,11 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
         gst_message_parse_error(msg, &error, &debug);
         g_free(debug);
 
-        g_printerr("Error: %s\n", error->message);
+        g_print("[gst.c] error: %s\n", error->message);
         g_error_free(error);
-        exit(1);
+        
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+        break;
     }
     default:
         break;
@@ -81,9 +83,7 @@ void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId)
     s->pipelineId = pipelineId;
 
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
-    // GstMessage *msg =
-    //   gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
-    //   GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+
     gst_bus_add_watch(bus, gstreamer_send_bus_call, pipeline);
     gst_object_unref(bus);
 
@@ -93,6 +93,10 @@ void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId)
     gst_object_unref(appsink);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    // GstMessage *msg =
+    //   gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
+    //   GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 }
 
 void gstreamer_send_stop_pipeline(GstElement *pipeline)

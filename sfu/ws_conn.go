@@ -28,6 +28,8 @@ type JoinPayload struct {
 	H264     bool   `json:"h264"`
 }
 
+// API
+
 func (w *WsConn) Send(text string) (err error) {
 	w.Lock()
 	defer w.Unlock()

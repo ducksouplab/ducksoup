@@ -20,6 +20,8 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
+// API
+
 func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
 	userId := joinPayload.UserId
 	// create RTC API with given set of codecs

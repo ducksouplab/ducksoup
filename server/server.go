@@ -21,11 +21,25 @@ var (
 	}
 )
 
+// handle incoming websockets
+func websocketHandler(w http.ResponseWriter, r *http.Request) {
+	// upgrade HTTP request to Websocket
+	unsafeConn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("upgrade:", err)
+		return
+	}
+
+	sfu.RunPeerServer(unsafeConn) // blocking
+}
+
+// API
+
 func ListenAndServe() {
-	// Parse the flags passed to program
+	// parse the flags passed to program
 	flag.Parse()
 
-	// Init logging
+	// init logging
 	log.SetFlags(log.Lmicroseconds)
 	log.SetOutput(os.Stdout)
 
@@ -52,24 +66,9 @@ func ListenAndServe() {
 	// start HTTP server
 	if *key != "" && *cert != "" {
 		log.Println("[main] listening on https://", *addr)
-		log.Fatal(server.ListenAndServeTLS(*addr, *cert))
+		log.Fatal(server.ListenAndServeTLS(*addr, *cert)) // blocking
 	} else {
 		log.Println("[main] listening on http://", *addr)
-		log.Fatal(server.ListenAndServe())
+		log.Fatal(server.ListenAndServe()) // blocking
 	}
-}
-
-// Handle incoming websockets
-func websocketHandler(w http.ResponseWriter, r *http.Request) {
-	// Upgrade HTTP request to Websocket
-	unsafeConn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-
-	// When this frame returns close the Websocket
-	defer unsafeConn.Close() //nolint
-
-	sfu.RunPeerServer(unsafeConn)
 }
