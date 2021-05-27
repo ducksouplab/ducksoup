@@ -5,21 +5,38 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/creamlab/webrtc-transform/helpers"
 	"github.com/creamlab/webrtc-transform/sfu"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
 var (
-	addr     = flag.String("addr", ":8080", "http service address")
-	cert     = flag.String("cert", "", "cert file")
-	key      = flag.String("key", "", "key file")
-	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
+	allowedOrigins = []string{}
+	addr           = flag.String("addr", ":8080", "http service address")
+	cert           = flag.String("cert", "", "cert file")
+	key            = flag.String("key", "", "key file")
+	upgrader       = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			log.Println(origin)
+			return helpers.Contains(allowedOrigins, origin)
+		},
 	}
 )
+
+func init() {
+	envOrigins := os.Getenv("ORIGINS")
+	if len(envOrigins) > 0 {
+		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
+	}
+	if os.Getenv("APP_ENV") == "DEV" {
+		allowedOrigins = append(allowedOrigins, "http://localhost:8080")
+	}
+}
 
 // handle incoming websockets
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
