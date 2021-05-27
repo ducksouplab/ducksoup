@@ -2,15 +2,9 @@
 
 SFU made with [pion](https://github.com/pion/webrtc) with Gstreamer audio transformation.
 
-Inspirations:
+## Installation
 
-- https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
-- https://github.com/pion/example-webrtc-applications/tree/master/gstreamer-receive
-- https://github.com/pion/example-webrtc-applications/tree/master/gstreamer-send
-
-## Instructions
-
-Install dependencies:
+Dependencies:
 
 - [GStreamer](https://gstreamer.freedesktop.org/documentation/index.html?gi-language=c)
 
@@ -29,24 +23,59 @@ To serve with TLS, you may consider:
 mkdir certs && cd certs && mkcert localhost -key-file key.pem -cert-file cert.pem
 ```
 
-### Run with TLS
+### Run
+
+Environment variables:
+
+- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
+- ORIGINS=https://origin1,https://origin2:8000 adds comma separated allowed origins for WebSocket connections
+
+Then build:
 
 ```
 go build
+```
+
+And run with/out environment variables:
+
+```
+./webrtc-transform
+APP_ENV=DEV ./webrtc-transform
+ORIGINS=http://localhost ./webrtc-transform
+```
+
+Run with TLS:
+
+```
 ./webrtc-transform --cert cert-path --key key-path
 # for instance
 ./webrtc-transform --cert certs/cert.pem --key certs/key.pem
 ```
 
-Open [https://localhost:8080](https://localhost:8080) in several tabs.
+### Try (front-ends)
 
-### Run without TLS
+Several front-ends are available:
+
+- static/test is a generic project intended to test the back-end behavior
+- static/1on1 is intended to be embedded in a iframe (the website serving the page with the iframe has to be added to ORIGINS)
+- static/embed is an example of a project that embeds 1on1
+
+Once the app is running, you may try it with:
+
+- http://localhost:8080/test/ (in several tabs)
+- http://localhost:8080/embed/ (in several tabs)
+
+# Front-ends build
+
+Building js files (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
+
+When `./webrtc-transform` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
+
+It's also possible to watch changes and rebuild those files by adding this environment variable:
 
 ```
-./webrtc-transform
+APP_ENV=DEV ./webrtc-transform
 ```
-
-Open [http://localhost:8080](https//localhost:8080) in several tabs.
 
 ### Run with Docker
 
@@ -66,13 +95,7 @@ docker build -f docker/Dockerfile.no-tls -t webrtc-transform:latest .
 docker container run -p 8080:8080 -rm webrtc-transform:latest
 ```
 
-### TODO
-
-- [ ] assess performance/latency/jitter
-- [ ] process video
-- [ ] sync audio/video (RTC tracks + GStreamer)
-
-### AV
+### Add custom GStreamer plugins
 
 mkdir -p lib
 export PROJECT_BUILD=`pwd`/lib
@@ -85,23 +108,6 @@ export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 Hint for multi-debian: debug go execution, and check for relevant gstreamer runtime dependencies (try to add same apt dependencies in build and run stages, then clean up)
 
 Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first. See https://github.com/pion/ion/blob/master/docker/sfu.Dockerfile
-
-### Front-ends
-
-Several front-ends are available:
-
-- static/test is a generic project intended to test the back-end behavior
-- static/\*others are tailored to a given experiment setup
-
-Building js file (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
-
-When `./webrtc-transform` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
-
-It's also possible to watch changes and rebuild those files by adding a environment variable:
-
-```
-APP_ENV=DEV ./webrtc-transform
-```
 
 ### Concepts in Go code
 
