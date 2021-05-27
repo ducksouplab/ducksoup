@@ -93,7 +93,7 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	room, joinErr := JoinRoom(joinPayload)
 	if joinErr != nil {
 		// joinErr is meaningful to client
-		log.Printf("[user #%s-%s] join failed", joinPayload.UserId, joinPayload.Name)
+		log.Printf("[user #%s-%s] join failed: %s", joinPayload.UserId, joinPayload.Name, joinErr)
 		wsConn.Send(fmt.Sprintf("error-%s", joinErr))
 		return
 	}

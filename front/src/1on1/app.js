@@ -36,8 +36,8 @@ const DEFAULT_CONSTRAINTS = {
     },
     audio: {
         sampleSize: 16,
-        autoGainControl: false,
         channelCount: 1,
+        autoGainControl: false,
         latency: { ideal: 0.003 },
         echoCancellation: false,
         noiseSuppression: false,
