@@ -33,27 +33,37 @@ const init = async () => {
 
 document.addEventListener("DOMContentLoaded", init);
 
-const displayStop = (message) => {
-    document.getElementById("stopped-message").innerHTML = message;
+const hideEmbed = () => {
     document.getElementById("stopped").classList.remove("d-none");
     document.getElementById("embed").classList.add("d-none");
 }
 
+const replaceMessage = (message) => {
+    document.getElementById("stopped-message").innerHTML = message;
+    hideEmbed();
+}
+
+const appendMessage = (message) => {
+    document.getElementById("stopped-message").innerHTML += '<br/>' + message;
+    hideEmbed();
+}
+
 // communication with iframe
 window.addEventListener("message", (event) => {
+    console.log(event)
     if (event.origin !== window.location.origin) {
         return;
     } else if (event.data.type === "finish") {
-        let html = "Conversation terminée, les fichiers suivant ont été enregistrés:<br/><br/>";
+        let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
         html += event.data.payload.replaceAll(";", "<br/>")
-        displayStop(html);
+        replaceMessage(html);
     } else if (event.data.type === "error-full") {
-        displayStop("Connexion refusée (salle complète)");
+        replaceMessage("Connexion refusée (salle complète)");
     } else if (event.data.type === "error-duplicate") {
-        displayStop("Connexion refusée (déjà connecté-e)");
+        replaceMessage("Connexion refusée (déjà connecté-e)");
     } else if (event.data.type === "disconnected") {
-        displayStop("Connexion perdue");
+        appendMessage("Connexion perdue");
     } else if (event.data.type === "error") {
-        displayStop("Erreur");
+        replaceMessage("Erreur");
     }
 });
