@@ -53,17 +53,17 @@ window.addEventListener("message", (event) => {
     console.log(event)
     if (event.origin !== window.location.origin) {
         return;
-    } else if (event.data.type === "finish") {
+    } else if (event.data.kind === "finish") {
         let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
         html += event.data.payload.replaceAll(";", "<br/>")
         replaceMessage(html);
-    } else if (event.data.type === "error-full") {
+    } else if (event.data.kind === "error-full") {
         replaceMessage("Connexion refusée (salle complète)");
-    } else if (event.data.type === "error-duplicate") {
+    } else if (event.data.kind === "error-duplicate") {
         replaceMessage("Connexion refusée (déjà connecté-e)");
-    } else if (event.data.type === "disconnected") {
+    } else if (event.data.kind === "disconnected") {
         appendMessage("Connexion perdue");
-    } else if (event.data.type === "error") {
+    } else if (event.data.kind === "error") {
         replaceMessage("Erreur");
     }
 });

@@ -72,10 +72,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			return
 		}
 
-		wsConn.SendJSON(&Message{
-			Type:    "candidate",
-			Payload: string(candidateString),
-		})
+		wsConn.SendWithPayload("candidate", string(candidateString))
 	})
 
 	// if PeerConnection is closed remove it from global list
@@ -121,10 +118,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		for {
 			select {
 			case <-room.finishCh:
-				wsConn.SendJSON(&Message{
-					Type:    "finish",
-					Payload: strings.Join(room.Files(userId), ";"),
-				})
+				wsConn.SendWithPayload("finish", strings.Join(room.Files(userId), ";"))
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

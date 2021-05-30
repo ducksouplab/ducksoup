@@ -159,7 +159,7 @@ const processSDP = (sdp) => {
 };
 
 const stop = (reason) => {
-    const message = typeof reason === "string" ? { type: reason } : reason;
+    const message = typeof reason === "string" ? { kind: reason } : reason;
     state.stream.getTracks().forEach((track) => track.stop());
     sendToParent(message);
 }
@@ -190,27 +190,27 @@ const startRTC = async () => {
         const { room, name, proc, duration, uid, h264 } = state;
         ws.send(
             JSON.stringify({
-                type: "join",
+                kind: "join",
                 payload: JSON.stringify({ room, name, duration, uid, proc, h264 }),
             })
         );
     };
 
-    ws.onclose = function (evt) {
+    ws.onclose = function () {
         console.log("[ws] closed");
         stop("disconnected");
     };
 
-    ws.onerror = function (evt) {
-        console.error("[ws] error: " + evt.data);
+    ws.onerror = function (event) {
+        console.error("[ws] error: " + event.data);
         stop("error");
     };
 
-    ws.onmessage = async function (evt) {
-        let message = JSON.parse(evt.data);
+    ws.onmessage = async function (event) {
+        let message = JSON.parse(event.data);
         if (!message) return console.error("[ws] can't parse message");
 
-        if (message.type === "offer") {
+        if (message.kind === "offer") {
             const offer = JSON.parse(message.payload);
             if (!offer) {
                 return console.error("[ws] can't parse offer");
@@ -222,23 +222,23 @@ const startRTC = async () => {
             pc.setLocalDescription(answer);
             ws.send(
                 JSON.stringify({
-                    type: "answer",
+                    kind: "answer",
                     payload: JSON.stringify(answer),
                 })
             );
-        } else if (message.type === "candidate") {
+        } else if (message.kind === "candidate") {
             const candidate = JSON.parse(message.payload);
             if (!candidate) {
                 return console.error("[ws] can't parse candidate");
             }
             console.log("[ws] candidate");
             pc.addIceCandidate(candidate);
-        } else if (message.type === "start") {
+        } else if (message.kind === "start") {
             console.log("[ws] start");
-        } else if (message.type === "finishing") {
+        } else if (message.kind === "finishing") {
             console.log("[ws] finishing");
             document.getElementById("finishing").classList.remove("d-none");
-        } else if (message.type.startsWith("error") || message.type === "finish") {
+        } else if (message.kind.startsWith("error") || message.kind === "finish") {
             stop(message);
         }
     };
@@ -247,7 +247,7 @@ const startRTC = async () => {
         if (!e.candidate) return;
         ws.send(
             JSON.stringify({
-                type: "candidate",
+                kind: "candidate",
                 payload: JSON.stringify(e.candidate),
             })
         );

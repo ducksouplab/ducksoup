@@ -14,8 +14,13 @@ type WsConn struct {
 	*websocket.Conn
 }
 
-type Message struct {
-	Type    string `json:"type"`
+type WsMessageOut struct {
+	Kind    string      `json:"kind"`
+	Payload interface{} `json:"payload"`
+}
+
+type WsMessageIn struct {
+	Kind    string `json:"kind"`
 	Payload string `json:"payload"`
 }
 
@@ -34,34 +39,36 @@ func (w *WsConn) Send(text string) (err error) {
 	w.Lock()
 	defer w.Unlock()
 
-	message := &Message{
-		Type: text,
-	}
-	if err := w.Conn.WriteJSON(message); err != nil {
+	m := &WsMessageOut{Kind: text}
+	if err := w.Conn.WriteJSON(m); err != nil {
 		log.Println(err)
 	}
 	return
 }
 
-func (w *WsConn) SendJSON(v interface{}) (err error) {
+func (w *WsConn) SendWithPayload(kind string, payload interface{}) (err error) {
 	w.Lock()
 	defer w.Unlock()
 
-	if err := w.Conn.WriteJSON(v); err != nil {
+	m := &WsMessageOut{
+		Kind:    kind,
+		Payload: payload,
+	}
+	if err := w.Conn.WriteJSON(m); err != nil {
 		log.Println(err)
 	}
 	return
 }
 
 func (w *WsConn) ReadJoin() (joinPayload JoinPayload, err error) {
-	var message Message
+	var m WsMessageIn
 
 	// First message must be a join
-	err = w.ReadJSON(&message)
-	if err != nil || message.Type != "join" {
+	err = w.ReadJSON(&m)
+	if err != nil || m.Kind != "join" {
 		return
 	}
 
-	err = json.Unmarshal([]byte(message.Payload), &joinPayload)
+	err = json.Unmarshal([]byte(m.Payload), &joinPayload)
 	return
 }

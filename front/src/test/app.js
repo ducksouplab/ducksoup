@@ -123,27 +123,27 @@ const startRTC = async () => {
     const { name, room } = state;
     ws.send(
       JSON.stringify({
-        type: "join",
+        kind: "join",
         payload: JSON.stringify({ name, room, proc: true, uid: randomId() }),
       })
     );
   };
 
-  ws.onclose = function (evt) {
+  ws.onclose = function () {
     console.log("Websocket has closed");
   };
 
-  ws.onerror = function (evt) {
-    console.error("ws: " + evt.data);
+  ws.onerror = function (event) {
+    console.error("ws: " + event.data);
   };
 
-  ws.onmessage = async function (evt) {
-    let msg = JSON.parse(evt.data);
-    if (!msg) return console.error("failed to parse msg");
+  ws.onmessage = async function (event) {
+    let message = JSON.parse(event.data);
+    if (!message) return console.error("failed to parse message");
 
-    switch (msg.type) {
+    switch (message.kind) {
       case "offer": {
-        const offer = JSON.parse(msg.payload);
+        const offer = JSON.parse(message.payload);
         if (!offer) {
           return console.error("failed to parse answer");
         }
@@ -153,14 +153,14 @@ const startRTC = async () => {
         pc.setLocalDescription(answer);
         ws.send(
           JSON.stringify({
-            type: "answer",
+            kind: "answer",
             payload: JSON.stringify(answer),
           })
         );
         break;
       }
       case "candidate": {
-        const candidate = JSON.parse(msg.payload);
+        const candidate = JSON.parse(message.payload);
         if (!candidate) {
           return console.error("failed to parse candidate");
         }
@@ -182,7 +182,7 @@ const startRTC = async () => {
     if (!e.candidate) return;
     ws.send(
       JSON.stringify({
-        type: "candidate",
+        kind: "candidate",
         payload: JSON.stringify(e.candidate),
       })
     );

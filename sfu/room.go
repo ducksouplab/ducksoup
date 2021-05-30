@@ -305,10 +305,7 @@ func (r *Room) UpdateSignaling() {
 				return false
 			}
 
-			if err = ps.wsConn.SendJSON(&Message{
-				Type:    "offer",
-				Payload: string(offerString),
-			}); err != nil {
+			if err = ps.wsConn.SendWithPayload("offer", string(offerString)); err != nil {
 				return false
 			}
 		}

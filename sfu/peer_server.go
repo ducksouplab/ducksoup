@@ -30,7 +30,7 @@ func newPeerServer(
 }
 
 func (ps *PeerServer) loop() {
-	var message Message
+	var m WsMessageIn
 
 	// sends "finishing" message before rooms does finish
 	go func() {
@@ -41,7 +41,7 @@ func (ps *PeerServer) loop() {
 	}()
 
 	for {
-		err := ps.wsConn.ReadJSON(&message)
+		err := ps.wsConn.ReadJSON(&m)
 
 		if err != nil {
 			ps.room.DisconnectUser(ps.userId)
@@ -49,10 +49,10 @@ func (ps *PeerServer) loop() {
 			return
 		}
 
-		switch message.Type {
+		switch m.Kind {
 		case "candidate":
 			candidate := webrtc.ICECandidateInit{}
-			if err := json.Unmarshal([]byte(message.Payload), &candidate); err != nil {
+			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
 				log.Println(err)
 				return
 			}
@@ -63,7 +63,7 @@ func (ps *PeerServer) loop() {
 			}
 		case "answer":
 			answer := webrtc.SessionDescription{}
-			if err := json.Unmarshal([]byte(message.Payload), &answer); err != nil {
+			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
 				log.Println(err)
 				return
 			}
