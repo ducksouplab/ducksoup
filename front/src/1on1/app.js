@@ -239,6 +239,7 @@ const startRTC = async () => {
             console.log("[ws] finishing");
             document.getElementById("finishing").classList.remove("d-none");
         } else if (message.kind.startsWith("error") || message.kind === "finish") {
+            console.log(message)
             stop(message);
         }
     };

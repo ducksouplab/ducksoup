@@ -118,7 +118,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		for {
 			select {
 			case <-room.finishCh:
-				wsConn.SendWithPayload("finish", strings.Join(room.Files(userId), ";"))
+				wsConn.SendWithPayload("finish", room.Files())
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

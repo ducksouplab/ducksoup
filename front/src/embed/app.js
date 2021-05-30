@@ -1,3 +1,5 @@
+const state = {};
+
 // "1" -> true
 const toBool = (v) => Boolean(parseInt(v));
 
@@ -27,6 +29,7 @@ const init = async () => {
         document.getElementById("embed").classList.add("d-none");
     } else {
         const params = { room, uid, name, proc, duration, h264 };
+        state.uid = uid;
         document.getElementById("embed").src = `/1on1/?params=${marshallParams(params)}`;
     }
 };
@@ -50,20 +53,24 @@ const appendMessage = (message) => {
 
 // communication with iframe
 window.addEventListener("message", (event) => {
-    console.log(event)
-    if (event.origin !== window.location.origin) {
-        return;
-    } else if (event.data.kind === "finish") {
-        let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
-        html += event.data.payload.replaceAll(";", "<br/>")
-        replaceMessage(html);
-    } else if (event.data.kind === "error-full") {
+    if (event.origin !== window.location.origin) return;
+
+    const { kind, payload } = event.data;
+    if (event.data.kind === "finish") {
+        if(payload && payload[state.uid]) {
+            let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
+            html += payload[state.uid].join("<br/>");
+            replaceMessage(html);
+        } else {
+            replaceMessage("Conversation terminée");
+        }
+    } else if (kind === "error-full") {
         replaceMessage("Connexion refusée (salle complète)");
-    } else if (event.data.kind === "error-duplicate") {
+    } else if (kind === "error-duplicate") {
         replaceMessage("Connexion refusée (déjà connecté-e)");
-    } else if (event.data.kind === "disconnected") {
+    } else if (kind === "disconnected") {
         appendMessage("Connexion perdue");
-    } else if (event.data.kind === "error") {
+    } else if (kind === "error") {
         replaceMessage("Erreur");
     }
 });

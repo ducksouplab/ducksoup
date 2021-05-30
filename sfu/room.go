@@ -338,11 +338,11 @@ func (r *Room) JoinedCountForUser(userId string) int {
 	return r.joinedCountIndex[userId]
 }
 
-func (r *Room) Files(userId string) []string {
+func (r *Room) Files() map[string][]string {
 	r.RLock()
 	defer r.RUnlock()
 
-	return r.filesIndex[userId]
+	return r.filesIndex
 }
 
 func (r *Room) FinishingDelay() (delay int) {

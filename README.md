@@ -2,7 +2,7 @@
 
 SFU made with [pion](https://github.com/pion/webrtc) with Gstreamer audio transformation.
 
-## Installation
+## Install
 
 Dependencies:
 
@@ -65,7 +65,17 @@ Once the app is running, you may try it with:
 - http://localhost:8080/test/ (in several tabs)
 - http://localhost:8080/embed/ (in several tabs)
 
-# Front-ends build
+
+### ws-protocol
+
+Events from server to client:
+
+- kind `offer` and `candidate` for signaling (with payloads)
+- kind `start` when all peers and tracks are ready
+- kind `finishing` when the room will soon be destroyed
+- kind `finish` when time is over (payload contains a concatenated list of media files recorded for this experiment)
+
+### Front-ends build
 
 Building js files (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
 
@@ -76,6 +86,12 @@ It's also possible to watch changes and rebuild those files by adding this envir
 ```
 APP_ENV=DEV ./webrtc-transform
 ```
+
+### Add custom GStreamer plugins
+
+mkdir -p lib
+export PROJECT_BUILD=`pwd`/lib
+export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 
 ### Run with Docker
 
@@ -95,12 +111,6 @@ docker build -f docker/Dockerfile.no-tls -t webrtc-transform:latest .
 docker container run -p 8080:8080 -rm webrtc-transform:latest
 ```
 
-### Add custom GStreamer plugins
-
-mkdir -p lib
-export PROJECT_BUILD=`pwd`/lib
-export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
-
 ### Issues with Docker
 
 `Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)
@@ -117,13 +127,3 @@ On each connection to the websocket endpoint in `server.go` a new PeerServer (se
 - join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
 
 Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
-
-
-### ws-protocol
-
-Events from server to client:
-
-- kind `offer` and `candidate` for signaling (with payloads)
-- kind `start` when all peers and tracks are ready
-- kind `finishing` when the room will soon be destroyed
-- kind `finish` when time is over (payload contains a concatenated list of media files recorded for this experiment)
