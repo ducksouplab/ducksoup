@@ -81,6 +81,7 @@ With TLS:
 
 ```
 ./ducksoup --cert certs/cert.pem --key certs/key.pem
+APP_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
 ## Test front-ends
@@ -102,7 +103,7 @@ Messages from server (Go) to client (JS):
 - kind `offer` and `candidate` for signaling (with payloads)
 - kind `start` when all peers and tracks are ready
 - kind `finishing` when the room will soon be destroyed
-- kind `finish` when time is over (payload contains a concatenated list of media files recorded for this experiment)
+- kind `finish` when time is over (payload contains an index of media files recorded for this experiment)
 
 ## Front-ends build
 

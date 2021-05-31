@@ -17,7 +17,7 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 	// time room user count
 	return time.Now().Format("20060102-150405.000") +
 		"-r-" + joinPayload.Room +
-		"-u-" + joinPayload.UserId + "-" + joinPayload.Name +
+		"-u-" + joinPayload.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
