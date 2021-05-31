@@ -1,4 +1,8 @@
 .container {
-  width: 640px;
-  max-width: 640px;
+  width: 800px;
+}
+
+#embed {
+  width: 800px;
+  height: 600px;
 }

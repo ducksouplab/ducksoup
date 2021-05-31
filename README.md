@@ -63,8 +63,8 @@ go build
 
 ## Environment variables
 
-- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
 - ORIGINS=https://origin1,https://origin2:8000 declares comma separated allowed origins for WebSocket connections
+- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
 
 ## Run DuckSoup
@@ -87,7 +87,7 @@ With TLS:
 
 Several test front-ends are available:
 
-- static/test_embed showcases how to embed DuckSoup in a iframe
+- static/test_embed showcases how to embed DuckSoup in a iframe and receive messages from it
 - static/test_standalone is a sample project not relying on static/embed
 
 Once the app is running, you may try it with:

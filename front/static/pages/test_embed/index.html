@@ -14,17 +14,21 @@
 
 <body>
     <div class="container" style="margin-top: 40px;">
-        <h2>Test DuckSoup dans une iframe</h2>
+        <h2>Testing DuckSoup in an iframe</h2>
         <div id="error" class="d-none">
-            <p>Un ou plusieurs query parameters de l'URL sont manquants ou incorrects:</p>
+            <p>One ore more URI query parameters are missing or incorrect:</p>
             <ul>
-                <li>room (nom du groupe / de la conversation)</li>
-                <li>uid (id unique l'utilisateur)</li>
-                <li>name (nom de l'utilisateur)</li>
-                <li>proc (contrôle de la transformation, 0 ou 1)</li>
-                <li>duration (durée de la conversation en secondes)</li>
+                <li>room (room name)</li>
+                <li>uid (user unique id)</li>
+                <li>name (user display name)</li>
+                <li>proc (ask for audio/video processing, 0 ou 1)</li>
+                <li>duration (conversation duration in seconds)</li>
             </ul>
-            <p>Exemple : /test_embed/?room=hall&uid=1234&name=jane&proc=0&duration=30</p>
+            <p>Examples</p>
+            <ul>
+                <li><a href="/test_embed/?room=hall&uid=1&name=zoe&proc=0&duration=30" target="_blank">/test_embed/?room=hall&uid=1&name=zoe&proc=0&duration=30</a></li>
+                <li><a href="/test_embed/?room=hall&uid=2&name=hal&proc=0&duration=30" target="_blank">/test_embed/?room=hall&uid=2&name=hal&proc=0&duration=30</a></li>
+            </ul>
         </div>
         <div id="stopped" class="d-none">
             <p id="stopped-message">Conversation terminée</p>
