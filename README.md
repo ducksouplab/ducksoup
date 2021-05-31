@@ -13,13 +13,13 @@ Once DuckSoup is installed and running, it may be configured and embedded in oth
 <iframe src="https://ducksoup-host.example.com/embed/?params=PARAMS_STRING" allow="camera;microphone"></iframe>
 ```
 
-Where PARAMS_STRING is obtained by serializing a JS object that specifies DuckSoup options.
+Where PARAMS_STRING is obtained by serializing a JS object that contains DuckSoup-related options.
 
 Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
 
 - must contain:
 
-  - origin (string) the embedding window origin (for instance https://website-calling-ducksoup.example.com)
+  - origin (string) the embedding window origin (for instance `https://website-calling-ducksoup.example.com`)
   - uid (string) a unique user identifier
   - name (string) the user display name
   - room (string) the room display name
@@ -32,7 +32,7 @@ Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
   - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
 
-Note: the embedding origin (https://website-calling-ducksoup.example.com above) has to be listed as a valid origin when starting DuckSoup (see [Environment variables](#environment-variables)).
+Note: the embedding origin (for instance `https://website-calling-ducksoup.example.com` above) has to be listed as a valid origin when starting DuckSoup (see [Environment variables](#environment-variables)).
 
 ## Install and build
 
@@ -65,10 +65,11 @@ go build
 
 - APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
 - ORIGINS=https://origin1,https://origin2:8000 declares comma separated allowed origins for WebSocket connections
+- GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
 
 ## Run DuckSoup
 
-How to run (with or without environment variables):
+Run (with or without environment variables):
 
 ```
 ./ducksoup
@@ -82,12 +83,11 @@ With TLS:
 ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
-## Try (front-ends)
+## Test front-ends
 
-Several front-ends are available:
+Several test front-ends are available:
 
-- static/embed to embed DuckSoup in an iframe (src attribute) (the website serving the page with the iframe has to be added to ORIGINS)
-- static/test_embed showcases how to use static/embed
+- static/test_embed showcases how to embed DuckSoup in a iframe
 - static/test_standalone is a sample project not relying on static/embed
 
 Once the app is running, you may try it with:
@@ -116,11 +116,13 @@ It's also possible to watch changes and rebuild those files by adding this envir
 APP_ENV=DEV ./ducksoup
 ```
 
-## Add custom GStreamer plugins
+## Add custom GStreamer plugins in lib/
 
+```
 mkdir -p lib
 export PROJECT_BUILD=`pwd`/lib
 export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
+```
 
 ## Run with Docker
 
