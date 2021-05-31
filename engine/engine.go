@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/creamlab/webrtc-transform/helpers"
+	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/creamlab/webrtc-transform/helpers"
-	"github.com/creamlab/webrtc-transform/sfu"
+	"github.com/creamlab/ducksoup/helpers"
+	"github.com/creamlab/ducksoup/sfu"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -34,7 +34,7 @@ func init() {
 		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
 	}
 	if os.Getenv("APP_ENV") == "DEV" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:8080")
+		allowedOrigins = append(allowedOrigins, "https://localhost:8000", "https://localhost:8080", "http://localhost:8080")
 	}
 }
 
@@ -66,9 +66,9 @@ func ListenAndServe() {
 	router.PathPrefix("/scripts/").Handler(http.StripPrefix("/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
 	router.PathPrefix("/styles/").Handler(http.StripPrefix("/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
 	// html
-	router.PathPrefix("/1on1/").Handler(http.StripPrefix("/1on1/", http.FileServer(http.Dir("./front/static/pages/1on1/"))))
 	router.PathPrefix("/embed/").Handler(http.StripPrefix("/embed/", http.FileServer(http.Dir("./front/static/pages/embed/"))))
-	router.PathPrefix("/test/").Handler(http.StripPrefix("/test/", http.FileServer(http.Dir("./front/static/pages/test/"))))
+	router.PathPrefix("/test_embed/").Handler(http.StripPrefix("/test_embed/", http.FileServer(http.Dir("./front/static/pages/test_embed/"))))
+	router.PathPrefix("/test_standalone/").Handler(http.StripPrefix("/test_standalone/", http.FileServer(http.Dir("./front/static/pages/test_standalone/"))))
 
 	// websocket handler
 	router.HandleFunc("/ws", websocketHandler)
@@ -83,7 +83,7 @@ func ListenAndServe() {
 	// start HTTP server
 	if *key != "" && *cert != "" {
 		log.Println("[main] listening on https://", *addr)
-		log.Fatal(server.ListenAndServeTLS(*addr, *cert)) // blocking
+		log.Fatal(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
 		log.Println("[main] listening on http://", *addr)
 		log.Fatal(server.ListenAndServe()) // blocking

@@ -1,4 +1,4 @@
-module github.com/creamlab/webrtc-transform
+module github.com/creamlab/ducksoup
 
 go 1.16
 

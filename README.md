@@ -1,8 +1,40 @@
-# webrtc-transform
+# DuckSoup
 
-SFU made with [pion](https://github.com/pion/webrtc) with Gstreamer audio transformation.
+Videoconferencing tool for social experiments.
 
-## Install
+From a technical standpoint, DuckSoup is:
+
+* a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
+* with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
+
+Once DuckSoup is installed and running, it may be configured and embedded in other webpages:
+
+```
+<iframe src="https://ducksoup-host.example.com/embed/?params=PARAMS_STRING" allow="camera;microphone"></iframe>
+```
+
+Where PARAMS_STRING is obtained by serializing a JS object that specifies DuckSoup options.
+
+Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
+
+- must contain:
+
+  - origin (string) the embedding window origin (for instance https://website-calling-ducksoup.example.com)
+  - uid (string) a unique user identifier
+  - name (string) the user display name
+  - room (string) the room display name
+  - proc (boolean) to ask for media processing
+  - duration (integer) the duration of the experiment in seconds
+
+- may contain:
+
+  - h264 (boolean) if h264 encoding should be preferred (vp8 is default)
+  - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
+  - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
+
+Note: the embedding origin (https://website-calling-ducksoup.example.com above) has to be listed as a valid origin when starting DuckSoup (see [Environment variables](#environment-variables)).
+
+## Install and build
 
 Dependencies:
 
@@ -20,15 +52,8 @@ To serve with TLS, you may consider:
 - [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates
 
 ```
-mkdir certs && cd certs && mkcert localhost -key-file key.pem -cert-file cert.pem
+mkdir certs && cd certs && mkcert -key-file key.pem -cert-file cert.pem localhost 
 ```
-
-### Run
-
-Environment variables:
-
-- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
-- ORIGINS=https://origin1,https://origin2:8000 adds comma separated allowed origins for WebSocket connections
 
 Then build:
 
@@ -36,82 +61,86 @@ Then build:
 go build
 ```
 
-And run with/out environment variables:
+## Environment variables
+
+- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
+- ORIGINS=https://origin1,https://origin2:8000 declares comma separated allowed origins for WebSocket connections
+
+## Run DuckSoup
+
+How to run (with or without environment variables):
 
 ```
-./webrtc-transform
-APP_ENV=DEV ./webrtc-transform
-ORIGINS=http://localhost ./webrtc-transform
+./ducksoup
+APP_ENV=DEV ./ducksoup
+ORIGINS= https://website-calling-ducksoup.example.com ./ducksoup
 ```
 
-Run with TLS:
+With TLS:
 
 ```
-./webrtc-transform --cert cert-path --key key-path
-# for instance
-./webrtc-transform --cert certs/cert.pem --key certs/key.pem
+./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
-### Try (front-ends)
+## Try (front-ends)
 
 Several front-ends are available:
 
-- static/test is a generic project intended to test the back-end behavior
-- static/1on1 is intended to be embedded in a iframe (the website serving the page with the iframe has to be added to ORIGINS)
-- static/embed is an example of a project that embeds 1on1
+- static/embed to embed DuckSoup in an iframe (src attribute) (the website serving the page with the iframe has to be added to ORIGINS)
+- static/test_embed showcases how to use static/embed
+- static/test_standalone is a sample project not relying on static/embed
 
 Once the app is running, you may try it with:
 
-- http://localhost:8080/test/ (in several tabs)
-- http://localhost:8080/embed/ (in several tabs)
+- http://localhost:8080/test_embed/ (in several tabs)
+- http://localhost:8080/test_standalone/ (in several tabs)
 
+## Websocket messages
 
-### ws-protocol
-
-Events from server to client:
+Messages from server (Go) to client (JS):
 
 - kind `offer` and `candidate` for signaling (with payloads)
 - kind `start` when all peers and tracks are ready
 - kind `finishing` when the room will soon be destroyed
 - kind `finish` when time is over (payload contains a concatenated list of media files recorded for this experiment)
 
-### Front-ends build
+## Front-ends build
 
 Building js files (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
 
-When `./webrtc-transform` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
+When `./ducksoup` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
 
 It's also possible to watch changes and rebuild those files by adding this environment variable:
 
 ```
-APP_ENV=DEV ./webrtc-transform
+APP_ENV=DEV ./ducksoup
 ```
 
-### Add custom GStreamer plugins
+## Add custom GStreamer plugins
 
 mkdir -p lib
 export PROJECT_BUILD=`pwd`/lib
 export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 
-### Run with Docker
+## Run with Docker
 
 Generate certs (see above) and then:
 
 ```
-docker build -t webrtc-transform:latest .
-docker container run -p 8080:8080 --rm webrtc-transform:latest
+docker build -t ducksoup:latest .
+docker container run -p 8080:8080 --rm ducksoup:latest
 # or enter the container
-docker container run -p 8080:8080 -it --entrypoint /bin/bash webrtc-transform:latest
+docker container run -p 8080:8080 -it --entrypoint /bin/bash ducksoup:latest
 ```
 
 To try without certs:
 
 ```
-docker build -f docker/Dockerfile.no-tls -t webrtc-transform:latest .
-docker container run -p 8080:8080 -rm webrtc-transform:latest
+docker build -f docker/Dockerfile.no-tls -t ducksoup:latest .
+docker container run -p 8080:8080 -rm ducksoup:latest
 ```
 
-### Issues with Docker
+## Issues with Docker
 
 `Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)
 
@@ -119,7 +148,7 @@ Hint for multi-debian: debug go execution, and check for relevant gstreamer runt
 
 Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first. See https://github.com/pion/ion/blob/master/docker/sfu.Dockerfile
 
-### Concepts in Go code
+## Concepts in Go code
 
 On each connection to the websocket endpoint in `server.go` a new PeerServer (see `peer_server.go`) is created:
 

@@ -4,7 +4,7 @@ RUN apt-get update
 
 RUN apt-get install -y libgstreamer-plugins-base1.0-dev
 
-WORKDIR $GOPATH/src/github.com/creamlab/webrtc-transform
+WORKDIR $GOPATH/src/github.com/creamlab/ducksoup
 
 COPY go.mod .
 COPY go.sum .
@@ -12,7 +12,7 @@ RUN go mod download
 
 COPY . .
 RUN go build
-RUN mkdir /build && cp ./webrtc-transform /build
+RUN mkdir /build && cp ./ducksoup /build
 
 # runner stage
 FROM alpine:latest AS final
@@ -27,6 +27,6 @@ RUN apk add --no-cache gst-plugins-base>1.18 \
 
 
 WORKDIR /app
-COPY --from=builder /build/webrtc-transform .
+COPY --from=builder /build/ducksoup .
 # Launch without cert
-CMD ["./webrtc-transform"]
+CMD ["./ducksoup"]

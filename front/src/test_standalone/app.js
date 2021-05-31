@@ -8,8 +8,8 @@ const FRONT_PREFIX = '/test/';
 
 const DEFAULT_CONSTRAINTS = {
   video: {
-    width: { ideal: 640 },
-    height: { ideal: 480 },
+    width: { ideal: 800 },
+    height: { ideal: 600 },
     frameRate: { ideal: 30 },
     facingMode: { ideal: "user" },
   },

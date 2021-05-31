@@ -12,4 +12,4 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
 
 RUN apt-get install -y gstreamer1.0-libav gstreamer1.0-tools
 
-WORKDIR $GOPATH/src/github.com/creamlab/webrtc-transform
+WORKDIR $GOPATH/src/github.com/creamlab/ducksoup

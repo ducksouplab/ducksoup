@@ -21,7 +21,7 @@ func init() {
 
 func Build() {
 	buildOptions := api.BuildOptions{
-		EntryPoints:       []string{"front/src/1on1/app.js", "front/src/test/app.js", "front/src/embed/app.js"},
+		EntryPoints:       []string{"front/src/embed/app.js", "front/src/test_embed/app.js", "front/src/test_standalone/app.js"},
 		Bundle:            true,
 		MinifyWhitespace:  true,
 		MinifyIdentifiers: true,

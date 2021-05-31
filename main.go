@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"github.com/creamlab/webrtc-transform/front"
-	"github.com/creamlab/webrtc-transform/gst"
-	"github.com/creamlab/webrtc-transform/helpers"
-	"github.com/creamlab/webrtc-transform/server"
+	"github.com/creamlab/ducksoup/front"
+	"github.com/creamlab/ducksoup/gst"
+	"github.com/creamlab/ducksoup/helpers"
+	"github.com/creamlab/ducksoup/server"
 )
 
 func init() {

@@ -1,7 +1,34 @@
-const state = {};
+// State
+let state = {};
 
-// "1" -> true
-const toBool = (v) => Boolean(parseInt(v));
+// Config
+const DEFAULT_CONSTRAINTS = {
+    video: {
+        width: { ideal: 800 },
+        height: { ideal: 600 },
+        frameRate: { ideal: 30 },
+        facingMode: { ideal: "user" },
+    },
+    audio: {
+        sampleSize: 16,
+        channelCount: 1,
+        autoGainControl: false,
+        latency: { ideal: 0.003 },
+        echoCancellation: false,
+        noiseSuppression: false,
+    },
+};
+
+const DEFAULT_PEER_CONFIGURATION = {
+    iceServers: [
+        {
+            urls: "stun:stun.l.google.com:19302",
+        },
+    ],
+};
+
+const SUPPORT_SET_CODEC = window.RTCRtpTransceiver &&
+    'setCodecPreferences' in window.RTCRtpTransceiver.prototype;
 
 const getQueryVariable = (key, deserializeFunc) => {
     const query = window.location.search.substring(1);
@@ -15,62 +42,206 @@ const getQueryVariable = (key, deserializeFunc) => {
     }
 };
 
-const marshallParams = (obj) => encodeURI(btoa(JSON.stringify(obj)));
+const unmarshallParams = (str) => {
+    try {
+        return JSON.parse(atob(decodeURI(str)));
+    } catch(err) {
+        console.log(err);
+        return null;
+    }
+}
+
+const displayDevices = async () => {
+    // needed for safari: getUserMedia before enumerateDevices
+    await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioSourceEl = document.getElementById('audio-source');
+    const videoSourceEl = document.getElementById('video-source');
+    for (let i = 0; i !== devices.length; ++i) {
+        const device = devices[i];
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        if (device.kind === 'audioinput') {
+            option.text = device.label || `microphone ${audioSourceEl.length + 1}`;
+            audioSourceEl.appendChild(option);
+        } else if (device.kind === 'videoinput') {
+            option.text = device.label || `camera ${videoSourceEl.length + 1}`;
+            videoSourceEl.appendChild(option);
+        }
+    }
+}
+
+const sendToParent = (message) => {
+    if (window.parent) {
+        window.parent.postMessage(message, state.origin)
+    }
+}
+
+const areParamsValid = ({origin, room, name, proc, duration, uid}) => {
+    return  typeof origin !== 'undefined' &&
+            typeof room !== 'undefined' &&
+            typeof uid !== 'undefined' &&
+            typeof name !== 'undefined' &&
+            typeof proc !== 'undefined' &&
+            !isNaN(duration);
+}
 
 const init = async () => {
-    const room = getQueryVariable("room");
-    const uid = getQueryVariable("uid");
-    const name = getQueryVariable("name");
-    const proc = getQueryVariable("proc", toBool);
-    const h264 = getQueryVariable("h264", toBool);
-    const duration = getQueryVariable("duration", (v) => parseInt(v, 10));
-    if (typeof room === 'undefined' || typeof uid === 'undefined' || typeof name === 'undefined' || typeof proc === 'undefined' || isNaN(duration)) {
-        document.getElementById("error").classList.remove("d-none");
-        document.getElementById("embed").classList.add("d-none");
+    // required state
+    const params = unmarshallParams(getQueryVariable("params"));
+
+    if (!areParamsValid(params)) {
+        document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
-        const params = { room, uid, name, proc, duration, h264 };
-        state.uid = uid;
-        document.getElementById("embed").src = `/1on1/?params=${marshallParams(params)}`;
+        // prefer H264
+        if (SUPPORT_SET_CODEC && params.h264) {
+            const { codecs } = RTCRtpSender.getCapabilities('video');
+            state.preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
+                if (mt1.includes("264")) return -1;
+                if (mt2.includes("264")) return 1;
+                return 0;
+            })
+        }
+        state = { ...state, ...params };
+
+        try {
+            // Init UX
+            await displayDevices();
+            await startRTC();
+        } catch (err) {
+            console.error(err);
+            stop("error");
+        }
     }
 };
 
-document.addEventListener("DOMContentLoaded", init);
+const forceMozillaMono = (sdp) => {
+    if (!window.navigator.userAgent.includes("Mozilla")) return sdp;
+    return sdp
+        .split("\r\n")
+        .map((line) => {
+            if (line.startsWith("a=fmtp:111")) {
+                return line.replace("stereo=1", "stereo=0");
+            } else {
+                return line;
+            }
+        })
+        .join("\r\n");
+};
 
-const hideEmbed = () => {
-    document.getElementById("stopped").classList.remove("d-none");
-    document.getElementById("embed").classList.add("d-none");
+const processSDP = (sdp) => {
+    const output = forceMozillaMono(sdp);
+    return output;
+};
+
+const stop = (reason) => {
+    const message = typeof reason === "string" ? { kind: reason } : reason;
+    state.stream.getTracks().forEach((track) => track.stop());
+    sendToParent(message);
 }
 
-const replaceMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML = message;
-    hideEmbed();
-}
+const startRTC = async () => {
+    // RTCPeerConnection
+    const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
 
-const appendMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML += '<br/>' + message;
-    hideEmbed();
-}
+    // Add local tracks before signaling
+    const constraints = {
+        audio: { ...DEFAULT_CONSTRAINTS.audio, ...state.audio },
+        video: { ...DEFAULT_CONSTRAINTS.video, ...state.video },
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    state.stream = stream;
 
-// communication with iframe
-window.addEventListener("message", (event) => {
-    if (event.origin !== window.location.origin) return;
-
-    const { kind, payload } = event.data;
-    if (event.data.kind === "finish") {
-        if(payload && payload[state.uid]) {
-            let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
-            html += payload[state.uid].join("<br/>");
-            replaceMessage(html);
-        } else {
-            replaceMessage("Conversation terminée");
-        }
-    } else if (kind === "error-full") {
-        replaceMessage("Connexion refusée (salle complète)");
-    } else if (kind === "error-duplicate") {
-        replaceMessage("Connexion refusée (déjà connecté-e)");
-    } else if (kind === "disconnected") {
-        appendMessage("Connexion perdue");
-    } else if (kind === "error") {
-        replaceMessage("Erreur");
+    if (SUPPORT_SET_CODEC && state.h264) {
+        const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
+        transceiver.setCodecPreferences(state.preferredCodecs);
     }
-});
+
+    // Signaling
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
+
+    ws.onopen = function () {
+        const { room, name, proc, duration, uid, h264 } = state;
+        ws.send(
+            JSON.stringify({
+                kind: "join",
+                payload: JSON.stringify({ room, name, duration, uid, proc, h264 }),
+            })
+        );
+    };
+
+    ws.onclose = function () {
+        console.log("[ws] closed");
+        stop("disconnected");
+    };
+
+    ws.onerror = function (event) {
+        console.error("[ws] error: " + event.data);
+        stop("error");
+    };
+
+    ws.onmessage = async function (event) {
+        let message = JSON.parse(event.data);
+        if (!message) return console.error("[ws] can't parse message");
+
+        if (message.kind === "offer") {
+            const offer = JSON.parse(message.payload);
+            if (!offer) {
+                return console.error("[ws] can't parse offer");
+            }
+            console.log("[ws] received offer");
+            pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            answer.sdp = processSDP(answer.sdp);
+            pc.setLocalDescription(answer);
+            ws.send(
+                JSON.stringify({
+                    kind: "answer",
+                    payload: JSON.stringify(answer),
+                })
+            );
+        } else if (message.kind === "candidate") {
+            const candidate = JSON.parse(message.payload);
+            if (!candidate) {
+                return console.error("[ws] can't parse candidate");
+            }
+            console.log("[ws] candidate");
+            pc.addIceCandidate(candidate);
+        } else if (message.kind === "start") {
+            console.log("[ws] start");
+        } else if (message.kind === "finishing") {
+            console.log("[ws] finishing");
+            document.getElementById("finishing").classList.remove("d-none");
+        } else if (message.kind.startsWith("error") || message.kind === "finish") {
+            stop(message);
+        }
+    };
+
+    pc.onicecandidate = (e) => {
+        if (!e.candidate) return;
+        ws.send(
+            JSON.stringify({
+                kind: "candidate",
+                payload: JSON.stringify(e.candidate),
+            })
+        );
+    };
+
+    pc.ontrack = function (event) {
+        let el = document.createElement(event.track.kind);
+        el.id = event.track.id;
+        el.srcObject = event.streams[0];
+        el.autoplay = true;
+        document.getElementById("placeholder").appendChild(el);
+
+        event.streams[0].onremovetrack = ({ track }) => {
+            const el = document.getElementById(track.id);
+            if (el) el.parentNode.removeChild(el);
+        };
+    };
+};
+
+
+document.addEventListener("DOMContentLoaded", init);

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/creamlab/webrtc-transform/engine"
-	"github.com/creamlab/webrtc-transform/gst"
+	"github.com/creamlab/ducksoup/engine"
+	"github.com/creamlab/ducksoup/gst"
 	"github.com/pion/webrtc/v3"
 )
 
