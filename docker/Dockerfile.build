@@ -13,8 +13,8 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# copy source and certs
+# Copy source and certs
 COPY . .
 RUN go build
 
-CMD ./ducksoup 
+CMD ./ducksoup

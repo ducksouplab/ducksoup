@@ -12,7 +12,10 @@ RUN go mod download
 
 COPY . .
 RUN go build
-RUN mkdir /build && cp ./ducksoup /build
+RUN mkdir /build
+RUN cp ./ducksoup /build
+RUN cp -r ./config /build
+RUN cp -r ./front /build
 
 # runner stage
 FROM alpine:latest AS final
@@ -25,8 +28,7 @@ RUN apk add --no-cache gst-plugins-base>1.18 \
     gstreamer>1.18 \
     gstreamer-dev>1.18
 
-
 WORKDIR /app
 COPY --from=builder /build/ducksoup .
-# Launch without cert
-CMD ["./ducksoup"]
+
+CMD ./ducksoup

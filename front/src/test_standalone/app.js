@@ -4,7 +4,7 @@ const state = {
 };
 
 // Config
-const FRONT_PREFIX = '/test/';
+const FRONT_PREFIX = '/test_standalone/';
 
 const DEFAULT_CONSTRAINTS = {
   video: {

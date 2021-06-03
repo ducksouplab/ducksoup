@@ -63,25 +63,25 @@ go build
 
 ## Environment variables
 
-- ORIGINS=https://origin1,https://origin2:8000 declares comma separated allowed origins for WebSocket connections
-- APP_ENV=DEV enables automatic front-end assets build with esbuild + adds http://localhost:8080 to allowed origins for WebSocket connections
+- DS_PORT=9000 (8000 is the default value) to set port listen by server
+- DS_ORIGINS=https://origin1,https://origin2:8080 declares comma separated allowed origins for WebSocket connections
+- DS_ENV=DEV enables automatic front-end assets build with esbuild + adds a few allowed origins for WebSocket connections
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
 
 ## Run DuckSoup
 
-Run (with or without environment variables):
+Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted WebSocket origin is declared):
 
 ```
-./ducksoup
-APP_ENV=DEV ./ducksoup
-ORIGINS= https://website-calling-ducksoup.example.com ./ducksoup
+DS_ENV=DEV ./ducksoup
+DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup
 ```
 
 With TLS:
 
 ```
-./ducksoup --cert certs/cert.pem --key certs/key.pem
-APP_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
+DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
+DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
 ## Test front-ends
@@ -93,8 +93,8 @@ Several test front-ends are available:
 
 Once the app is running, you may try it with:
 
-- http://localhost:8080/test_embed/ (in several tabs)
-- http://localhost:8080/test_standalone/ (in several tabs)
+- http://localhost:8000/test_embed/ (in several tabs)
+- http://localhost:8000/test_standalone/ (in several tabs)
 
 ## Websocket messages
 
@@ -114,7 +114,7 @@ When `./ducksoup` is launched (see `front/build.go` to configure and build new f
 It's also possible to watch changes and rebuild those files by adding this environment variable:
 
 ```
-APP_ENV=DEV ./ducksoup
+DS_ENV=DEV ./ducksoup
 ```
 
 ## Add custom GStreamer plugins in lib/
@@ -127,29 +127,31 @@ export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 
 ## Run with Docker
 
-Generate certs (see above) and then:
+
+Build and run docker image:
+```
+docker build -f docker/Dockerfile.build -t ducksoup:latest .
+```
+
+Or prefer the multistage build:
+```
+docker build -f docker/Dockerfile.build.multi-debian -t ducksoup:latest .
+```
+
+Deploy image to docker hub:
 
 ```
-docker build -t ducksoup:latest .
-docker container run -p 8080:8080 --rm ducksoup:latest
+docker tag ducksoup altg/ducksoup
+docker push altg/ducksoup:latest
+```
+
+Run:
+
+```
+docker container run -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm altg/ducksoup:latest
 # or enter the container
-docker container run -p 8080:8080 -it --entrypoint /bin/bash ducksoup:latest
+docker container run -p 8000:8000 -it --entrypoint /bin/bash ducksoup:latest
 ```
-
-To try without certs:
-
-```
-docker build -f docker/Dockerfile.no-tls -t ducksoup:latest .
-docker container run -p 8080:8080 -rm ducksoup:latest
-```
-
-## Issues with Docker
-
-`Dockerfile.multi-*` are intended to build multi-layered Docker images, separating building step _and_ dependencies from the final running environment. It currently does not work (INVESTIGATION NEEDED)
-
-Hint for multi-debian: debug go execution, and check for relevant gstreamer runtime dependencies (try to add same apt dependencies in build and run stages, then clean up)
-
-Hint for multi-alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists). Maybe easier to fix multi-debian first. See https://github.com/pion/ion/blob/master/docker/sfu.Dockerfile
 
 ## Concepts in Go code
 
@@ -159,3 +161,7 @@ On each connection to the websocket endpoint in `server.go` a new PeerServer (se
 - join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
 
 Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
+
+## Issues
+
+Docker multistage build does not work for alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists).

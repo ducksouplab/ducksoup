@@ -15,8 +15,8 @@ import (
 )
 
 var (
+	port           string
 	allowedOrigins = []string{}
-	addr           = flag.String("addr", ":8080", "http service address")
 	cert           = flag.String("cert", "", "cert file")
 	key            = flag.String("key", "", "key file")
 	upgrader       = websocket.Upgrader{
@@ -29,12 +29,12 @@ var (
 )
 
 func init() {
-	envOrigins := os.Getenv("ORIGINS")
+	envOrigins := os.Getenv("DS_ORIGINS")
 	if len(envOrigins) > 0 {
 		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
 	}
-	if os.Getenv("APP_ENV") == "DEV" {
-		allowedOrigins = append(allowedOrigins, "https://localhost:8000", "https://localhost:8080", "http://localhost:8080")
+	if os.Getenv("DS_ENV") == "DEV" {
+		allowedOrigins = append(allowedOrigins, "https://localhost:8080", "https://localhost:8000", "http://localhost:8000")
 	}
 }
 
@@ -73,19 +73,27 @@ func ListenAndServe() {
 	// websocket handler
 	router.HandleFunc("/ws", websocketHandler)
 
+	// port
+	port := ":" + os.Getenv("DS_PORT")
+	if len(port) < 2 {
+		port = ":8000"
+	}
+
 	server := &http.Server{
 		Handler:      router,
-		Addr:         *addr,
+		Addr:         port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
+	log.Println(port)
+
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Println("[main] listening on https://", *addr)
+		log.Println("[main] https listening on " + port)
 		log.Fatal(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Println("[main] listening on http://", *addr)
+		log.Println("[main] http listening on " + port)
 		log.Fatal(server.ListenAndServe()) // blocking
 	}
 }

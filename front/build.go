@@ -12,7 +12,7 @@ var (
 )
 
 func init() {
-	if os.Getenv("APP_ENV") == "DEV" {
+	if os.Getenv("DS_ENV") == "DEV" {
 		developmentMode = true
 	}
 }

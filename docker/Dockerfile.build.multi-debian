@@ -12,7 +12,10 @@ RUN go mod download
 
 COPY . .
 RUN go build
-RUN mkdir /build && cp ./ducksoup /build
+RUN mkdir /build
+RUN cp ./ducksoup /build
+RUN cp -r ./config /build
+RUN cp -r ./front /build
 
 # runner stage
 FROM debian:latest AS final
@@ -24,6 +27,6 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-ugly
 
 WORKDIR /app
-COPY --from=builder /build/ducksoup .
-# Launch without cert
+COPY --from=builder /build .
+
 CMD ./ducksoup
