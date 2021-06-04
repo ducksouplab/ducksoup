@@ -26,7 +26,7 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly
 
-# provisionned through compose so no user creation is needed
+# no need to adduser, calling docker set up to mount /etc/passwd as a volume
 USER deploy
 
 WORKDIR /app
