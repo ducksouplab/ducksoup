@@ -1,10 +1,8 @@
 certs
 ducksoup
-.DS_Store
 
 # logs and recorded data
 logs
-docker/data
 
 # license and SDK
 lib
@@ -13,3 +11,9 @@ lib
 
 # front build assets
 front/static/assets/scripts
+
+# docker data folders
+docker/lib
+docker/logs
+
+.DS_Store

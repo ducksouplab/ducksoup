@@ -41,8 +41,8 @@ ARG appuser
 ARG appgroup
 
 COPY --from=builder --chown=$appuser:$appgroup /build .
-RUN mkdir -p logs
-RUN chown -R $appuser:$appgroup ./logs
+RUN mkdir -p lib logs
+RUN chown -R $appuser:$appgroup lib logs
 USER $appuser:$appgroup
 
 # uncommend when need help find missing dependencies

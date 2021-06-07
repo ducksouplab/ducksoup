@@ -15,4 +15,5 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - ./data/logs:/app/logs
+      - ./logs:/app/logs
+      - ./lib:/app/lib

@@ -142,10 +142,15 @@ docker exec -it ducksoup_1 /bin/bash
 ```
 
 Run with docker-compose, thus binding volumes and persisting logs data (in `docker/data/logs`):
+
 ```
-mkdir -p docker/data/logs
-chown -R deploy:deploy docker/data
-DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build 
+mkdir -p docker/lib
+mkdir -p docker/logs
+sudo chown deploy:deploy docker/lib
+sudo chown deploy:deploy docker/logs
+DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
+# and if needed enter the running ducksoup_1 container
+docker exec -it docker_ducksoup_1 /bin/bash
 ```
 
 ### Multistage Dockerfile

@@ -20,10 +20,11 @@ RUN go build
 
 ARG appuser
 ARG appgroup
-RUN mkdir -p logs
-RUN chown -R $appuser:$appgroup ./logs
-RUN chown -R $appuser:$appgroup ./front/static
+RUN mkdir -p lib logs
+RUN chown -R $appuser:$appgroup lib logs front/static
 USER $appuser:$appgroup
+
+ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/lib"
 
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
