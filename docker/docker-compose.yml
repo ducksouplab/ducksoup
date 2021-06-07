@@ -6,8 +6,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.build
       args:
-        - appuser=${DS_USER}
-        - appgroup=${DS_GROUP}
+        - appuser=$DS_USER
+        - appgroup=$DS_GROUP
     restart: unless-stopped
     environment:
       - DS_PORT=8000
