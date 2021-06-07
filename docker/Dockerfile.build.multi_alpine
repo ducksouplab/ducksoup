@@ -6,10 +6,12 @@ RUN apt-get install -y libgstreamer-plugins-base1.0-dev
 
 WORKDIR $GOPATH/src/github.com/creamlab/ducksoup
 
+# layer with deps
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
+# layer (more frequently updated) with source
 COPY . .
 RUN go build
 RUN mkdir /build
@@ -28,7 +30,25 @@ RUN apk add --no-cache gst-plugins-base>1.18 \
     gstreamer>1.18 \
     gstreamer-dev>1.18
 
+RUN apk add libc6-compat
+
+# uncommend when need help find missing dependencies
+# RUN apk add file
+
 WORKDIR /app
-COPY --from=builder /build/ducksoup .
+
+ARG appuser
+ARG appgroup
+
+COPY --from=builder --chown=$appuser:$appgroup /build .
+RUN mkdir -p logs
+RUN chown -R $appuser:$appgroup ./logs
+USER $appuser:$appgroup
+
+# uncommend when need help find missing dependencies
+# RUN file /app/ducksoup
+
+# Build front assets once
+RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 CMD ./ducksoup

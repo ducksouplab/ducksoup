@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  ducksoup:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.build
+      args:
+        - appuser=${DS_USER}
+        - appgroup=${DS_GROUP}
+    restart: unless-stopped
+    environment:
+      - DS_PORT=8000
+      - DS_ORIGINS=http://localhost:8000
+    ports:
+      - 8000:8000
+    volumes:
+      - ./data/logs:/app/logs

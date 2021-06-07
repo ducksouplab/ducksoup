@@ -7,17 +7,25 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-ugly \
     libgstreamer-plugins-base1.0-dev
 
-# no need to adduser, calling docker set up to mount /etc/passwd as a volume
-USER deploy
+WORKDIR /app
 
-WORKDIR $GOPATH/src/github.com/creamlab/ducksoup
-
+# layer with deps
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# Copy source and certs
+# layer (more frequently updated) with source
 COPY . .
 RUN go build
+
+ARG appuser
+ARG appgroup
+RUN mkdir -p logs
+RUN chown -R $appuser:$appgroup ./logs
+RUN chown -R $appuser:$appgroup ./front/static
+USER $appuser:$appgroup
+
+# Build front assets once
+RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 CMD ./ducksoup

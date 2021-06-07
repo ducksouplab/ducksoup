@@ -1,0 +1,11 @@
+.devcontainer
+logs
+certs
+docker
+LICENSE
+README.md
+
+# license and SDK
+lib
+*.uid
+*.key

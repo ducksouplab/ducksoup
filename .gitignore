@@ -4,6 +4,7 @@ ducksoup
 
 # logs and recorded data
 logs
+docker/data
 
 # license and SDK
 lib

@@ -127,30 +127,57 @@ export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 
 ## Run with Docker
 
-
-Build and run docker image:
-```
-docker build -f docker/Dockerfile.build -t ducksoup:latest .
-```
-
-Or prefer the multistage build:
-```
-docker build -f docker/Dockerfile.build.multi-debian -t ducksoup:latest .
-```
-
-Deploy image to docker hub:
+The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
 
 ```
-docker tag ducksoup altg/ducksoup
-docker push altg/ducksoup:latest
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
 Run:
 
 ```
-docker container run -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm altg/ducksoup:latest
-# or enter the container
-docker container run -p 8000:8000 -it --entrypoint /bin/bash ducksoup:latest
+docker run --name ducksoup_1 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup:latest
+# and if needed enter the running ducksoup_1 container
+docker exec -it ducksoup_1 /bin/bash
+```
+
+Run with docker-compose, thus binding volumes and persisting logs data (in `docker/data/logs`):
+```
+mkdir -p docker/data/logs
+chown -R deploy:deploy docker/data
+DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build 
+```
+
+### Multistage Dockerfile
+
+If the goal is to distribute and minimize the image size, consider the multistage build:
+
+```
+# debian
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_debian -t ducksoup_multi_debian:latest .
+# alpine
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_alpine -t ducksoup_multi_alpine:latest .
+```
+
+Deploy multi debian image to docker hub:
+
+```
+docker tag ducksoup_multi_debian altg/ducksoup
+docker push altg/ducksoup:latest
+```
+
+Run debian:
+
+```
+docker run --name ducksoup_multi_1 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup_multi:latest
+# and if needed enter the running ducksoup_1 container
+docker exec -it ducksoup_multi_1 /bin/bash
+```
+
+Run alpine:
+
+```
+docker run --name ducksoup_multi_2 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup_multi_alpine:latest
 ```
 
 ## Concepts in Go code
@@ -161,7 +188,3 @@ On each connection to the websocket endpoint in `server.go` a new PeerServer (se
 - join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
 
 Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
-
-## Issues
-
-Docker multistage build does not work for alpine: apparent missing dependency to be found (https://superuser.com/questions/1176200/no-such-file-when-it-exists).
