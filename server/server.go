@@ -22,7 +22,7 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Println(origin)
+			log.Println("[ws] upgrade from origin: ", origin)
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
@@ -68,13 +68,14 @@ func ListenAndServe() {
 	// html
 	router.PathPrefix("/embed/").Handler(http.StripPrefix("/embed/", http.FileServer(http.Dir("./front/static/pages/embed/"))))
 	router.PathPrefix("/test_embed/").Handler(http.StripPrefix("/test_embed/", http.FileServer(http.Dir("./front/static/pages/test_embed/"))))
+	router.PathPrefix("/test_mirror/").Handler(http.StripPrefix("/test_mirror/", http.FileServer(http.Dir("./front/static/pages/test_mirror/"))))
 	router.PathPrefix("/test_standalone/").Handler(http.StripPrefix("/test_standalone/", http.FileServer(http.Dir("./front/static/pages/test_standalone/"))))
 
 	// websocket handler
 	router.HandleFunc("/ws", websocketHandler)
 
 	// port
-	port := ":" + os.Getenv("DS_PORT")
+	port = ":" + os.Getenv("DS_PORT")
 	if len(port) < 2 {
 		port = ":8000"
 	}
@@ -85,8 +86,6 @@ func ListenAndServe() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-
-	log.Println(port)
 
 	// start HTTP server
 	if *key != "" && *cert != "" {

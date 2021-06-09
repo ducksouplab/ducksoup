@@ -59,6 +59,7 @@ const init = async () => {
       if (device.kind === "audioinput") {
         const li = document.createElement("li");
         const a = document.createElement("a");
+        a.classList.add("dropdown-item");
         a.href = "#";
         a.text = device.label || `microphone ${audioInputSelect.length + 1}`;
         a.addEventListener("click", () => {
@@ -97,8 +98,8 @@ const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr
 
 const startRTC = async () => {
   // UX
-  document.getElementById("start-container").classList.add("hide");
-  document.getElementById("stop-container").classList.remove("hide");
+  document.getElementById("start").classList.add("d-none");
+  document.getElementById("stop").classList.remove("d-none");
 
   // RTCPeerConnection
   const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
@@ -124,7 +125,7 @@ const startRTC = async () => {
     ws.send(
       JSON.stringify({
         kind: "join",
-        payload: JSON.stringify({ name, room, proc: true, uid: randomId() }),
+        payload: JSON.stringify({ name, room, proc: true, uid: randomId(), h264: true }),
       })
     );
   };
@@ -141,41 +142,36 @@ const startRTC = async () => {
     let message = JSON.parse(event.data);
     if (!message) return console.error("failed to parse message");
 
-    switch (message.kind) {
-      case "offer": {
-        const offer = JSON.parse(message.payload);
-        if (!offer) {
-          return console.error("failed to parse answer");
-        }
-        pc.setRemoteDescription(offer);
-        const answer = await pc.createAnswer();
-        answer.sdp = processSDP(answer.sdp);
-        pc.setLocalDescription(answer);
-        ws.send(
-          JSON.stringify({
-            kind: "answer",
-            payload: JSON.stringify(answer),
-          })
-        );
-        break;
+    const { kind, payload } = message;
+
+    if (kind === "offer") {
+      const offer = JSON.parse(payload);
+      if (!offer) {
+        return console.error("failed to parse answer");
       }
-      case "candidate": {
-        const candidate = JSON.parse(message.payload);
-        if (!candidate) {
-          return console.error("failed to parse candidate");
-        }
-        pc.addIceCandidate(candidate);
-        break;
+      pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      answer.sdp = processSDP(answer.sdp);
+      pc.setLocalDescription(answer);
+      ws.send(
+        JSON.stringify({
+          kind: "answer",
+          payload: JSON.stringify(answer),
+        })
+      );
+    } else if (kind === "candidate") {
+      const candidate = JSON.parse(payload);
+      if (!candidate) {
+        return console.error("failed to parse candidate");
       }
-      case "stop": {
-        window.location.href = `${FRONT_PREFIX}end/`;
-        break;
-      }
-      case "error": {
-        window.location.href = `${FRONT_PREFIX}full/`;
-        break;
-      }
-    }
+      pc.addIceCandidate(candidate);
+    } else if (kind === "finishing") {
+      document.getElementById("finishing").classList.remove("d-none");
+    } else if (kind === "finish") {
+      window.location.href = `${FRONT_PREFIX}end/`;
+    } else if (kind === "error-full") {
+      window.location.href = `${FRONT_PREFIX}full/`;
+    } 
   };
 
   pc.onicecandidate = (e) => {
@@ -193,7 +189,7 @@ const startRTC = async () => {
     el.id = event.track.id;
     el.srcObject = event.streams[0];
     el.autoplay = true;
-    document.getElementById("remote").appendChild(el);
+    document.getElementById("placeholder").appendChild(el);
 
     event.streams[0].onremovetrack = ({ track }) => {
       const el = document.getElementById(track.id);
@@ -271,8 +267,6 @@ const logStats = async (pc) => {
 document.addEventListener("DOMContentLoaded", init);
 // UX
 document.addEventListener("DOMContentLoaded", () => {
-  const elems = document.querySelectorAll(".dropdown-trigger");
-  const instances = M.Dropdown.init(elems, { constrainWidth: false });
   document.getElementById("start").addEventListener("click", startRTC);
   document
     .getElementById("stop")

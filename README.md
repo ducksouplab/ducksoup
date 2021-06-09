@@ -28,7 +28,7 @@ Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
 
 - may contain:
 
-  - h264 (boolean) if h264 encoding should be preferred (vp8 is default)
+  - videoCodec (string) possible values: "vp8" (default if none), "h264" or "vp9"
   - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
 
@@ -93,8 +93,9 @@ Several test front-ends are available:
 
 Once the app is running, you may try it with:
 
-- http://localhost:8000/test_embed/ (in several tabs)
-- http://localhost:8000/test_standalone/ (in several tabs)
+- http://localhost:8000/test_embed/ (two users -> two tabs)
+- http://localhost:8000/test_standalone/ (two users -> two tabs)
+- http://localhost:8000/test_mirror/ (one user)
 
 ## Websocket messages
 

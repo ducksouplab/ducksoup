@@ -81,6 +81,7 @@ func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr
 		panic("Unhandled codec " + codecName)
 	}
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
+	log.Println(pipelineStr)
 	return
 }
 

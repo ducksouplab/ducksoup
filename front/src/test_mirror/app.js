@@ -1,5 +1,7 @@
 const state = {};
 
+const DEFAULT_VIDEO_CODECS = ["h264", "vp8", "vp9"];
+
 // "1" -> true
 const toBool = (v) => Boolean(parseInt(v));
 
@@ -17,32 +19,62 @@ const getQueryVariable = (key, deserializeFunc) => {
 
 const marshallParams = (obj) => encodeURI(btoa(JSON.stringify(obj)));
 
-const init = async () => {
-    const room = getQueryVariable("room");
-    const uid = getQueryVariable("uid");
-    const name = getQueryVariable("name");
-    const proc = getQueryVariable("proc", toBool);
-    const videoCodec = getQueryVariable("videoCodec");
-    const duration = getQueryVariable("duration", (v) => parseInt(v, 10));
-    if (typeof room === 'undefined' || typeof uid === 'undefined' || typeof name === 'undefined' || typeof proc === 'undefined' || isNaN(duration)) {
-        document.getElementById("error").classList.remove("d-none");
-        document.getElementById("embed").classList.add("d-none");
-    } else {
-        const params = {
-            origin: window.location.origin,
-            room,
-            uid,
-            name,
-            proc,
-            duration,
-            videoCodec
-        };
-        state.uid = uid;
-        document.getElementById("embed").src = `/embed/?params=${marshallParams(params)}`;
-    }
+const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
+
+const init = () => {
+    let videoCodecs = DEFAULT_VIDEO_CODECS;
+    // dropwdown
+    const codecSelect = document.getElementById("codec-select");
+    videoCodecs.forEach(vc => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.classList.add("dropdown-item");
+      a.href = "#";
+      a.text = vc;
+      a.addEventListener("click", () => {
+        state.videoCodec = vc;
+        document.getElementById("codec-label").textContent = state.videoCodec;
+      });
+      li.appendChild(a);
+      codecSelect.appendChild(li);
+    });
+    // default
+    state.videoCodec = DEFAULT_VIDEO_CODECS[0];
+    document.getElementById("codec-label").textContent = state.videoCodec;
+}
+
+const start = async () => {
+    const room = randomId();
+    const uid = randomId();
+    const name = uid;
+    const proc = false;
+    const duration = 20;
+    
+    const params = {
+        origin: window.location.origin,
+        room,
+        uid,
+        name,
+        proc,
+        duration,
+        size: 1, // size 1 for mirroring
+        ...(state.videoCodec && { videoCodec: state.videoCodec }) // optional
+    };
+    state.uid = uid;
+    document.getElementById("embed").src = `/embed/?params=${marshallParams(params)}`;
+    document.getElementById("start").classList.add("d-none");
+    document.getElementById("stop").classList.remove("d-none");
+
 };
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+    init();
+    document.getElementById("start").addEventListener("click", start);
+    document
+      .getElementById("stop")
+      .addEventListener("click", () => location.reload());
+  });
+  
 
 const hideEmbed = () => {
     document.getElementById("stopped").classList.remove("d-none");
@@ -64,7 +96,7 @@ window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin) return;
 
     const { kind, payload } = event.data;
-    if (event.data.kind === "finish") {
+    if (kind === "finish") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
             html += payload[state.uid].join("<br/>");

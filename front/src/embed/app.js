@@ -86,23 +86,36 @@ const areParamsValid = ({origin, room, name, proc, duration, uid}) => {
             !isNaN(duration);
 }
 
+const filterParams = (params) => {
+    // explicit list, without origin
+    let { room, name, proc, duration, uid, size, videoCodec } = params;
+    if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
+    if(isNaN(size)) size = null;
+    return {
+        room, name, proc, duration, uid,
+        ...(videoCodec && { videoCodec }), // add if not null
+        ...(size && { size })
+    };
+}
+
 const init = async () => {
-    // required state
-    const params = unmarshallParams(getQueryVariable("params"));
+    // required join params
+    let params = unmarshallParams(getQueryVariable("params"));
 
     if (!areParamsValid(params)) {
         document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
-        // prefer H264
-        if (SUPPORT_SET_CODEC && params.h264) {
+        params = filterParams(params);
+        // prefer specified codec
+        if (SUPPORT_SET_CODEC && params.videoCodec) {
             const { codecs } = RTCRtpSender.getCapabilities('video');
             state.preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
-                if (mt1.includes("264")) return -1;
-                if (mt2.includes("264")) return 1;
+                if (mt1.includes(params.videoCodec)) return -1;
+                if (mt2.includes(params.videoCodec)) return 1;
                 return 0;
             })
         }
-        state = { ...state, ...params };
+        state.joinParams = params;
 
         try {
             // Init UX
@@ -153,7 +166,7 @@ const startRTC = async () => {
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     state.stream = stream;
 
-    if (SUPPORT_SET_CODEC && state.h264) {
+    if (SUPPORT_SET_CODEC && state.params && state.params.videoCodec) {
         const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
         transceiver.setCodecPreferences(state.preferredCodecs);
     }
@@ -163,11 +176,10 @@ const startRTC = async () => {
     const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
     ws.onopen = function () {
-        const { room, name, proc, duration, uid, h264 } = state;
         ws.send(
             JSON.stringify({
                 kind: "join",
-                payload: JSON.stringify({ room, name, duration, uid, proc, h264 }),
+                payload: JSON.stringify(state.joinParams),
             })
         );
     };

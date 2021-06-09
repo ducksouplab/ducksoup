@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"log"
+
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
@@ -8,6 +10,7 @@ import (
 )
 
 func NewWebRTCAPI(names []string) (*webrtc.API, error) {
+	log.Println("api ", names)
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
@@ -52,7 +55,7 @@ func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 		}
 	}
 
-	if helpers.Contains([]string{}, "vp9") {
+	if helpers.Contains(names, "vp9") {
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -84,7 +87,7 @@ func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 		}
 	}
 
-	if helpers.Contains([]string{}, "h264") {
+	if helpers.Contains(names, "h264") {
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{

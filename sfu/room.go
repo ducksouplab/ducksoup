@@ -13,6 +13,7 @@ import (
 
 const (
 	DefaultSize          = 2
+	MaxSize              = 8
 	DefaultTracksPerPeer = 2
 	DefaultDuration      = 30
 	MaxDuration          = 1200
@@ -71,6 +72,15 @@ func newRoom(joinPayload JoinPayload) *Room {
 		duration = MaxDuration
 	}
 
+	// process size
+	size := joinPayload.Size
+	log.Println(size)
+	if size < 1 {
+		size = DefaultSize
+	} else if size > MaxSize {
+		size = MaxSize
+	}
+
 	// room initialized with one connected peer
 	connectedIndex := make(map[string]bool)
 	connectedIndex[joinPayload.UserId] = true
@@ -85,10 +95,10 @@ func newRoom(joinPayload JoinPayload) *Room {
 		trackIndex:       map[string]*webrtc.TrackLocalStaticRTP{},
 		waitForAllCh:     make(chan struct{}),
 		finishCh:         make(chan struct{}),
-		id:               joinPayload.Room,
-		size:             DefaultSize,
-		tracksPerPeer:    DefaultTracksPerPeer,
 		tracksReadyCount: 0,
+		id:               joinPayload.Room,
+		size:             size,
+		tracksPerPeer:    DefaultTracksPerPeer,
 		duration:         duration,
 	}
 }
@@ -273,12 +283,15 @@ func (r *Room) UpdateSignaling() {
 				}
 			}
 
-			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-			for _, receiver := range peerConn.GetReceivers() {
-				if receiver.Track() == nil {
-					continue
+			// when room size is 1, it acts as a mirror
+			if r.size != 1 {
+				// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
+				for _, receiver := range peerConn.GetReceivers() {
+					if receiver.Track() == nil {
+						continue
+					}
+					existingSenders[receiver.Track().ID()] = true
 				}
-				existingSenders[receiver.Track().ID()] = true
 			}
 
 			// add all track we aren't sending yet to the PeerConnection

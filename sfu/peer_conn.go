@@ -25,11 +25,15 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 
 func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
 	userId := joinPayload.UserId
+
 	// create RTC API with given set of codecs
-	codecs := []string{"vp8", "opus"}
-	if joinPayload.H264 {
-		codecs = []string{"h264", "opus"}
+	codecs := []string{"opus"}
+	if len(joinPayload.VideoCodec) > 0 {
+		codecs = append(codecs, joinPayload.VideoCodec)
+	} else {
+		codecs = append(codecs, "vp8")
 	}
+
 	api, err := engine.NewWebRTCAPI(codecs)
 	if err != nil {
 		log.Print(err)
