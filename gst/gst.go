@@ -19,6 +19,7 @@ import (
 var opusProcPipeline string
 var opusRawPipeline string
 var vp8ProcPipeline string
+
 var vp8RawPipeline string
 var h264ProcPipeline string
 var h264RawPipeline string
@@ -29,7 +30,7 @@ func init() {
 	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
 	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
 	h264ProcPipeline = helpers.ReadConfig("h264-proc-rec")
-	h264RawPipeline = helpers.ReadConfig("h264-norec")
+	h264RawPipeline = helpers.ReadConfig("h264-raw-rec")
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
