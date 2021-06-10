@@ -1,9 +1,10 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
-application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
+application/x-rtp,encoding-name=H264 ! 
 tee name=teein ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
 rtpjitterbuffer latency=100 ! 
-rtpvp8depay! 
+rtph264depay !
+h264parse !  
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
 teein. ! 

@@ -8,10 +8,8 @@ package gst
 import "C"
 import (
 	"log"
-	"math/rand"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/creamlab/ducksoup/helpers"
@@ -30,7 +28,7 @@ func init() {
 	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
 	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
 	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
-	h264ProcPipeline = helpers.ReadConfig("h264-norec")
+	h264ProcPipeline = helpers.ReadConfig("h264-proc-rec")
 	h264RawPipeline = helpers.ReadConfig("h264-norec")
 }
 
@@ -45,15 +43,6 @@ type Pipeline struct {
 
 var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
-
-func randomEffect() string {
-	rand.Seed(time.Now().Unix())
-	// options := []string{
-	// 	"rippletv", "dicetv", "edgetv", "optv", "quarktv", "radioactv", "warptv", "shagadelictv", "streaktv", "vertigotv",
-	// }
-	options := []string{"identity"}
-	return options[rand.Intn(len(options))]
-}
 
 func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr string) {
 	codecName = strings.ToLower(codecName)
@@ -86,7 +75,11 @@ func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr
 }
 
 func fileName(prefix string, kind string, suffix string) string {
-	return prefix + "-" + kind + "-" + suffix
+	ext := ".mkv"
+	if kind == "audio" {
+		ext = ".ogg"
+	}
+	return prefix + "-" + kind + "-" + suffix + ext
 }
 
 func allFiles(prefix string, kind string, proc bool) []string {

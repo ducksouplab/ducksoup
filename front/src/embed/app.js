@@ -30,6 +30,15 @@ const DEFAULT_PEER_CONFIGURATION = {
 const SUPPORT_SET_CODEC = window.RTCRtpTransceiver &&
     'setCodecPreferences' in window.RTCRtpTransceiver.prototype;
 
+const isSafari = () => {
+    const ua = navigator.userAgent;
+    const containsChrome = ua.indexOf("Chrome") > -1;
+    const containsSafari = ua.indexOf("Safari") > -1;
+    return containsSafari && !containsChrome;
+}
+
+const IS_SAFARI = isSafari();
+
 const getQueryVariable = (key, deserializeFunc) => {
     const query = window.location.search.substring(1);
     const vars = query.split("&");
@@ -52,8 +61,10 @@ const unmarshallParams = (str) => {
 }
 
 const displayDevices = async () => {
-    // needed for safari: getUserMedia before enumerateDevices
-    await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    if(IS_SAFARI) {
+        // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
+        await navigator.mediaDevices.getUserMedia(state.constraints);
+    }
     const devices = await navigator.mediaDevices.enumerateDevices();
     const audioSourceEl = document.getElementById('audio-source');
     const videoSourceEl = document.getElementById('video-source');
@@ -86,7 +97,7 @@ const areParamsValid = ({origin, room, name, proc, duration, uid}) => {
             !isNaN(duration);
 }
 
-const filterParams = (params) => {
+const filterJoinParams = (params) => {
     // explicit list, without origin
     let { room, name, proc, duration, uid, size, videoCodec } = params;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
@@ -105,7 +116,7 @@ const init = async () => {
     if (!areParamsValid(params)) {
         document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
-        params = filterParams(params);
+        const joinParams = filterJoinParams(params);
         // prefer specified codec
         if (SUPPORT_SET_CODEC && params.videoCodec) {
             const { codecs } = RTCRtpSender.getCapabilities('video');
@@ -115,7 +126,13 @@ const init = async () => {
                 return 0;
             })
         }
-        state.joinParams = params;
+        // save state
+        state.joinParams = joinParams;
+        state.origin = params.origin;
+        state.constraints = {
+            audio: { ...DEFAULT_CONSTRAINTS.audio, ...params.audio },
+            video: { ...DEFAULT_CONSTRAINTS.video, ...params.video },
+        };
 
         try {
             // Init UX
@@ -158,12 +175,11 @@ const startRTC = async () => {
     const pc = new RTCPeerConnection(DEFAULT_PEER_CONFIGURATION);
 
     // Add local tracks before signaling
-    const constraints = {
-        audio: { ...DEFAULT_CONSTRAINTS.audio, ...state.audio },
-        video: { ...DEFAULT_CONSTRAINTS.video, ...state.video },
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    const stream = await navigator.mediaDevices.getUserMedia(state.constraints);
+    stream.getTracks().forEach((track) => {
+        console.log(track.getSettings());
+        pc.addTrack(track, stream);
+    });
     state.stream = stream;
 
     if (SUPPORT_SET_CODEC && state.params && state.params.videoCodec) {

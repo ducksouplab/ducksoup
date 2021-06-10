@@ -20,12 +20,11 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
     GstElement* pipeline = (GstElement*) data;
     switch (GST_MESSAGE_TYPE(msg))
     {
-
-    case GST_MESSAGE_EOS:
+    case GST_MESSAGE_EOS: {
         g_print("[gst.c] end of stream\n");
         gst_element_set_state(pipeline, GST_STATE_NULL);
         break;
-
+    }
     case GST_MESSAGE_ERROR:
     {
         gchar *debug;
@@ -41,6 +40,7 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
         break;
     }
     default:
+        //g_print("got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
         break;
     }
 
@@ -93,15 +93,13 @@ void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId)
     gst_object_unref(appsink);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
-
-    // GstMessage *msg =
-    //   gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
-    //   GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 }
 
 void gstreamer_send_stop_pipeline(GstElement *pipeline)
 {
     gst_element_send_event(pipeline, gst_event_new_eos());
+
+    g_usleep(1000000);
 }
 
 void gstreamer_send_push_buffer(GstElement *pipeline, void *buffer, int len)
