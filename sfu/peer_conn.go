@@ -12,6 +12,13 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+const (
+	DefaultWidth   = 800
+	DefaultHeight  = 600
+	DefaultAudioFx = "pitch pitch=0.8"
+	DefaultVideoFx = "coloreffects preset=xpro"
+)
+
 func filePrefix(joinPayload JoinPayload, room *Room) string {
 	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
 	// time room user count
@@ -19,6 +26,38 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 		"-r-" + joinPayload.Room +
 		"-u-" + joinPayload.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
+}
+
+func parseFx(kind string, joinPayload JoinPayload) (fx string) {
+	if kind == "video" {
+		fx = joinPayload.VideoFx
+	} else {
+		fx = joinPayload.AudioFx
+	}
+	if len(fx) == 0 && joinPayload.Proc {
+		if kind == "video" {
+			fx = DefaultVideoFx
+		} else {
+			fx = DefaultAudioFx
+		}
+	}
+	return
+}
+
+func parseWidth(joinPayload JoinPayload) (width int) {
+	width = joinPayload.Width
+	if width == 0 {
+		width = DefaultWidth
+	}
+	return
+}
+
+func parseHeight(joinPayload JoinPayload) (height int) {
+	height = joinPayload.Height
+	if height == 0 {
+		height = DefaultHeight
+	}
+	return
 }
 
 // API
@@ -108,7 +147,11 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 		mediaFilePrefix := filePrefix(joinPayload, room)
 		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, remoteTrack.Kind().String(), codecName, joinPayload.Proc)
+
+		// prepare pipeline parameters
+		kind := remoteTrack.Kind().String()
+		// create and start pipeline
+		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFx(kind, joinPayload))
 		pipeline.Start()
 		room.AddFiles(userId, pipeline.Files)
 		defer func() {

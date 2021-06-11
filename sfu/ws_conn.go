@@ -25,13 +25,18 @@ type WsMessageIn struct {
 }
 
 type JoinPayload struct {
-	Room       string `json:"room"`
-	Name       string `json:"name"`
-	Duration   int    `json:"duration"`
-	UserId     string `json:"uid"`
-	Proc       bool   `json:"proc"`
+	Room     string `json:"room"`
+	Name     string `json:"name"`
+	Duration int    `json:"duration"`
+	UserId   string `json:"uid"`
+	Proc     bool   `json:"proc"`
+	// optional
 	VideoCodec string `json:"videoCodec"`
 	Size       int    `json:"size"`
+	AudioFx    string `json:"audioFx"`
+	VideoFx    string `json:"videoFx"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
 }
 
 // API

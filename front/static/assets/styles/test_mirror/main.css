@@ -1,8 +1,4 @@
-.container {
-    width: 800px;
-}
-  
-#embed {
-    width: 800px;
-    height: 600px;
+nav .input-group {
+    width: 160px;
+    height: 30px;
 }

@@ -43,12 +43,30 @@ const init = () => {
     document.getElementById("codec-label").textContent = state.videoCodec;
 }
 
+const getIntegerValue = (id, defaultValue) => {
+    const parsed = parseInt(document.getElementById(id).value, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+}
+
 const start = async () => {
+    // required
     const room = randomId();
     const uid = randomId();
     const name = uid;
     const proc = false;
-    const duration = 20;
+    const duration = getIntegerValue("duration", 20);
+
+    // optional
+    const audioFx = document.getElementById("audioFx").value;
+    const videoFx = document.getElementById("videoFx").value;
+    const width = getIntegerValue("width", 800);
+    const height = getIntegerValue("height", 600);
+    const frameRate = getIntegerValue("frameRate", 30);
+    const video = {
+        ...(width && { width: { ideal: width } }),
+        ...(height && { height: { ideal: height } }),
+        ...(frameRate && { frameRate: { ideal: frameRate } }),
+    }
     
     const params = {
         origin: window.location.origin,
@@ -57,13 +75,26 @@ const start = async () => {
         name,
         proc,
         duration,
+        // optional
         size: 1, // size 1 for mirroring
-        ...(state.videoCodec && { videoCodec: state.videoCodec }) // optional
+        width,
+        height,
+        video,
+        ...(audioFx && { audioFx }),
+        ...(videoFx && { videoFx }),
+        ...(state.videoCodec && { videoCodec: state.videoCodec }),
     };
     state.uid = uid;
+
+    document.getElementById("embed").width = width;
+    document.getElementById("embed").height = height;
     document.getElementById("embed").src = `/embed/?params=${marshallParams(params)}`;
+    // hide
     document.getElementById("start").classList.add("d-none");
+    document.getElementById("stopped").classList.add("d-none");
     document.getElementById("stop").classList.remove("d-none");
+    // show
+    document.getElementById("embed").classList.remove("d-none");
 
 };
 
@@ -101,6 +132,8 @@ window.addEventListener("message", (event) => {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
             html += payload[state.uid].join("<br/>");
             replaceMessage(html);
+            document.getElementById("start").classList.remove("d-none");
+            document.getElementById("stop").classList.add("d-none");
         } else {
             replaceMessage("Conversation terminée");
         }
@@ -113,4 +146,5 @@ window.addEventListener("message", (event) => {
     } else if (kind === "error") {
         replaceMessage("Erreur");
     }
+
 });

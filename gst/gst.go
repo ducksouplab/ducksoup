@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -16,20 +17,26 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-var opusProcPipeline string
+var opusFxPipeline string
 var opusRawPipeline string
-var vp8ProcPipeline string
-
+var vp8FxPipeline string
 var vp8RawPipeline string
-var h264ProcPipeline string
+var h264FxPipeline string
 var h264RawPipeline string
 
+const (
+	DefaultWidth   = 800
+	DefaultHeight  = 600
+	DefaultAudioFx = "pitch pitch=0.8"
+	DefaultVideoFx = "coloreffects preset=xpro"
+)
+
 func init() {
-	opusProcPipeline = helpers.ReadConfig("opus-proc-rec")
+	opusFxPipeline = helpers.ReadConfig("opus-fx-rec")
 	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
-	vp8ProcPipeline = helpers.ReadConfig("vp8-proc-rec")
+	vp8FxPipeline = helpers.ReadConfig("vp8-fx-rec")
 	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
-	h264ProcPipeline = helpers.ReadConfig("h264-proc-rec")
+	h264FxPipeline = helpers.ReadConfig("h264-fx-rec")
 	h264RawPipeline = helpers.ReadConfig("h264-raw-rec")
 }
 
@@ -45,33 +52,43 @@ type Pipeline struct {
 var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
 
-func newPipelineStr(filePrefix string, codecName string, proc bool) (pipelineStr string) {
+func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, fx string) (pipelineStr string) {
+
 	codecName = strings.ToLower(codecName)
+	hasFx := len(fx) > 0
 
 	switch codecName {
 	case "opus":
-		if proc {
-			pipelineStr = opusProcPipeline
+		if hasFx {
+			pipelineStr = opusFxPipeline
 		} else {
 			pipelineStr = opusRawPipeline
 		}
 	case "vp8":
-		if proc {
-			pipelineStr = vp8ProcPipeline
+		if hasFx {
+			pipelineStr = vp8FxPipeline
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
 	case "h264":
-		if proc {
-			pipelineStr = h264ProcPipeline
+		if hasFx {
+			pipelineStr = h264FxPipeline
 		} else {
 			pipelineStr = h264RawPipeline
 		}
 	default:
 		panic("Unhandled codec " + codecName)
 	}
+	// set file
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
-	log.Println(pipelineStr)
+	// set fx
+	if hasFx {
+		pipelineStr = strings.Replace(pipelineStr, "${fx}", fx, -1)
+	}
+	// set dimensionts
+	pipelineStr = strings.Replace(pipelineStr, "${width}", strconv.Itoa(width), -1)
+	pipelineStr = strings.Replace(pipelineStr, "${height}", strconv.Itoa(height), -1)
+	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 	return
 }
 
@@ -83,8 +100,8 @@ func fileName(prefix string, kind string, suffix string) string {
 	return prefix + "-" + kind + "-" + suffix + ext
 }
 
-func allFiles(prefix string, kind string, proc bool) []string {
-	if proc {
+func allFiles(prefix string, kind string, hasFx bool) []string {
+	if hasFx {
 		return []string{fileName(prefix, kind, "in"), fileName(prefix, kind, "out")}
 	} else {
 		return []string{fileName(prefix, kind, "raw")}
@@ -117,8 +134,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, proc bool) *Pipeline {
-	pipelineStr := newPipelineStr(filePrefix, codecName, proc)
+func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, width int, height int, fx string) *Pipeline {
+
+	pipelineStr := newPipelineStr(filePrefix, kind, codecName, width, height, fx)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
@@ -128,7 +146,7 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 
 	pipeline := &Pipeline{
 		Pipeline:   C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
-		Files:      allFiles(filePrefix, kind, proc),
+		Files:      allFiles(filePrefix, kind, len(fx) > 0),
 		track:      track,
 		id:         len(pipelines),
 		filePrefix: filePrefix,

@@ -29,6 +29,8 @@ Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
 - may contain:
 
   - size (integer) the size of the room (size == 1 for a mirror effect)
+  - width (integer) of the video stream (default to 800)
+  - height (integer) of the video stream (default to 600)
   - videoCodec (string) possible values: "vp8" (default if none), "h264" or "vp9"
   - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))

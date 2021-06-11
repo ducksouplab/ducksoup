@@ -97,16 +97,22 @@ const areParamsValid = ({origin, room, name, proc, duration, uid}) => {
             !isNaN(duration);
 }
 
-const filterJoinParams = (params) => {
+const clean = (obj) => {
+    for (let prop in obj) {
+      if (obj[prop] === null || obj[prop] === undefined) delete obj[prop];
+    }
+    return obj;
+  }
+
+const filterJoinPayload = (params) => {
     // explicit list, without origin
-    let { room, name, proc, duration, uid, size, videoCodec } = params;
+    let { room, name, proc, duration, uid, size, videoCodec, width, height, audioFx, videoFx } = params;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
-    return {
-        room, name, proc, duration, uid,
-        ...(videoCodec && { videoCodec }), // add if not null
-        ...(size && { size })
-    };
+    if(isNaN(width)) width = null;
+    if(isNaN(height)) height = null;
+
+    return clean({ room, name, proc, duration, uid, size, videoCodec, width, height, audioFx, videoFx });
 }
 
 const init = async () => {
@@ -116,7 +122,7 @@ const init = async () => {
     if (!areParamsValid(params)) {
         document.getElementById("placeholder").innerHTML = "Invalid parameters"
     } else {
-        const joinParams = filterJoinParams(params);
+        const joinPayload = filterJoinPayload(params);
         // prefer specified codec
         if (SUPPORT_SET_CODEC && params.videoCodec) {
             const { codecs } = RTCRtpSender.getCapabilities('video');
@@ -127,7 +133,7 @@ const init = async () => {
             })
         }
         // save state
-        state.joinParams = joinParams;
+        state.joinPayload = joinPayload;
         state.origin = params.origin;
         state.constraints = {
             audio: { ...DEFAULT_CONSTRAINTS.audio, ...params.audio },
@@ -195,7 +201,7 @@ const startRTC = async () => {
         ws.send(
             JSON.stringify({
                 kind: "join",
-                payload: JSON.stringify(state.joinParams),
+                payload: JSON.stringify(state.joinPayload),
             })
         );
     };
