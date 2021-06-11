@@ -1,6 +1,6 @@
 const state = {};
 
-const DEFAULT_VIDEO_CODECS = ["h264", "vp8", "vp9"];
+const DEFAULT_VIDEO_CODECS = ["h264", "vp8"];
 
 // "1" -> true
 const toBool = (v) => Boolean(parseInt(v));
