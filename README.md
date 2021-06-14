@@ -23,21 +23,22 @@ Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
   - uid (string) a unique user identifier
   - name (string) the user display name
   - room (string) the room display name
-  - proc (boolean) to ask for media processing
   - duration (integer) the duration of the experiment in seconds
 
 - may contain:
 
-  - size (integer) the size of the room (size == 1 for a mirror effect)
+  - size (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
   - width (integer) of the video stream (default to 800)
   - height (integer) of the video stream (default to 600)
+  - audioFx (string describing a GStreamer element and its properties, for instance "pitch pitch=0.8") if an audio effect has to be applied
+  - videoFx (string describing a GStreamer element and its properties, for instance "coloreffects preset=xpro") if video effect has to be applied
   - videoCodec (string) possible values: "vp8" (default if none), "h264" or "vp9"
   - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
 
 Some of these parameters are used:
 
-- to join or initialize a room: room, name, uid, proc, duration, videoCodec
+- to join or initialize a room: room, name, uid, duration, size, width, height, audioFx, videoFx, videoCodec
 - to initialize getUserMedia constraints: audio, video
 - to communicate between embedding and embedded windows: origin
 

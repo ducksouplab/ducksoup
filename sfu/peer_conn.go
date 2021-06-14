@@ -13,10 +13,8 @@ import (
 )
 
 const (
-	DefaultWidth   = 800
-	DefaultHeight  = 600
-	DefaultAudioFx = "pitch pitch=0.8"
-	DefaultVideoFx = "coloreffects preset=xpro"
+	DefaultWidth  = 800
+	DefaultHeight = 600
 )
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
@@ -33,13 +31,6 @@ func parseFx(kind string, joinPayload JoinPayload) (fx string) {
 		fx = joinPayload.VideoFx
 	} else {
 		fx = joinPayload.AudioFx
-	}
-	if len(fx) == 0 && joinPayload.Proc {
-		if kind == "video" {
-			fx = DefaultVideoFx
-		} else {
-			fx = DefaultAudioFx
-		}
 	}
 	return
 }

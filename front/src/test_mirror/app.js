@@ -53,7 +53,6 @@ const start = async () => {
     const room = randomId();
     const uid = randomId();
     const name = uid;
-    const proc = false;
     const duration = getIntegerValue("duration", 20);
 
     // optional
@@ -73,7 +72,6 @@ const start = async () => {
         room,
         uid,
         name,
-        proc,
         duration,
         // optional
         size: 1, // size 1 for mirroring

@@ -21,10 +21,9 @@ const init = async () => {
     const room = getQueryVariable("room");
     const uid = getQueryVariable("uid");
     const name = getQueryVariable("name");
-    const proc = getQueryVariable("proc", toBool);
     const videoCodec = getQueryVariable("videoCodec");
     const duration = getQueryVariable("duration", (v) => parseInt(v, 10));
-    if (typeof room === 'undefined' || typeof uid === 'undefined' || typeof name === 'undefined' || typeof proc === 'undefined' || isNaN(duration)) {
+    if (typeof room === 'undefined' || typeof uid === 'undefined' || typeof name === 'undefined' || isNaN(duration)) {
         document.getElementById("error").classList.remove("d-none");
         document.getElementById("embed").classList.add("d-none");
     } else {
@@ -33,7 +32,6 @@ const init = async () => {
             room,
             uid,
             name,
-            proc,
             duration,
             videoCodec
         };

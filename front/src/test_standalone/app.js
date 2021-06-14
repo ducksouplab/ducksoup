@@ -125,7 +125,7 @@ const startRTC = async () => {
     ws.send(
       JSON.stringify({
         kind: "join",
-        payload: JSON.stringify({ name, room, proc: true, uid: randomId(), h264: true }),
+        payload: JSON.stringify({ name, room, videoFx: "coloreffects preset=xpro", audioFx: "pitch pitch=0.8", uid: randomId(), h264: true }),
       })
     );
   };
