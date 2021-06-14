@@ -22,6 +22,7 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
     {
     case GST_MESSAGE_EOS: {
         g_print("[gst.c] end of stream\n");
+
         gst_element_set_state(pipeline, GST_STATE_NULL);
         break;
     }
@@ -30,10 +31,12 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
         gchar *debug;
         GError *error;
 
-        gst_message_parse_error(msg, &error, &debug);
-        g_free(debug);
+        g_printerr ("[gst.c] error received from element %s: %s\n",
+            GST_OBJECT_NAME (msg->src), error->message);
 
-        g_print("[gst.c] error: %s\n", error->message);
+        g_printerr ("[gst.c] debugging information: %s\n", debug ? debug : "none");
+
+        g_free(debug);
         g_error_free(error);
         
         gst_element_set_state(pipeline, GST_STATE_NULL);
@@ -98,8 +101,6 @@ void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId)
 void gstreamer_send_stop_pipeline(GstElement *pipeline)
 {
     gst_element_send_event(pipeline, gst_event_new_eos());
-
-    g_usleep(1000000);
 }
 
 void gstreamer_send_push_buffer(GstElement *pipeline, void *buffer, int len)
