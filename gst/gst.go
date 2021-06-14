@@ -52,7 +52,7 @@ type Pipeline struct {
 var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
 
-func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, fx string) (pipelineStr string) {
+func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) (pipelineStr string) {
 
 	codecName = strings.ToLower(codecName)
 	hasFx := len(fx) > 0
@@ -88,6 +88,7 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 	// set dimensionts
 	pipelineStr = strings.Replace(pipelineStr, "${width}", strconv.Itoa(width), -1)
 	pipelineStr = strings.Replace(pipelineStr, "${height}", strconv.Itoa(height), -1)
+	pipelineStr = strings.Replace(pipelineStr, "${framerate}", strconv.Itoa(frameRate), -1)
 	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 	return
 }
@@ -134,9 +135,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, width int, height int, fx string) *Pipeline {
+func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) *Pipeline {
 
-	pipelineStr := newPipelineStr(filePrefix, kind, codecName, width, height, fx)
+	pipelineStr := newPipelineStr(filePrefix, kind, codecName, width, height, frameRate, fx)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))

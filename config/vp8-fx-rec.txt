@@ -11,7 +11,7 @@ videoscale !
 video/x-raw,framerate=30/1,width=${width},height=${height} !
 vp8enc keyframe-max-dist=128 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true ! 
 matroskamux ! 
-filesink location=logs/${prefix}-video-in.mkv 
+filesink location=logs/${prefix}-video-raw.mkv 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
@@ -26,7 +26,7 @@ vp8enc keyframe-max-dist=128 resize-allowed=true dropframe-threshold=25 max-quan
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
 matroskamux ! 
-filesink location=logs/${prefix}-video-out.mkv 
+filesink location=logs/${prefix}-video-fx.mkv 
 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 

@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	DefaultWidth  = 800
-	DefaultHeight = 600
+	DefaultWidth     = 800
+	DefaultHeight    = 600
+	DefaultFrameRate = 30
 )
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
@@ -47,6 +48,14 @@ func parseHeight(joinPayload JoinPayload) (height int) {
 	height = joinPayload.Height
 	if height == 0 {
 		height = DefaultHeight
+	}
+	return
+}
+
+func parseFrameRate(joinPayload JoinPayload) (frameRate int) {
+	frameRate = joinPayload.FrameRate
+	if frameRate == 0 {
+		frameRate = DefaultFrameRate
 	}
 	return
 }
@@ -142,7 +151,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		// prepare pipeline parameters
 		kind := remoteTrack.Kind().String()
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFx(kind, joinPayload))
+		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
 		pipeline.Start()
 		room.AddFiles(userId, pipeline.Files)
 		defer func() {

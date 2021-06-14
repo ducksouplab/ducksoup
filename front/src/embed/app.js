@@ -105,13 +105,13 @@ const clean = (obj) => {
 
 const filterJoinPayload = (params) => {
     // explicit list, without origin
-    let { room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx } = params;
+    let { room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx, frameRate } = params;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
     if(isNaN(width)) width = null;
     if(isNaN(height)) height = null;
 
-    return clean({ room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx });
+    return clean({ room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx, frameRate });
 }
 
 const init = async () => {
@@ -274,7 +274,69 @@ const startRTC = async () => {
             if (el) el.parentNode.removeChild(el);
         };
     };
+
+    // Stats
+      setInterval(() => logStats(pc), 1000);
 };
+
+// Debug
+let debug = {
+    now: Date.now(),
+    audioBytesSent: 0,
+    audioBytesReceived: 0,
+    videoBytesSent: 0,
+    videoBytesReceived: 0
+}
+
+const kbps = (bytes, duration) => {
+    const result = (8 * bytes) / duration / 1024;
+    return result.toFixed(1);
+  };
+
+const logStats = async (pc) => {
+    const pcStats = await pc.getStats();
+    const newNow = Date.now();
+    let newAudioBytesSent = 0;
+    let newAudioBytesReceived = 0;
+    let newVideoBytesSent = 0;
+    let newVideoBytesReceived = 0;
+  
+    pcStats.forEach((report) => {
+      if (report.type === "outbound-rtp" && report.kind === "audio") {
+        newAudioBytesSent += report.bytesSent;
+      } else if (report.type === "inbound-rtp" && report.kind === "audio") {
+        newAudioBytesReceived += report.bytesReceived;
+      } else if (report.type === "outbound-rtp" && report.kind === "video") {
+        newVideoBytesSent += report.bytesSent;
+      } else if (report.type === "inbound-rtp" && report.kind === "video") {
+        newVideoBytesReceived += report.bytesReceived;
+      }
+    });
+  
+    const elapsed = (newNow - debug.now) / 1000;
+    const audioUp = kbps(
+      newAudioBytesSent - debug.audioBytesSent,
+      elapsed
+    );
+    const audioDown = kbps(
+      newAudioBytesReceived - debug.audioBytesReceived,
+      elapsed
+    );
+    const videoUp = kbps(
+      newVideoBytesSent - debug.videoBytesSent,
+      elapsed
+    );
+    const videoDown = kbps(
+      newVideoBytesReceived - debug.videoBytesReceived,
+      elapsed
+    );
+    console.log(audioUp, audioDown, videoUp, videoDown)
+    debug.now = newNow;
+    debug.audioBytesSent = newAudioBytesSent;
+    debug.audioBytesReceived = newAudioBytesReceived;
+    debug.videoBytesSent = newVideoBytesSent;
+    debug.videoBytesReceived = newVideoBytesReceived;
+}
 
 
 document.addEventListener("DOMContentLoaded", init);

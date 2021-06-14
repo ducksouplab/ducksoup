@@ -8,7 +8,7 @@ tee name=teein !
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
 opusenc ! 
 oggmux ! 
-filesink location=logs/${prefix}-audio-in.ogg 
+filesink location=logs/${prefix}-audio-raw.ogg 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
@@ -19,7 +19,7 @@ opusenc !
 
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-oggmux ! filesink location=logs/${prefix}-audio-out.ogg 
+oggmux ! filesink location=logs/${prefix}-audio-fx.ogg 
 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 

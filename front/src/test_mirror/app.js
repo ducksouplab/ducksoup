@@ -80,8 +80,10 @@ const start = async () => {
         video,
         ...(audioFx && { audioFx }),
         ...(videoFx && { videoFx }),
+        ...(frameRate && { frameRate }),
         ...(state.videoCodec && { videoCodec: state.videoCodec }),
     };
+    console.log(params)
     state.uid = uid;
 
     document.getElementById("embed").width = width;
