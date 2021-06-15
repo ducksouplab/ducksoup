@@ -1,6 +1,6 @@
 const state = {};
 
-const DEFAULT_VIDEO_CODECS = ["h264", "vp8"];
+const DEFAULT_VIDEO_CODECS = ["vp8", "h264"];
 
 // "1" -> true
 const toBool = (v) => Boolean(parseInt(v));
@@ -82,6 +82,7 @@ const start = async () => {
         ...(videoFx && { videoFx }),
         ...(frameRate && { frameRate }),
         ...(state.videoCodec && { videoCodec: state.videoCodec }),
+        debug: true
     };
     console.log(params)
     state.uid = uid;
@@ -145,6 +146,10 @@ window.addEventListener("message", (event) => {
         appendMessage("Connexion perdue");
     } else if (kind === "error") {
         replaceMessage("Erreur");
+    } else if (kind === "stats") {
+        document.getElementById("audio-up").textContent = payload.audioUp;
+        document.getElementById("audio-down").textContent = payload.audioDown;
+        document.getElementById("video-up").textContent = payload.videoUp;
+        document.getElementById("video-down").textContent = payload.videoDown;
     }
-
 });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="h-100">
 
 <head>
   <title>DuckSoup | mirror</title>
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/styles/test_mirror/main.css">
   <script src="/scripts/test_mirror/app.js"></script>
 </head>
-<body>
+<body class="d-flex flex-column h-100">
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
       <a class="navbar-brand" href="#"">mirror</a>
@@ -63,5 +63,14 @@
     </div>
     <iframe id="embed"></iframe>
   </div>
+
+  <footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+      <div class="row">
+        <div class="text-end">audio ↑ <span id="audio-up">0.0</span> kb/s ↓ <span id="audio-down">0.0</span> kb/s</div>
+        <div class="text-end">video ↑ <span id="video-up">0.0</span> kb/s ↓ <span id="video-down">0.0</span> kb/s</div>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

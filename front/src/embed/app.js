@@ -1,5 +1,13 @@
 // State
 let state = {};
+// Debug state
+let debug = {
+    now: Date.now(),
+    audioBytesSent: 0,
+    audioBytesReceived: 0,
+    videoBytesSent: 0,
+    videoBytesReceived: 0
+}
 
 // Config
 const DEFAULT_CONSTRAINTS = {
@@ -138,6 +146,7 @@ const init = async () => {
             audio: { ...DEFAULT_CONSTRAINTS.audio, ...params.audio },
             video: { ...DEFAULT_CONSTRAINTS.video, ...params.video },
         };
+        state.debug = params.debug;
 
         try {
             // Init UX
@@ -173,6 +182,7 @@ const stop = (reason) => {
     const message = typeof reason === "string" ? { kind: reason } : reason;
     state.stream.getTracks().forEach((track) => track.stop());
     sendToParent(message);
+    if(debug.intervalId) clearInterval(debug.intervalId);
 }
 
 const startRTC = async () => {
@@ -182,7 +192,7 @@ const startRTC = async () => {
     // Add local tracks before signaling
     const stream = await navigator.mediaDevices.getUserMedia(state.constraints);
     stream.getTracks().forEach((track) => {
-        console.log(track.getSettings());
+        console.log("track settings: ", track.getSettings());
         pc.addTrack(track, stream);
     });
     state.stream = stream;
@@ -276,24 +286,19 @@ const startRTC = async () => {
     };
 
     // Stats
-      setInterval(() => logStats(pc), 1000);
+    if(state.debug) {
+        debug.intervalId = setInterval(() => getStats(pc), 1000);
+    }
 };
 
 // Debug
-let debug = {
-    now: Date.now(),
-    audioBytesSent: 0,
-    audioBytesReceived: 0,
-    videoBytesSent: 0,
-    videoBytesReceived: 0
-}
 
 const kbps = (bytes, duration) => {
     const result = (8 * bytes) / duration / 1024;
     return result.toFixed(1);
   };
 
-const logStats = async (pc) => {
+const getStats = async (pc) => {
     const pcStats = await pc.getStats();
     const newNow = Date.now();
     let newAudioBytesSent = 0;
@@ -330,13 +335,15 @@ const logStats = async (pc) => {
       newVideoBytesReceived - debug.videoBytesReceived,
       elapsed
     );
-    console.log(audioUp, audioDown, videoUp, videoDown)
+    sendToParent({
+        kind: "stats",
+        payload: { audioUp, audioDown, videoUp, videoDown }
+    })
     debug.now = newNow;
     debug.audioBytesSent = newAudioBytesSent;
     debug.audioBytesReceived = newAudioBytesReceived;
     debug.videoBytesSent = newVideoBytesSent;
     debug.videoBytesReceived = newVideoBytesReceived;
 }
-
 
 document.addEventListener("DOMContentLoaded", init);
