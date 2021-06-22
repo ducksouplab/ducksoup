@@ -49,4 +49,6 @@ USER $appuser:$appgroup
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
+ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
+
 CMD ./ducksoup
