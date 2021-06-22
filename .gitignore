@@ -5,15 +5,18 @@ ducksoup
 logs
 
 # license and SDK
-lib
 *.uid
 *.key
+
+# GStreamer plugin libs
+*.so
+plugins
 
 # front build assets
 front/static/assets/scripts
 
 # docker data folders
-docker/lib
+docker/plugins
 docker/logs
 
 .DS_Store

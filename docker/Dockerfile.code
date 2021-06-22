@@ -1,15 +1,34 @@
-FROM golang:latest
-RUN apt-get update
+FROM debian:bullseye
 
+RUN apt-get update
+RUN apt-get upgrade -y
+
+# build-essential needed for CGO (gcc)
+RUN apt-get install -y curl build-essential
+
+# install go, choose version on https://golang.org/dl/
+WORKDIR /src
+ENV GO_ARCHIVE=go1.16.5.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="b12c23023b68de22f74c0524f10b753e7b08b1504cb7e417eccebdd3fae49061"
+
+RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
+RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
+RUN tar -xzf $GO_ARCHIVE
+
+RUN mv go /usr/local
+RUN rm $GO_ARCHIVE
+
+RUN echo $PATH
+ENV PATH=$PATH:/usr/local/go/bin
+
+# GStreamer: plugins and compilation dependencies
 RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     libgstreamer-plugins-base1.0-dev
 
-# gstreamer1.0-libav -> ffmpeg plugins including avdec_h264
-# gstreamer1.0-tools -> gst-inspect-1.0
-
+# GStreamer: tools(gst-inspect-1.0) and ffmpeg plugins including avdec_h264
 RUN apt-get install -y gstreamer1.0-libav gstreamer1.0-tools
 
-WORKDIR $GOPATH/src/github.com/creamlab/ducksoup
+ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"

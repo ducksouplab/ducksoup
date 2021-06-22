@@ -1,11 +1,12 @@
-.devcontainer
+# mounted
 logs
+plugins
+
+# not used
+.devcontainer
 certs
 docker
 LICENSE
 README.md
-
-# license and SDK
-lib
 *.uid
 *.key

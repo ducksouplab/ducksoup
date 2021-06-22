@@ -103,7 +103,7 @@ func fileName(prefix string, kind string, suffix string) string {
 
 func allFiles(prefix string, kind string, hasFx bool) []string {
 	if hasFx {
-		return []string{fileName(prefix, kind, "in"), fileName(prefix, kind, "out")}
+		return []string{fileName(prefix, kind, "raw"), fileName(prefix, kind, "fx")}
 	} else {
 		return []string{fileName(prefix, kind, "raw")}
 	}

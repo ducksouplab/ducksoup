@@ -1,0 +1,16 @@
+FROM golang:latest
+
+RUN apt-get update
+RUN apt-get upgrade -y
+
+# GStreamer: plugins and compilation dependencies
+RUN apt-get install -y gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    libgstreamer-plugins-base1.0-dev
+
+# GStreamer: tools(gst-inspect-1.0) and ffmpeg plugins including avdec_h264
+RUN apt-get install -y gstreamer1.0-libav gstreamer1.0-tools
+
+ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"

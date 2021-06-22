@@ -7,6 +7,8 @@ From a technical standpoint, DuckSoup is:
 * a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
 * with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
 
+## Embed DuckSoup
+
 Once DuckSoup is installed and running, it may be configured and embedded in other webpages:
 
 ```
@@ -44,20 +46,21 @@ Some of these parameters are used:
 
 Note: the embedding origin (for instance `https://website-calling-ducksoup.example.com` above) has to be listed as a valid origin when starting DuckSoup (see [Environment variables](#environment-variables)).
 
-## Install and build
+## Build from source
 
 Dependencies:
 
+- [Go](https://golang.org/doc/install)
 - [GStreamer](https://gstreamer.freedesktop.org/documentation/index.html?gi-language=c)
 
-For instance on Debian you may:
+Regarding GStreamer on Debian you may:
 
 ```
 apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
-To serve with TLS, you may consider:
+To serve with TLS in a local setup, you may consider:
 
 - [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates
 
@@ -94,6 +97,107 @@ DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
 DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
+## Add custom GStreamer plugins
+
+```
+mkdir -p plugins
+export PROJECT_BUILD=`pwd`/plugins
+export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
+```
+
+These plugins (`libxyz.so` files) enable additional elements to be used in DuckSoup GStreamer pipelines. They have to be built against the same GStreamer version than the one running with DuckSoup (1.18.4 at the time of writing this documentation, check with `gst-inspect-1.0 --version`).
+
+## Code within a Docker container
+
+One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for instance using VSCode containers integration).
+
+This Dockerfile prefers specifying a debian version and installing go from source (rather than using the golang base image) so it's possible to choose the same OS version than in production and control gstreamer (apt) packages versions.
+
+`docker/Dockerfile.code.golang_image` is an alternate Dockerfile relying on the golang base image.
+
+## Build with Docker for production
+
+The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
+
+```
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build -t ducksoup:latest .
+```
+
+Set permissions to enabled writing in `logs` mounted volume:
+
+```
+sudo chown deploy:deploy logs
+```
+
+Run:
+
+```
+# bind port, mount volumes, set environment variable and remove container when stopped
+docker run --name ducksoup_1 \
+  -p 8000:8000 \
+  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
+  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
+  --env DS_ORIGINS=http://localhost:8000 \
+  --rm \
+  ducksoup:latest
+
+# and if needed enter the running ducksoup_1 container
+docker exec -it ducksoup_1 /bin/bash
+```
+
+Run with docker-compose, thus binding volumes and persisting logs data (in `docker/data/logs`):
+
+```
+DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
+# and if needed enter the running ducksoup_1 container
+docker exec -it docker_ducksoup_1 /bin/bash
+```
+
+### Multistage Dockerfile
+
+If the goal is to distribute and minimize the image size, consider the multistage build:
+
+```
+# debian
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_debian -t ducksoup_multi_debian:latest .
+# alpine
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_alpine -t ducksoup_multi_alpine:latest .
+```
+
+Deploy multi debian image to docker hub:
+
+```
+docker tag ducksoup_multi_debian altg/ducksoup
+docker push altg/ducksoup:latest
+```
+
+Run multistage debian:
+
+```
+docker run --name ducksoup_multi_1 \
+  -p 8000:8000 \
+  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
+  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
+  --env DS_ORIGINS=http://localhost:8000 \
+  --rm \
+  ducksoup_multi:latest
+
+# and if needed enter the running ducksoup_1 container
+docker exec -it ducksoup_multi_1 /bin/bash
+```
+
+Run alpine:
+
+```
+docker run --name ducksoup_multi_2 \
+  -p 8000:8000 \
+  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
+  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
+  --env DS_ORIGINS=http://localhost:8000 \
+  --rm \
+  ducksoup_multi_alpine:latest
+```
+
 ## Test front-ends
 
 Several test front-ends are available:
@@ -126,74 +230,6 @@ It's also possible to watch changes and rebuild those files by adding this envir
 
 ```
 DS_ENV=DEV ./ducksoup
-```
-
-## Add custom GStreamer plugins in lib/
-
-```
-mkdir -p lib
-export PROJECT_BUILD=`pwd`/lib
-export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
-```
-
-## Run with Docker
-
-The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
-
-```
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build -t ducksoup:latest .
-```
-
-Run:
-
-```
-docker run --name ducksoup_1 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup:latest
-# and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_1 /bin/bash
-```
-
-Run with docker-compose, thus binding volumes and persisting logs data (in `docker/data/logs`):
-
-```
-mkdir -p docker/lib
-mkdir -p docker/logs
-sudo chown deploy:deploy docker/lib
-sudo chown deploy:deploy docker/logs
-DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
-# and if needed enter the running ducksoup_1 container
-docker exec -it docker_ducksoup_1 /bin/bash
-```
-
-### Multistage Dockerfile
-
-If the goal is to distribute and minimize the image size, consider the multistage build:
-
-```
-# debian
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_debian -t ducksoup_multi_debian:latest .
-# alpine
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_alpine -t ducksoup_multi_alpine:latest .
-```
-
-Deploy multi debian image to docker hub:
-
-```
-docker tag ducksoup_multi_debian altg/ducksoup
-docker push altg/ducksoup:latest
-```
-
-Run debian:
-
-```
-docker run --name ducksoup_multi_1 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup_multi:latest
-# and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_multi_1 /bin/bash
-```
-
-Run alpine:
-
-```
-docker run --name ducksoup_multi_2 -p 8000:8000 --env DS_ORIGINS=http://localhost:8000 --rm ducksoup_multi_alpine:latest
 ```
 
 ## Concepts in Go code
