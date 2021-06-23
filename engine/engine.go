@@ -2,6 +2,7 @@ package engine
 
 import (
 	"log"
+	"strings"
 
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/ice/v2"
@@ -10,7 +11,7 @@ import (
 )
 
 func NewWebRTCAPI(names []string) (*webrtc.API, error) {
-	log.Println("api ", names)
+	log.Println("[api] ", strings.Join(names, " "))
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)

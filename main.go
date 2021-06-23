@@ -38,7 +38,7 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				log.Println(">>>> Recovered in main", r)
+				log.Println("[main] recovered: ", r)
 			}
 		}()
 	}

@@ -36,7 +36,7 @@ func (ps *PeerServer) loop() {
 	go func() {
 		<-ps.room.waitForAllCh
 		<-time.After(time.Duration(ps.room.FinishingDelay()) * time.Second)
-		log.Printf("[user #%s] wsConn> finishing\n", ps.userId)
+		log.Printf("[user %s] wsConn> finishing\n", ps.userId)
 		ps.wsConn.Send("finishing")
 	}()
 
@@ -95,7 +95,7 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	room, joinErr := JoinRoom(joinPayload)
 	if joinErr != nil {
 		// joinErr is meaningful to client
-		log.Printf("[user #%s-%s] join failed: %s", joinPayload.UserId, joinPayload.Name, joinErr)
+		log.Printf("[user %s-%s] join failed: %s", joinPayload.UserId, joinPayload.Name, joinErr)
 		wsConn.Send(fmt.Sprintf("error-%s", joinErr))
 		return
 	}

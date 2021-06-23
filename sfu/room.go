@@ -57,7 +57,7 @@ func (r *Room) delete() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Printf("[room #%s] deleted\n", r.id)
+	log.Printf("[room %s] deleted\n", r.id)
 	delete(roomIndex, r.id)
 }
 
@@ -74,7 +74,6 @@ func newRoom(joinPayload JoinPayload) *Room {
 
 	// process size
 	size := joinPayload.Size
-	log.Println(size)
 	if size < 1 {
 		size = DefaultSize
 	} else if size > MaxSize {
@@ -111,7 +110,7 @@ func (r *Room) countdown() {
 	// blocking "finish" event and delete
 	finishTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-finishTimer.C
-	log.Printf("[room #%s] finish\n", r.id)
+	log.Printf("[room %s] finish\n", r.id)
 	close(r.finishCh)
 	r.delete()
 }
@@ -148,11 +147,11 @@ func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Printf("[room #%s] joined\n", roomId)
+			log.Printf("[room %s] joined\n", roomId)
 			return r, nil
 		}
 	} else {
-		log.Printf("[room #%s] created\n", roomId)
+		log.Printf("[room %s] created\n", roomId)
 		newRoom := newRoom(joinPayload)
 		roomIndex[roomId] = newRoom
 		return newRoom, nil
@@ -171,10 +170,10 @@ func (r *Room) IncTracksReadyCount() {
 	}
 
 	r.tracksReadyCount++
-	log.Printf("[room #%s] new track, updated count: %d\n", r.id, r.tracksReadyCount)
+	log.Printf("[room %s] new track, updated count: %d\n", r.id, r.tracksReadyCount)
 
 	if r.tracksReadyCount == neededTracks {
-		log.Printf("[room #%s] closing waitForAllCh\n", r.id)
+		log.Printf("[room %s] closing waitForAllCh\n", r.id)
 		close(r.waitForAllCh)
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
@@ -253,7 +252,7 @@ func (r *Room) UpdateSignaling() {
 		r.DispatchKeyFrame()
 	}()
 
-	log.Printf("[room #%s] signaling update\n", r.id)
+	log.Printf("[room %s] signaling update\n", r.id)
 	tryUpdateSignaling := func() (success bool) {
 		for userId, ps := range r.peerServerIndex {
 
@@ -305,7 +304,7 @@ func (r *Room) UpdateSignaling() {
 
 			offer, err := peerConn.CreateOffer(nil)
 			if err != nil {
-				log.Printf("[room #%s] CreateOffer failed: %v\n", r.id, err)
+				log.Printf("[room %s] CreateOffer failed: %v\n", r.id, err)
 				return false
 			}
 
