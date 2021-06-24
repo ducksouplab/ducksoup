@@ -11,7 +11,7 @@ videoconvert !
 videorate ! 
 videoscale ! 
 video/x-raw,format=I420,framerate=30/1,width=${width},height=${height} ! 
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=20 tune=film qos=true ! 
+x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 tune=film qos=true ! 
 video/x-h264,stream-format=byte-stream,profile=main ! 
 h264parse ! 
 matroskamux ! 

@@ -11,7 +11,7 @@ videoconvert !
 videorate ! 
 videoscale ! 
 video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=20 ! 
+x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 ! 
 video/x-h264,stream-format=byte-stream,profile=main !
 h264parse ! 
 matroskamux ! 
@@ -25,7 +25,7 @@ videoconvert !
 videorate ! 
 videoscale ! 
 video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=20 tune=zerolatency qos=true ! 
+x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 tune=zerolatency qos=true ! 
 video/x-h264,stream-format=byte-stream,profile=main !
 
 tee name=teeout ! 

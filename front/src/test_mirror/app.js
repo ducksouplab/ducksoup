@@ -74,6 +74,7 @@ const start = async () => {
         name,
         duration,
         // optional
+        namespace: "mirror",
         size: 1, // size 1 for mirroring
         width,
         height,
@@ -84,7 +85,6 @@ const start = async () => {
         ...(state.videoCodec && { videoCodec: state.videoCodec }),
         debug: true
     };
-    console.log(params)
     state.uid = uid;
 
     document.getElementById("embed").width = width;

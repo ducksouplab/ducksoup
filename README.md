@@ -29,6 +29,7 @@ Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
 
 - may contain:
 
+  - namespace (string, defaults to "default") to group recordings under the same namespace (folder)
   - size (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
   - width (integer) of the video stream (default to 800)
   - height (integer) of the video stream (default to 600)

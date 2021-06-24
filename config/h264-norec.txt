@@ -9,7 +9,7 @@ coloreffects preset=xpro !
 videoconvert ! 
 videorate ! 
 video/x-raw,format=I420,framerate=30/1 ! 
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=20 tune=zerolatency qos=true !
+x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 tune=zerolatency qos=true !
 video/x-h264,stream-format=byte-stream,profile=constrained-baseline !
 rtph264pay !
 appsink name=sink qos=true

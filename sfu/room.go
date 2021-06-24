@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"regexp"
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
@@ -18,6 +20,7 @@ const (
 	DefaultDuration      = 30
 	MaxDuration          = 1200
 	Finishing            = 10
+	MaxNamespaceLength   = 30
 )
 
 // global state
@@ -42,6 +45,7 @@ type Room struct {
 	finishCh     chan struct{}
 	// other (written only during initialization)
 	id            string
+	namespace     string
 	size          int
 	tracksPerPeer int
 	duration      int
@@ -59,6 +63,19 @@ func (r *Room) delete() {
 
 	log.Printf("[room %s] deleted\n", r.id)
 	delete(roomIndex, r.id)
+}
+
+// remove special characters like / . *
+func parseNamespace(ns string) string {
+	reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
+	clean := reg.ReplaceAllString(ns, "")
+	if len(clean) == 0 {
+		return "default"
+	}
+	if len(clean) > MaxNamespaceLength {
+		return clean[0 : MaxNamespaceLength-1]
+	}
+	return clean
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -86,6 +103,10 @@ func newRoom(joinPayload JoinPayload) *Room {
 	joinedCountIndex := make(map[string]int)
 	joinedCountIndex[joinPayload.UserId] = 1
 
+	// create folder for logs
+	namespace := parseNamespace(joinPayload.Namespace)
+	helpers.EnsureDir("./logs/" + namespace)
+
 	return &Room{
 		peerServerIndex:  make(map[string]*PeerServer),
 		filesIndex:       make(map[string][]string),
@@ -96,6 +117,7 @@ func newRoom(joinPayload JoinPayload) *Room {
 		finishCh:         make(chan struct{}),
 		tracksReadyCount: 0,
 		id:               joinPayload.Room,
+		namespace:        namespace,
 		size:             size,
 		tracksPerPeer:    DefaultTracksPerPeer,
 		duration:         duration,
@@ -296,9 +318,24 @@ func (r *Room) UpdateSignaling() {
 			// add all track we aren't sending yet to the PeerConnection
 			for trackID := range r.trackIndex {
 				if _, ok := existingSenders[trackID]; !ok {
-					if _, err := peerConn.AddTrack(r.trackIndex[trackID]); err != nil {
+					rtpSender, err := peerConn.AddTrack(r.trackIndex[trackID])
+
+					if err != nil {
 						return false
 					}
+
+					// TODO check if needed
+					// Read incoming RTCP packets
+					// Before these packets are returned they are processed by interceptors. For things
+					// like NACK this needs to be called.
+					go func() {
+						rtcpBuf := make([]byte, 1500)
+						for {
+							if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+								return
+							}
+						}
+					}()
 				}
 			}
 

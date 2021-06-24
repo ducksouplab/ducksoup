@@ -30,6 +30,7 @@ type JoinPayload struct {
 	Duration int    `json:"duration"`
 	UserId   string `json:"uid"`
 	// optional
+	Namespace  string `json:"namespace"`
 	VideoCodec string `json:"videoCodec"`
 	Size       int    `json:"size"`
 	AudioFx    string `json:"audioFx"`

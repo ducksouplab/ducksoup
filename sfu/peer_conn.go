@@ -9,6 +9,7 @@ import (
 
 	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -21,7 +22,8 @@ const (
 func filePrefix(joinPayload JoinPayload, room *Room) string {
 	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
 	// time room user count
-	return time.Now().Format("20060102-150405.000") +
+	return room.namespace + "/" +
+		time.Now().Format("20060102-150405.000") +
 		"-r-" + joinPayload.Room +
 		"-u-" + joinPayload.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
@@ -133,6 +135,19 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	})
 
 	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+		// TODO check if needed
+		// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
+		// This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
+		go func() {
+			ticker := time.NewTicker(time.Second * 3)
+			for range ticker.C {
+				err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}()
+
 		log.Printf("[user %s] peerConn> new %s track\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 
 		buf := make([]byte, 1500)

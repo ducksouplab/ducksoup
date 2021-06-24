@@ -113,13 +113,13 @@ const clean = (obj) => {
 
 const filterJoinPayload = (params) => {
     // explicit list, without origin
-    let { room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx, frameRate } = params;
+    let { room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate } = params;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
     if(isNaN(width)) width = null;
     if(isNaN(height)) height = null;
 
-    return clean({ room, name, duration, uid, size, videoCodec, width, height, audioFx, videoFx, frameRate });
+    return clean({ room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate });
 }
 
 const init = async () => {
