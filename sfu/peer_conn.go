@@ -140,10 +140,16 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		// This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
 		go func() {
 			ticker := time.NewTicker(time.Second * 3)
-			for range ticker.C {
-				err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
-				if err != nil {
-					log.Println(err)
+			for {
+				select {
+				case <-room.finishCh:
+					ticker.Stop()
+					return
+				case <-ticker.C:
+					err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
+					if err != nil {
+						log.Println(err)
+					}
 				}
 			}
 		}()
