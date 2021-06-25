@@ -165,9 +165,9 @@ const startRTC = async () => {
         return console.error("failed to parse candidate");
       }
       pc.addIceCandidate(candidate);
-    } else if (kind === "finishing") {
-      document.getElementById("finishing").classList.remove("d-none");
-    } else if (kind === "finish") {
+    } else if (kind === "ending") {
+      document.getElementById("ending").classList.remove("d-none");
+    } else if (kind === "end") {
       window.location.href = `${FRONT_PREFIX}end/`;
     } else if (kind === "error-full") {
       window.location.href = `${FRONT_PREFIX}full/`;

@@ -25,7 +25,7 @@
   align-items: center;
 }
 
-#finishing {
+#ending {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -33,7 +33,7 @@
   border-radius: 5px;
 }
 
-#finishing div {
+#ending div {
   position: relative;
   text-align: right;
   background-color: #bbbbbbcc;

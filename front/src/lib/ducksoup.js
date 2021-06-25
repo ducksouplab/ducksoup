@@ -35,14 +35,14 @@ const TEMPLATE = `<!DOCTYPE html>
                 justify-content: center;
                 align-items: center;
             }
-            .finishing {
+            .ending {
                 position: absolute;
                 bottom: 0;
                 right: 0;
                 color: white;
                 border-radius: 5px;
             }
-            .finishing div {
+            .ending div {
                 position: relative;
                 text-align: right;
                 background-color: #bbbbbbcc;
@@ -74,7 +74,7 @@ const TEMPLATE = `<!DOCTYPE html>
                 </svg>
             </div>
         </div>
-        <div class='finishing' style='display:none'>
+        <div class='ending' style='display:none'>
             <div>Conversation bientôt terminée</div>
         </div>
         <div class='modal' id='modal-settings' tabindex='-1'>
@@ -279,7 +279,7 @@ class DuckSoup {
         };
     
         ws.onclose = () => {
-            this.stop("disconnected");
+            this.stop("disconnection");
         };
     
         ws.onerror = (event) => {
@@ -314,9 +314,9 @@ class DuckSoup {
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
                 this.callback({ kind: "start "});
-            } else if (message.kind === "finishing") {
-                this.document.querySelector(".finishing").style.display = 'block';
-            } else if (message.kind.startsWith("error") || message.kind === "finish") {
+            } else if (message.kind === "ending") {
+                this.document.querySelector(".ending").style.display = 'block';
+            } else if (message.kind.startsWith("error") || message.kind === "end") {
                 this.document.querySelector("body").style.display = 'none';
                 this.stop(message);
             }

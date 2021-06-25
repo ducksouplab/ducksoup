@@ -19,7 +19,7 @@ const (
 	DefaultTracksPerPeer = 2
 	DefaultDuration      = 30
 	MaxDuration          = 1200
-	Finishing            = 10
+	Ending               = 10
 	MaxNamespaceLength   = 30
 )
 
@@ -42,7 +42,7 @@ type Room struct {
 	tracksReadyCount int
 	// channels (safe)
 	waitForAllCh chan struct{}
-	finishCh     chan struct{}
+	endCh        chan struct{}
 	// other (written only during initialization)
 	id            string
 	namespace     string
@@ -114,7 +114,7 @@ func newRoom(joinPayload JoinPayload) *Room {
 		joinedCountIndex: joinedCountIndex,
 		trackIndex:       map[string]*webrtc.TrackLocalStaticRTP{},
 		waitForAllCh:     make(chan struct{}),
-		finishCh:         make(chan struct{}),
+		endCh:            make(chan struct{}),
 		tracksReadyCount: 0,
 		id:               joinPayload.Room,
 		namespace:        namespace,
@@ -129,11 +129,11 @@ func (r *Room) userCount() int {
 }
 
 func (r *Room) countdown() {
-	// blocking "finish" event and delete
-	finishTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
-	<-finishTimer.C
-	log.Printf("[room %s] finish\n", r.id)
-	close(r.finishCh)
+	// blocking "end" event and delete
+	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
+	<-endTimer.C
+	log.Printf("[room %s] end\n", r.id)
+	close(r.endCh)
 	r.delete()
 }
 
@@ -394,14 +394,14 @@ func (r *Room) Files() map[string][]string {
 	return r.filesIndex
 }
 
-func (r *Room) FinishingDelay() (delay int) {
+func (r *Room) EndingDelay() (delay int) {
 	r.RLock()
 	defer r.RUnlock()
 
 	elapsed := time.Since(r.startedAt)
 
 	remaining := r.duration - int(elapsed.Seconds())
-	delay = remaining - Finishing
+	delay = remaining - Ending
 	if delay < 1 {
 		delay = 1
 	}

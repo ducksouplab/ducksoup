@@ -58,7 +58,7 @@ Where:
 
 The callback function will receive a message as a `{ kind, payload }` object where:
 
-- kind (string) may be: `"start"`, `"error"`, `"disconnected"`, `"finish"` (and `"stats"` if debug is enabled) 
+- kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
 - payload (unrestricted type) is an optional payload
 
 ## Build from source
@@ -232,8 +232,10 @@ Messages from server (Go) to client (JS):
 
 - kind `offer` and `candidate` for signaling (with payloads)
 - kind `start` when all peers and tracks are ready
-- kind `finishing` when the room will soon be destroyed
-- kind `finish` when time is over (payload contains an index of media files recorded for this experiment)
+- kind `ending` when the room will soon be destroyed
+- kind `end` when time is over (payload contains an index of media files recorded for this experiment)
+- kind `error-full` when room limit has been reached and user can't enter room
+- kind `error-duplicate` when same user is already in room
 
 ## Front-ends build
 

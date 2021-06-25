@@ -62,7 +62,7 @@ window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin) return;
 
     const { kind, payload } = event.data;
-    if (event.data.kind === "finish") {
+    if (event.data.kind === "end") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
             html += payload[state.uid].join("<br/>");
@@ -74,7 +74,7 @@ window.addEventListener("message", (event) => {
         replaceMessage("Connexion refusée (salle complète)");
     } else if (kind === "error-duplicate") {
         replaceMessage("Connexion refusée (déjà connecté-e)");
-    } else if (kind === "disconnected") {
+    } else if (kind === "disconnection") {
         appendMessage("Connexion perdue");
     } else if (kind === "error") {
         replaceMessage("Erreur");

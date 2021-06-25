@@ -217,7 +217,7 @@ const startRTC = async () => {
 
     ws.onclose = function () {
         console.log("[ws] closed");
-        stop("disconnected");
+        stop("disconnection");
     };
 
     ws.onerror = function (event) {
@@ -254,10 +254,10 @@ const startRTC = async () => {
             pc.addIceCandidate(candidate);
         } else if (message.kind === "start") {
             console.log("[ws] start");
-        } else if (message.kind === "finishing") {
-            console.log("[ws] finishing");
-            document.getElementById("finishing").classList.remove("d-none");
-        } else if (message.kind.startsWith("error") || message.kind === "finish") {
+        } else if (message.kind === "ending") {
+            console.log("[ws] ending");
+            document.getElementById("ending").classList.remove("d-none");
+        } else if (message.kind.startsWith("error") || message.kind === "end") {
             stop(message);
         }
     };

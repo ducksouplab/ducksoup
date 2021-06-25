@@ -142,7 +142,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			ticker := time.NewTicker(time.Second * 3)
 			for {
 				select {
-				case <-room.finishCh:
+				case <-room.endCh:
 					ticker.Stop()
 					return
 				case <-ticker.C:
@@ -185,8 +185,8 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	processLoop:
 		for {
 			select {
-			case <-room.finishCh:
-				wsConn.SendWithPayload("finish", room.Files())
+			case <-room.endCh:
+				wsConn.SendWithPayload("end", room.Files())
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

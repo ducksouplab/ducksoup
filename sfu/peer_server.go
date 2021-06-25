@@ -32,12 +32,12 @@ func newPeerServer(
 func (ps *PeerServer) loop() {
 	var m WsMessageIn
 
-	// sends "finishing" message before rooms does finish
+	// sends "ending" message before rooms does end
 	go func() {
 		<-ps.room.waitForAllCh
-		<-time.After(time.Duration(ps.room.FinishingDelay()) * time.Second)
-		log.Printf("[user %s] wsConn> finishing\n", ps.userId)
-		ps.wsConn.Send("finishing")
+		<-time.After(time.Duration(ps.room.EndingDelay()) * time.Second)
+		log.Printf("[user %s] wsConn> ending\n", ps.userId)
+		ps.wsConn.Send("ending")
 	}()
 
 	for {

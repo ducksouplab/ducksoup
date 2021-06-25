@@ -37,7 +37,7 @@ body {
   position: relative;
 }
 
-#finishing {
+#ending {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -45,7 +45,7 @@ body {
   border-radius: 5px;
 }
 
-#finishing div {
+#ending div {
   display: inline-block;
   position: relative;
   text-align: right;

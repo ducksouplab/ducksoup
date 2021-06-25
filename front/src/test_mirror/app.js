@@ -137,7 +137,7 @@ const receiveMessage = (message) => {
             console.log("[DuckSoup]", kind);
         }
     }
-    if (kind === "finish") {
+    if (kind === "end") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
             html += payload[state.uid].join("<br/>");
@@ -151,7 +151,7 @@ const receiveMessage = (message) => {
         replaceMessage("Connexion refusée (salle complète)");
     } else if (kind === "error-duplicate") {
         replaceMessage("Connexion refusée (déjà connecté-e)");
-    } else if (kind === "disconnected") {
+    } else if (kind === "disconnection") {
         appendMessage("Connexion perdue");
     } else if (kind === "error") {
         replaceMessage("Erreur");
