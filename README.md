@@ -9,43 +9,57 @@ From a technical standpoint, DuckSoup is:
 
 ## Embed DuckSoup
 
-Once DuckSoup is installed and running, it may be configured and embedded in other webpages:
+Let's assume we have a DuckSoup server installed and running at `ducksoup-host.example.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment.example.com`.
+
+The embedding origin (`my-experiment.example.com`) has to be listed as an authorized origin when starting the DuckSoup  instance available at `ducksoup-host.example.com` (see [Environment variables](#environment-variables)).
+
+Then, on the experiment web page, include the `ducksoup.js` library:
 
 ```
-<iframe src="https://ducksoup-host.example.com/embed/?params=PARAMS_STRING" allow="camera;microphone"></iframe>
+<script src="https://ducksoup-host.example.com//scripts/lib/ducksoup.js"></script>
 ```
 
-Where PARAMS_STRING is obtained by serializing a JS object that contains DuckSoup-related options.
+And render it (in JavaScript):
 
-Serializing is done with `encodeURI(btoa(JSON.stringify(params)))` where params:
+```
+DuckSoup.render(mountEl, peerOptions, embedOptions);
+```
 
-- must contain:
+Where:
 
-  - origin (string) the embedding window origin (for instance `https://website-calling-ducksoup.example.com`)
-  - uid (string) a unique user identifier
-  - name (string) the user display name
-  - room (string) the room display name
-  - duration (integer) the duration of the experiment in seconds
+- `mountEl` (DOM node) is the node where DuckSoup interface and media streams will be mounted (obtained for instance with `document.getElementById("ducksoup-container")`)
 
-- may contain:
+- `peerOptions` (object) must contain the following properties:
 
-  - namespace (string, defaults to "default") to group recordings under the same namespace (folder)
-  - size (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
-  - width (integer) of the video stream (default to 800)
-  - height (integer) of the video stream (default to 600)
-  - audioFx (string describing a GStreamer element and its properties, for instance "pitch pitch=0.8") if an audio effect has to be applied
-  - videoFx (string describing a GStreamer element and its properties, for instance "coloreffects preset=xpro") if video effect has to be applied
-  - videoCodec (string) possible values: "vp8" (default if none), "h264" or "vp9"
-  - audio (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
-  - video (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
+  - `signalingUrl` (string) the URL of DuckSoup signaling websocket (for instance `wss://ducksoup-host.example.com/ws` for a DuckSoup hosted at `ducksoup-host.example.com`) 
+  - `room` (string) the room identifier
+  - `uid` (string) a unique user identifier
+  - `name` (string) the user display name
+  - `duration` (integer) the duration of the experiment in seconds
 
-Some of these parameters are used:
+- `peerOptions` may also contain the following optional properties:
 
-- to join or initialize a room: room, name, uid, duration, size, width, height, audioFx, videoFx, videoCodec
-- to initialize getUserMedia constraints: audio, video
-- to communicate between embedding and embedded windows: origin
+  - `size` (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
+  - `width` (integer, defaults to 800) of the video stream
+  - `height` (integer, defaults to 600) of the video stream
+  - `frameRate` (integer, defaults to 30) of the video stream
+  - `audioFx` (string describing a GStreamer element and its properties, for instance "pitch pitch=0.8") if an audio effect has to be applied
+  - `videoFx` (string describing a GStreamer element and its properties, for instance "coloreffects preset=xpro") if video effect has to be applied
+  - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
+  - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
+  - `videoCodec` (string) possible values: "vp8" (default if none), "h264" or "vp9"
+  - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
+  - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
 
-Note: the embedding origin (for instance `https://website-calling-ducksoup.example.com` above) has to be listed as a valid origin when starting DuckSoup (see [Environment variables](#environment-variables)).
+- `embedOptions` (object) may be empty or contain the following optional properties:
+
+  - `callback` (JavaScript function) to receive messages from DuckSoup (see following paragraph)
+  - `debug` (boolean, defaults to false) to enable receiving debug messages (in callback)
+
+The callback function will receive a message as a `{ kind, payload }` object where:
+
+- kind (string) may be: `"start"`, `"error"`, `"disconnected"`, `"finish"` (and `"stats"` if debug is enabled) 
+- payload (unrestricted type) is an optional payload
 
 ## Build from source
 

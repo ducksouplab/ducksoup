@@ -156,13 +156,14 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate } = peerOptions;
+    let { room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
     if(isNaN(width)) width = null;
     if(isNaN(height)) height = null;
+    if(isNaN(frameRate)) frameRate = null;
 
-    return clean({ room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate });
+    return clean({ room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
 }
 
 const forceMozillaMono = (sdp) => {
@@ -205,8 +206,8 @@ class DuckSoup {
                 audio: { ...DEFAULT_CONSTRAINTS.audio, ...peerOptions.audio },
                 video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
             };
-            this.debug = embedOptions.debug;
-            this.listener = embedOptions.listener;
+            this.debug = embedOptions && embedOptions.debug;
+            this.callback = embedOptions && embedOptions.callback;
             if(this.debug) {
                 this.debugInfo = {
                     now: Date.now(),
@@ -231,14 +232,13 @@ class DuckSoup {
                 this.renderDevices();
                 this.startRTC();
             } catch (err) {
-                console.error(err);
-                this.stop("error");
+                this.stop({ kind: "error", payload: err});
             }
         }
     };
 
     postMessage(message) {
-        if(this.listener) this.listener(message);
+        if(this.callback) this.callback(message);
     }
 
     stop(reason) {
@@ -256,7 +256,6 @@ class DuckSoup {
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this.constraints);
         stream.getTracks().forEach((track) => {
-            console.log("track settings: ", track.getSettings());
             pc.addTrack(track, stream);
         });
         this.stream = stream;
@@ -280,26 +279,23 @@ class DuckSoup {
         };
     
         ws.onclose = () => {
-            console.log("[ws] closed");
             this.stop("disconnected");
         };
     
         ws.onerror = (event) => {
-            console.error("[ws] error: " + event.data);
-            this.stop("error");
+            this.stop({ kind: "error", payload: event.data });
         };
         
         ws.onmessage = async (event) => {
             let message = JSON.parse(event.data);
 
-            if (!message) return console.error("[ws] can't parse message");
+            if (!message) return this.stop({ kind: "error", payload: "can't parse message" });
     
             if (message.kind === "offer") {
                 const offer = JSON.parse(message.payload);
                 if (!offer) {
-                    return console.error("[ws] can't parse offer");
+                    return this.stop({ kind: "error", payload: "can't parse offer" });
                 }
-                console.log("[ws] received offer");
                 pc.setRemoteDescription(offer);
                 const answer = await pc.createAnswer();
                 answer.sdp = processSDP(answer.sdp);
@@ -313,14 +309,12 @@ class DuckSoup {
             } else if (message.kind === "candidate") {
                 const candidate = JSON.parse(message.payload);
                 if (!candidate) {
-                    return console.error("[ws] can't parse candidate");
+                    return this.stop({ kind: "error", payload: "can't parse candidate" });
                 }
-                console.log("[ws] candidate");
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
-                console.log("[ws] start");
+                this.callback({ kind: "start "});
             } else if (message.kind === "finishing") {
-                console.log("[ws] finishing");
                 this.document.querySelector(".finishing").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "finish") {
                 this.document.querySelector("body").style.display = 'none';
@@ -432,8 +426,6 @@ class DuckSoup {
 }
 
 // API
-// peerOptions: signalingUrl, room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate, rtcConfig
-// embedOptions: debug, listener
 
 window.DuckSoup = {
     render: (mountEl, peerOptions, embedOptions) => {

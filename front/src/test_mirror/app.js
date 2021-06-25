@@ -87,18 +87,18 @@ const start = async () => {
     };
     state.uid = uid;
 
-    const embedEl = document.getElementById("embed");
-    embedEl.style.width = width + "px";
-    embedEl.style.height = height + "px";
-    embedEl.classList.remove("d-none");
+    const mountEl = document.getElementById("ducksoup-container");
+    mountEl.style.width = width + "px";
+    mountEl.style.height = height + "px";
+    mountEl.classList.remove("d-none");
     // hide
     document.getElementById("start").classList.add("d-none");
     document.getElementById("stopped").classList.add("d-none");
     document.getElementById("stop").classList.remove("d-none");
     // show
     // start DuckSoup
-    DuckSoup.render(embedEl, joinOptions, {
-        listener: receiveMessage,
+    DuckSoup.render(mountEl, joinOptions, {
+        callback: receiveMessage,
         debug: true,
     });
 };
@@ -112,24 +112,31 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   
 
-const hideEmbed = () => {
+const hideDuckSoup = () => {
     document.getElementById("stopped").classList.remove("d-none");
-    document.getElementById("embed").classList.add("d-none");
+    document.getElementById("ducksoup-container").classList.add("d-none");
 }
 
 const replaceMessage = (message) => {
     document.getElementById("stopped-message").innerHTML = message;
-    hideEmbed();
+    hideDuckSoup();
 }
 
 const appendMessage = (message) => {
     document.getElementById("stopped-message").innerHTML += '<br/>' + message;
-    hideEmbed();
+    hideDuckSoup();
 }
 
 // communication with iframe
 const receiveMessage = (message) => {
     const { kind, payload } = message;
+    if(kind !== "stats") {
+        if(payload) {
+            console.log("[DuckSoup]", kind, payload);
+        } else {
+            console.log("[DuckSoup]", kind);
+        }
+    }
     if (kind === "finish") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
