@@ -17,8 +17,6 @@ const getQueryVariable = (key, deserializeFunc) => {
     }
 };
 
-const marshallParams = (obj) => encodeURI(btoa(JSON.stringify(obj)));
-
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
 
 const init = () => {
@@ -67,8 +65,10 @@ const start = async () => {
         ...(frameRate && { frameRate: { ideal: frameRate } }),
     }
     
-    const params = {
-        origin: window.location.origin,
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+
+    const joinOptions = {
+        signalingUrl: `${wsProtocol}://${window.location.host}/ws`,
         room,
         uid,
         name,
@@ -76,9 +76,9 @@ const start = async () => {
         // optional
         namespace: "mirror",
         size: 1, // size 1 for mirroring
+        video,
         width,
         height,
-        video,
         ...(audioFx && { audioFx }),
         ...(videoFx && { videoFx }),
         ...(frameRate && { frameRate }),
@@ -87,16 +87,20 @@ const start = async () => {
     };
     state.uid = uid;
 
-    document.getElementById("embed").width = width;
-    document.getElementById("embed").height = height;
-    document.getElementById("embed").src = `/embed/?params=${marshallParams(params)}`;
+    const embedEl = document.getElementById("embed");
+    embedEl.style.width = width + "px";
+    embedEl.style.height = height + "px";
+    embedEl.classList.remove("d-none");
     // hide
     document.getElementById("start").classList.add("d-none");
     document.getElementById("stopped").classList.add("d-none");
     document.getElementById("stop").classList.remove("d-none");
     // show
-    document.getElementById("embed").classList.remove("d-none");
-
+    // start DuckSoup
+    DuckSoup.render(embedEl, joinOptions, {
+        listener: receiveMessage,
+        debug: true,
+    });
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -124,10 +128,8 @@ const appendMessage = (message) => {
 }
 
 // communication with iframe
-window.addEventListener("message", (event) => {
-    if (event.origin !== window.location.origin) return;
-
-    const { kind, payload } = event.data;
+const receiveMessage = (message) => {
+    const { kind, payload } = message;
     if (kind === "finish") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
@@ -152,4 +154,4 @@ window.addEventListener("message", (event) => {
         document.getElementById("video-up").textContent = payload.videoUp;
         document.getElementById("video-down").textContent = payload.videoDown;
     }
-});
+};
