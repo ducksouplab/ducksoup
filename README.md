@@ -7,11 +7,21 @@ From a technical standpoint, DuckSoup is:
 * a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
 * with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
 
+## DuckSoup server interface
+
+The DuckSoup server exposes the following:
+
+- an HTTP server for static files: `ducksoup.js` and example front-ends (TCP)
+- an HTTP websocket endpoint for signaling (TCP)
+- WebRTC (UDP)
+
+Using `ducksoup.js` is the preferred way to interact with other DuckSoup server parts (signaling and WebRTC).
+
 ## Embed DuckSoup
 
 Let's assume we have a DuckSoup server installed and running at `ducksoup-host.example.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment.example.com`.
 
-The embedding origin (`my-experiment.example.com`) has to be listed as an authorized origin when starting the DuckSoup  instance available at `ducksoup-host.example.com` (see [Environment variables](#environment-variables)).
+The embedding origin (`my-experiment.example.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.example.com` (see [Environment variables](#environment-variables)).
 
 Then, on the experiment web page, include the `ducksoup.js` library:
 
@@ -61,7 +71,7 @@ The callback function will receive a message as a `{ kind, payload }` object whe
 - kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
 - payload (unrestricted type) is an optional payload
 
-## Build from source
+## Build server from source
 
 Dependencies:
 
@@ -96,7 +106,7 @@ go build
 - DS_ENV=DEV enables automatic front-end assets build with esbuild + adds a few allowed origins for WebSocket connections
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
 
-## Run DuckSoup
+## Run DuckSoup server
 
 Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted WebSocket origin is declared):
 
@@ -213,29 +223,19 @@ docker run --name ducksoup_multi_2 \
   ducksoup_multi_alpine:latest
 ```
 
-## Test front-ends
+## Front-end examples
 
-Several test front-ends are available:
+There are several ways to use DuckSoup:
 
-- static/test_embed showcases how to embed DuckSoup in a iframe and receive messages from it
-- static/test_standalone is a sample project not relying on static/embed
+- the official and maintained way is to rely on ducksoup.js as described in [Embed DuckSoup](#embed-ducksoup)
+- `static/test_standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic
+- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test_embed` which contains an iframe that embeds `static/embed`
 
-Once the app is running, you may try it with:
+Once the app is running, you may try them at:
 
-- http://localhost:8000/test_embed/ (two users -> two tabs)
+- http://localhost:8000/test_mirror/ (one user, relies on ducksoup.js)
 - http://localhost:8000/test_standalone/ (two users -> two tabs)
-- http://localhost:8000/test_mirror/ (one user)
-
-## Websocket messages
-
-Messages from server (Go) to client (JS):
-
-- kind `offer` and `candidate` for signaling (with payloads)
-- kind `start` when all peers and tracks are ready
-- kind `ending` when the room will soon be destroyed
-- kind `end` when time is over (payload contains an index of media files recorded for this experiment)
-- kind `error-full` when room limit has been reached and user can't enter room
-- kind `error-duplicate` when same user is already in room
+- http://localhost:8000/test_embed/ (two users -> two tabs)
 
 ## Front-ends build
 
@@ -248,6 +248,17 @@ It's also possible to watch changes and rebuild those files by adding this envir
 ```
 DS_ENV=DEV ./ducksoup
 ```
+
+## Websocket messages
+
+Messages from server (Go) to client (JS):
+
+- kind `offer` and `candidate` for signaling (with payloads)
+- kind `start` when all peers and tracks are ready
+- kind `ending` when the room will soon be destroyed
+- kind `end` when time is over (payload contains an index of media files recorded for this experiment)
+- kind `error-full` when room limit has been reached and user can't enter room
+- kind `error-duplicate` when same user is already in room
 
 ## Concepts in Go code
 
