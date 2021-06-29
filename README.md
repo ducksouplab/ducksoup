@@ -77,15 +77,15 @@ DuckSoup servers come with GStreamer and the ability to apply effects on live vi
 
 From the standpoint of DuckSoup, it is possible to add one audio and one video effect as a GStreamer element, following this syntax:
 
-* generic format: `element property1=value1 property2=value2 ...` with O, 1 or more properties
+* generic format: `element property1=value1 property2=value2 ...` with 0, 1 or more properties
 * audio processing example: `pitch pitch=0.8`
 * video processing example: `coloreffects preset=xpro`
 
-You may browse [available plugins](https://gstreamer.freedesktop.org/documentation/plugins_doc.html?gi-language=c) (each plugin contains one or more elements) and discover elements and their properties.
+You may browse [available plugins](https://gstreamer.freedesktop.org/documentation/plugins_doc.html?gi-language=c) (each plugin contains one or more elements) to discover elements and their properties.
 
 Please note that, even if the default DuckSoup configuration comes with the "good, bad and ugly" GStreamer plugin packages, some elements in those packages might not be available when running DuckSoup (especially due to hardware limitations).
 
-It is also possible to add custom GStreamer plugins to DuckSoup (check thes section [Custom GStreamer plugins](#custom-gstreamer-plugins))
+It is also possible to add custom GStreamer plugins to DuckSoup (check the section [Custom GStreamer plugins](#custom-gstreamer-plugins))
 
 ## Build server from source
 
@@ -99,14 +99,6 @@ Regarding GStreamer on Debian you may:
 ```
 apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-```
-
-To serve with TLS in a local setup, you may consider:
-
-- [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates
-
-```
-mkdir certs && cd certs && mkcert -key-file key.pem -cert-file cert.pem localhost 
 ```
 
 Then build:
@@ -131,7 +123,13 @@ DS_ENV=DEV ./ducksoup
 DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup
 ```
 
-With TLS:
+To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:
+
+```
+mkdir certs && cd certs && mkcert -key-file key.pem -cert-file cert.pem localhost 
+```
+
+Run with TLS:
 
 ```
 DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
