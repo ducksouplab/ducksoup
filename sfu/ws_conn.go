@@ -12,6 +12,7 @@ import (
 type WsConn struct {
 	sync.Mutex
 	*websocket.Conn
+	userId string
 }
 
 type WsMessageOut struct {
@@ -42,13 +43,24 @@ type JoinPayload struct {
 
 // API
 
+func NewWsConn(unsafeConn *websocket.Conn) *WsConn {
+	return &WsConn{sync.Mutex{}, unsafeConn, ""}
+}
+
+func (w *WsConn) SetUserId(userId string) {
+	w.Lock()
+	defer w.Unlock()
+
+	w.userId = userId
+}
+
 func (w *WsConn) Send(text string) (err error) {
 	w.Lock()
 	defer w.Unlock()
 
 	m := &WsMessageOut{Kind: text}
 	if err := w.Conn.WriteJSON(m); err != nil {
-		log.Println(err)
+		log.Printf("[user %s error] WriteJSON: %v\n", w.userId, err)
 	}
 	return
 }
@@ -62,7 +74,7 @@ func (w *WsConn) SendWithPayload(kind string, payload interface{}) (err error) {
 		Payload: payload,
 	}
 	if err := w.Conn.WriteJSON(m); err != nil {
-		log.Println(err)
+		log.Printf("[user %s error] WriteJSON with payload: %v\n", w.userId, err)
 	}
 	return
 }

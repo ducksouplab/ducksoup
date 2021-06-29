@@ -1,3 +1,7 @@
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("[DuckSoup] v1.0.0")
+});
+
 // Use single quote in templace since will be used as an iframe srcdoc value
 const TEMPLATE = `<!DOCTYPE html>
 <html>
@@ -138,6 +142,8 @@ const IS_SAFARI = (() => {
     return containsSafari && !containsChrome;
 })();
 
+console.log("IS_SAFARI", IS_SAFARI)
+
 // Pure functions
 
 const areOptionsValid = ({room, name, duration, uid}) => {
@@ -194,6 +200,8 @@ const kbps = (bytes, duration) => {
 
 class DuckSoup {
 
+    // API
+
     constructor(document, peerOptions, embedOptions) {
         if (!areOptionsValid(peerOptions)) {
             document.querySelector(".placeholder").innerHTML = "Invalid DuckSoup options"
@@ -229,26 +237,34 @@ class DuckSoup {
     
             try {
                 // async calls
-                this.renderDevices();
-                this.startRTC();
+                this._renderDevices();
+                this._startRTC();
             } catch (err) {
-                this.stop({ kind: "error", payload: err});
+                this._postStop({ kind: "error", payload: err});
             }
         }
     };
 
-    postMessage(message) {
+    stop() {
+        this.stream.getTracks().forEach((track) => track.stop());
+        this.pc.close();
+        this.ws.close();
+    }
+
+    // Inner methods
+
+    _postMessage(message) {
         if(this.callback) this.callback(message);
     }
 
-    stop(reason) {
+    _postStop(reason) {
         const message = typeof reason === "string" ? { kind: reason } : reason;
-        this.stream.getTracks().forEach((track) => track.stop());
-        this.postMessage(message);
+        this.stop();
+        this._postMessage(message);
         if(this.debugIntervalId) clearInterval(this.debugIntervalId);
     }
 
-    async startRTC() {
+    async _startRTC() {
         // RTCPeerConnection
         const pc = new RTCPeerConnection(this.rtcConfig);
         this.pc = pc;
@@ -268,6 +284,7 @@ class DuckSoup {
         // Signaling
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
         const ws = new WebSocket(this.signalingUrl);
+        this.ws = ws;
     
         ws.onopen = () => {
             ws.send(
@@ -279,22 +296,22 @@ class DuckSoup {
         };
     
         ws.onclose = () => {
-            this.stop("disconnection");
+            this._postStop("disconnection");
         };
     
         ws.onerror = (event) => {
-            this.stop({ kind: "error", payload: event.data });
+            this._postStop({ kind: "error", payload: event.data });
         };
         
         ws.onmessage = async (event) => {
             let message = JSON.parse(event.data);
 
-            if (!message) return this.stop({ kind: "error", payload: "can't parse message" });
+            if (!message) return this._postStop({ kind: "error", payload: "can't parse message" });
     
             if (message.kind === "offer") {
                 const offer = JSON.parse(message.payload);
                 if (!offer) {
-                    return this.stop({ kind: "error", payload: "can't parse offer" });
+                    return this._postStop({ kind: "error", payload: "can't parse offer" });
                 }
                 pc.setRemoteDescription(offer);
                 const answer = await pc.createAnswer();
@@ -309,7 +326,7 @@ class DuckSoup {
             } else if (message.kind === "candidate") {
                 const candidate = JSON.parse(message.payload);
                 if (!candidate) {
-                    return this.stop({ kind: "error", payload: "can't parse candidate" });
+                    return this._postStop({ kind: "error", payload: "can't parse candidate" });
                 }
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
@@ -318,7 +335,7 @@ class DuckSoup {
                 this.document.querySelector(".ending").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "end") {
                 this.document.querySelector("body").style.display = 'none';
-                this.stop(message);
+                this._postStop(message);
             }
         };
     
@@ -347,11 +364,34 @@ class DuckSoup {
     
         // Stats
         if(this.debug) {
-            this.debugIntervalId = setInterval(() => this.updateStats(), 1000);
+            this.debugIntervalId = setInterval(() => this._updateStats(), 1000);
+        }
+    }
+    
+    async _renderDevices() {
+        if(IS_SAFARI) {
+            // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
+            console.log("renderDevices getUserMedia for safari")
+            await navigator.mediaDevices.getUserMedia(this.constraints);
+        }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioSourceEl = this.document.querySelector('.audio-source');
+        const videoSourceEl = this.document.querySelector('.video-source');
+        for (let i = 0; i !== devices.length; ++i) {
+            const device = devices[i];
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            if (device.kind === 'audioinput') {
+                option.text = device.label || `microphone ${audioSourceEl.length + 1}`;
+                audioSourceEl.appendChild(option);
+            } else if (device.kind === 'videoinput') {
+                option.text = device.label || `camera ${videoSourceEl.length + 1}`;
+                videoSourceEl.appendChild(option);
+            }
         }
     }
 
-    async updateStats() {
+    async _updateStats() {
         const pc = this.pc;
         const pcStats = await pc.getStats();
         const newNow = Date.now();
@@ -389,7 +429,7 @@ class DuckSoup {
           newVideoBytesReceived - this.debugInfo.videoBytesReceived,
           elapsed
         );
-        this.postMessage({
+        this._postMessage({
             kind: "stats",
             payload: { audioUp, audioDown, videoUp, videoDown }
         });
@@ -400,28 +440,6 @@ class DuckSoup {
             videoBytesSent: newVideoBytesSent,
             videoBytesReceived: newVideoBytesReceived
         };
-    }
-    
-    async renderDevices() {
-        if(IS_SAFARI) {
-            // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
-            await navigator.mediaDevices.getUserMedia(this.constraints);
-        }
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioSourceEl = this.document.querySelector('.audio-source');
-        const videoSourceEl = this.document.querySelector('.video-source');
-        for (let i = 0; i !== devices.length; ++i) {
-            const device = devices[i];
-            const option = document.createElement('option');
-            option.value = device.deviceId;
-            if (device.kind === 'audioinput') {
-                option.text = device.label || `microphone ${audioSourceEl.length + 1}`;
-                audioSourceEl.appendChild(option);
-            } else if (device.kind === 'videoinput') {
-                option.text = device.label || `camera ${videoSourceEl.length + 1}`;
-                videoSourceEl.appendChild(option);
-            }
-        }
     }
 }
 
@@ -434,8 +452,13 @@ window.DuckSoup = {
         iframe.width = "100%";
         iframe.height = "100%";
         const iframeWindow = iframe.contentWindow;
-        iframeWindow.addEventListener('DOMContentLoaded', function() {
-            new DuckSoup(iframeWindow.document, peerOptions, embedOptions);
-        });
+
+        // enables: const ducksoupInstance = await DuckSoup.render(...) 
+        return new Promise((resolve) => {
+            iframeWindow.addEventListener('DOMContentLoaded', function() {
+                resolve(new DuckSoup(iframeWindow.document, peerOptions, embedOptions));
+            });
+        })
+        
     }
 }

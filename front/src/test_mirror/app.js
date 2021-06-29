@@ -95,9 +95,10 @@ const start = async () => {
     document.getElementById("start").classList.add("d-none");
     document.getElementById("stopped").classList.add("d-none");
     document.getElementById("stop").classList.remove("d-none");
-    // show
-    // start DuckSoup
-    DuckSoup.render(mountEl, joinOptions, {
+    // stop if previous instance exists
+    if(state.ducksoup) state.ducksoup.stop()
+    // start new DuckSoup
+    state.ducksoup = await DuckSoup.render(mountEl, joinOptions, {
         callback: receiveMessage,
         debug: true,
     });
@@ -131,11 +132,7 @@ const appendMessage = (message) => {
 const receiveMessage = (message) => {
     const { kind, payload } = message;
     if(kind !== "stats") {
-        if(payload) {
-            console.log("[DuckSoup]", kind, payload);
-        } else {
-            console.log("[DuckSoup]", kind);
-        }
+        console.log("[DuckSoup]", kind);
     }
     if (kind === "end") {
         if(payload && payload[state.uid]) {

@@ -132,8 +132,15 @@ func (r *Room) countdown() {
 	// blocking "end" event and delete
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-endTimer.C
-	log.Printf("[room %s] end\n", r.id)
+
+	// listened by peer_conn
 	close(r.endCh)
+
+	for _, ps := range r.peerServerIndex {
+		go ps.wsConn.SendWithPayload("end", r.Files())
+	}
+	log.Printf("[room %s] end\n", r.id)
+
 	r.delete()
 }
 
@@ -192,10 +199,10 @@ func (r *Room) IncTracksReadyCount() {
 	}
 
 	r.tracksReadyCount++
-	log.Printf("[room %s] new track, updated count: %d\n", r.id, r.tracksReadyCount)
+	log.Printf("[room %s] track updated count: %d\n", r.id, r.tracksReadyCount)
 
 	if r.tracksReadyCount == neededTracks {
-		log.Printf("[room %s] closing waitForAllCh\n", r.id)
+		log.Printf("[room %s] users are ready\n", r.id)
 		close(r.waitForAllCh)
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
@@ -241,6 +248,7 @@ func (r *Room) AddProcessedTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStatic
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
+		log.Printf("[room %s error] NewTrackLocalStaticRTP: %v\n", r.id, err)
 		panic(err)
 	}
 
@@ -299,6 +307,7 @@ func (r *Room) UpdateSignaling() {
 				_, ok := r.trackIndex[sender.Track().ID()]
 				if !ok {
 					if err := peerConn.RemoveTrack(sender); err != nil {
+						log.Printf("[room %s error] RemoveTrack: %v\n", r.id, err)
 						return false
 					}
 				}
@@ -321,6 +330,7 @@ func (r *Room) UpdateSignaling() {
 					rtpSender, err := peerConn.AddTrack(r.trackIndex[trackID])
 
 					if err != nil {
+						log.Printf("[room %s error] AddTrack: %v\n", r.id, err)
 						return false
 					}
 
@@ -332,6 +342,7 @@ func (r *Room) UpdateSignaling() {
 						rtcpBuf := make([]byte, 1500)
 						for {
 							if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+								log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
 								return
 							}
 						}
@@ -341,16 +352,18 @@ func (r *Room) UpdateSignaling() {
 
 			offer, err := peerConn.CreateOffer(nil)
 			if err != nil {
-				log.Printf("[room %s] CreateOffer failed: %v\n", r.id, err)
+				log.Printf("[room %s error] CreateOffer: %v\n", r.id, err)
 				return false
 			}
 
 			if err = peerConn.SetLocalDescription(offer); err != nil {
+				log.Printf("[room %s error] SetLocalDescription: %v\n", r.id, err)
 				return false
 			}
 
 			offerString, err := json.Marshal(offer)
 			if err != nil {
+				log.Printf("[room %s error] marshal offer: %v\n", r.id, err)
 				return false
 			}
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -36,7 +35,7 @@ func (ps *PeerServer) loop() {
 	go func() {
 		<-ps.room.waitForAllCh
 		<-time.After(time.Duration(ps.room.EndingDelay()) * time.Second)
-		log.Printf("[user %s] wsConn> ending\n", ps.userId)
+		log.Printf("[user %s] ending\n", ps.userId)
 		ps.wsConn.Send("ending")
 	}()
 
@@ -45,7 +44,7 @@ func (ps *PeerServer) loop() {
 
 		if err != nil {
 			ps.room.DisconnectUser(ps.userId)
-			log.Println("[ws] reading JSON failed")
+			log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
 			return
 		}
 
@@ -53,23 +52,23 @@ func (ps *PeerServer) loop() {
 		case "candidate":
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				log.Println(err)
+				log.Printf("[user %s error] unmarshal candidate: %v\n", ps.userId, err)
 				return
 			}
 
 			if err := ps.peerConn.AddICECandidate(candidate); err != nil {
-				log.Println(err)
+				log.Printf("[user %s error] add candidate: %v\n", ps.userId, err)
 				return
 			}
 		case "answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-				log.Println(err)
+				log.Printf("[user %s error] unmarshal answer: %v\n", ps.userId, err)
 				return
 			}
 
 			if err := ps.peerConn.SetRemoteDescription(answer); err != nil {
-				log.Println(err)
+				log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
 				return
 			}
 		}
@@ -81,21 +80,23 @@ func (ps *PeerServer) loop() {
 // handle incoming websockets
 func RunPeerServer(unsafeConn *websocket.Conn) {
 
-	wsConn := &WsConn{sync.Mutex{}, unsafeConn}
+	wsConn := NewWsConn(unsafeConn)
 	defer wsConn.Close()
 
 	// first message must be a join request
 	joinPayload, err := wsConn.ReadJoin()
 	if err != nil {
-		log.Print(err)
-		log.Println("[ws] join payload corrupted")
+		log.Printf("[user unknown] join payload corrupted: %v\n", err)
 		return
 	}
+
+	// used to log info with user id
+	wsConn.SetUserId(joinPayload.UserId)
 
 	room, joinErr := JoinRoom(joinPayload)
 	if joinErr != nil {
 		// joinErr is meaningful to client
-		log.Printf("[user %s-%s] join failed: %s", joinPayload.UserId, joinPayload.Name, joinErr)
+		log.Printf("[user %s] join failed: %s", joinPayload.UserId, joinErr)
 		wsConn.Send(fmt.Sprintf("error-%s", joinErr))
 		return
 	}

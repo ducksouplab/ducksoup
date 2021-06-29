@@ -53,8 +53,8 @@ Where:
   - `width` (integer, defaults to 800) of the video stream
   - `height` (integer, defaults to 600) of the video stream
   - `frameRate` (integer, defaults to 30) of the video stream
-  - `audioFx` (string describing a GStreamer element and its properties, for instance "pitch pitch=0.8") if an audio effect has to be applied
-  - `videoFx` (string describing a GStreamer element and its properties, for instance "coloreffects preset=xpro") if video effect has to be applied
+  - `audioFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if an audio effect has to be applied
+  - `videoFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if video effect has to be applied
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
   - `videoCodec` (string) possible values: "vp8" (default if none), "h264" or "vp9"
@@ -70,6 +70,22 @@ The callback function will receive a message as a `{ kind, payload }` object whe
 
 - kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
 - payload (unrestricted type) is an optional payload
+
+## GStreamer effects
+
+DuckSoup servers come with GStreamer and the ability to apply effects on live video and audio streams. Check some [examples](https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-examples) from GStreamer documentation to get a glimpse of how to set GStreamer elements and their properties.
+
+From the standpoint of DuckSoup, it is possible to add one audio and one video effect as a GStreamer element, following this syntax:
+
+* generic format: `element property1=value1 property2=value2 ...` with O, 1 or more properties
+* audio processing example: `pitch pitch=0.8`
+* video processing example: `coloreffects preset=xpro`
+
+You may browse [available plugins](https://gstreamer.freedesktop.org/documentation/plugins_doc.html?gi-language=c) (each plugin contains one or more elements) and discover elements and their properties.
+
+Please note that, even if the default DuckSoup configuration comes with the "good, bad and ugly" GStreamer plugin packages, some elements in those packages might not be available when running DuckSoup (especially due to hardware limitations).
+
+It is also possible to add custom GStreamer plugins to DuckSoup (check thes section [Custom GStreamer plugins](#custom-gstreamer-plugins))
 
 ## Build server from source
 
@@ -122,7 +138,9 @@ DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
 DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
-## Add custom GStreamer plugins
+## Custom GStreamer plugins
+
+First create a folder dedicated to custom plugins, and update `GST_PLUGIN_PATH` accordingly:
 
 ```
 mkdir -p plugins
@@ -130,7 +148,7 @@ export PROJECT_BUILD=`pwd`/plugins
 export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 ```
 
-These plugins (`libxyz.so` files) enable additional elements to be used in DuckSoup GStreamer pipelines. They have to be built against the same GStreamer version than the one running with DuckSoup (1.18.4 at the time of writing this documentation, check with `gst-inspect-1.0 --version`).
+Then add plugins (`libxyz.so` files) to this folder to enable them in DuckSoup GStreamer pipelines. They have to be built against the same GStreamer version than the one running with DuckSoup (1.18.4 at the time of writing this documentation, check with `gst-inspect-1.0 --version`).
 
 ## Code within a Docker container
 

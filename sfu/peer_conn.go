@@ -77,7 +77,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 	api, err := engine.NewWebRTCAPI(codecs)
 	if err != nil {
-		log.Print(err)
+		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	}
 	peerConn, err = api.NewPeerConnection(config)
 	if err != nil {
-		log.Print(err)
+		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
 	}
 
@@ -100,7 +100,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		if _, err := peerConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		}); err != nil {
-			log.Print(err)
+			log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
 			return
 		}
 	}
@@ -108,12 +108,13 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 	// trickle ICE. Emit server candidate to client
 	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
+			log.Printf("[user %s error] empty candidate", userId)
 			return
 		}
 
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			log.Println(err)
+			log.Printf("[user %s error] marshal candidate: %v\n", userId, err)
 			return
 		}
 
@@ -122,11 +123,11 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 	// if PeerConnection is closed remove it from global list
 	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[user %s] peerConn> state change: %s \n", userId, p.String())
+		log.Printf("[user %s] peer connection state change: %s \n", userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := peerConn.Close(); err != nil {
-				log.Print(err)
+				log.Printf("[user %s error] peer connection failed: %v\n", userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
 			room.UpdateSignaling()
@@ -148,13 +149,13 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 				case <-ticker.C:
 					err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
 					if err != nil {
-						log.Println(err)
+						log.Printf("[user %s error] WriteRTCP: %v\n", userId, err)
 					}
 				}
 			}
 		}()
 
-		log.Printf("[user %s] peerConn> new %s track\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
+		log.Printf("[user %s] new track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 
 		buf := make([]byte, 1500)
 		room.IncTracksReadyCount()
@@ -162,7 +163,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		<-room.waitForAllCh
 
 		// prepare GStreamer pipeline
-		log.Printf("[user %s] peerConn> %s track started\n", userId, remoteTrack.Kind().String())
+		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
 		processedTrack := room.AddProcessedTrack(remoteTrack)
 		defer room.RemoveProcessedTrack(processedTrack)
 
@@ -177,7 +178,7 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		room.AddFiles(userId, pipeline.Files)
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[user %s] peerConn> recover OnTrack\n", userId)
+				log.Printf("[user %s] recover OnTrack\n", userId)
 			}
 		}()
 		defer pipeline.Stop()
@@ -186,7 +187,6 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 		for {
 			select {
 			case <-room.endCh:
-				wsConn.SendWithPayload("end", room.Files())
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)
