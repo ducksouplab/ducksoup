@@ -341,7 +341,7 @@ func (r *Room) UpdateSignaling() {
 					go func() {
 						rtcpBuf := make([]byte, 1500)
 						for {
-							if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+							if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
 								log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
 								return
 							}
