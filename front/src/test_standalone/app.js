@@ -131,11 +131,11 @@ const startRTC = async () => {
   };
 
   ws.onclose = function () {
-    console.log("Websocket has closed");
+    console.log("[ws] closed");
   };
 
   ws.onerror = function (event) {
-    console.error("ws: " + event.data);
+    console.error("[ws] " + event.data);
   };
 
   ws.onmessage = async function (event) {

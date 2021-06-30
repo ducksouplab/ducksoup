@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.0")
+    console.log("[DuckSoup] v1.0.2")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -446,19 +446,22 @@ class DuckSoup {
 // API
 
 window.DuckSoup = {
-    render: (mountEl, peerOptions, embedOptions) => {
+    render: async (mountEl, peerOptions, embedOptions) => {
         mountEl.innerHTML = `<iframe srcdoc="${TEMPLATE}"></iframe>`;
         const iframe = mountEl.querySelector("iframe");
         iframe.width = "100%";
         iframe.height = "100%";
         const iframeWindow = iframe.contentWindow;
-
-        // enables: const ducksoupInstance = await DuckSoup.render(...) 
-        return new Promise((resolve) => {
-            iframeWindow.addEventListener('DOMContentLoaded', function() {
-                resolve(new DuckSoup(iframeWindow.document, peerOptions, embedOptions));
-            });
-        })
         
+        const waitForDOMContentLoaded = new Promise((resolve) => {
+            iframeWindow.addEventListener('DOMContentLoaded', resolve);
+        });
+        const waitForLoad = new Promise((resolve) => {
+            iframeWindow.addEventListener('load', resolve);
+        });
+        // on safari, DOMContentLoaded won't be triggered for this iframe, so we wait for the fastest triggered event
+        await Promise.race([waitForDOMContentLoaded, waitForLoad]);
+
+        return new DuckSoup(iframeWindow.document, peerOptions, embedOptions);        
     }
 }
