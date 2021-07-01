@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.2")
+    console.log("[DuckSoup] v1.0.4")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -102,6 +102,12 @@ const TEMPLATE = `<!DOCTYPE html>
                 </div>
             </div>
         </div>
+
+        <script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", () => {
+            window.parent.postMessage("DuckSoupContainerLoaded");
+        });
+        </script>
     </body>
 </html>`;
 
@@ -146,28 +152,28 @@ console.log("IS_SAFARI", IS_SAFARI)
 
 // Pure functions
 
-const areOptionsValid = ({room, name, duration, uid}) => {
-    return  typeof room !== 'undefined' &&
-            typeof uid !== 'undefined' &&
-            typeof name !== 'undefined' &&
-            !isNaN(duration);
+const areOptionsValid = ({ room, name, duration, uid }) => {
+    return typeof room !== 'undefined' &&
+        typeof uid !== 'undefined' &&
+        typeof name !== 'undefined' &&
+        !isNaN(duration);
 }
 
 const clean = (obj) => {
     for (let prop in obj) {
-      if (obj[prop] === null || obj[prop] === undefined) delete obj[prop];
+        if (obj[prop] === null || obj[prop] === undefined) delete obj[prop];
     }
     return obj;
-  }
+}
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
     let { room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
-    if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
-    if(isNaN(size)) size = null;
-    if(isNaN(width)) width = null;
-    if(isNaN(height)) height = null;
-    if(isNaN(frameRate)) frameRate = null;
+    if (!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
+    if (isNaN(size)) size = null;
+    if (isNaN(width)) width = null;
+    if (isNaN(height)) height = null;
+    if (isNaN(frameRate)) frameRate = null;
 
     return clean({ room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
 }
@@ -194,7 +200,7 @@ const processSDP = (sdp) => {
 const kbps = (bytes, duration) => {
     const result = (8 * bytes) / duration / 1024;
     return result.toFixed(1);
-  };
+};
 
 // DuckSoup
 
@@ -216,7 +222,7 @@ class DuckSoup {
             };
             this.debug = embedOptions && embedOptions.debug;
             this.callback = embedOptions && embedOptions.callback;
-            if(this.debug) {
+            if (this.debug) {
                 this.debugInfo = {
                     now: Date.now(),
                     audioBytesSent: 0,
@@ -234,13 +240,13 @@ class DuckSoup {
                     return 0;
                 })
             }
-    
+
             try {
                 // async calls
                 this._renderDevices();
                 this._startRTC();
             } catch (err) {
-                this._postStop({ kind: "error", payload: err});
+                this._postStop({ kind: "error", payload: err });
             }
         }
     };
@@ -254,38 +260,38 @@ class DuckSoup {
     // Inner methods
 
     _postMessage(message) {
-        if(this.callback) this.callback(message);
+        if (this.callback) this.callback(message);
     }
 
     _postStop(reason) {
         const message = typeof reason === "string" ? { kind: reason } : reason;
         this.stop();
         this._postMessage(message);
-        if(this.debugIntervalId) clearInterval(this.debugIntervalId);
+        if (this.debugIntervalId) clearInterval(this.debugIntervalId);
     }
 
     async _startRTC() {
         // RTCPeerConnection
         const pc = new RTCPeerConnection(this.rtcConfig);
         this.pc = pc;
-    
+
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this.constraints);
         stream.getTracks().forEach((track) => {
             pc.addTrack(track, stream);
         });
         this.stream = stream;
-    
+
         if (SUPPORT_SET_CODEC && this.joinPayload && this.joinPayload.videoCodec) {
             const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
             transceiver.setCodecPreferences(this.preferredCodecs);
         }
-    
+
         // Signaling
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
         const ws = new WebSocket(this.signalingUrl);
         this.ws = ws;
-    
+
         ws.onopen = () => {
             ws.send(
                 JSON.stringify({
@@ -294,20 +300,20 @@ class DuckSoup {
                 })
             );
         };
-    
+
         ws.onclose = () => {
             this._postStop("disconnection");
         };
-    
+
         ws.onerror = (event) => {
             this._postStop({ kind: "error", payload: event.data });
         };
-        
+
         ws.onmessage = async (event) => {
             let message = JSON.parse(event.data);
 
             if (!message) return this._postStop({ kind: "error", payload: "can't parse message" });
-    
+
             if (message.kind === "offer") {
                 const offer = JSON.parse(message.payload);
                 if (!offer) {
@@ -330,7 +336,7 @@ class DuckSoup {
                 }
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
-                this.callback({ kind: "start "});
+                this.callback({ kind: "start " });
             } else if (message.kind === "ending") {
                 this.document.querySelector(".ending").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "end") {
@@ -338,7 +344,7 @@ class DuckSoup {
                 this._postStop(message);
             }
         };
-    
+
         pc.onicecandidate = (e) => {
             if (!e.candidate) return;
             ws.send(
@@ -348,28 +354,28 @@ class DuckSoup {
                 })
             );
         };
-    
+
         pc.ontrack = (event) => {
             let el = document.createElement(event.track.kind);
             el.id = event.track.id;
             el.srcObject = event.streams[0];
             el.autoplay = true;
             this.document.querySelector(".placeholder").appendChild(el);
-    
+
             event.streams[0].onremovetrack = ({ track }) => {
                 const el = document.getElementById(track.id);
                 if (el) el.parentNode.removeChild(el);
             };
         };
-    
+
         // Stats
-        if(this.debug) {
+        if (this.debug) {
             this.debugIntervalId = setInterval(() => this._updateStats(), 1000);
         }
     }
-    
+
     async _renderDevices() {
-        if(IS_SAFARI) {
+        if (IS_SAFARI) {
             // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
             console.log("renderDevices getUserMedia for safari")
             await navigator.mediaDevices.getUserMedia(this.constraints);
@@ -399,35 +405,35 @@ class DuckSoup {
         let newAudioBytesReceived = 0;
         let newVideoBytesSent = 0;
         let newVideoBytesReceived = 0;
-      
+
         pcStats.forEach((report) => {
-          if (report.type === "outbound-rtp" && report.kind === "audio") {
-            newAudioBytesSent += report.bytesSent;
-          } else if (report.type === "inbound-rtp" && report.kind === "audio") {
-            newAudioBytesReceived += report.bytesReceived;
-          } else if (report.type === "outbound-rtp" && report.kind === "video") {
-            newVideoBytesSent += report.bytesSent;
-          } else if (report.type === "inbound-rtp" && report.kind === "video") {
-            newVideoBytesReceived += report.bytesReceived;
-          }
+            if (report.type === "outbound-rtp" && report.kind === "audio") {
+                newAudioBytesSent += report.bytesSent;
+            } else if (report.type === "inbound-rtp" && report.kind === "audio") {
+                newAudioBytesReceived += report.bytesReceived;
+            } else if (report.type === "outbound-rtp" && report.kind === "video") {
+                newVideoBytesSent += report.bytesSent;
+            } else if (report.type === "inbound-rtp" && report.kind === "video") {
+                newVideoBytesReceived += report.bytesReceived;
+            }
         });
-      
+
         const elapsed = (newNow - this.debugInfo.now) / 1000;
         const audioUp = kbps(
-          newAudioBytesSent - this.debugInfo.audioBytesSent,
-          elapsed
+            newAudioBytesSent - this.debugInfo.audioBytesSent,
+            elapsed
         );
         const audioDown = kbps(
-          newAudioBytesReceived - this.debugInfo.audioBytesReceived,
-          elapsed
+            newAudioBytesReceived - this.debugInfo.audioBytesReceived,
+            elapsed
         );
         const videoUp = kbps(
-          newVideoBytesSent - this.debugInfo.videoBytesSent,
-          elapsed
+            newVideoBytesSent - this.debugInfo.videoBytesSent,
+            elapsed
         );
         const videoDown = kbps(
-          newVideoBytesReceived - this.debugInfo.videoBytesReceived,
-          elapsed
+            newVideoBytesReceived - this.debugInfo.videoBytesReceived,
+            elapsed
         );
         this._postMessage({
             kind: "stats",
@@ -447,21 +453,24 @@ class DuckSoup {
 
 window.DuckSoup = {
     render: async (mountEl, peerOptions, embedOptions) => {
-        mountEl.innerHTML = `<iframe srcdoc="${TEMPLATE}"></iframe>`;
-        const iframe = mountEl.querySelector("iframe");
+        const iframe = document.createElement("iframe");
+        iframe.srcdoc = TEMPLATE;
         iframe.width = "100%";
         iframe.height = "100%";
+        mountEl.appendChild(iframe);
         const iframeWindow = iframe.contentWindow;
-        
+
         const waitForDOMContentLoaded = new Promise((resolve) => {
             iframeWindow.addEventListener('DOMContentLoaded', resolve);
         });
-        const waitForLoad = new Promise((resolve) => {
-            iframeWindow.addEventListener('load', resolve);
+        const waitForDuckSoupContainerLoaded = new Promise((resolve) => {
+            window.addEventListener('message', (event) => {
+                if (event.data === "DuckSoupContainerLoaded") resolve();
+            });
         });
-        // on safari, DOMContentLoaded won't be triggered for this iframe, so we wait for the fastest triggered event
-        await Promise.race([waitForDOMContentLoaded, waitForLoad]);
 
-        return new DuckSoup(iframeWindow.document, peerOptions, embedOptions);        
+        // on safari, DOMContentLoaded won't be triggered for this iframe, so we wait for the fastest triggered event
+        await Promise.race([waitForDOMContentLoaded, waitForDuckSoupContainerLoaded]);
+        return new DuckSoup(iframeWindow.document, peerOptions, embedOptions);
     }
 }
