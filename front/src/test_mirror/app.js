@@ -67,7 +67,7 @@ const start = async () => {
     
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
 
-    const joinOptions = {
+    const peerOptions = {
         signalingUrl: `${wsProtocol}://${window.location.host}/ws`,
         room,
         uid,
@@ -83,7 +83,6 @@ const start = async () => {
         ...(videoFx && { videoFx }),
         ...(frameRate && { frameRate }),
         ...(state.videoCodec && { videoCodec: state.videoCodec }),
-        debug: true
     };
     state.uid = uid;
 
@@ -98,7 +97,7 @@ const start = async () => {
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
-    state.ducksoup = await DuckSoup.render(mountEl, joinOptions, {
+    state.ducksoup = await DuckSoup.render(mountEl, peerOptions, {
         callback: receiveMessage,
         debug: true,
     });
