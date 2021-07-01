@@ -358,7 +358,7 @@ func (r *Room) UpdateSignaling() {
 
 			if err = peerConn.SetLocalDescription(offer); err != nil {
 				log.Printf("[room %s error] SetLocalDescription: %v\n", r.id, err)
-				log.Printf("-> offer: %v\n", offer)
+				log.Printf("\n\n\n---- failing local descripting: \n%v\n\n\n", offer)
 				return false
 			}
 
