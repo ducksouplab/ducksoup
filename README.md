@@ -45,10 +45,10 @@ Where:
   - `room` (string) the room identifier
   - `uid` (string) a unique user identifier
   - `name` (string) the user display name
-  - `duration` (integer) the duration of the experiment in seconds
 
 - `peerOptions` may also contain the following optional properties:
 
+  - `duration` (integer, defaults to 30) the duration of the experiment in seconds
   - `size` (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
   - `width` (integer, defaults to 800) of the video stream
   - `height` (integer, defaults to 600) of the video stream
