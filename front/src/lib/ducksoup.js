@@ -249,12 +249,12 @@ class DuckSoup {
         }
     };
 
-    audioControl(effect, property, value) {
-        this._control("audio", effect, property, value);
+    audioControl(effectName, property, value) {
+        this._control("audio", effectName, property, value);
     }
 
-    videoControl(effect, property, value) {
-        this._control("video", effect, property, value);
+    videoControl(effectName, property, value) {
+        this._control("video", effectName, property, value);
     }
 
     stop() {
@@ -265,12 +265,11 @@ class DuckSoup {
 
     // Inner methods
 
-    _control(mediaKind, effect, property, value) {
-        const payload = { kind: mediaKind, effect, property, value };
+    _control(kind, name, property, value) {
         this.ws.send(
             JSON.stringify({
                 kind: "control",
-                payload: JSON.stringify(payload),
+                payload: JSON.stringify({ kind, name, property, value }),
             })
         );
     }

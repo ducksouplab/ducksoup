@@ -75,9 +75,9 @@ func (ps *PeerServer) loop() {
 			payload := ControlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
-				return
+			} else {
+				ps.peerConn.ControlFx(payload)
 			}
-			ps.peerConn.ControlFx(payload)
 		}
 	}
 }

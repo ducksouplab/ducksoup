@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("audio-control").addEventListener("click", () => {
         if(state.ducksoup) {
-            const property = document.getElementById("audio-property");
+            const property = document.getElementById("audio-property").value;
             const value = parseFloat(document.getElementById("audio-value").value);
             state.ducksoup.audioControl("fx", property, value);
         }

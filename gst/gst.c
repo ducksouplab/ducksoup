@@ -85,8 +85,8 @@ void gstreamer_set_fx_property(GstElement *pipeline, char *elName, char *elProp,
     GstElement* fx;
     
     fx = gst_bin_get_by_name(GST_BIN(pipeline), elName);
-    g_object_set (fx, elProp, elValue, NULL);
-    gst_object_unref(GST_OBJECT(fx));
+    g_object_set(fx, elProp, elValue, NULL);
+    gst_object_unref(fx);
 }
 
 void gstreamer_start_pipeline(GstElement *pipeline, int pipelineId)

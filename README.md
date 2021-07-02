@@ -9,7 +9,7 @@ From a technical standpoint, DuckSoup is:
 
 ## DuckSoup server overview
 
-The DuckSoup server exposes the following:
+A DuckSoup server exposes the following:
 
 - an HTTP static server for `ducksoup.js` and example front-ends (TCP)
 - an HTTP websocket endpoint for signaling (TCP)
@@ -37,7 +37,7 @@ const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);
 
 Where:
 
-- assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup "player" instance (see (Player API)[#player-api])
+- assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see (Player API)[#player-api])
 
 - `mountEl` (DOM node) is the node where DuckSoup interface and media streams will be mounted (obtained for instance with `document.getElementById("ducksoup-container")`)
 
@@ -68,14 +68,14 @@ Where:
   - `callback` (JavaScript function) to receive messages from DuckSoup (see following paragraph)
   - `debug` (boolean, defaults to false) to enable receiving debug messages (in callback)
 
-The callback function will receive a message as a `{ kind, payload }` object where:
+The callback function will receive messages as `{ kind, payload }` objects where:
 
 - kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
 - payload (unrestricted type) is an optional payload
 
 ### GStreamer effects
 
-DuckSoup servers come with GStreamer and the ability to apply effects on live video and audio streams. Check some [examples](https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-examples) from GStreamer documentation to get a glimpse of how to set GStreamer elements and their properties.
+DuckSoup server comes with GStreamer and the ability to apply effects on live video and audio streams. Check some [examples](https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-examples) from GStreamer documentation to get a glimpse of how to set GStreamer elements and their properties.
 
 From the standpoint of DuckSoup, it is possible to add one audio and one video effect as a GStreamer element, following this syntax:
 
