@@ -8,10 +8,12 @@
 
 extern void goHandleNewSample(int pipelineId, void *buffer, int bufferLen, int samples);
 
-GstElement *gstreamer_send_create_pipeline(char *pipeline);
-void gstreamer_send_start_pipeline(GstElement *pipeline, int pipelineId);
-void gstreamer_send_stop_pipeline(GstElement *pipeline);
-void gstreamer_send_push_buffer(GstElement *pipeline, void *buffer, int len);
-void gstreamer_send_start_mainloop(void);
+GstElement *gstreamer_parse_pipeline(char *pipeline);
+void gstreamer_start_pipeline(GstElement *pipeline, int pipelineId);
+void gstreamer_stop_pipeline(GstElement *pipeline);
+void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
+void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
+void gstreamer_set_fx_property(GstElement *pipeline, char *elName, char *elProp, float elValue);
+void gstreamer_start_mainloop(void);
 
 #endif

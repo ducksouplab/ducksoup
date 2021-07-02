@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/creamlab/ducksoup/engine"
@@ -18,6 +19,14 @@ const (
 	DefaultHeight    = 600
 	DefaultFrameRate = 30
 )
+
+// Augmented pion PeerConnection
+type PeerConn struct {
+	sync.Mutex
+	*webrtc.PeerConnection
+	audioPipeline *gst.Pipeline
+	videoPipeline *gst.Pipeline
+}
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
 	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
@@ -62,9 +71,29 @@ func parseFrameRate(joinPayload JoinPayload) (frameRate int) {
 	return
 }
 
+func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
+	p.Lock()
+	defer p.Unlock()
+
+	if kind == "audio" {
+		p.audioPipeline = pipeline
+	} else {
+		p.videoPipeline = pipeline
+	}
+}
+
 // API
 
-func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *webrtc.PeerConnection) {
+func (p *PeerConn) ControlFx(payload ControlPayload) {
+	// names are internally prefixed by "fx"
+	if payload.Kind == "audio" {
+		p.audioPipeline.SetFxProperty("fx"+payload.Name, payload.Property, payload.Value)
+	} else {
+		p.videoPipeline.SetFxProperty("fx"+payload.Name, payload.Property, payload.Value)
+	}
+}
+
+func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
 	userId := joinPayload.UserId
 
 	// create RTC API with given set of codecs
@@ -89,11 +118,13 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 			},
 		},
 	}
-	peerConn, err = api.NewPeerConnection(config)
+	pionPeerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
 	}
+
+	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, nil, nil}
 
 	// accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
@@ -172,8 +203,13 @@ func NewPeerConnection(joinPayload JoinPayload, room *Room, wsConn *WsConn) (pee
 
 		// prepare pipeline parameters
 		kind := remoteTrack.Kind().String()
+
 		// create and start pipeline
 		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
+
+		// needed for further interaction from ws to pipeline
+		peerConn.setPipeline(kind, pipeline)
+
 		pipeline.Start()
 		room.AddFiles(userId, pipeline.Files)
 		defer func() {

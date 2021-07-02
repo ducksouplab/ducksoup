@@ -4,20 +4,20 @@ Videoconferencing tool for social experiments.
 
 From a technical standpoint, DuckSoup is:
 
-* a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
-* with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
+- a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
+- with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
 
-## DuckSoup server interface
+## DuckSoup server overview
 
 The DuckSoup server exposes the following:
 
-- an HTTP server for static files: `ducksoup.js` and example front-ends (TCP)
+- an HTTP static server for `ducksoup.js` and example front-ends (TCP)
 - an HTTP websocket endpoint for signaling (TCP)
 - WebRTC (UDP)
 
-Using `ducksoup.js` is the preferred way to interact with other DuckSoup server parts (signaling and WebRTC).
+Using the client library `ducksoup.js` is the preferred way to interact with DuckSoup server (signaling and WebRTC).
 
-## Embed DuckSoup
+## DuckSoup player
 
 Let's assume we have a DuckSoup server installed and running at `ducksoup-host.example.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment.example.com`.
 
@@ -32,10 +32,12 @@ Then, on the experiment web page, include the `ducksoup.js` library:
 And render it (in JavaScript):
 
 ```
-DuckSoup.render(mountEl, peerOptions, embedOptions);
+const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);
 ```
 
 Where:
+
+- assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup "player" instance (see (Player API)[#player-api])
 
 - `mountEl` (DOM node) is the node where DuckSoup interface and media streams will be mounted (obtained for instance with `document.getElementById("ducksoup-container")`)
 
@@ -71,15 +73,15 @@ The callback function will receive a message as a `{ kind, payload }` object whe
 - kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
 - payload (unrestricted type) is an optional payload
 
-## GStreamer effects
+### GStreamer effects
 
 DuckSoup servers come with GStreamer and the ability to apply effects on live video and audio streams. Check some [examples](https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-examples) from GStreamer documentation to get a glimpse of how to set GStreamer elements and their properties.
 
 From the standpoint of DuckSoup, it is possible to add one audio and one video effect as a GStreamer element, following this syntax:
 
-* generic format: `element property1=value1 property2=value2 ...` with 0, 1 or more properties
-* audio processing example: `pitch pitch=0.8`
-* video processing example: `coloreffects preset=xpro`
+- generic format: `"element property1=value1 property2=value2 ..."` with 0, 1 or more properties
+- audio processing example: `"pitch pitch=0.8"`
+- video processing example: `"coloreffects preset=xpro"`
 
 You may browse [available plugins](https://gstreamer.freedesktop.org/documentation/plugins_doc.html?gi-language=c) (each plugin contains one or more elements) to discover elements and their properties.
 
@@ -87,7 +89,45 @@ Please note that, even if the default DuckSoup configuration comes with the "goo
 
 It is also possible to add custom GStreamer plugins to DuckSoup (check the section [Custom GStreamer plugins](#custom-gstreamer-plugins))
 
-## Build server from source
+### Controlling effects
+
+If you want to control the properties of a GStreamer effect you need:
+
+- to name the effect described in `audioFx` or `videoFx` by adding a `name` property, for instance `"element property1=1.0 name=fx`"
+- call the player `audioControl` or `videoControl` method (depending on the stream the effect is enabled on), for instance `ds.audioControl("fx", "property1", 1.2)`
+
+In this example, `proprety1` has an initial value of `1.0` and is updated to `1.2`.
+
+For the time being only float values are allowed when controlling properties.
+
+### Player API
+
+Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);`
+
+The following methods are available on a DuckSoup player (with type annotations):
+
+- `audioControl(effectName: string, property: string, value: float)` to update the property of an effected declared and named in `peerOptions#audioFx`
+- `videoControl(effectName: string, property: string, value: float)` to update the property of an effected declared and named in `peerOptions#videoFx`
+- `stop()` to stop media streams and close communication with server. Note that players are running for a limited duration (set by `peerOptions#duration` which is capped server-side) and most of the time you don't need to use this method
+
+### Front-end examples
+
+There are several ways to use DuckSoup:
+
+- the official and maintained way is to rely on ducksoup.js as described in [DuckSoup Player](#ducksoup-player)
+- `static/test_standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic (may be later deprecated / unmaintained)
+- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test_embed` which contains an iframe that embeds `static/embed` (may be later deprecated / unmaintained)
+
+Once the app is running, you may try them at:
+
+- http://localhost:8000/test_mirror/ (one user, relies on ducksoup.js)
+- http://localhost:8000/test_standalone/ (two users -> two tabs)
+- http://localhost:8000/test_embed/ (two users -> two tabs)
+
+
+## DuckSoup server
+
+### Build from source
 
 Dependencies:
 
@@ -107,14 +147,15 @@ Then build:
 go build
 ```
 
-## Environment variables
+### Environment variables
 
 - DS_PORT=9000 (8000 is the default value) to set port listen by server
 - DS_ORIGINS=https://origin1,https://origin2:8080 declares comma separated allowed origins for WebSocket connections
-- DS_ENV=DEV enables automatic front-end assets build with esbuild + adds a few allowed origins for WebSocket connections
+- DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
+- DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
 
-## Run DuckSoup server
+### Run DuckSoup server
 
 Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted WebSocket origin is declared):
 
@@ -136,7 +177,13 @@ DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
 DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
-## Custom GStreamer plugins
+### Front-ends build
+
+DuckSoup server comes with a few front-end examples. Building their js sources (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
+
+When `./ducksoup` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`) depending on the `DS_ENV` environment value (see [Environment variables](#environment-variables)).
+
+### Custom GStreamer plugins
 
 First create a folder dedicated to custom plugins, and update `GST_PLUGIN_PATH` accordingly:
 
@@ -148,7 +195,27 @@ export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
 
 Then add plugins (`libxyz.so` files) to this folder to enable them in DuckSoup GStreamer pipelines. They have to be built against the same GStreamer version than the one running with DuckSoup (1.18.4 at the time of writing this documentation, check with `gst-inspect-1.0 --version`).
 
-## Code within a Docker container
+### Concepts in Go code
+
+On each connection to the websocket endpoint in `server.go` a new PeerServer (see `peer_server.go`) is created:
+
+- it manages further client communication through websocket (see `ws_conn.go`) and RTC (see `peer_conn.go`)
+- join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
+
+Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
+
+### Websocket messages
+
+Messages from server (Go) to client (JS):
+
+- kind `offer` and `candidate` for signaling (with payloads)
+- kind `start` when all peers and tracks are ready
+- kind `ending` when the room will soon be destroyed
+- kind `end` when time is over (payload contains an index of media files recorded for this experiment)
+- kind `error-full` when room limit has been reached and user can't enter room
+- kind `error-duplicate` when same user is already in room
+
+### Code within a Docker container
 
 One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for instance using VSCode containers integration).
 
@@ -156,7 +223,7 @@ This Dockerfile prefers specifying a debian version and installing go from sourc
 
 `docker/Dockerfile.code.golang_image` is an alternate Dockerfile relying on the golang base image.
 
-## Build with Docker for production
+### Build with Docker for production
 
 The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
 
@@ -239,48 +306,4 @@ docker run --name ducksoup_multi_2 \
   ducksoup_multi_alpine:latest
 ```
 
-## Front-end examples
 
-There are several ways to use DuckSoup:
-
-- the official and maintained way is to rely on ducksoup.js as described in [Embed DuckSoup](#embed-ducksoup)
-- `static/test_standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic
-- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test_embed` which contains an iframe that embeds `static/embed`
-
-Once the app is running, you may try them at:
-
-- http://localhost:8000/test_mirror/ (one user, relies on ducksoup.js)
-- http://localhost:8000/test_standalone/ (two users -> two tabs)
-- http://localhost:8000/test_embed/ (two users -> two tabs)
-
-## Front-ends build
-
-Building js files (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
-
-When `./ducksoup` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`).
-
-It's also possible to watch changes and rebuild those files by adding this environment variable:
-
-```
-DS_ENV=DEV ./ducksoup
-```
-
-## Websocket messages
-
-Messages from server (Go) to client (JS):
-
-- kind `offer` and `candidate` for signaling (with payloads)
-- kind `start` when all peers and tracks are ready
-- kind `ending` when the room will soon be destroyed
-- kind `end` when time is over (payload contains an index of media files recorded for this experiment)
-- kind `error-full` when room limit has been reached and user can't enter room
-- kind `error-duplicate` when same user is already in room
-
-## Concepts in Go code
-
-On each connection to the websocket endpoint in `server.go` a new PeerServer (see `peer_server.go`) is created:
-
-- it manages further client communication through websocket (see `ws_conn.go`) and RTC (see `peer_conn.go`)
-- join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
-
-Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.

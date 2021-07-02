@@ -131,7 +131,7 @@ func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int,
 // API
 
 func StartMainLoop() {
-	C.gstreamer_send_start_mainloop()
+	C.gstreamer_start_mainloop()
 }
 
 // create a GStreamer pipeline
@@ -146,7 +146,7 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 	defer pipelinesLock.Unlock()
 
 	pipeline := &Pipeline{
-		Pipeline:   C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
+		Pipeline:   C.gstreamer_parse_pipeline(pipelineStrUnsafe),
 		Files:      allFiles(filePrefix, kind, len(fx) > 0),
 		track:      track,
 		id:         len(pipelines),
@@ -160,18 +160,29 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
 	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.filePrefix)
-	C.gstreamer_send_start_pipeline(p.Pipeline, C.int(p.id))
+	C.gstreamer_start_pipeline(p.Pipeline, C.int(p.id))
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.filePrefix)
-	C.gstreamer_send_stop_pipeline(p.Pipeline)
+	C.gstreamer_stop_pipeline(p.Pipeline)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline
 func (p *Pipeline) Push(buffer []byte) {
 	b := C.CBytes(buffer)
 	defer C.free(b)
-	C.gstreamer_send_push_buffer(p.Pipeline, b, C.int(len(buffer)))
+	C.gstreamer_push_buffer(p.Pipeline, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) SetFxProperty(elName string, elProperty string, elValue float32) {
+	cName := C.CString(elName)
+	cProperty := C.CString(elProperty)
+	cValue := C.float(elValue)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProperty))
+
+	C.gstreamer_set_fx_property(p.Pipeline, cName, cProperty, cValue)
 }

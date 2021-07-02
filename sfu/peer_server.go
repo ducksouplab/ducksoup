@@ -13,14 +13,14 @@ import (
 type PeerServer struct {
 	userId   string
 	room     *Room
-	peerConn *webrtc.PeerConnection
+	peerConn *PeerConn
 	wsConn   *WsConn
 }
 
 func newPeerServer(
 	joinPayload JoinPayload,
 	room *Room,
-	peerConn *webrtc.PeerConnection,
+	peerConn *PeerConn,
 	wsConn *WsConn) *PeerServer {
 
 	userId := joinPayload.UserId
@@ -71,6 +71,13 @@ func (ps *PeerServer) loop() {
 				log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
 				return
 			}
+		case "control":
+			payload := ControlPayload{}
+			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
+				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
+				return
+			}
+			ps.peerConn.ControlFx(payload)
 		}
 	}
 }
@@ -101,7 +108,7 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 		return
 	}
 
-	peerConn := NewPeerConnection(joinPayload, room, wsConn)
+	peerConn := NewPeerConn(joinPayload, room, wsConn)
 	defer peerConn.Close()
 
 	peerServer := newPeerServer(joinPayload, room, peerConn, wsConn)

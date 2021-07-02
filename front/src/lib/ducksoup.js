@@ -148,8 +148,6 @@ const IS_SAFARI = (() => {
     return containsSafari && !containsChrome;
 })();
 
-console.log("IS_SAFARI", IS_SAFARI)
-
 // Pure functions
 
 const areOptionsValid = ({ room, name, duration, uid }) => {
@@ -251,6 +249,14 @@ class DuckSoup {
         }
     };
 
+    audioControl(effect, property, value) {
+        this._control("audio", effect, property, value);
+    }
+
+    videoControl(effect, property, value) {
+        this._control("video", effect, property, value);
+    }
+
     stop() {
         this.stream.getTracks().forEach((track) => track.stop());
         this.pc.close();
@@ -258,6 +264,17 @@ class DuckSoup {
     }
 
     // Inner methods
+
+    _control(mediaKind, effect, property, value) {
+        const payload = { kind: mediaKind, effect, property, value };
+        this.ws.send(
+            JSON.stringify({
+                kind: "control",
+                payload: JSON.stringify(payload),
+            })
+        );
+    }
+
 
     _postMessage(message) {
         if (this.callback) this.callback(message);
@@ -377,7 +394,6 @@ class DuckSoup {
     async _renderDevices() {
         if (IS_SAFARI) {
             // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
-            console.log("renderDevices getUserMedia for safari")
             await navigator.mediaDevices.getUserMedia(this.constraints);
         }
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -457,7 +473,13 @@ window.DuckSoup = {
         iframe.srcdoc = TEMPLATE;
         iframe.width = "100%";
         iframe.height = "100%";
+
+        // replace mountEl contents
+        while (mountEl.firstChild) {
+            mountEl.removeChild(mountEl.firstChild);
+        }
         mountEl.appendChild(iframe);
+        
         const iframeWindow = iframe.contentWindow;
 
         const waitForDOMContentLoaded = new Promise((resolve) => {
