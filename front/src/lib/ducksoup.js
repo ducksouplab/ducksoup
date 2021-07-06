@@ -249,12 +249,12 @@ class DuckSoup {
         }
     };
 
-    audioControl(effectName, property, value) {
-        this._control("audio", effectName, property, value);
+    audioControl(effectName, property, value, transitionDuration) {
+        this._control("audio", effectName, property, value, transitionDuration);
     }
 
-    videoControl(effectName, property, value) {
-        this._control("video", effectName, property, value);
+    videoControl(effectName, property, value, transitionDuration) {
+        this._control("video", effectName, property, value, transitionDuration);
     }
 
     stop() {
@@ -265,11 +265,17 @@ class DuckSoup {
 
     // Inner methods
 
-    _control(kind, name, property, value) {
+    _checkControl(name, property, value, duration) {
+        const durationValid = typeof duration === "undefined" || typeof duration === "number"
+        return typeof name === "string" && typeof property === "string" && typeof value === "number" && durationValid;
+    }
+
+    _control(kind, name, property, value, duration) {
+        if(!this._checkControl(name, property, value, duration)) return;
         this.ws.send(
             JSON.stringify({
                 kind: "control",
-                payload: JSON.stringify({ kind, name, property, value }),
+                payload: JSON.stringify({ kind, name, property, value, ...(duration && { duration }) }),
             })
         );
     }

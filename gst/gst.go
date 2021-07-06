@@ -24,13 +24,6 @@ var vp8RawPipeline string
 var h264FxPipeline string
 var h264RawPipeline string
 
-const (
-	DefaultWidth   = 800
-	DefaultHeight  = 600
-	DefaultAudioFx = "pitch pitch=0.8"
-	DefaultVideoFx = "coloreffects preset=xpro"
-)
-
 func init() {
 	opusFxPipeline = helpers.ReadConfig("opus-fx-rec")
 	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
@@ -83,7 +76,9 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
 	// set fx
 	if hasFx {
-		pipelineStr = strings.Replace(pipelineStr, "${fx}", fx, -1)
+		// add "fx" prefix to avoid name clashes (for instance if a user gives the name "src")
+		prefixedFx := strings.Replace(fx, "name=", "name=fx", 1)
+		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
 	}
 	// set dimensionts
 	pipelineStr = strings.Replace(pipelineStr, "${width}", strconv.Itoa(width), -1)
@@ -177,7 +172,8 @@ func (p *Pipeline) Push(buffer []byte) {
 }
 
 func (p *Pipeline) SetFxProperty(elName string, elProperty string, elValue float32) {
-	cName := C.CString(elName)
+	// fx prefix needed (added during pipeline initialization)
+	cName := C.CString("fx" + elName)
 	cProperty := C.CString(elProperty)
 	cValue := C.float(elValue)
 

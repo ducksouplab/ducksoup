@@ -62,7 +62,7 @@ const start = async ({
     document.getElementById("start").classList.add("d-none");
     document.getElementById("stopped").classList.add("d-none");
     document.getElementById("stop").classList.remove("d-none");
-    document.getElementById("live-control").classList.remove("d-none");
+    //document.getElementById("live-control").classList.remove("d-none");
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
@@ -135,7 +135,7 @@ const receiveMessage = (message) => {
             replaceMessage(html);
             document.getElementById("start").classList.remove("d-none");
             document.getElementById("stop").classList.add("d-none");
-            document.getElementById("live-controle").classList.add("d-none");
+            //document.getElementById("live-control").classList.add("d-none");
         } else {
             replaceMessage("Conversation terminée");
         }

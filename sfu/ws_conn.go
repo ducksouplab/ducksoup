@@ -3,7 +3,6 @@ package sfu
 import (
 	"encoding/json"
 	"log"
-	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -47,6 +46,7 @@ type ControlPayload struct {
 	Name     string  `json:"name"`
 	Property string  `json:"property"`
 	Value    float32 `json:"value"`
+	Duration int     `json:"duration"`
 }
 
 // API
@@ -97,12 +97,5 @@ func (w *WsConn) ReadJoin() (joinPayload JoinPayload, err error) {
 	}
 
 	err = json.Unmarshal([]byte(m.Payload), &joinPayload)
-
-	// add "fx" prefix to GStreamer elements name to avoid name clashes (for instance if a user gives a name "src")
-	prefixedAudioFx := strings.Replace(joinPayload.AudioFx, "name=", "name=fx", 1)
-	prefixedVideoFx := strings.Replace(joinPayload.VideoFx, "name=", "name=fx", 1)
-
-	joinPayload.AudioFx = prefixedAudioFx
-	joinPayload.VideoFx = prefixedVideoFx
 	return
 }

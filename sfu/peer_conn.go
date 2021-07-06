@@ -87,9 +87,9 @@ func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
 func (p *PeerConn) ControlFx(payload ControlPayload) {
 	// names are internally prefixed by "fx"
 	if payload.Kind == "audio" && p.audioPipeline != nil {
-		p.audioPipeline.SetFxProperty("fx"+payload.Name, payload.Property, payload.Value)
+		p.audioPipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
 	} else if payload.Kind == "video" && p.videoPipeline != nil {
-		p.videoPipeline.SetFxProperty("fx"+payload.Name, payload.Property, payload.Value)
+		p.videoPipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
 	}
 }
 

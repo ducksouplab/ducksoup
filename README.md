@@ -93,7 +93,7 @@ It is also possible to add custom GStreamer plugins to DuckSoup (check the secti
 
 If you want to control the properties of a GStreamer effect you need:
 
-- to name the effect described in `audioFx` or `videoFx` by adding a `name` property, for instance `"element property1=1.0 name=fx`"
+- to name the effect described in `audioFx` or `videoFx` by adding a `name` property, for instance `"element property1=1.0 name=fx"`
 - call the player `audioControl` or `videoControl` method (depending on the stream the effect is enabled on), for instance `ds.audioControl("fx", "property1", 1.2)`
 
 In this example, `proprety1` has an initial value of `1.0` and is updated to `1.2`.
@@ -104,10 +104,14 @@ For the time being only float values are allowed when controlling properties.
 
 Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);`
 
-The following methods are available on a DuckSoup player (with type annotations):
+The following methods are available on a DuckSoup player:
 
-- `audioControl(effectName: string, property: string, value: float)` to update the property of an effected declared and named in `peerOptions#audioFx`
-- `videoControl(effectName: string, property: string, value: float)` to update the property of an effected declared and named in `peerOptions#videoFx`
+- `audioControl(effectName, property, value, transitionDuration)` to update the property of the effect named in `peerOptions#audioFx`. For instance with an `audioFx` of `"element property1=1.0 name=fx"`:
+  - `effectName` (string) is `fx`
+  - `property` (string) is `property1`
+  - `value` (float) sets a new value, for instance `1.1`
+  - `transitionDuration` (integer counting ms, defaults to 0, expect better results for 200 and above) is the optional duration of the interpolation between the old and new values
+- `videoControl(effectName, property, value, transitionDuration)` is the same as above fort the effect named in `peerOptions#videoFx`
 - `stop()` to stop media streams and close communication with server. Note that players are running for a limited duration (set by `peerOptions#duration` which is capped server-side) and most of the time you don't need to use this method
 
 ### Front-end examples
@@ -306,4 +310,10 @@ docker run --name ducksoup_multi_2 \
   ducksoup_multi_alpine:latest
 ```
 
+### Run tests
 
+To run tests (some being in subfolders):
+
+```
+go test -v ./...
+```
