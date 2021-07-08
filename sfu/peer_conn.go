@@ -10,22 +10,26 @@ import (
 
 	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
+	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
 const (
-	DefaultWidth     = 800
-	DefaultHeight    = 600
-	DefaultFrameRate = 30
+	DefaultWidth            = 800
+	DefaultHeight           = 600
+	DefaultFrameRate        = 30
+	DefaultInterpolatorStep = 30
+	MaxInterpolatorDuration = 5000
 )
 
 // Augmented pion PeerConnection
 type PeerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
-	audioPipeline *gst.Pipeline
-	videoPipeline *gst.Pipeline
+	interpolatorIndex map[string]*sequencing.LinearInterpolator
+	audioPipeline     *gst.Pipeline
+	videoPipeline     *gst.Pipeline
 }
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
@@ -85,12 +89,53 @@ func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
 // API
 
 func (p *PeerConn) ControlFx(payload ControlPayload) {
-	// names are internally prefixed by "fx"
-	if payload.Kind == "audio" && p.audioPipeline != nil {
-		p.audioPipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
-	} else if payload.Kind == "video" && p.videoPipeline != nil {
-		p.videoPipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
+	var pipeline *gst.Pipeline
+	if payload.Kind == "audio" {
+		if p.audioPipeline == nil {
+			return
+		}
+		pipeline = p.audioPipeline
+	} else if payload.Kind == "video" {
+		if p.audioPipeline == nil {
+			return
+		}
+		pipeline = p.videoPipeline
+	} else {
+		return
 	}
+
+	interpolatorId := payload.Kind + payload.Name + payload.Property
+	interpolator := p.interpolatorIndex[interpolatorId]
+
+	if interpolator != nil {
+		// an interpolation is already running for this pipeline, effect and property
+		interpolator.Stop()
+	}
+
+	duration := payload.Duration
+	if duration == 0 {
+		pipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
+	} else {
+		if duration > MaxInterpolatorDuration {
+			duration = MaxInterpolatorDuration
+		}
+		oldValue := pipeline.GetFxProperty(payload.Name, payload.Property)
+		log.Println("oldValue", oldValue)
+		p.Lock()
+		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, DefaultInterpolatorStep)
+		p.interpolatorIndex[interpolatorId] = newInterpolator
+		p.Unlock()
+
+		for currentValue := range newInterpolator.C {
+			pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
+			log.Println("currentValue", currentValue)
+		}
+		// after for .. range: channel has been closed
+		p.Lock()
+		delete(p.interpolatorIndex, interpolatorId)
+		p.Unlock()
+	}
+
 }
 
 func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
@@ -124,7 +169,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, nil, nil}
+	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, make(map[string]*sequencing.LinearInterpolator), nil, nil}
 
 	// accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {

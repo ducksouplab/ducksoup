@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.4")
+    console.log("[DuckSoup] v1.0.5")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -210,18 +210,18 @@ class DuckSoup {
         if (!areOptionsValid(peerOptions)) {
             document.querySelector(".placeholder").innerHTML = "Invalid DuckSoup options"
         } else {
-            this.document = document;
-            this.signalingUrl = peerOptions.signalingUrl;
-            this.rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
-            this.joinPayload = parseJoinPayload(peerOptions);
-            this.constraints = {
+            this._document = document;
+            this._signalingUrl = peerOptions.signalingUrl;
+            this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
+            this._joinPayload = parseJoinPayload(peerOptions);
+            this._constraints = {
                 audio: { ...DEFAULT_CONSTRAINTS.audio, ...peerOptions.audio },
                 video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
             };
-            this.debug = embedOptions && embedOptions.debug;
-            this.callback = embedOptions && embedOptions.callback;
-            if (this.debug) {
-                this.debugInfo = {
+            this._debug = embedOptions && embedOptions.debug;
+            this._callback = embedOptions && embedOptions.callback;
+            if (this._debug) {
+                this._debugInfo = {
                     now: Date.now(),
                     audioBytesSent: 0,
                     audioBytesReceived: 0,
@@ -232,20 +232,14 @@ class DuckSoup {
             // prefer specified codec
             if (SUPPORT_SET_CODEC && peerOptions.videoCodec) {
                 const { codecs } = RTCRtpSender.getCapabilities('video');
-                this.preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
+                this._preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
                     if (mt1.includes(peerOptions.videoCodec)) return -1;
                     if (mt2.includes(peerOptions.videoCodec)) return 1;
                     return 0;
                 })
             }
 
-            try {
-                // async calls
-                this._renderDevices();
-                this._startRTC();
-            } catch (err) {
-                this._postStop({ kind: "error", payload: err });
-            }
+            
         }
     };
 
@@ -258,12 +252,26 @@ class DuckSoup {
     }
 
     stop() {
-        this.stream.getTracks().forEach((track) => track.stop());
-        this.pc.close();
-        this.ws.close();
+        this._stream.getTracks().forEach((track) => track.stop());
+        this._pc.close();
+        this._ws.close();
+    }
+
+    get stream() {
+        return this._stream;
     }
 
     // Inner methods
+
+    async _initialize() {
+        try {
+            // async calls
+            await this._renderDevices();
+            await this._startRTC();
+        } catch (err) {
+            this._postStop({ kind: "error", payload: err });
+        }
+    }
 
     _checkControl(name, property, value, duration) {
         const durationValid = typeof duration === "undefined" || typeof duration === "number"
@@ -272,7 +280,7 @@ class DuckSoup {
 
     _control(kind, name, property, value, duration) {
         if(!this._checkControl(name, property, value, duration)) return;
-        this.ws.send(
+        this._ws.send(
             JSON.stringify({
                 kind: "control",
                 payload: JSON.stringify({ kind, name, property, value, ...(duration && { duration }) }),
@@ -282,43 +290,43 @@ class DuckSoup {
 
 
     _postMessage(message) {
-        if (this.callback) this.callback(message);
+        if (this._callback) this._callback(message);
     }
 
     _postStop(reason) {
         const message = typeof reason === "string" ? { kind: reason } : reason;
         this.stop();
         this._postMessage(message);
-        if (this.debugIntervalId) clearInterval(this.debugIntervalId);
+        if (this._debugIntervalId) clearInterval(this._debugIntervalId);
     }
 
     async _startRTC() {
         // RTCPeerConnection
-        const pc = new RTCPeerConnection(this.rtcConfig);
-        this.pc = pc;
+        const pc = new RTCPeerConnection(this._rtcConfig);
+        this._pc = pc;
 
         // Add local tracks before signaling
-        const stream = await navigator.mediaDevices.getUserMedia(this.constraints);
+        const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
         stream.getTracks().forEach((track) => {
             pc.addTrack(track, stream);
         });
-        this.stream = stream;
+        this._stream = stream;
 
-        if (SUPPORT_SET_CODEC && this.joinPayload && this.joinPayload.videoCodec) {
+        if (SUPPORT_SET_CODEC && this._joinPayload && this._joinPayload.videoCodec) {
             const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
-            transceiver.setCodecPreferences(this.preferredCodecs);
+            transceiver.setCodecPreferences(this._preferredCodecs);
         }
 
         // Signaling
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const ws = new WebSocket(this.signalingUrl);
-        this.ws = ws;
+        const ws = new WebSocket(this._signalingUrl);
+        this._ws = ws;
 
         ws.onopen = () => {
             ws.send(
                 JSON.stringify({
                     kind: "join",
-                    payload: JSON.stringify(this.joinPayload),
+                    payload: JSON.stringify(this._joinPayload),
                 })
             );
         };
@@ -358,11 +366,11 @@ class DuckSoup {
                 }
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
-                this.callback({ kind: "start " });
+                this._callback({ kind: "start " });
             } else if (message.kind === "ending") {
-                this.document.querySelector(".ending").style.display = 'block';
+                this._document.querySelector(".ending").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "end") {
-                this.document.querySelector("body").style.display = 'none';
+                this._document.querySelector("body").style.display = 'none';
                 this._postStop(message);
             }
         };
@@ -382,7 +390,7 @@ class DuckSoup {
             el.id = event.track.id;
             el.srcObject = event.streams[0];
             el.autoplay = true;
-            this.document.querySelector(".placeholder").appendChild(el);
+            this._document.querySelector(".placeholder").appendChild(el);
 
             event.streams[0].onremovetrack = ({ track }) => {
                 const el = document.getElementById(track.id);
@@ -391,19 +399,19 @@ class DuckSoup {
         };
 
         // Stats
-        if (this.debug) {
-            this.debugIntervalId = setInterval(() => this._updateStats(), 1000);
+        if (this._debug) {
+            this._debugIntervalId = setInterval(() => this._updateStats(), 1000);
         }
     }
 
     async _renderDevices() {
         if (IS_SAFARI) {
             // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
-            await navigator.mediaDevices.getUserMedia(this.constraints);
+            await navigator.mediaDevices.getUserMedia(this._constraints);
         }
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioSourceEl = this.document.querySelector('.audio-source');
-        const videoSourceEl = this.document.querySelector('.video-source');
+        const audioSourceEl = this._document.querySelector('.audio-source');
+        const videoSourceEl = this._document.querySelector('.video-source');
         for (let i = 0; i !== devices.length; ++i) {
             const device = devices[i];
             const option = document.createElement('option');
@@ -419,7 +427,7 @@ class DuckSoup {
     }
 
     async _updateStats() {
-        const pc = this.pc;
+        const pc = this._pc;
         const pcStats = await pc.getStats();
         const newNow = Date.now();
         let newAudioBytesSent = 0;
@@ -439,28 +447,28 @@ class DuckSoup {
             }
         });
 
-        const elapsed = (newNow - this.debugInfo.now) / 1000;
+        const elapsed = (newNow - this._debugInfo.now) / 1000;
         const audioUp = kbps(
-            newAudioBytesSent - this.debugInfo.audioBytesSent,
+            newAudioBytesSent - this._debugInfo.audioBytesSent,
             elapsed
         );
         const audioDown = kbps(
-            newAudioBytesReceived - this.debugInfo.audioBytesReceived,
+            newAudioBytesReceived - this._debugInfo.audioBytesReceived,
             elapsed
         );
         const videoUp = kbps(
-            newVideoBytesSent - this.debugInfo.videoBytesSent,
+            newVideoBytesSent - this._debugInfo.videoBytesSent,
             elapsed
         );
         const videoDown = kbps(
-            newVideoBytesReceived - this.debugInfo.videoBytesReceived,
+            newVideoBytesReceived - this._debugInfo.videoBytesReceived,
             elapsed
         );
         this._postMessage({
             kind: "stats",
             payload: { audioUp, audioDown, videoUp, videoDown }
         });
-        this.debugInfo = {
+        this._debugInfo = {
             now: newNow,
             audioBytesSent: newAudioBytesSent,
             audioBytesReceived: newAudioBytesReceived,
@@ -498,6 +506,8 @@ window.DuckSoup = {
 
         // on safari, DOMContentLoaded won't be triggered for this iframe, so we wait for the fastest triggered event
         await Promise.race([waitForDOMContentLoaded, waitForDuckSoupContainerLoaded]);
-        return new DuckSoup(iframeWindow.document, peerOptions, embedOptions);
+        const player = new DuckSoup(iframeWindow.document, peerOptions, embedOptions);
+        await player._initialize();
+        return player;
     }
 }

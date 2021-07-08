@@ -182,3 +182,14 @@ func (p *Pipeline) SetFxProperty(elName string, elProperty string, elValue float
 
 	C.gstreamer_set_fx_property(p.Pipeline, cName, cProperty, cValue)
 }
+
+func (p *Pipeline) GetFxProperty(elName string, elProperty string) float32 {
+	// fx prefix needed (added during pipeline initialization)
+	cName := C.CString("fx" + elName)
+	cProperty := C.CString(elProperty)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProperty))
+
+	return float32(C.gstreamer_get_fx_property(p.Pipeline, cName, cProperty))
+}

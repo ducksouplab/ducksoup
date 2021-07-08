@@ -2,6 +2,22 @@ const state = {};
 
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
 
+const hide = (selector) => {
+    const targets = document.querySelectorAll(selector);
+
+    for (let i = 0; i < targets.length; i++) {
+        targets[i].classList.add("d-none");
+    }
+}
+
+const show = (selector) => {
+    const targets = document.querySelectorAll(selector);
+
+    for (let i = 0; i < targets.length; i++) {
+        targets[i].classList.remove("d-none");
+    }
+}
+
 const start = async ({
     videoCodec,
     width: w,
@@ -57,12 +73,10 @@ const start = async ({
     const mountEl = document.getElementById("ducksoup-container");
     mountEl.style.width = width + "px";
     mountEl.style.height = height + "px";
+    // UX
     mountEl.classList.remove("d-none");
-    // hide
-    document.getElementById("start").classList.add("d-none");
-    document.getElementById("stopped").classList.add("d-none");
-    document.getElementById("stop").classList.remove("d-none");
-    //document.getElementById("live-control").classList.remove("d-none");
+    hide(".show-when-not-running");
+    show(".show-when-running");
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
@@ -70,10 +84,16 @@ const start = async ({
         callback: receiveMessage,
         debug: true,
     });
+    document.getElementById("local-video").srcObject = state.ducksoup.stream;
 };
 
 document.addEventListener("DOMContentLoaded", () => {
     const formSettings = document.getElementById("settings");
+
+    // UX
+    show(".show-when-not-running");
+    hide(".show-when-ended");
+    hide(".show-when-running");
 
     formSettings.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -93,7 +113,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if(state.ducksoup) {
             const property = document.getElementById("audio-property").value;
             const value = parseFloat(document.getElementById("audio-value").value);
-            state.ducksoup.audioControl("fx", property, value);
+            const duration = parseInt(document.getElementById("audio-duration").value, 10);
+            state.ducksoup.audioControl("fx", property, value, duration);
         }
     });
 
@@ -101,25 +122,18 @@ document.addEventListener("DOMContentLoaded", () => {
         if(state.ducksoup) {
             const property = document.getElementById("video-property");
             const value = parseFloat(document.getElementById("video-value").value);
-            state.ducksoup.videoControl("fx", property, value);
+            const duration = parseInt(document.getElementById("video-duration").value, 10);
+            state.ducksoup.videoControl("fx", property, value,duration);
         }
     });
   });
-  
-
-const hideDuckSoup = () => {
-    document.getElementById("stopped").classList.remove("d-none");
-    document.getElementById("ducksoup-container").classList.add("d-none");
-}
 
 const replaceMessage = (message) => {
     document.getElementById("stopped-message").innerHTML = message;
-    hideDuckSoup();
 }
 
 const appendMessage = (message) => {
     document.getElementById("stopped-message").innerHTML += '<br/>' + message;
-    hideDuckSoup();
 }
 
 // communication with iframe
@@ -128,14 +142,16 @@ const receiveMessage = (message) => {
     if(kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
+    if(kind.startsWith("error") || kind === "end" || kind === "disconnection") {
+        show(".show-when-not-running");
+        show(".show-when-ended");
+        hide(".show-when-running");
+    }
     if (kind === "end") {
         if(payload && payload[state.uid]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
             html += payload[state.uid].join("<br/>");
             replaceMessage(html);
-            document.getElementById("start").classList.remove("d-none");
-            document.getElementById("stop").classList.add("d-none");
-            //document.getElementById("live-control").classList.add("d-none");
         } else {
             replaceMessage("Conversation terminée");
         }

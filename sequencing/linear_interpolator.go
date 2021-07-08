@@ -11,7 +11,9 @@ type LinearInterpolator struct {
 	ticker *time.Ticker
 }
 
-func NewLinearInterpolator(initialValue float32, finalValue float32, duration time.Duration, step time.Duration) *LinearInterpolator {
+func NewLinearInterpolator(initialValue float32, finalValue float32, durationMs int, stepMs int) *LinearInterpolator {
+	duration := time.Duration(durationMs) * time.Millisecond
+	step := time.Duration(stepMs) * time.Millisecond
 	start := time.Now()
 	ticker := time.NewTicker(step)
 

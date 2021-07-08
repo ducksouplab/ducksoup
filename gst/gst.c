@@ -80,6 +80,17 @@ GstElement *gstreamer_parse_pipeline(char *pipeline)
     return gst_parse_launch(pipeline, &error);
 }
 
+float gstreamer_get_fx_property(GstElement *pipeline, char *elName, char *elProp) {
+    GstElement* fx;
+    gfloat value;
+    
+    fx = gst_bin_get_by_name(GST_BIN(pipeline), elName);
+    g_object_get(fx, elProp, &value, NULL);
+    gst_object_unref(fx);
+
+    return value;
+}
+
 void gstreamer_set_fx_property(GstElement *pipeline, char *elName, char *elProp, float elValue)
 {
     GstElement* fx;

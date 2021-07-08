@@ -2,3 +2,19 @@ nav .input-group {
     width: 160px;
     height: 30px;
 }
+
+.video-container {
+    position: relative;
+}
+
+.video-container .overlay {
+    position: absolute;
+    top: 0;
+    left: 3px;
+    color:white;
+}
+
+.video-container .overlay span {
+    background: #888;
+    padding: 0 3px;
+}
