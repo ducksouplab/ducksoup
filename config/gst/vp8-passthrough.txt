@@ -1,0 +1,2 @@
+appsrc format=time is-live=true do-timestamp=true name=src ! 
+appsink name=sink qos=true
