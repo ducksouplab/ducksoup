@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.5")
+    console.log("[DuckSoup] v1.0.6")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -268,6 +268,7 @@ class DuckSoup {
             // async calls
             await this._renderDevices();
             await this._startRTC();
+            this._running = true;
         } catch (err) {
             this._postStop({ kind: "error", payload: err });
         }
@@ -290,7 +291,7 @@ class DuckSoup {
 
 
     _postMessage(message) {
-        if (this._callback) this._callback(message);
+        if (this._callback && this._running) this._callback(message);
     }
 
     _postStop(reason) {
@@ -372,6 +373,9 @@ class DuckSoup {
             } else if (message.kind.startsWith("error") || message.kind === "end") {
                 this._document.querySelector("body").style.display = 'none';
                 this._postStop(message);
+                if(message.kind === "end") {
+                    this._running = false;
+                }
             }
         };
 

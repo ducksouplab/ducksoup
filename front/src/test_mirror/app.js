@@ -76,6 +76,7 @@ const start = async ({
     // UX
     mountEl.classList.remove("d-none");
     hide(".show-when-not-running");
+    hide(".show-when-ended");
     show(".show-when-running");
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
@@ -149,20 +150,18 @@ const receiveMessage = (message) => {
     }
     if (kind === "end") {
         if(payload && payload[state.uid]) {
-            let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
+            let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.uid].join("<br/>");
             replaceMessage(html);
         } else {
-            replaceMessage("Conversation terminée");
+            replaceMessage("Connection terminated");
         }
-    } else if (kind === "error-full") {
-        replaceMessage("Connexion refusée (salle complète)");
     } else if (kind === "error-duplicate") {
-        replaceMessage("Connexion refusée (déjà connecté-e)");
+        replaceMessage("Connection denied (already connected)");
     } else if (kind === "disconnection") {
-        appendMessage("Connexion perdue");
+        appendMessage("<br/>Connection lost");
     } else if (kind === "error") {
-        replaceMessage("Erreur");
+        replaceMessage("Error");
     } else if (kind === "stats") {
         document.getElementById("audio-up").textContent = payload.audioUp;
         document.getElementById("audio-down").textContent = payload.audioDown;

@@ -1,4 +1,5 @@
-FROM debian:bullseye
+# builder stage
+FROM debian:bullseye AS builder
 
 RUN apt-get upgrade -y
 RUN apt-get update
@@ -20,12 +21,38 @@ RUN rm $GO_ARCHIVE
 
 ENV PATH=$PATH:/usr/local/go/bin
 
-# GStreamer: plugins and compilation dependencies
+# build DuckSoup
+RUN apt-get install -y libgstreamer-plugins-base1.0-dev
+
+WORKDIR /usr/local/src/ducksoup
+
+# layer with deps
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+# layer more frequently updated (DuckSoup source)
+COPY . .
+RUN go build
+RUN mkdir -p /build/gst
+RUN cp ./ducksoup /build
+RUN cp -r ./config /build
+RUN cp -r ./front /build
+
+# runner stage
+FROM debian:bullseye AS final
+
+RUN apt-get upgrade -y
+RUN apt-get update
+
+# needed for dlib
+RUN apt-get install -y build-essential
+
+# GStreamer: plugins
 RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly \
-    libgstreamer-plugins-base1.0-dev
+    gstreamer1.0-plugins-ugly
 
 # GStreamer: more plugins and plugin dependencies (libav includes avdec_h264, other are for OpenCV and dlib)
 RUN apt-get install -y gstreamer1.0-libav \
@@ -35,9 +62,6 @@ RUN apt-get install -y gstreamer1.0-libav \
     libopenblas-dev \
     liblapack-dev \
     libdlib-data
-
-# GStreamer: tools (gst-inspect-1.0)
-RUN apt-get install -y gstreamer1.0-tools
 
 # build dlib
 ENV DLIB_VER 19.22
@@ -60,4 +84,17 @@ RUN cmake -GNinja \
 RUN ninja
 RUN ninja install
 
-ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"
+WORKDIR /app
+
+ARG appuser
+ARG appgroup
+
+COPY --from=builder --chown=$appuser:$appgroup /build .
+USER $appuser:$appgroup
+
+# Build front assets once
+RUN DS_ENV=BUILD_FRONT ./ducksoup
+
+ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
+
+CMD ./ducksoup

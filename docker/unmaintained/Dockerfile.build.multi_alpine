@@ -1,5 +1,7 @@
 # builder stage
 FROM golang:latest AS builder
+
+RUN apt-get upgrade -y
 RUN apt-get update
 
 RUN apt-get install -y libgstreamer-plugins-base1.0-dev
@@ -20,13 +22,20 @@ RUN cp -r ./config /build
 RUN cp -r ./front /build
 
 # runner stage
-FROM debian:latest AS final
-RUN apt-get update
+FROM alpine:latest AS final
 
-RUN apt-get install -y gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly
+RUN apk add libc6-compat
+
+RUN apk add --no-cache gst-plugins-base>1.18 \
+    gst-plugins-good>1.18 \
+    gst-plugins-bad>1.18 \
+    gst-plugins-ugly>1.18
+
+# GStreamer: more plugins and plugin dependencies (libav includes avdec_h264)
+RUN apk add --no-cache gst-libav>1.18
+
+# uncommend when need help find missing dependencies
+# RUN apk add file
 
 WORKDIR /app
 
@@ -35,6 +44,9 @@ ARG appgroup
 
 COPY --from=builder --chown=$appuser:$appgroup /build .
 USER $appuser:$appgroup
+
+# uncommend when need help find missing dependencies
+# RUN file /app/ducksoup
 
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup

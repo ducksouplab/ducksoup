@@ -1,13 +1,13 @@
 FROM debian:bullseye
 
-RUN apt-get update
 RUN apt-get upgrade -y
+RUN apt-get update
 
 # build-essential needed for CGO (gcc)
 RUN apt-get install -y curl build-essential
 
 # install go, choose version on https://golang.org/dl/
-WORKDIR /src
+WORKDIR /usr/local/src/go
 ENV GO_ARCHIVE=go1.16.5.linux-amd64.tar.gz
 ENV GO_ARCHIVE_CHECKSUM="b12c23023b68de22f74c0524f10b753e7b08b1504cb7e417eccebdd3fae49061"
 
@@ -15,8 +15,6 @@ RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
 RUN tar -xzf $GO_ARCHIVE
 
-RUN pwd
-RUN ls go/bin
 RUN mv go /usr/local
 RUN rm $GO_ARCHIVE
 
@@ -29,6 +27,36 @@ RUN apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-ugly \
     libgstreamer-plugins-base1.0-dev
 
+# GStreamer: more plugins and plugin dependencies (libav includes avdec_h264, other are for OpenCV and dlib)
+RUN apt-get install -y gstreamer1.0-libav \
+    libgstreamer-opencv1.0-0 \
+    libopencv-imgproc4.5 \
+    libopenblas-base \
+    libopenblas-dev \
+    liblapack-dev \
+    libdlib-data
+
+# build dlib
+ENV DLIB_VER 19.22
+RUN apt-get install -y bzip2 cmake ninja-build
+RUN mkdir -p /usr/local/src
+ADD http://dlib.net/files/dlib-$DLIB_VER.tar.bz2 /usr/local/src/
+RUN tar -xvf /usr/local/src/dlib-$DLIB_VER.tar.bz2 -C /usr/local/src/
+RUN mkdir -p /usr/local/src/dlib-$DLIB_VER/build
+WORKDIR /usr/local/src/dlib-$DLIB_VER/build
+RUN cmake -GNinja \
+    -DCMAKE_INSTALL_PREFIX:PATH=/usr \
+    -DCMAKE_INSTALL_LIBDIR:PATH=/usr/lib \
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DUSE_SSE2_INSTRUCTIONS=ON \
+    -DUSE_SSE4_INSTRUCTIONS=ON \
+    -DUSE_AVX_INSTRUCTIONS=ON \
+    -DDLIB_USE_CUDA=OFF \
+    ".."
+RUN ninja
+RUN ninja install
+
 # DuckSoup
 WORKDIR /app
 
@@ -37,7 +65,7 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# layer (more frequently updated) with source
+# layer more frequently updated (DuckSoup source)
 COPY . .
 RUN go build
 

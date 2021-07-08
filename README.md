@@ -223,7 +223,7 @@ Messages from server (Go) to client (JS):
 
 One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for instance using VSCode containers integration).
 
-This Dockerfile prefers specifying a debian version and installing go from source (rather than using the golang base image) so it's possible to choose the same OS version than in production and control gstreamer (apt) packages versions.
+This Dockerfile prefers specifying a Debian version and installing go from source (rather than using the golang base image) so it's possible to choose the same OS version than in production and control gstreamer (apt) packages versions.
 
 `docker/Dockerfile.code.golang_image` is an alternate Dockerfile relying on the golang base image.
 
@@ -261,29 +261,24 @@ Run with docker-compose, thus binding volumes and persisting logs data (in `dock
 
 ```
 DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
-# and if needed enter the running ducksoup_1 container
-docker exec -it docker_ducksoup_1 /bin/bash
 ```
 
 ### Multistage Dockerfile
 
-If the goal is to distribute and minimize the image size, consider the multistage build:
+If the goal is to distribute and minimize the image size, consider the (Debian based) multistage build:
 
 ```
-# debian
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_debian -t ducksoup_multi_debian:latest .
-# alpine
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi_alpine -t ducksoup_multi_alpine:latest .
+docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
 ```
 
-Deploy multi debian image to docker hub:
+Deploy image to docker hub:
 
 ```
-docker tag ducksoup_multi_debian altg/ducksoup
+docker tag ducksoup_multi altg/ducksoup
 docker push altg/ducksoup:latest
 ```
 
-Run multistage debian:
+Run:
 
 ```
 docker run --name ducksoup_multi_1 \
@@ -296,18 +291,6 @@ docker run --name ducksoup_multi_1 \
 
 # and if needed enter the running ducksoup_1 container
 docker exec -it ducksoup_multi_1 /bin/bash
-```
-
-Run alpine:
-
-```
-docker run --name ducksoup_multi_2 \
-  -p 8000:8000 \
-  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
-  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
-  --env DS_ORIGINS=http://localhost:8000 \
-  --rm \
-  ducksoup_multi_alpine:latest
 ```
 
 ### Run tests
