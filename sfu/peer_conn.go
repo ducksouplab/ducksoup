@@ -28,8 +28,11 @@ type PeerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
-	audioPipeline     *gst.Pipeline
-	videoPipeline     *gst.Pipeline
+	// if peer connection is closed before room is ended (for instance on browser page refresh)
+	closedCh chan struct{}
+	// GStreamer references
+	audioPipeline *gst.Pipeline
+	videoPipeline *gst.Pipeline
 }
 
 func filePrefix(joinPayload JoinPayload, room *Room) string {
@@ -169,7 +172,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, make(map[string]*sequencing.LinearInterpolator), nil, nil}
+	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
 
 	// accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
@@ -206,6 +209,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 				log.Printf("[user %s error] peer connection failed: %v\n", userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
+			close(peerConn.closedCh)
 			room.UpdateSignaling()
 			room.DisconnectUser(userId)
 		}
@@ -220,6 +224,9 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			for {
 				select {
 				case <-room.endCh:
+					ticker.Stop()
+					return
+				case <-peerConn.closedCh:
 					ticker.Stop()
 					return
 				case <-ticker.C:
@@ -268,6 +275,8 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 		for {
 			select {
 			case <-room.endCh:
+				break processLoop
+			case <-peerConn.closedCh:
 				break processLoop
 			default:
 				i, _, readErr := remoteTrack.Read(buf)

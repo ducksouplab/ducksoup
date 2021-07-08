@@ -7,9 +7,9 @@ import (
 	"os"
 )
 
-func ReadConfig(name string) string {
+func ReadTextFile(name string) string {
 	var output string
-	path := fmt.Sprintf("./config/%s.txt", name)
+	path := fmt.Sprintf("./%s", name)
 	f, err := os.Open(path)
 
 	if err != nil {

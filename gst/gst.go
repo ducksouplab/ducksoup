@@ -25,12 +25,12 @@ var h264FxPipeline string
 var h264RawPipeline string
 
 func init() {
-	opusFxPipeline = helpers.ReadConfig("opus-fx-rec")
-	opusRawPipeline = helpers.ReadConfig("opus-raw-rec")
-	vp8FxPipeline = helpers.ReadConfig("vp8-fx-rec")
-	vp8RawPipeline = helpers.ReadConfig("vp8-raw-rec")
-	h264FxPipeline = helpers.ReadConfig("h264-fx-rec")
-	h264RawPipeline = helpers.ReadConfig("h264-raw-rec")
+	opusFxPipeline = helpers.ReadTextFile("gst/config/opus-fx-rec.txt")
+	opusRawPipeline = helpers.ReadTextFile("gst/config/opus-raw-rec.txt")
+	vp8FxPipeline = helpers.ReadTextFile("gst/config/vp8-fx-rec.txt")
+	vp8RawPipeline = helpers.ReadTextFile("gst/config/vp8-raw-rec.txt")
+	h264FxPipeline = helpers.ReadTextFile("gst/config/h264-fx-rec.txt")
+	h264RawPipeline = helpers.ReadTextFile("gst/config/h264-raw-rec.txt")
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
