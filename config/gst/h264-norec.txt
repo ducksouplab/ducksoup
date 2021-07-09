@@ -5,7 +5,7 @@ rtph264depay !
 h264parse !  
 avdec_h264 !
 videoconvert ! 
-coloreffects preset=xpro ! 
+${fx} ! 
 videoconvert ! 
 videorate ! 
 video/x-raw,format=I420,framerate=30/1 ! 

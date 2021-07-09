@@ -9,7 +9,7 @@ vp8dec !
 videorate ! 
 videoscale ! 
 video/x-raw,framerate=30/1,width=${width},height=${height} !
-vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true !  
+${encode} !  
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
 

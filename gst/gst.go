@@ -23,6 +23,12 @@ var vp8FxPipeline string
 var vp8RawPipeline string
 var h264FxPipeline string
 var h264RawPipeline string
+var passthroughPipeline string
+
+const (
+	DefaultVP8Enc = "vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=300000 undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true"
+	// Previous: vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true
+)
 
 func init() {
 	opusFxPipeline = helpers.ReadTextFile("config/gst/opus-fx-rec.txt")
@@ -31,6 +37,7 @@ func init() {
 	vp8RawPipeline = helpers.ReadTextFile("config/gst/vp8-raw-rec.txt")
 	h264FxPipeline = helpers.ReadTextFile("config/gst/h264-fx-rec.txt")
 	h264RawPipeline = helpers.ReadTextFile("config/gst/h264-raw-rec.txt")
+	passthroughPipeline = helpers.ReadTextFile("config/gst/passthrough.txt")
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -46,6 +53,12 @@ var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
 
 func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) (pipelineStr string) {
+
+	// special case for testing
+	if fx == "passthrough" {
+		pipelineStr = passthroughPipeline
+		return
+	}
 
 	codecName = strings.ToLower(codecName)
 	hasFx := len(fx) > 0
@@ -63,6 +76,7 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
+		pipelineStr = strings.Replace(pipelineStr, "${encode}", DefaultVP8Enc, -1)
 	case "h264":
 		if hasFx {
 			pipelineStr = h264FxPipeline
@@ -84,7 +98,6 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 	pipelineStr = strings.Replace(pipelineStr, "${width}", strconv.Itoa(width), -1)
 	pipelineStr = strings.Replace(pipelineStr, "${height}", strconv.Itoa(height), -1)
 	pipelineStr = strings.Replace(pipelineStr, "${framerate}", strconv.Itoa(frameRate), -1)
-	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 	return
 }
 
@@ -133,6 +146,7 @@ func StartMainLoop() {
 func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) *Pipeline {
 
 	pipelineStr := newPipelineStr(filePrefix, kind, codecName, width, height, frameRate, fx)
+	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))

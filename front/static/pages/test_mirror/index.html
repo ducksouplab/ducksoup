@@ -23,17 +23,19 @@
             <div class="col-2">
               Mirror
             </div>
-            <div class="col-7">
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="videoCodec" id="input-codec-vp8" value="vp8" checked>
-                <label class="form-check-label" for="input-codec-vp8">vp8</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="videoCodec" id="input-codec-h264" value="h264">
-                <label class="form-check-label" for="input-codec-h264">h264</label>
+            <div class="d-none">
+              <div class="col-7">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="videoCodec" id="input-codec-vp8" value="vp8" checked>
+                  <label class="form-check-label" for="input-codec-vp8">vp8</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="videoCodec" id="input-codec-h264" value="h264">
+                  <label class="form-check-label" for="input-codec-h264">h264</label>
+                </div>
               </div>
             </div>
-            <div class="col-3">
+            <div class="col-3 offset-7">
               <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
               <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
             </div>

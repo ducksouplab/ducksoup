@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.6")
+    console.log("[DuckSoup] v1.0.7")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -355,7 +355,7 @@ class DuckSoup {
 
         ws.onerror = (event) => {
             this._postStop({ kind: "error", payload: event.data });
-            this.stop(1006); // Abnormal Closure
+            this.stop(4000); // used as error
         };
 
         ws.onmessage = async (event) => {

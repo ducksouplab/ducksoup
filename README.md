@@ -100,6 +100,15 @@ In this example, `proprety1` has an initial value of `1.0` and is updated to `1.
 
 For the time being only float values are allowed when controlling properties.
 
+### Fake effects
+
+You may use one of these two reserved effect names (either for `audioFx` or `videoFx`):
+
+- `forward` tells DuckSoup to forward RTP packets directly from the incoming track to the outcoming one, without even involving GStreamer
+- `passthrough` instantiates a minimal GStreamer that copies source to sink (input to output) without any depaying/decoding nor processing
+
+They may be useful for debugging streaming quality issues, but won't even trigger file recording.
+
 ### Player API
 
 Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);`

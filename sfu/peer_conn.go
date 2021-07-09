@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtcp"
@@ -144,11 +145,11 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 	userId := joinPayload.UserId
 
 	// create RTC API with chosen codecs
-	// api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
-	// if err != nil {
-	// 	log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
-	// 	return
-	// }
+	api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
+	if err != nil {
+		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
+		return
+	}
 
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
@@ -158,7 +159,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			},
 		},
 	}
-	pionPeerConnection, err := webrtc.NewPeerConnection(config)
+	pionPeerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
@@ -237,47 +238,63 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 
 		<-room.waitForAllCh
 
-		// prepare GStreamer pipeline
-		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
+		// prepare track and room
 		processedTrack := room.AddProcessedTrack(remoteTrack)
+		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
 		defer room.RemoveProcessedTrack(processedTrack)
 
-		mediaFilePrefix := filePrefix(joinPayload, room)
-		codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
-
-		// prepare pipeline parameters
 		kind := remoteTrack.Kind().String()
+		fx := parseFx(kind, joinPayload)
 
-		// create and start pipeline
-		pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
-
-		// needed for further interaction from ws to pipeline
-		peerConn.setPipeline(kind, pipeline)
-
-		pipeline.Start()
-		room.AddFiles(userId, pipeline.Files)
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[user %s] recover OnTrack\n", userId)
-			}
-		}()
-		defer pipeline.Stop()
-
-	processLoop:
-		for {
-			select {
-			case <-room.endCh:
-				break processLoop
-			case <-peerConn.closedCh:
-				break processLoop
-			default:
-				i, _, readErr := remoteTrack.Read(buf)
-				if readErr != nil {
+		if fx == "forward" {
+			// special case for testing
+			for {
+				// Read RTP packets being sent to Pion
+				rtp, _, err := remoteTrack.ReadRTP()
+				if err != nil {
 					return
 				}
-				pipeline.Push(buf[:i])
+				if err := processedTrack.WriteRTP(rtp); err != nil {
+					return
+				}
+			}
+		} else {
+			// main case: use GStreamer
+			mediaFilePrefix := filePrefix(joinPayload, room)
+			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
+
+			// create and start pipeline
+			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
+
+			// needed for further interaction from ws to pipeline
+			peerConn.setPipeline(kind, pipeline)
+
+			pipeline.Start()
+			room.AddFiles(userId, pipeline.Files)
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[user %s] recover OnTrack\n", userId)
+				}
+			}()
+			defer pipeline.Stop()
+
+		processLoop:
+			for {
+				select {
+				case <-room.endCh:
+					break processLoop
+				case <-peerConn.closedCh:
+					break processLoop
+				default:
+					i, _, readErr := remoteTrack.Read(buf)
+					if readErr != nil {
+						return
+					}
+					pipeline.Push(buf[:i])
+				}
 			}
 		}
+
 	})
 
 	return

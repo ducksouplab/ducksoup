@@ -277,6 +277,110 @@ func (r *Room) AddFiles(userId string, files []string) {
 	r.filesIndex[userId] = append(r.filesIndex[userId], files...)
 }
 
+type SignalingState int
+
+const (
+	SignalingOk SignalingState = iota
+	SignalingRetryNow
+	SignalingRetryWithDelay
+)
+
+func updateSignalingState(r *Room) (state SignalingState) {
+	for userId, ps := range r.peerServerIndex {
+
+		peerConn := ps.peerConn
+
+		if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
+			delete(r.peerServerIndex, userId)
+			break
+		}
+
+		// map of sender we are already sending, so we don't double send
+		existingSenders := map[string]bool{}
+
+		for _, sender := range peerConn.GetSenders() {
+			if sender.Track() == nil {
+				continue
+			}
+
+			existingSenders[sender.Track().ID()] = true
+
+			// if we have a RTPSender that doesn't map to an existing track remove and signal
+			_, ok := r.trackIndex[sender.Track().ID()]
+			if !ok {
+				if err := peerConn.RemoveTrack(sender); err != nil {
+					log.Printf("[room %s error] RemoveTrack: %v\n", r.id, err)
+					return SignalingRetryNow
+				}
+			}
+		}
+
+		// when room size is 1, it acts as a mirror
+		if r.size != 1 {
+			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
+			for _, receiver := range peerConn.GetReceivers() {
+				if receiver.Track() == nil {
+					continue
+				}
+				existingSenders[receiver.Track().ID()] = true
+			}
+		}
+
+		// add all track we aren't sending yet to the PeerConnection
+		for trackID := range r.trackIndex {
+			if _, ok := existingSenders[trackID]; !ok {
+				rtpSender, err := peerConn.AddTrack(r.trackIndex[trackID])
+
+				if err != nil {
+					log.Printf("[room %s error] AddTrack: %v\n", r.id, err)
+					return SignalingRetryNow
+				}
+
+				// TODO check if needed
+				// Read incoming RTCP packets
+				// Before these packets are returned they are processed by interceptors. For things
+				// like NACK this needs to be called.
+				go func() {
+					rtcpBuf := make([]byte, 1500)
+					for {
+						if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
+							// EOF is an acceptable termination of this goroutine
+							if err != io.EOF {
+								log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
+							}
+							return
+						}
+					}
+				}()
+			}
+		}
+
+		offer, err := peerConn.CreateOffer(nil)
+		if err != nil {
+			log.Printf("[room %s error] CreateOffer: %v\n", r.id, err)
+			return SignalingRetryNow
+		}
+
+		if err = peerConn.SetLocalDescription(offer); err != nil {
+			log.Printf("[room %s error] SetLocalDescription: %v\n", r.id, err)
+			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
+			return SignalingRetryWithDelay
+		}
+
+		offerString, err := json.Marshal(offer)
+		if err != nil {
+			log.Printf("[room %s error] marshal offer: %v\n", r.id, err)
+			return SignalingRetryNow
+		}
+
+		if err = ps.wsConn.SendWithPayload("offer", string(offerString)); err != nil {
+			return SignalingRetryNow
+		}
+	}
+
+	return SignalingOk
+}
+
 // Update each PeerConnection so that it is getting all the expected media tracks
 func (r *Room) UpdateSignaling() {
 	r.Lock()
@@ -286,103 +390,17 @@ func (r *Room) UpdateSignaling() {
 	}()
 
 	log.Printf("[room %s] signaling update\n", r.id)
-	tryUpdateSignaling := func() (success bool) {
-		for userId, ps := range r.peerServerIndex {
 
-			peerConn := ps.peerConn
-
-			if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
-				delete(r.peerServerIndex, userId)
-				break
-			}
-
-			// map of sender we are already sending, so we don't double send
-			existingSenders := map[string]bool{}
-
-			for _, sender := range peerConn.GetSenders() {
-				if sender.Track() == nil {
-					continue
-				}
-
-				existingSenders[sender.Track().ID()] = true
-
-				// if we have a RTPSender that doesn't map to an existing track remove and signal
-				_, ok := r.trackIndex[sender.Track().ID()]
-				if !ok {
-					if err := peerConn.RemoveTrack(sender); err != nil {
-						log.Printf("[room %s error] RemoveTrack: %v\n", r.id, err)
-						return false
-					}
-				}
-			}
-
-			// when room size is 1, it acts as a mirror
-			if r.size != 1 {
-				// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-				for _, receiver := range peerConn.GetReceivers() {
-					if receiver.Track() == nil {
-						continue
-					}
-					existingSenders[receiver.Track().ID()] = true
-				}
-			}
-
-			// add all track we aren't sending yet to the PeerConnection
-			for trackID := range r.trackIndex {
-				if _, ok := existingSenders[trackID]; !ok {
-					rtpSender, err := peerConn.AddTrack(r.trackIndex[trackID])
-
-					if err != nil {
-						log.Printf("[room %s error] AddTrack: %v\n", r.id, err)
-						return false
-					}
-
-					// TODO check if needed
-					// Read incoming RTCP packets
-					// Before these packets are returned they are processed by interceptors. For things
-					// like NACK this needs to be called.
-					go func() {
-						rtcpBuf := make([]byte, 1500)
-						for {
-							if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
-								// EOF is an acceptable termination of this goroutine
-								if err != io.EOF {
-									log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
-								}
-								return
-							}
-						}
-					}()
-				}
-			}
-
-			offer, err := peerConn.CreateOffer(nil)
-			if err != nil {
-				log.Printf("[room %s error] CreateOffer: %v\n", r.id, err)
-				return false
-			}
-
-			if err = peerConn.SetLocalDescription(offer); err != nil {
-				log.Printf("[room %s error] SetLocalDescription: %v\n", r.id, err)
-				//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
-				return false
-			}
-
-			offerString, err := json.Marshal(offer)
-			if err != nil {
-				log.Printf("[room %s error] marshal offer: %v\n", r.id, err)
-				return false
-			}
-
-			if err = ps.wsConn.SendWithPayload("offer", string(offerString)); err != nil {
-				return false
-			}
-		}
-
-		return true
-	}
-
+signalingLoop:
 	for tries := 0; ; tries++ {
+		switch updateSignalingState(r) {
+		case SignalingOk:
+			break signalingLoop
+		case SignalingRetryWithDelay:
+			time.Sleep(time.Second * 1)
+		}
+		// case SignalingRetryNow -> continue loop
+
 		if tries == 25 {
 			// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
 			go func() {
@@ -390,10 +408,6 @@ func (r *Room) UpdateSignaling() {
 				r.UpdateSignaling()
 			}()
 			return
-		}
-		// don't try again if succeeded
-		if tryUpdateSignaling() {
-			break
 		}
 	}
 }

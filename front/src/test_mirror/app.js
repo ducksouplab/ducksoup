@@ -38,8 +38,11 @@ const start = async ({
     const frameRate = parseInt(fr, 10);
     const duration = parseInt(d, 10);
     // add name if fx is not empty
-    const audioFx = !!afx && afx.length > 0 ? afx + " name=fx" : afx;
-    const videoFx = !!vfx && vfx.length > 0 ? vfx + " name=fx" : vfx;
+    let audioFx = afx;
+    let videoFx = vfx;
+    // add name if not empty and not "passthrough" nor "forward" which are special cases
+    if(!!afx && afx.length > 0 && !["passthrough", "forward"].includes(afx)) audioFx += " name=fx";
+    if(!!vfx && vfx.length > 0 && !["passthrough", "forward"].includes(vfx)) videoFx += " name=fx";
 
     // optional
 
@@ -58,7 +61,7 @@ const start = async ({
         name,
         duration,
         // optional
-        videoCodec,
+        // videoCodec,
         namespace: "mirror",
         size: 1, // size 1 for mirroring
         video,
