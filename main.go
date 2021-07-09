@@ -30,16 +30,16 @@ func main() {
 
 	// run ducksoup only if not in BUILD_FRONT DS_ENV
 	if !cmdBuildMode {
-		// launch http (with websockets) server
-		go server.ListenAndServe()
-
-		// start Glib main loop for GStreamer
-		gst.StartMainLoop()
-
 		defer func() {
 			if r := recover(); r != nil {
 				log.Println("[main] recovered: ", r)
 			}
 		}()
+
+		// launch http (with websockets) server
+		go server.ListenAndServe()
+
+		// start Glib main loop for GStreamer
+		gst.StartMainLoop()
 	}
 }

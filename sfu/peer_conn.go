@@ -144,15 +144,8 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
 	userId := joinPayload.UserId
 
-	// create RTC API with given set of codecs
-	codecs := []string{"opus"}
-	if len(joinPayload.VideoCodec) > 0 {
-		codecs = append(codecs, joinPayload.VideoCodec)
-	} else {
-		codecs = append(codecs, "vp8")
-	}
-
-	api, err := engine.NewWebRTCAPI(codecs)
+	// create RTC API with chosen codecs
+	api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
 	if err != nil {
 		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
 		return

@@ -200,6 +200,14 @@ const kbps = (bytes, duration) => {
     return result.toFixed(1);
 };
 
+const looseJSONParse = (str) => {
+    try {
+        return JSON.parse(str);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 // DuckSoup
 
 class DuckSoup {
@@ -251,10 +259,10 @@ class DuckSoup {
         this._control("video", effectName, property, value, transitionDuration);
     }
 
-    stop() {
-        this._stream.getTracks().forEach((track) => track.stop());
-        this._pc.close();
-        this._ws.close();
+    stop(wsStatusCode) {
+        this._stopRTC()
+        // see status codes https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#status_codes
+        this._ws.close(wsStatusCode);
     }
 
     get stream() {
@@ -295,10 +303,19 @@ class DuckSoup {
     }
 
     _postStop(reason) {
+        this._document.querySelector("body").style.display = 'none';
         const message = typeof reason === "string" ? { kind: reason } : reason;
-        this.stop();
         this._postMessage(message);
         if (this._debugIntervalId) clearInterval(this._debugIntervalId);
+    }
+
+    _stopRTC() {
+        if(this._stream) {
+            this._stream.getTracks().forEach((track) => track.stop());
+        }
+        if(this._pc) {
+            this._pc.close();
+        }
     }
 
     async _startRTC() {
@@ -319,7 +336,6 @@ class DuckSoup {
         }
 
         // Signaling
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
         const ws = new WebSocket(this._signalingUrl);
         this._ws = ws;
 
@@ -334,22 +350,19 @@ class DuckSoup {
 
         ws.onclose = () => {
             this._postStop("disconnection");
+            this._stopRTC();
         };
 
         ws.onerror = (event) => {
             this._postStop({ kind: "error", payload: event.data });
+            this.stop(1006); // Abnormal Closure
         };
 
         ws.onmessage = async (event) => {
-            let message = JSON.parse(event.data);
-
-            if (!message) return this._postStop({ kind: "error", payload: "can't parse message" });
+            let message = looseJSONParse(event.data);
 
             if (message.kind === "offer") {
-                const offer = JSON.parse(message.payload);
-                if (!offer) {
-                    return this._postStop({ kind: "error", payload: "can't parse offer" });
-                }
+                const offer = looseJSONParse(message.payload);
                 pc.setRemoteDescription(offer);
                 const answer = await pc.createAnswer();
                 answer.sdp = processSDP(answer.sdp);
@@ -361,21 +374,15 @@ class DuckSoup {
                     })
                 );
             } else if (message.kind === "candidate") {
-                const candidate = JSON.parse(message.payload);
-                if (!candidate) {
-                    return this._postStop({ kind: "error", payload: "can't parse candidate" });
-                }
+                const candidate = looseJSONParse(message.payload);
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
                 this._callback({ kind: "start " });
             } else if (message.kind === "ending") {
                 this._document.querySelector(".ending").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "end") {
-                this._document.querySelector("body").style.display = 'none';
                 this._postStop(message);
-                if(message.kind === "end") {
-                    this._running = false;
-                }
+                this.stop(1000); // Normal Closure
             }
         };
 

@@ -3,6 +3,7 @@ package sfu
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"regexp"
 	"sync"
@@ -38,6 +39,7 @@ type Room struct {
 	joinedCountIndex map[string]int                         // per user id
 	filesIndex       map[string][]string                    // per user id, contains media file names
 	trackIndex       map[string]*webrtc.TrackLocalStaticRTP // per track id
+	started          bool
 	startedAt        time.Time
 	tracksReadyCount int
 	// channels (safe)
@@ -204,6 +206,7 @@ func (r *Room) IncTracksReadyCount() {
 	if r.tracksReadyCount == neededTracks {
 		log.Printf("[room %s] users are ready\n", r.id)
 		close(r.waitForAllCh)
+		r.started = true
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
 			go ps.wsConn.Send("start")
@@ -230,7 +233,7 @@ func (r *Room) DisconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
-		if r.userCount() == 1 {
+		if r.userCount() == 1 && !r.started {
 			// don't keep this room
 			r.delete()
 		}
@@ -342,7 +345,10 @@ func (r *Room) UpdateSignaling() {
 						rtcpBuf := make([]byte, 1500)
 						for {
 							if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
-								log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
+								// EOF is an acceptable termination of this goroutine
+								if err != io.EOF {
+									log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
+								}
 								return
 							}
 						}

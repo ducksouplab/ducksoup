@@ -44,7 +44,9 @@ func (ps *PeerServer) loop() {
 
 		if err != nil {
 			ps.room.DisconnectUser(ps.userId)
-			log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+				log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
+			}
 			return
 		}
 

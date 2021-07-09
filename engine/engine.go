@@ -2,21 +2,23 @@ package engine
 
 import (
 	"log"
-	"strings"
 
-	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
 
-func NewWebRTCAPI(names []string) (*webrtc.API, error) {
-	log.Println("[api] ", strings.Join(names, " "))
+func NewWebRTCAPI(videoCodec string) (*webrtc.API, error) {
+	if len(videoCodec) < 1 {
+		videoCodec = "vp8"
+	}
+	log.Println("[api] opus and ", videoCodec)
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
 	m := webrtc.MediaEngine{}
 
+	// always include opus
 	if err := m.RegisterCodec(
 		webrtc.RTPCodecParameters{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -39,7 +41,7 @@ func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 		{Type: "nack", Parameter: "pli"},
 	}
 
-	if helpers.Contains(names, "vp8") {
+	if videoCodec == "vp8" {
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -56,7 +58,7 @@ func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 		}
 	}
 
-	if helpers.Contains(names, "vp9") {
+	if videoCodec == "vp9" {
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{
@@ -88,7 +90,7 @@ func NewWebRTCAPI(names []string) (*webrtc.API, error) {
 		}
 	}
 
-	if helpers.Contains(names, "h264") {
+	if videoCodec == "h264" {
 		if err := m.RegisterCodec(
 			webrtc.RTPCodecParameters{
 				RTPCodecCapability: webrtc.RTPCodecCapability{
