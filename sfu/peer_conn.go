@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtcp"
@@ -145,11 +144,11 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 	userId := joinPayload.UserId
 
 	// create RTC API with chosen codecs
-	api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
-	if err != nil {
-		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
-		return
-	}
+	// api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
+	// if err != nil {
+	// 	log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
+	// 	return
+	// }
 
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
@@ -159,7 +158,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			},
 		},
 	}
-	pionPeerConnection, err := api.NewPeerConnection(config)
+	pionPeerConnection, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
