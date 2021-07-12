@@ -8,7 +8,8 @@ tee name=teein !
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=30/1,width=${width},height=${height} ! 
+videoconvert ! 
+video/x-raw,framerate=30/1,width=${width},height=${height},colorimetry=bt601,chroma-site=jpeg !
 ${encode} ! 
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
@@ -20,7 +21,8 @@ ${fx} !
 videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=30/1,width=${width},height=${height} ! 
+videoconvert ! 
+video/x-raw,framerate=30/1,width=${width},height=${height},colorimetry=bt601,chroma-site=jpeg !
 ${encode} ! 
 
 tee name=teeout ! 

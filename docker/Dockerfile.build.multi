@@ -96,5 +96,6 @@ USER $appuser:$appgroup
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
+ENV GST_DEBUG=2
 
 CMD ./ducksoup
