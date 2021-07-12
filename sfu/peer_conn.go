@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtcp"
@@ -20,13 +19,14 @@ const (
 	DefaultHeight           = 600
 	DefaultFrameRate        = 30
 	DefaultInterpolatorStep = 30
-	MaxInterpolatorDuration = 5000
+	MaxInterpolatorDuration = 10000
 )
 
 // Augmented pion PeerConnection
 type PeerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
+	room              *Room
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
 	// if peer connection is closed before room is ended (for instance on browser page refresh)
 	closedCh chan struct{}
@@ -123,20 +123,34 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 			duration = MaxInterpolatorDuration
 		}
 		oldValue := pipeline.GetFxProperty(payload.Name, payload.Property)
-		log.Println("oldValue", oldValue)
-		p.Lock()
 		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, DefaultInterpolatorStep)
+
+		p.Lock()
 		p.interpolatorIndex[interpolatorId] = newInterpolator
 		p.Unlock()
 
-		for currentValue := range newInterpolator.C {
-			pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
-			log.Println("currentValue", currentValue)
+		defer func() {
+			p.Lock()
+			delete(p.interpolatorIndex, interpolatorId)
+			p.Unlock()
+		}()
+
+	interpolatorLoop:
+		for {
+			select {
+			case <-p.room.endCh:
+				break interpolatorLoop
+			case <-p.closedCh:
+				break interpolatorLoop
+			case currentValue, more := <-newInterpolator.C:
+				if more {
+					pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
+					log.Println("currentValue", currentValue)
+				} else {
+					break interpolatorLoop
+				}
+			}
 		}
-		// after for .. range: channel has been closed
-		p.Lock()
-		delete(p.interpolatorIndex, interpolatorId)
-		p.Unlock()
 	}
 
 }
@@ -145,11 +159,11 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 	userId := joinPayload.UserId
 
 	// create RTC API with chosen codecs
-	api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
-	if err != nil {
-		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
-		return
-	}
+	// api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
+	// if err != nil {
+	// 	log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
+	// 	return
+	// }
 
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
@@ -159,13 +173,13 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			},
 		},
 	}
-	pionPeerConnection, err := api.NewPeerConnection(config)
+	pionPeerConnection, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
+	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
 
 	// accept one audio and one video incoming tracks
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
@@ -294,7 +308,6 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 				}
 			}
 		}
-
 	})
 
 	return
