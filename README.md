@@ -247,7 +247,7 @@ docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deplo
 Set permissions to enabled writing in `logs` mounted volume:
 
 ```
-sudo chown deploy:deploy logs
+sudo chown -R deploy:deploy logs
 ```
 
 Run:

@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.7")
+    console.log("[DuckSoup] v1.0.8")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -377,7 +377,7 @@ class DuckSoup {
                 const candidate = looseJSONParse(message.payload);
                 pc.addIceCandidate(candidate);
             } else if (message.kind === "start") {
-                this._callback({ kind: "start " });
+                this._callback({ kind: "start" });
             } else if (message.kind === "ending") {
                 this._document.querySelector(".ending").style.display = 'block';
             } else if (message.kind.startsWith("error") || message.kind === "end") {

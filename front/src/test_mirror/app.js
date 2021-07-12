@@ -111,7 +111,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document
       .getElementById("stop")
-      .addEventListener("click", () => location.reload());
+      .addEventListener("click", () => {
+        if(state.ducksoup) state.ducksoup.stop();
+      });
 
     document.getElementById("audio-control").addEventListener("click", () => {
         if(state.ducksoup) {
@@ -132,12 +134,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+const clearMessage = () => {
+    document.getElementById("stopped-message").innerHTML = "";
+}
+
 const replaceMessage = (message) => {
     document.getElementById("stopped-message").innerHTML = message;
 }
 
 const appendMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML += '<br/>' + message;
+    document.getElementById("stopped-message").innerHTML += message + '<br/>' ;
 }
 
 // communication with iframe
@@ -162,9 +168,11 @@ const receiveMessage = (message) => {
     } else if (kind === "error-duplicate") {
         replaceMessage("Connection denied (already connected)");
     } else if (kind === "disconnection") {
-        appendMessage("<br/>Connection lost");
+        appendMessage("Connection lost");
     } else if (kind === "error") {
         replaceMessage("Error");
+    } else if (kind === "start") {
+        clearMessage();
     } else if (kind === "stats") {
         document.getElementById("audio-up").textContent = payload.audioUp;
         document.getElementById("audio-down").textContent = payload.audioDown;

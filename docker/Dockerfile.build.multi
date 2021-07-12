@@ -34,7 +34,7 @@ RUN go mod download
 # layer more frequently updated (DuckSoup source)
 COPY . .
 RUN go build
-RUN mkdir -p /build/gst
+RUN mkdir -p /build
 RUN cp ./ducksoup /build
 RUN cp -r ./config /build
 RUN cp -r ./front /build
