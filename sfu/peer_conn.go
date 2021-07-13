@@ -145,7 +145,7 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 			case currentValue, more := <-newInterpolator.C:
 				if more {
 					pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
-					log.Println("currentValue", currentValue)
+					//log.Println("[interpolate]", payload.Name, payload.Property, currentValue)
 				} else {
 					break interpolatorLoop
 				}

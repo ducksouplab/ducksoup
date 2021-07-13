@@ -236,26 +236,27 @@ This Dockerfile prefers specifying a Debian version and installing go from sourc
 
 `docker/Dockerfile.code.golang_image` is an alternate Dockerfile relying on the golang base image.
 
-### Build with Docker for production
+### Build Docker image
 
 The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
 
 ```
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build -t ducksoup:latest .
+docker build -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
-Set permissions to enabled writing in `logs` mounted volume:
+Supposing we use a `deploy` user for running the container, prepare the volume `logs` target:
 
 ```
-sudo chown deploy:deploy logs
+sudo chown -R deploy:deploy logs
 ```
 
-Run:
+Run (note the `--user` option):
 
 ```
 # bind port, mount volumes, set environment variable and remove container when stopped
 docker run --name ducksoup_1 \
   -p 8000:8000 \
+  --user $(id deploy -u):$(id deploy -g) \
   --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
@@ -263,21 +264,21 @@ docker run --name ducksoup_1 \
   ducksoup:latest
 
 # and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_1 /bin/bash
+docker exec -it ducksoup_1 bash
 ```
 
-Run with docker-compose, thus binding volumes and persisting logs data (in `docker/data/logs`):
+Or run with docker-compose:
 
 ```
 DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
 ```
 
-### Multistage Dockerfile
+### Build multistage Docker image
 
 If the goal is to distribute and minimize the image size, consider the (Debian based) multistage build:
 
 ```
-docker build --build-arg appuser=$(id deploy -u) --build-arg appgroup=$(id deploy -g) -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
+docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
 ```
 
 Deploy image to docker hub:
@@ -287,11 +288,18 @@ docker tag ducksoup_multi altg/ducksoup
 docker push altg/ducksoup:latest
 ```
 
-Run:
+Supposing we use a `deploy` user for running the container, prepare the volume `logs` target:
+
+```
+sudo chown -R deploy:deploy logs
+```
+
+Run (note the `--user` option):
 
 ```
 docker run --name ducksoup_multi_1 \
   -p 8000:8000 \
+  --user $(id deploy -u):$(id deploy -g) \
   --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
@@ -299,7 +307,13 @@ docker run --name ducksoup_multi_1 \
   ducksoup_multi:latest
 
 # and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_multi_1 /bin/bash
+docker exec -it ducksoup_multi_1 bash
+```
+
+Or run with docker-compose:
+
+```
+DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
 ```
 
 ### Run tests

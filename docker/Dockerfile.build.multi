@@ -34,7 +34,7 @@ RUN go mod download
 # layer more frequently updated (DuckSoup source)
 COPY . .
 RUN go build
-RUN mkdir -p /build/gst
+RUN mkdir -p /build
 RUN cp ./ducksoup /build
 RUN cp -r ./config /build
 RUN cp -r ./front /build
@@ -86,11 +86,7 @@ RUN ninja install
 
 WORKDIR /app
 
-ARG appuser
-ARG appgroup
-
-COPY --from=builder --chown=$appuser:$appgroup /build .
-USER $appuser:$appgroup
+COPY --from=builder /build .
 
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
