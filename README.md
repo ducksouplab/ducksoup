@@ -166,7 +166,7 @@ go build
 - DS_ORIGINS=https://origin1,https://origin2:8080 declares comma separated allowed origins for WebSocket connections
 - DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
-- GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD")
+- GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 
 ### Run DuckSoup server
 
@@ -202,11 +202,16 @@ First create a folder dedicated to custom plugins, and update `GST_PLUGIN_PATH` 
 
 ```
 mkdir -p plugins
-export PROJECT_BUILD=`pwd`/plugins
-export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:$PROJECT_BUILD"
+export GST_PLUGIN_PATH="$GST_PLUGIN_PATH:`pwd`/plugins"
 ```
 
 Then add plugins (`libxyz.so` files) to this folder to enable them in DuckSoup GStreamer pipelines. They have to be built against the same GStreamer version than the one running with DuckSoup (1.18.4 at the time of writing this documentation, check with `gst-inspect-1.0 --version`).
+
+If a plugin depends on an additinal dynamic library, just add the `*.so` file to the same plugins folder and update the `LD_LIBRARY_PATH`:
+
+```
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`/plugins"
+```
 
 ### Concepts in Go code
 

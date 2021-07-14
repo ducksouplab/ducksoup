@@ -36,6 +36,8 @@ RUN apt-get install -y gstreamer1.0-libav \
     liblapack-dev \
     libdlib-data
 
+RUN apt-get install -y libopencv-calib3d-dev
+
 # GStreamer: tools (gst-inspect-1.0)
 RUN apt-get install -y gstreamer1.0-tools
 
@@ -60,4 +62,5 @@ RUN cmake -GNinja \
 RUN ninja
 RUN ninja install
 
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/workspaces/ducksoup/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"

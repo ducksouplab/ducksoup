@@ -1,12 +1,9 @@
 certs
 ducksoup
+.DS_Store
 
 # logs and recorded data
 logs
-
-# license and SDK
-*.uid
-*.key
 
 # GStreamer plugin libs
 *.so
@@ -19,4 +16,6 @@ front/static/assets/scripts
 docker/plugins
 docker/logs
 
-.DS_Store
+# license and SDK
+*.uid
+*.key

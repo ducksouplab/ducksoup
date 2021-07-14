@@ -36,6 +36,8 @@ RUN apt-get install -y gstreamer1.0-libav \
     liblapack-dev \
     libdlib-data
 
+RUN apt-get install -y libopencv-calib3d-dev
+
 # build dlib
 ENV DLIB_VER 19.22
 RUN apt-get install -y bzip2 cmake ninja-build
@@ -76,6 +78,7 @@ USER $appuser:$appgroup
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
 ENV GST_DEBUG=2
 
