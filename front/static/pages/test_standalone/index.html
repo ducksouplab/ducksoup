@@ -21,12 +21,20 @@
                 <div class="col-4">
                     <form action="live/" method="link">
                         <div class="mb-3">
-                            <label for="name" class="form-label">User name</label>
+                            <label for="name" class="form-label">*User name</label>
                             <input id="name" name="name" type="text" minlength="2" required class="form-control">
                         </div>
                         <div class="mb-3">
-                            <label for="room" class="form-label">Room</label>
+                            <label for="room" class="form-label">*Room</label>
                             <input id="room" name="room" type="text" value="hall" minlength="2" required class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="audioFx" class="form-label">Audio FX</label>
+                            <input id="audioFx" name="audioFx" type="text" value="" minlength="2" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="videoFx" class="form-label">Video FX</label>
+                            <input id="videoFx" name="videoFx" type="text" value="" minlength="2" class="form-control">
                         </div>
                         <button type="submit" class="btn btn-primary">join</button>
                     </form>

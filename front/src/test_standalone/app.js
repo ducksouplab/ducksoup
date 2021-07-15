@@ -46,10 +46,14 @@ const init = async () => {
   // Init state
   const room = getQueryVariable("room");
   const name = getQueryVariable("name");
+  const audioFx = getQueryVariable("audioFx").replace("+", " ");
+  const videoFx = getQueryVariable("videoFx").replace("+", " ");
   if (!room || !name) window.location.href = FRONT_PREFIX;
   window.history.replaceState({}, document.title, `${FRONT_PREFIX}live/`);
   state.room = room;
   state.name = name;
+  state.audioFx = audioFx;
+  state.videoFx = videoFx;
   // Init UX
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -121,7 +125,8 @@ const startRTC = async () => {
   const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
   ws.onopen = function () {
-    const { name, room } = state;
+    const { name, room, audioFx, videoFx } = state;
+    console.log(state)
     ws.send(
       JSON.stringify({
         kind: "join",
@@ -129,8 +134,8 @@ const startRTC = async () => {
           room,
           uid: randomId(),
           name,
-          videoFx: "coloreffects preset=xpro",
-          audioFx: "avocoder pitch=0.85",
+          videoFx,
+          audioFx,
           namespace: "standalone" }),
       })
     );
