@@ -128,14 +128,14 @@ The following methods are available on a DuckSoup player:
 There are several ways to use DuckSoup:
 
 - the official and maintained way is to rely on ducksoup.js as described in [DuckSoup Player](#ducksoup-player)
-- `static/test_standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic (may be later deprecated / unmaintained)
-- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test_embed` which contains an iframe that embeds `static/embed` (may be later deprecated / unmaintained)
+- `static/test/standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic (may be later deprecated / unmaintained)
+- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test/embed` which contains an iframe that embeds `static/embed` (may be later deprecated / unmaintained)
 
 Once the app is running, you may try them at:
 
-- http://localhost:8000/test_mirror/ (one user, relies on ducksoup.js)
-- http://localhost:8000/test_standalone/ (two users -> two tabs)
-- http://localhost:8000/test_embed/ (two users -> two tabs)
+- http://localhost:8000/test/mirror/ (one user, relies on ducksoup.js)
+- http://localhost:8000/test/standalone/ (two users -> two tabs)
+- http://localhost:8000/test/embed/ (two users -> two tabs)
 
 
 ## DuckSoup server
@@ -166,6 +166,8 @@ go build
 - DS_ORIGINS=https://origin1,https://origin2:8080 declares comma separated allowed origins for WebSocket connections
 - DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
+- DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
+- DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 
 ### Run DuckSoup server
@@ -284,12 +286,12 @@ If the goal is to distribute and minimize the image size, consider the (Debian b
 
 ```
 docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
+docker tag ducksoup_multi altg/ducksoup
 ```
 
 Deploy image to docker hub:
 
 ```
-docker tag ducksoup_multi altg/ducksoup
 docker push altg/ducksoup:latest
 ```
 
