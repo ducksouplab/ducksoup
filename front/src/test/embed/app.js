@@ -18,24 +18,22 @@ const getQueryVariable = (key, deserializeFunc) => {
 const marshallParams = (obj) => encodeURI(btoa(JSON.stringify(obj)));
 
 const init = async () => {
-    const room = getQueryVariable("room");
-    const uid = getQueryVariable("uid");
-    const name = getQueryVariable("name");
+    const roomId = getQueryVariable("roomId");
+    const userId = getQueryVariable("userId");
     const videoCodec = getQueryVariable("videoCodec");
     const duration = getQueryVariable("duration", (v) => parseInt(v, 10));
-    if (typeof room === 'undefined' || typeof uid === 'undefined' || typeof name === 'undefined' || isNaN(duration)) {
+    if (typeof roomId === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) {
         document.getElementById("error").classList.remove("d-none");
         document.getElementById("embed").classList.add("d-none");
     } else {
         const params = {
             origin: window.location.origin,
-            room,
-            uid,
-            name,
+            roomId,
+            userId,
             duration,
             videoCodec
         };
-        state.uid = uid;
+        state.userId = userId;
         document.getElementById("embed").src = `/embed/?params=${marshallParams(params)}`;
     }
 };
@@ -63,9 +61,9 @@ window.addEventListener("message", (event) => {
 
     const { kind, payload } = event.data;
     if (event.data.kind === "end") {
-        if(payload && payload[state.uid]) {
+        if(payload && payload[state.userId]) {
             let html = "Conversation terminée, les fichiers suivant ont été enregistrés :<br/><br/>";
-            html += payload[state.uid].join("<br/>");
+            html += payload[state.userId].join("<br/>");
             replaceMessage(html);
         } else {
             replaceMessage("Conversation terminée");

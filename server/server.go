@@ -54,7 +54,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sfu.RunPeerServer(unsafeConn) // blocking
+	sfu.RunPeerServer(r.Header.Get("Origin"), unsafeConn) // blocking
 }
 
 // source https://www.alexedwards.net/blog/basic-authentication-in-go

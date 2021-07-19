@@ -87,13 +87,13 @@ func (ps *PeerServer) loop() {
 // API
 
 // handle incoming websockets
-func RunPeerServer(unsafeConn *websocket.Conn) {
+func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 
 	wsConn := NewWsConn(unsafeConn)
 	defer wsConn.Close()
 
 	// first message must be a join request
-	joinPayload, err := wsConn.ReadJoin()
+	joinPayload, err := wsConn.ReadJoin(origin)
 	if err != nil {
 		log.Printf("[user unknown] join payload corrupted: %v\n", err)
 		return
@@ -103,6 +103,7 @@ func RunPeerServer(unsafeConn *websocket.Conn) {
 	wsConn.SetUserId(joinPayload.UserId)
 
 	room, err := JoinRoom(joinPayload)
+
 	if err != nil {
 		// joinErr is meaningful to client
 		log.Printf("[user %s] join failed: %s", joinPayload.UserId, err)

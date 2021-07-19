@@ -26,10 +26,9 @@ type WsMessageIn struct {
 }
 
 type JoinPayload struct {
-	Room     string `json:"room"`
-	Name     string `json:"name"`
+	RoomId   string `json:"roomId"`
+	UserId   string `json:"userId"`
 	Duration int    `json:"duration"`
-	UserId   string `json:"uid"`
 	// optional
 	Namespace  string `json:"namespace"`
 	VideoCodec string `json:"videoCodec"`
@@ -39,6 +38,8 @@ type JoinPayload struct {
 	Width      int    `json:"width"`
 	Height     int    `json:"height"`
 	FrameRate  int    `json:"frameRate"`
+	// Not from JSON
+	origin string
 }
 
 type ControlPayload struct {
@@ -87,7 +88,7 @@ func (w *WsConn) SendWithPayload(kind string, payload interface{}) (err error) {
 	return
 }
 
-func (w *WsConn) ReadJoin() (joinPayload JoinPayload, err error) {
+func (w *WsConn) ReadJoin(origin string) (joinPayload JoinPayload, err error) {
 	var m WsMessageIn
 
 	// First message must be a join
@@ -97,5 +98,6 @@ func (w *WsConn) ReadJoin() (joinPayload JoinPayload, err error) {
 	}
 
 	err = json.Unmarshal([]byte(m.Payload), &joinPayload)
+	joinPayload.origin = origin
 	return
 }

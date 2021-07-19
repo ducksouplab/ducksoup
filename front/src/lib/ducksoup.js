@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.8")
+    console.log("[DuckSoup] v1.0.9")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value
@@ -150,10 +150,9 @@ const IS_SAFARI = (() => {
 
 // Pure functions
 
-const areOptionsValid = ({ room, name, duration, uid }) => {
-    return typeof room !== 'undefined' &&
-        typeof uid !== 'undefined' &&
-        typeof name !== 'undefined' &&
+const areOptionsValid = ({ roomId, userId, duration }) => {
+    return typeof roomId !== 'undefined' &&
+        typeof userId !== 'undefined' &&
         !isNaN(duration);
 }
 
@@ -166,14 +165,14 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
+    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
     if (!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
     if (isNaN(height)) height = null;
     if (isNaN(frameRate)) frameRate = null;
 
-    return clean({ room, uid, name, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
+    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
 }
 
 const forceMozillaMono = (sdp) => {

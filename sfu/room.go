@@ -1,9 +1,7 @@
 package sfu
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"regexp"
 	"sync"
@@ -34,11 +32,10 @@ var (
 type Room struct {
 	sync.RWMutex
 	// guarded by mutex
-	peerServerIndex  map[string]*PeerServer                 // per user id
-	connectedIndex   map[string]bool                        // per user id, undefined: never connected, false: previously connected, true: connected
-	joinedCountIndex map[string]int                         // per user id
-	filesIndex       map[string][]string                    // per user id, contains media file names
-	trackIndex       map[string]*webrtc.TrackLocalStaticRTP // per track id
+	peerServerIndex  map[string]*PeerServer // per user id
+	connectedIndex   map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
+	joinedCountIndex map[string]int         // per user id
+	filesIndex       map[string][]string    // per user id, contains media file names
 	started          bool
 	startedAt        time.Time
 	tracksReadyCount int
@@ -46,7 +43,9 @@ type Room struct {
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	id            string
+	mixer         *Mixer
+	qualifiedId   string
+	shortId       string
 	namespace     string
 	size          int
 	tracksPerPeer int
@@ -63,8 +62,8 @@ func (r *Room) delete() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Printf("[room %s] deleted\n", r.id)
-	delete(roomIndex, r.id)
+	log.Printf("[room %s] deleted\n", r.shortId)
+	delete(roomIndex, r.qualifiedId)
 }
 
 // remove special characters like / . *
@@ -82,7 +81,11 @@ func parseNamespace(ns string) string {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func newRoom(joinPayload JoinPayload) *Room {
+func QualifiedId(joinPayload JoinPayload) string {
+	return joinPayload.origin + "#" + joinPayload.RoomId
+}
+
+func newRoom(qualifiedId string, joinPayload JoinPayload) *Room {
 	// process duration
 	duration := joinPayload.Duration
 	if duration < 1 {
@@ -109,16 +112,19 @@ func newRoom(joinPayload JoinPayload) *Room {
 	namespace := parseNamespace(joinPayload.Namespace)
 	helpers.EnsureDir("./logs/" + namespace)
 
+	shortId := joinPayload.RoomId
+
 	return &Room{
 		peerServerIndex:  make(map[string]*PeerServer),
 		filesIndex:       make(map[string][]string),
 		connectedIndex:   connectedIndex,
 		joinedCountIndex: joinedCountIndex,
-		trackIndex:       map[string]*webrtc.TrackLocalStaticRTP{},
 		waitForAllCh:     make(chan struct{}),
 		endCh:            make(chan struct{}),
 		tracksReadyCount: 0,
-		id:               joinPayload.Room,
+		mixer:            newMixer(shortId),
+		qualifiedId:      qualifiedId,
+		shortId:          shortId,
 		namespace:        namespace,
 		size:             size,
 		tracksPerPeer:    DefaultTracksPerPeer,
@@ -141,7 +147,7 @@ func (r *Room) countdown() {
 	for _, ps := range r.peerServerIndex {
 		go ps.wsConn.SendWithPayload("end", r.Files())
 	}
-	log.Printf("[room %s] end\n", r.id)
+	log.Printf("[room %s] end\n", r.shortId)
 
 	r.delete()
 }
@@ -153,10 +159,10 @@ func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	roomId := joinPayload.Room
+	qualifiedId := QualifiedId(joinPayload)
 	userId := joinPayload.UserId
 
-	if r, ok := roomIndex[roomId]; ok {
+	if r, ok := roomIndex[qualifiedId]; ok {
 		r.Lock()
 		defer r.Unlock()
 		connected, ok := r.connectedIndex[userId]
@@ -178,13 +184,13 @@ func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Printf("[room %s] joined\n", roomId)
+			log.Printf("[room %s] joined\n", qualifiedId)
 			return r, nil
 		}
 	} else {
-		log.Printf("[room %s] created\n", roomId)
-		newRoom := newRoom(joinPayload)
-		roomIndex[roomId] = newRoom
+		log.Printf("[room %s] created\n", qualifiedId)
+		newRoom := newRoom(qualifiedId, joinPayload)
+		roomIndex[qualifiedId] = newRoom
 		return newRoom, nil
 	}
 }
@@ -201,10 +207,10 @@ func (r *Room) IncTracksReadyCount() {
 	}
 
 	r.tracksReadyCount++
-	log.Printf("[room %s] track updated count: %d\n", r.id, r.tracksReadyCount)
+	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.tracksReadyCount)
 
 	if r.tracksReadyCount == neededTracks {
-		log.Printf("[room %s] users are ready\n", r.id)
+		log.Printf("[room %s] users are ready\n", r.shortId)
 		close(r.waitForAllCh)
 		r.started = true
 		r.startedAt = time.Now()
@@ -221,6 +227,13 @@ func (r *Room) Bind(ps *PeerServer) {
 	defer r.Unlock()
 
 	r.peerServerIndex[ps.userId] = ps
+}
+
+func (r *Room) Unbind(ps *PeerServer) {
+	r.Lock()
+	defer r.Unlock()
+
+	delete(r.peerServerIndex, ps.userId)
 }
 
 func (r *Room) DisconnectUser(userId string) {
@@ -240,176 +253,11 @@ func (r *Room) DisconnectUser(userId string) {
 	}
 }
 
-// Add to list of tracks and fire renegotation for all PeerConnections
-func (r *Room) AddProcessedTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
-	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.UpdateSignaling()
-	}()
-
-	// Create a new TrackLocal with the same codec as the incoming one
-	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
-	if err != nil {
-		log.Printf("[room %s error] NewTrackLocalStaticRTP: %v\n", r.id, err)
-		panic(err)
-	}
-
-	r.trackIndex[t.ID()] = track
-	return track
-}
-
-// Remove from list of tracks and fire renegotation for all PeerConnections
-func (r *Room) RemoveProcessedTrack(t *webrtc.TrackLocalStaticRTP) {
-	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.UpdateSignaling()
-	}()
-
-	delete(r.trackIndex, t.ID())
-}
-
 func (r *Room) AddFiles(userId string, files []string) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.filesIndex[userId] = append(r.filesIndex[userId], files...)
-}
-
-type SignalingState int
-
-const (
-	SignalingOk SignalingState = iota
-	SignalingRetryNow
-	SignalingRetryWithDelay
-)
-
-func updateSignalingState(r *Room) (state SignalingState) {
-	for userId, ps := range r.peerServerIndex {
-
-		peerConn := ps.peerConn
-
-		if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
-			delete(r.peerServerIndex, userId)
-			break
-		}
-
-		// map of sender we are already sending, so we don't double send
-		existingSenders := map[string]bool{}
-
-		for _, sender := range peerConn.GetSenders() {
-			if sender.Track() == nil {
-				continue
-			}
-
-			existingSenders[sender.Track().ID()] = true
-
-			// if we have a RTPSender that doesn't map to an existing track remove and signal
-			_, ok := r.trackIndex[sender.Track().ID()]
-			if !ok {
-				if err := peerConn.RemoveTrack(sender); err != nil {
-					log.Printf("[room %s error] RemoveTrack: %v\n", r.id, err)
-					return SignalingRetryNow
-				}
-			}
-		}
-
-		// when room size is 1, it acts as a mirror
-		if r.size != 1 {
-			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-			for _, receiver := range peerConn.GetReceivers() {
-				if receiver.Track() == nil {
-					continue
-				}
-				existingSenders[receiver.Track().ID()] = true
-			}
-		}
-
-		// add all track we aren't sending yet to the PeerConnection
-		for trackID := range r.trackIndex {
-			if _, ok := existingSenders[trackID]; !ok {
-				rtpSender, err := peerConn.AddTrack(r.trackIndex[trackID])
-
-				if err != nil {
-					log.Printf("[room %s error] AddTrack: %v\n", r.id, err)
-					return SignalingRetryNow
-				}
-
-				// TODO check if needed
-				// Read incoming RTCP packets
-				// Before these packets are returned they are processed by interceptors. For things
-				// like NACK this needs to be called.
-				go func() {
-					rtcpBuf := make([]byte, 1500)
-					for {
-						if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
-							// EOF is an acceptable termination of this goroutine
-							if err != io.EOF {
-								log.Printf("[room %s error] read rtpSender: %v\n", r.id, err)
-							}
-							return
-						}
-					}
-				}()
-			}
-		}
-
-		offer, err := peerConn.CreateOffer(nil)
-		if err != nil {
-			log.Printf("[room %s error] CreateOffer: %v\n", r.id, err)
-			return SignalingRetryNow
-		}
-
-		if err = peerConn.SetLocalDescription(offer); err != nil {
-			log.Printf("[room %s error] SetLocalDescription: %v\n", r.id, err)
-			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
-			return SignalingRetryWithDelay
-		}
-
-		offerString, err := json.Marshal(offer)
-		if err != nil {
-			log.Printf("[room %s error] marshal offer: %v\n", r.id, err)
-			return SignalingRetryNow
-		}
-
-		if err = ps.wsConn.SendWithPayload("offer", string(offerString)); err != nil {
-			return SignalingRetryNow
-		}
-	}
-
-	return SignalingOk
-}
-
-// Update each PeerConnection so that it is getting all the expected media tracks
-func (r *Room) UpdateSignaling() {
-	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.DispatchKeyFrame()
-	}()
-
-	log.Printf("[room %s] signaling update\n", r.id)
-
-signalingLoop:
-	for tries := 0; ; tries++ {
-		switch updateSignalingState(r) {
-		case SignalingOk:
-			break signalingLoop
-		case SignalingRetryWithDelay:
-			time.Sleep(time.Second * 1)
-		}
-		// case SignalingRetryNow -> continue loop
-
-		if tries == 25 {
-			// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
-			go func() {
-				time.Sleep(time.Second * 3)
-				r.UpdateSignaling()
-			}()
-			return
-		}
-	}
 }
 
 // API read
@@ -442,8 +290,49 @@ func (r *Room) EndingDelay() (delay int) {
 	return
 }
 
+func (r *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
+	defer r.UpdateSignaling()
+	return r.mixer.addTrack(t)
+}
+
+func (r *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
+	defer r.UpdateSignaling()
+	r.mixer.removeTrack(t)
+}
+
+// Update each PeerConnection so that it is getting all the expected media tracks
+func (r *Room) UpdateSignaling() {
+	r.Lock()
+	defer func() {
+		r.Unlock()
+		go r.dispatchKeyFrame()
+	}()
+
+	log.Printf("[room %s] signaling update\n", r.shortId)
+
+signalingLoop:
+	for tries := 0; ; tries++ {
+		switch r.mixer.updateSignalingState(r) {
+		case SignalingOk:
+			break signalingLoop
+		case SignalingRetryWithDelay:
+			time.Sleep(time.Second * 1)
+		}
+		// case SignalingRetryNow -> continue loop
+
+		if tries == 25 {
+			// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
+			go func() {
+				time.Sleep(time.Second * 3)
+				r.UpdateSignaling()
+			}()
+			return
+		}
+	}
+}
+
 // dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
-func (r *Room) DispatchKeyFrame() {
+func (r *Room) dispatchKeyFrame() {
 	r.RLock()
 	defer r.RUnlock()
 

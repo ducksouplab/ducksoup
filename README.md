@@ -44,8 +44,8 @@ Where:
 - `peerOptions` (object) must contain the following properties:
 
   - `signalingUrl` (string) the URL of DuckSoup signaling websocket (for instance `wss://ducksoup-host.example.com/ws` for a DuckSoup hosted at `ducksoup-host.example.com`) 
-  - `room` (string) the room identifier
-  - `uid` (string) a unique user identifier
+  - `roomId` (string) the room identifier
+  - `userId` (string) a unique user identifier
   - `name` (string) the user display name
 
 - `peerOptions` may also contain the following optional properties:
@@ -325,8 +325,10 @@ DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker
 
 ### Run tests
 
-To run tests (some being in subfolders):
+Launch the custom script:
 
 ```
-go test -v ./...
+./test
 ```
+
+It triggers tests in the project subfolders, setting appropriate environment variables for specific test behavior.

@@ -28,10 +28,9 @@ const start = async ({
     videoFx: vfx
 }) => {
     // required
-    const room = randomId();
-    const uid = randomId();
-    const name = uid;
-    state.uid = uid;
+    const roomId = randomId();
+    const userId = randomId();
+    state.userId = userId;
     // parse
     const width = parseInt(w, 10);
     const height = parseInt(h, 10);
@@ -56,9 +55,8 @@ const start = async ({
 
     const peerOptions = {
         signalingUrl: `${wsProtocol}://${window.location.host}/ws`,
-        room,
-        uid,
-        name,
+        roomId,
+        userId,
         duration,
         // optional
         // videoCodec,
@@ -158,9 +156,9 @@ const receiveMessage = (message) => {
         hide(".show-when-running");
     }
     if (kind === "end") {
-        if(payload && payload[state.uid]) {
+        if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
-            html += payload[state.uid].join("<br/>");
+            html += payload[state.userId].join("<br/>");
             replaceMessage(html);
         } else {
             replaceMessage("Connection terminated");

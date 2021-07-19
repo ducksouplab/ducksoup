@@ -96,11 +96,10 @@ const sendToParent = (message) => {
     }
 }
 
-const areParamsValid = ({origin, room, name, duration, uid}) => {
+const areParamsValid = ({origin, roomId, duration, userId}) => {
     return  typeof origin !== 'undefined' &&
-            typeof room !== 'undefined' &&
-            typeof uid !== 'undefined' &&
-            typeof name !== 'undefined' &&
+            typeof roomId !== 'undefined' &&
+            typeof userId !== 'undefined' &&
             !isNaN(duration);
 }
 
@@ -113,13 +112,13 @@ const clean = (obj) => {
 
 const filterJoinPayload = (params) => {
     // explicit list, without origin
-    let { room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate } = params;
+    let { roomId, duration, userId, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate } = params;
     if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
     if(isNaN(width)) width = null;
     if(isNaN(height)) height = null;
 
-    return clean({ room, name, duration, uid, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate });
+    return clean({ roomId, duration, userId, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate });
 }
 
 const init = async () => {

@@ -40,7 +40,7 @@ func filePrefix(joinPayload JoinPayload, room *Room) string {
 	// time room user count
 	return room.namespace + "/" +
 		time.Now().Format("20060102-150405.000") +
-		"-r-" + joinPayload.Room +
+		"-r-" + joinPayload.RoomId +
 		"-u-" + joinPayload.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
 }
@@ -253,9 +253,9 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 		<-room.waitForAllCh
 
 		// prepare track and room
-		processedTrack := room.AddProcessedTrack(remoteTrack)
+		processedTrack := room.AddTrack(remoteTrack)
 		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
-		defer room.RemoveProcessedTrack(processedTrack)
+		defer room.RemoveTrack(processedTrack)
 
 		kind := remoteTrack.Kind().String()
 		fx := parseFx(kind, joinPayload)

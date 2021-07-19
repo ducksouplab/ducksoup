@@ -7,9 +7,15 @@ import (
 	"os"
 )
 
+var root string
+
+func init() {
+	root = Getenv("DS_TEST_ROOT", ".") + "/"
+}
+
 func ReadTextFile(name string) string {
 	var output string
-	path := fmt.Sprintf("./%s", name)
+	path := fmt.Sprintf(root+"%s", name)
 	f, err := os.Open(path)
 
 	if err != nil {
