@@ -26,8 +26,11 @@ var h264RawPipeline string
 var passthroughPipeline string
 
 const (
-	DefaultVP8Enc = "vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=300000 undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true"
 	// Previous: vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true
+	VP8EncRT  = "vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=300000 undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true"
+	VP8Enc    = "vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=300000 undershoot=95 keyframe-max-dist=999999 max-quantizer=56"
+	H264EncRT = "x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 tune=zerolatency qos=true ! video/x-h264,stream-format=byte-stream,profile=main"
+	H264Enc   = "x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 ! video/x-h264,stream-format=byte-stream,profile=main"
 )
 
 func init() {
@@ -75,13 +78,16 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
-		pipelineStr = strings.Replace(pipelineStr, "${encode}", DefaultVP8Enc, -1)
+		pipelineStr = strings.Replace(pipelineStr, "${encodeRT}", VP8EncRT, -1)
+		pipelineStr = strings.Replace(pipelineStr, "${encode}", VP8Enc, -1)
 	case "H264":
 		if hasFx {
 			pipelineStr = h264FxPipeline
 		} else {
 			pipelineStr = h264RawPipeline
 		}
+		pipelineStr = strings.Replace(pipelineStr, "${encodeRT}", H264EncRT, -1)
+		pipelineStr = strings.Replace(pipelineStr, "${encode}", H264Enc, -1)
 	default:
 		panic("Unhandled codec " + codecName)
 	}

@@ -10,7 +10,7 @@ videorate !
 videoscale ! 
 videoconvert ! 
 video/x-raw,framerate=30/1,width=${width},height=${height},colorimetry=bt601,chroma-site=jpeg !
-${encode} ! 
+${encodeRT} ! 
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
 

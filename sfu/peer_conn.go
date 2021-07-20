@@ -93,6 +93,8 @@ func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
 // API
 
 func (p *PeerConn) ControlFx(payload ControlPayload) {
+
+	log.Println(">>>", payload)
 	var pipeline *gst.Pipeline
 	if payload.Kind == "audio" {
 		if p.audioPipeline == nil {
@@ -100,7 +102,7 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 		}
 		pipeline = p.audioPipeline
 	} else if payload.Kind == "video" {
-		if p.audioPipeline == nil {
+		if p.videoPipeline == nil {
 			return
 		}
 		pipeline = p.videoPipeline

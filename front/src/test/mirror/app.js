@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("video-control").addEventListener("click", () => {
         if(state.ducksoup) {
-            const property = document.getElementById("video-property");
+            const property = document.getElementById("video-property").value;
             const value = parseFloat(document.getElementById("video-value").value);
             const duration = parseInt(document.getElementById("video-duration").value, 10);
             state.ducksoup.videoControl("fx", property, value,duration);

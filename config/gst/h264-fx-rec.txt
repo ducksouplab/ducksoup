@@ -11,8 +11,7 @@ videoconvert !
 videorate ! 
 videoscale ! 
 video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 ! 
-video/x-h264,stream-format=byte-stream,profile=main !
+${encode} !
 h264parse ! 
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
@@ -25,8 +24,7 @@ videoconvert !
 videorate ! 
 videoscale ! 
 video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 tune=zerolatency qos=true ! 
-video/x-h264,stream-format=byte-stream,profile=main !
+${encodeRT} !
 
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 

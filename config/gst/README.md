@@ -5,3 +5,7 @@ A few notes:
 - rtpjitterbuffer proves to be necessary for h264, more tests needed (including on its latency value) for other formats (it indeed seems necessary when using the smile effect even with vp8)
 
 - when bandwidth fluctuates, the video caps may be updated (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux`, which is why video caps are constrained (and `videoconvert` is used) in the pipelines.
+
+Encoder settings:
+
+https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c

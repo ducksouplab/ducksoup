@@ -268,7 +268,7 @@ class DuckSoup {
     }
 
     _checkControl(name, property, value, duration) {
-        const durationValid = typeof duration === "undefined" || typeof duration === "number"
+        const durationValid = typeof duration === "undefined" || typeof duration === "number";
         return typeof name === "string" && typeof property === "string" && typeof value === "number" && durationValid;
     }
 
