@@ -37,6 +37,7 @@ func (m *Mixer) addTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
+
 	if err != nil {
 		log.Printf("[room %s error] NewTrackLocalStaticRTP: %v\n", m.shortId, err)
 		panic(err)

@@ -113,7 +113,7 @@ const clean = (obj) => {
 const filterJoinPayload = (params) => {
     // explicit list, without origin
     let { roomId, duration, userId, namespace, videoCodec, size, width, height, audioFx, videoFx, frameRate } = params;
-    if(!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
+    if(!["VP8", "H264"].includes(videoCodec)) videoCodec = null;
     if(isNaN(size)) size = null;
     if(isNaN(width)) width = null;
     if(isNaN(height)) height = null;

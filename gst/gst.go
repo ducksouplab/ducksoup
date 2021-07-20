@@ -60,7 +60,6 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 		return
 	}
 
-	codecName = strings.ToLower(codecName)
 	hasFx := len(fx) > 0
 
 	switch codecName {
@@ -70,14 +69,14 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 		} else {
 			pipelineStr = opusRawPipeline
 		}
-	case "vp8":
+	case "VP8":
 		if hasFx {
 			pipelineStr = vp8FxPipeline
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
 		pipelineStr = strings.Replace(pipelineStr, "${encode}", DefaultVP8Enc, -1)
-	case "h264":
+	case "H264":
 		if hasFx {
 			pipelineStr = h264FxPipeline
 		} else {

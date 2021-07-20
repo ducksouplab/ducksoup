@@ -59,7 +59,7 @@ Where:
   - `videoFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if video effect has to be applied
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
-  - `videoCodec` (string) possible values: "vp8" (default if none), "h264" or "vp9"
+  - `videoCodec` (string) possible values: "VP8" (default if none) or "H264"
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtcp"
@@ -155,16 +156,7 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 
 }
 
-func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
-	userId := joinPayload.UserId
-
-	// create RTC API with chosen codecs
-	// api, err := engine.NewWebRTCAPI(joinPayload.VideoCodec)
-	// if err != nil {
-	// 	log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
-	// 	return
-	// }
-
+func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnection, err error) {
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -173,23 +165,51 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			},
 		},
 	}
-	pionPeerConnection, err := webrtc.NewPeerConnection(config)
+	ppc, err = webrtc.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
+	// accept one audio
+	_, err = ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+	if err != nil {
+		log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
+		return
+	}
 
-	// accept one audio and one video incoming tracks
-	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-		if _, err := peerConn.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
-			Direction: webrtc.RTPTransceiverDirectionRecvonly,
-		}); err != nil {
-			log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
+	// accept one video with codec preferences
+	videoTransceiver, err := ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+	if err != nil {
+		log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
+		return
+	}
+
+	// if not, no preference is set
+	if videoCodec == "H264" {
+		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
+		if err != nil {
+			log.Printf("[user %s error] SetCodecPreferences: %v\n", userId, err)
 			return
 		}
 	}
+
+	return
+}
+
+func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
+	userId := joinPayload.UserId
+
+	pionPeerConnection, err := newPionPeerConn(userId, joinPayload.VideoCodec)
+	if err != nil {
+		return
+	}
+
+	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
 
 	// trickle ICE. Emit server candidate to client
 	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -276,6 +296,8 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			// main case: use GStreamer
 			mediaFilePrefix := filePrefix(joinPayload, room)
 			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
+
+			log.Println(codecName)
 
 			// create and start pipeline
 			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))

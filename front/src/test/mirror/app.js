@@ -59,7 +59,7 @@ const start = async ({
         userId,
         duration,
         // optional
-        // videoCodec,
+        videoCodec,
         namespace: "mirror",
         size: 1, // size 1 for mirroring
         video,

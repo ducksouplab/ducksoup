@@ -138,9 +138,6 @@ const DEFAULT_RTC_CONFIG = {
     ],
 };
 
-const SUPPORT_SET_CODEC = window.RTCRtpTransceiver &&
-    'setCodecPreferences' in window.RTCRtpTransceiver.prototype;
-
 const IS_SAFARI = (() => {
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -166,7 +163,7 @@ const clean = (obj) => {
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
     let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
-    if (!["vp8", "h264", "vp9"].includes(videoCodec)) videoCodec = null;
+    if (!["VP8", "H264"].includes(videoCodec)) videoCodec = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
     if (isNaN(height)) height = null;
@@ -236,17 +233,6 @@ class DuckSoup {
                     videoBytesReceived: 0
                 };
             }
-            // prefer specified codec
-            if (SUPPORT_SET_CODEC && peerOptions.videoCodec) {
-                const { codecs } = RTCRtpSender.getCapabilities('video');
-                this._preferredCodecs = [...codecs].sort(({ mimeType: mt1 }, { mimeType: mt2 }) => {
-                    if (mt1.includes(peerOptions.videoCodec)) return -1;
-                    if (mt2.includes(peerOptions.videoCodec)) return 1;
-                    return 0;
-                })
-            }
-
-            
         }
     };
 
@@ -329,11 +315,6 @@ class DuckSoup {
         });
         this._stream = stream;
 
-        if (SUPPORT_SET_CODEC && this._joinPayload && this._joinPayload.videoCodec) {
-            const transceiver = pc.getTransceivers().find(t => t.sender && t.sender.track === stream.getVideoTracks()[0]);
-            transceiver.setCodecPreferences(this._preferredCodecs);
-        }
-
         // Signaling
         const ws = new WebSocket(this._signalingUrl);
         this._ws = ws;
@@ -374,7 +355,11 @@ class DuckSoup {
                 );
             } else if (message.kind === "candidate") {
                 const candidate = looseJSONParse(message.payload);
-                pc.addIceCandidate(candidate);
+                try {
+                    pc.addIceCandidate(candidate);
+                } catch (error) {
+                    console.error(error)
+                }
             } else if (message.kind === "start") {
                 this._callback({ kind: "start" });
             } else if (message.kind === "ending") {
