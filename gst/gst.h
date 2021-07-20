@@ -10,7 +10,7 @@ extern void goHandleNewSample(int pipelineId, void *buffer, int bufferLen, int s
 
 GstElement *gstreamer_parse_pipeline(char *pipeline);
 void gstreamer_start_pipeline(GstElement *pipeline, int pipelineId);
-void gstreamer_stop_pipeline(GstElement *pipeline);
+void gstreamer_stop_pipeline(GstElement *pipeline, int pipelineId);
 void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
 void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
 float gstreamer_get_fx_property(GstElement *pipeline, char *elName, char *elProp);

@@ -167,14 +167,14 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
-	log.Printf("[gst] pipeline started: %d %s\n", p.id, p.filePrefix)
 	C.gstreamer_start_pipeline(p.Pipeline, C.int(p.id))
+	log.Printf("[gst] pipeline %d started: %s\n", p.id, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
-	log.Printf("[gst] pipeline stopped: %d %s\n", p.id, p.filePrefix)
-	C.gstreamer_stop_pipeline(p.Pipeline)
+	C.gstreamer_stop_pipeline(p.Pipeline, C.int(p.id))
+	log.Printf("[gst] pipeline %d stopped: %s\n", p.id, p.filePrefix)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline

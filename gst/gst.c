@@ -1,6 +1,8 @@
+#include <time.h>
+#include <gst/app/gstappsrc.h>
+
 #include "gst.h"
 
-#include <gst/app/gstappsrc.h>
 
 typedef struct SampleHandlerUserData
 {
@@ -15,15 +17,19 @@ void gstreamer_start_mainloop(void)
     g_main_loop_run(gstreamer_main_loop);
 }
 
+void stop_pipeline(GstElement* pipeline) {
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(pipeline);
+    g_print("[gst.c] pipeline ended\n");
+}
+
 static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 {
     GstElement* pipeline = (GstElement*) data;
     switch (GST_MESSAGE_TYPE(msg))
     {
     case GST_MESSAGE_EOS: {
-        g_print("[gst.c] end of stream\n");
-
-        gst_element_set_state(pipeline, GST_STATE_NULL);
+        stop_pipeline(pipeline);
         break;
     }
     case GST_MESSAGE_ERROR:
@@ -33,13 +39,12 @@ static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
 
         g_printerr ("[gst.c] error received from element %s: %s\n",
             GST_OBJECT_NAME (msg->src), error->message);
-
         g_printerr ("[gst.c] debugging information: %s\n", debug ? debug : "none");
 
         g_free(debug);
         g_error_free(error);
-        
-        gst_element_set_state(pipeline, GST_STATE_NULL);
+
+        stop_pipeline(pipeline);
         break;
     }
     default:
@@ -124,9 +129,19 @@ void gstreamer_start_pipeline(GstElement *pipeline, int pipelineId)
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
 
-void gstreamer_stop_pipeline(GstElement *pipeline)
+void gstreamer_stop_pipeline(GstElement *pipeline, int pipelineId)
 {
-    gst_element_send_event(pipeline, gst_event_new_eos());
+    // query GstStateChangeReturn within 0.1s, if GST_STATE_CHANGE_ASYNC, sending an EOS will fail main loop
+    GstStateChangeReturn changeReturn = gst_element_get_state(pipeline, NULL, NULL, 100000000);
+    g_print("[gst.c] pipeline %d stopped %d\n", pipelineId, changeReturn);
+
+    if(changeReturn == GST_STATE_CHANGE_ASYNC) {
+        // force stop
+        stop_pipeline(pipeline);
+    } else {
+        // gracefully stops media recording
+        gst_element_send_event(pipeline, gst_event_new_eos());
+    }
 }
 
 void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len)

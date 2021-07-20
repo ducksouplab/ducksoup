@@ -237,8 +237,8 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			}
 		case webrtc.PeerConnectionStateClosed:
 			close(peerConn.closedCh)
-			room.UpdateSignaling()
 			room.DisconnectUser(userId)
+			room.UpdateSignaling()
 		}
 	})
 
@@ -297,8 +297,6 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			mediaFilePrefix := filePrefix(joinPayload, room)
 			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
-			log.Println(codecName)
-
 			// create and start pipeline
 			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
 
@@ -308,11 +306,12 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			pipeline.Start()
 			room.AddFiles(userId, pipeline.Files)
 			defer func() {
+				log.Println("stopping", kind)
+				pipeline.Stop()
 				if r := recover(); r != nil {
 					log.Printf("[user %s] recover OnTrack\n", userId)
 				}
 			}()
-			defer pipeline.Stop()
 
 		processLoop:
 			for {

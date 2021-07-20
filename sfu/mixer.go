@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"sync"
 
 	"github.com/pion/webrtc/v3"
 )
 
 type Mixer struct {
-	sync.Mutex
 	shortId    string
 	trackIndex map[string]*webrtc.TrackLocalStaticRTP // per track id
 }
@@ -32,9 +30,6 @@ func newMixer(shortId string) *Mixer {
 
 // Add to list of tracks and fire renegotation for all PeerConnections
 func (m *Mixer) addTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
-	m.Lock()
-	defer m.Unlock()
-
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 
@@ -49,9 +44,6 @@ func (m *Mixer) addTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
 func (m *Mixer) removeTrack(t *webrtc.TrackLocalStaticRTP) {
-	m.Lock()
-	defer m.Unlock()
-
 	delete(m.trackIndex, t.ID())
 }
 
@@ -97,9 +89,9 @@ func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
 		}
 
 		// add all track we aren't sending yet to the PeerConnection
-		for trackID := range m.trackIndex {
+		for trackID, trackValue := range m.trackIndex {
 			if _, ok := existingSenders[trackID]; !ok {
-				rtpSender, err := peerConn.AddTrack(m.trackIndex[trackID])
+				rtpSender, err := peerConn.AddTrack(trackValue)
 
 				if err != nil {
 					log.Printf("[room %s error] AddTrack: %v\n", m.shortId, err)

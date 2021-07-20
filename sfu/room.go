@@ -32,6 +32,7 @@ var (
 type Room struct {
 	sync.RWMutex
 	// guarded by mutex
+	mixer            *Mixer
 	peerServerIndex  map[string]*PeerServer // per user id
 	connectedIndex   map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
 	joinedCountIndex map[string]int         // per user id
@@ -43,7 +44,6 @@ type Room struct {
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	mixer         *Mixer
 	qualifiedId   string
 	shortId       string
 	namespace     string
@@ -291,12 +291,20 @@ func (r *Room) EndingDelay() (delay int) {
 }
 
 func (r *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
-	defer r.UpdateSignaling()
+	r.Lock()
+	defer func() {
+		r.Unlock()
+		r.UpdateSignaling()
+	}()
 	return r.mixer.addTrack(t)
 }
 
 func (r *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
-	defer r.UpdateSignaling()
+	r.Lock()
+	defer func() {
+		r.Unlock()
+		r.UpdateSignaling()
+	}()
 	r.mixer.removeTrack(t)
 }
 
@@ -335,6 +343,8 @@ signalingLoop:
 func (r *Room) dispatchKeyFrame() {
 	r.RLock()
 	defer r.RUnlock()
+
+	log.Printf("[room %s] dispatchKeyFrame\n", r.shortId)
 
 	for _, ps := range r.peerServerIndex {
 		for _, receiver := range ps.peerConn.GetReceivers() {
