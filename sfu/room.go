@@ -68,7 +68,7 @@ func (r *Room) delete() {
 
 // remove special characters like / . *
 func parseNamespace(ns string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
+	reg, _ := regexp.Compile("[^a-zA-Z0-9-]+")
 	clean := reg.ReplaceAllString(ns, "")
 	if len(clean) == 0 {
 		return "default"

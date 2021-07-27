@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   ducksoup:
-    image: altg/ducksoup:latest
+    image: creamlab/ducksoup:latest
     restart: unless-stopped
     user: $DS_USER:$DS_GROUP
     environment:

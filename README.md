@@ -286,13 +286,13 @@ If the goal is to distribute and minimize the image size, consider the (Debian b
 
 ```
 docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
-docker tag ducksoup_multi altg/ducksoup
+docker tag ducksoup_multi creamlab/ducksoup
 ```
 
 Deploy image to docker hub:
 
 ```
-docker push altg/ducksoup:latest
+docker push creamlab/ducksoup:latest
 ```
 
 Supposing we use a `deploy` user for running the container, prepare the volume `logs` target:
