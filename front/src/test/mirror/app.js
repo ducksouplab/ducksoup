@@ -137,7 +137,7 @@ const clearMessage = () => {
 }
 
 const replaceMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML = message;
+    document.getElementById("stopped-message").innerHTML = message + '<br/>' ;
 }
 
 const appendMessage = (message) => {
