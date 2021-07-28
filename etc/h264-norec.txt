@@ -3,12 +3,12 @@ application/x-rtp,encoding-name=H264 !
 rtpjitterbuffer latency=100 ! 
 rtph264depay ! 
 h264parse ! 
-avdec_h264 ! 
+${decode} !
 videoconvert ! 
 ${fx} ! 
 videoconvert ! 
 videorate ! 
 video/x-raw,format=I420,framerate=30/1 ! 
-${encodeRT} ! 
+${encodeFast} ! 
 rtph264pay ! 
 appsink name=sink qos=true

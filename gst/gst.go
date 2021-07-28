@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +28,14 @@ type Pipeline struct {
 
 var pipelines = make(map[int]*Pipeline)
 var pipelinesLock sync.Mutex
+var h264Engine Engine
+
+func init() {
+	h264Engine = engines.X264
+	if strings.ToLower(os.Getenv("DS_NVIDIA")) == "true" {
+		h264Engine = engines.NV264
+	}
+}
 
 func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) (pipelineStr string) {
 
@@ -37,33 +46,37 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 	}
 
 	hasFx := len(fx) > 0
+	var engine Engine
 
 	switch codecName {
 	case "opus":
+		engine = engines.Opus
 		if hasFx {
 			pipelineStr = opusFxPipeline
 		} else {
 			pipelineStr = opusRawPipeline
 		}
 	case "VP8":
+		engine = engines.VP8
 		if hasFx {
 			pipelineStr = vp8FxPipeline
 		} else {
 			pipelineStr = vp8RawPipeline
 		}
-		pipelineStr = strings.Replace(pipelineStr, "${encodeRT}", vp8EncRT, -1)
-		pipelineStr = strings.Replace(pipelineStr, "${encode}", vp8Enc, -1)
 	case "H264":
+		engine = h264Engine
 		if hasFx {
 			pipelineStr = h264FxPipeline
 		} else {
 			pipelineStr = h264RawPipeline
 		}
-		pipelineStr = strings.Replace(pipelineStr, "${encodeRT}", h264EncRT, -1)
-		pipelineStr = strings.Replace(pipelineStr, "${encode}", h264Enc, -1)
 	default:
 		panic("Unhandled codec " + codecName)
 	}
+	// set encoding and decoding
+	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
 	// set file
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
 	// set fx

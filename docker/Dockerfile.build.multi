@@ -36,7 +36,7 @@ COPY . .
 RUN go build
 RUN mkdir -p /build
 RUN cp ./ducksoup /build
-RUN cp -r ./config /build
+RUN cp -r ./etc /build
 RUN cp -r ./front /build
 
 # runner stage

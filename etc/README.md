@@ -9,3 +9,6 @@ A few notes:
 Encoder settings:
 
 https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c
+
+Old vp8 encoder settings:
+vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true

@@ -1,0 +1,38 @@
+appsrc format=time is-live=true do-timestamp=true name=src ! 
+application/x-rtp,encoding-name=H264 ! 
+rtpjitterbuffer latency=100 ! 
+rtph264depay ! 
+h264parse ! 
+${decode} !
+
+tee name=teein ! 
+queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+videoconvert ! 
+videorate ! 
+videoscale ! 
+video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
+${encode} !
+h264parse ! 
+matroskamux ! 
+filesink location=logs/${prefix}-video-raw.mkv 
+
+teein. ! 
+queue max-size-buffers=0 max-size-bytes=0 ! 
+videoconvert ! 
+${fx} ! 
+videoconvert ! 
+videorate ! 
+videoscale ! 
+video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
+${encodeFast} ! 
+
+tee name=teeout ! 
+queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+h264parse ! 
+matroskamux ! 
+filesink location=logs/${prefix}-video-fx.mkv 
+
+teeout. ! 
+queue max-size-buffers=0 max-size-bytes=0 ! 
+rtph264pay !
+appsink name=sink qos=true

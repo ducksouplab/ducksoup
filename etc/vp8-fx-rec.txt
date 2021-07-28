@@ -1,18 +1,16 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
-application/x-rtp,encoding-name=H264 ! 
+application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpjitterbuffer latency=100 ! 
-rtph264depay ! 
-h264parse ! 
-avdec_h264 !
+rtpvp8depay ! 
+${decode} !
 
 tee name=teein ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-${encode} !
-h264parse ! 
+videoconvert ! 
+video/x-raw,framerate=30/1,width=${width},height=${height},colorimetry=bt601,chroma-site=jpeg !
+${encode} ! 
 matroskamux ! 
 filesink location=logs/${prefix}-video-raw.mkv 
 
@@ -23,16 +21,16 @@ ${fx} !
 videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
-${encodeRT} ! 
+videoconvert ! 
+video/x-raw,framerate=30/1,width=${width},height=${height},colorimetry=bt601,chroma-site=jpeg !
+${encodeFast} ! 
 
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-h264parse ! 
 matroskamux ! 
 filesink location=logs/${prefix}-video-fx.mkv 
 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
-rtph264pay !
+rtpvp8pay !
 appsink name=sink qos=true

@@ -2,10 +2,10 @@ appsrc format=time is-live=true do-timestamp=true name=src !
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpjitterbuffer latency=100 ! 
 rtpvp8depay ! 
-vp8dec ! 
+${decode} !
 videoconvert ! 
 ${fx} ! 
 videoconvert ! 
-${encodeRT} !
+${encodeFast} !
 rtpvp8pay !
 appsink name=sink qos=true
