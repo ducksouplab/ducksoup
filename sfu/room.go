@@ -110,7 +110,7 @@ func newRoom(qualifiedId string, joinPayload JoinPayload) *Room {
 
 	// create folder for logs
 	namespace := parseNamespace(joinPayload.Namespace)
-	helpers.EnsureDir("./logs/" + namespace)
+	helpers.EnsureDir("./data/" + namespace)
 
 	shortId := joinPayload.RoomId
 

@@ -8,7 +8,7 @@ rtpopusdepay !
 ${decode} ! 
 ${encodeFast} ! 
 oggmux ! 
-filesink location=logs/${prefix}-audio-raw.ogg 
+filesink location=data/${prefix}-audio-raw.ogg 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0  ! 

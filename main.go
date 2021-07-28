@@ -21,7 +21,7 @@ func init() {
 }
 
 func init() {
-	helpers.EnsureDir("./logs")
+	helpers.EnsureDir("./data")
 }
 
 func main() {

@@ -252,10 +252,10 @@ The image build starts with the container root user (for apt dependencies) but t
 docker build -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
-Supposing we use a `deploy` user for running the container, prepare the volume `logs` target:
+Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
 
 ```
-sudo chown -R deploy:deploy logs
+sudo chown -R deploy:deploy data
 ```
 
 Run (note the `--user` option):
@@ -265,7 +265,7 @@ Run (note the `--user` option):
 docker run --name ducksoup_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
-  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
+  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
   --rm \
@@ -296,10 +296,10 @@ Deploy image to docker hub:
 docker push creamlab/ducksoup:latest
 ```
 
-Supposing we use a `deploy` user for running the container, prepare the volume `logs` target:
+Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
 
 ```
-sudo chown -R deploy:deploy logs
+sudo chown -R deploy:deploy data
 ```
 
 Run (note the `--user` option):
@@ -308,7 +308,7 @@ Run (note the `--user` option):
 docker run --name ducksoup_multi_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
-  --mount type=bind,source="$(pwd)"/logs,target=/app/logs \
+  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
   --rm \

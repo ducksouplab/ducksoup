@@ -3,7 +3,7 @@ ducksoup
 .DS_Store
 
 # logs and recorded data
-logs
+data
 
 # GStreamer plugin libs
 *.so
@@ -14,7 +14,7 @@ front/static/assets/scripts
 
 # docker data folders
 docker/plugins
-docker/logs
+docker/data
 
 # license and SDK
 *.uid
