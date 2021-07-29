@@ -32,13 +32,13 @@ var passthroughPipeline string
 var engines Engines
 
 func init() {
-	opusFxPipeline = helpers.ReadFileAsString("etc/opus-fx-rec.txt")
-	opusRawPipeline = helpers.ReadFileAsString("etc/opus-raw-rec.txt")
-	vp8FxPipeline = helpers.ReadFileAsString("etc/vp8-fx-rec.txt")
-	vp8RawPipeline = helpers.ReadFileAsString("etc/vp8-raw-rec.txt")
-	h264FxPipeline = helpers.ReadFileAsString("etc/h264-fx-rec.txt")
-	h264RawPipeline = helpers.ReadFileAsString("etc/h264-raw-rec.txt")
-	passthroughPipeline = helpers.ReadFileAsString("etc/passthrough.txt")
+	opusFxPipeline = helpers.ReadFile("etc/opus-fx-rec.txt")
+	opusRawPipeline = helpers.ReadFile("etc/opus-raw-rec.txt")
+	vp8FxPipeline = helpers.ReadFile("etc/vp8-fx-rec.txt")
+	vp8RawPipeline = helpers.ReadFile("etc/vp8-raw-rec.txt")
+	h264FxPipeline = helpers.ReadFile("etc/h264-fx-rec.txt")
+	h264RawPipeline = helpers.ReadFile("etc/h264-raw-rec.txt")
+	passthroughPipeline = helpers.ReadFile("etc/passthrough.txt")
 
 	f, err := helpers.Open("etc/engines.yml")
 	if err != nil {

@@ -19,7 +19,7 @@ func Open(name string) (*os.File, error) {
 	return os.Open(path)
 }
 
-func ReadFileAsString(name string) string {
+func ReadFile(name string) string {
 	var output string
 	path := fmt.Sprintf(root+"%s", name)
 	f, err := os.Open(path)
@@ -33,7 +33,7 @@ func ReadFileAsString(name string) string {
 	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
-		output += scanner.Text()
+		output += scanner.Text() + "\n"
 	}
 
 	if err := scanner.Err(); err != nil {
