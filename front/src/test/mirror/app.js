@@ -2,6 +2,19 @@ const state = {};
 
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
 
+const processMozza = (videoFx) => {
+    if(!videoFx.startsWith("mozza")) return videoFx;
+    console.log("blabla");
+    // already using file paths
+    if(videoFx.includes("/")) return videoFx;
+    let output = videoFx.replace(/deform=([^\s]+)/, "deform=plugins/$1.dfm")
+    output = output.replace(/shape-model=([^\s]+)/, "shape-model=plugins/$1.dat")
+    return output;
+}
+
+// mozza deform=plugins/gui1.dfm alpha=1 overlay=true
+// mozza deform=plugins/gui1.dfm alpha=1 overlay=true
+
 const hide = (selector) => {
     const targets = document.querySelectorAll(selector);
 
@@ -42,6 +55,8 @@ const start = async ({
     // add name if not empty and not "passthrough" nor "forward" which are special cases
     if(!!afx && afx.length > 0 && !["passthrough", "forward"].includes(afx)) audioFx += " name=fx";
     if(!!vfx && vfx.length > 0 && !["passthrough", "forward"].includes(vfx)) videoFx += " name=fx";
+    videoFx = processMozza(videoFx);
+    console.log(videoFx);
 
     // optional
 
@@ -158,7 +173,7 @@ const receiveMessage = (message) => {
     if (kind === "end") {
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
-            html += payload[state.userId].join("<br/>");
+            html += payload[state.userId].join("<br/>") + "<br/>";
             replaceMessage(html);
         } else {
             replaceMessage("Connection terminated");

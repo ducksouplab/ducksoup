@@ -13,7 +13,13 @@ func init() {
 	root = Getenv("DS_TEST_ROOT", ".") + "/"
 }
 
-func ReadTextFile(name string) string {
+// Open file relatively to project
+func Open(name string) (*os.File, error) {
+	path := fmt.Sprintf(root+"%s", name)
+	return os.Open(path)
+}
+
+func ReadFileAsString(name string) string {
 	var output string
 	path := fmt.Sprintf(root+"%s", name)
 	f, err := os.Open(path)

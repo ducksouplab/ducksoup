@@ -236,20 +236,31 @@ Messages from server (Go) to client (JS):
 - kind `error-full` when room limit has been reached and user can't enter room
 - kind `error-duplicate` when same user is already in room
 
+### Docker and dlib
+
+If you want to build the following Docker images with dlib (if you use GStreamer plugins that rely on dlib), choose a dlib version (>=19.22) and add its source to `docker/dlib` as `dlib.tar.bz2`:
+
+```
+mkdir -p docker-deps/dlib
+curl http://dlib.net/files/dlib-19.22.tar.bz2 --output docker-deps/dlib/dlib.tar.bz2
+```
+
+Then build the images with `--build-arg DLIB=true` (used in all examples below).
+
 ### Code within a Docker container
 
 One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for instance using VSCode containers integration).
 
 This Dockerfile prefers specifying a Debian version and installing go from source (rather than using the golang base image) so it's possible to choose the same OS version than in production and control gstreamer (apt) packages versions.
 
-`docker/Dockerfile.code.golang_image` is an alternate Dockerfile relying on the golang base image.
+If you want to disable dlib compilation within the vscode Docker container, change the `build.args` property of `.devcontainer/devcontainer.json`.
 
 ### Build Docker image
 
 The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
 
 ```
-docker build -f docker/Dockerfile.build -t ducksoup:latest .
+docker build -f docker/Dockerfile.build --build-arg DLIB=true -t ducksoup:latest .
 ```
 
 Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
@@ -258,13 +269,15 @@ Supposing we use a `deploy` user for running the container, prepare the volume `
 sudo chown -R deploy:deploy data
 ```
 
-Run (note the `--user` option):
+Run (note the `--user` option), mounting `etc` being optional and a convenient way to edit the configuration files it contains without rebuilding the image:
 
 ```
 # bind port, mount volumes, set environment variable and remove container when stopped
 docker run --name ducksoup_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
+  --env GST_DEBUG=2 \
+  --mount type=bind,source="$(pwd)"/etc,target=/app/etc \
   --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
@@ -286,11 +299,11 @@ DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker
 If the goal is to distribute and minimize the image size, consider the (Debian based) multistage build:
 
 ```
-docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
+docker build -f docker/Dockerfile.build.multi --build-arg DLIB=true -t ducksoup_multi:latest .
 docker tag ducksoup_multi creamlab/ducksoup
 ```
 
-Deploy image to docker hub:
+Deploy image to docker hub (replace `creamlab` by your Docker Hub login):
 
 ```
 docker push creamlab/ducksoup:latest
@@ -302,12 +315,13 @@ Supposing we use a `deploy` user for running the container, prepare the volume `
 sudo chown -R deploy:deploy data
 ```
 
-Run (note the `--user` option):
+Run (note the `--user` option, see running `ducksoup:latest` above if you want to mount `etc`):
 
 ```
 docker run --name ducksoup_multi_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
+  --env GST_DEBUG=2 \
   --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
   --env DS_ORIGINS=http://localhost:8000 \
@@ -333,3 +347,9 @@ Launch the custom script:
 ```
 
 It triggers tests in the project subfolders, setting appropriate environment variables for specific test behavior.
+
+### Update all go deps
+
+```
+go get -t -u ./...
+```

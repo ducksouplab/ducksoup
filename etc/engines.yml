@@ -2,10 +2,10 @@ vp8:
   decode: "vp8dec"
   encode:
     fast: >-
-      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800 
+      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800000 
       undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
     relaxed: >-
-      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800 
+      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800000 
       undershoot=95 keyframe-max-dist=999999 max-quantizer=56
 x264:
   decode: "avdec_h264"

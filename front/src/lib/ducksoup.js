@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.9")
+    console.log("[DuckSoup] v1.0.10")
 });
 
 // Use single quote in templace since will be used as an iframe srcdoc value

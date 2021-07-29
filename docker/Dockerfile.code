@@ -1,15 +1,16 @@
 FROM debian:bullseye
 
 RUN apt-get upgrade -y
-RUN apt-get update
 
 # build-essential needed for CGO (gcc)
-RUN apt-get install -y curl build-essential
+RUN apt-get update && apt-get install -y curl build-essential
+# needed to (later) build DuckSoup
+RUN apt-get update && apt-get install -y libgstreamer-plugins-base1.0-dev
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /usr/local/src/go
-ENV GO_ARCHIVE=go1.16.5.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="b12c23023b68de22f74c0524f10b753e7b08b1504cb7e417eccebdd3fae49061"
+ENV GO_ARCHIVE=go1.16.6.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="be333ef18b3016e9d7cb7b1ff1fdb0cac800ca0be4cf2290fe613b3d069dfe0d"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
@@ -20,36 +21,23 @@ RUN rm $GO_ARCHIVE
 
 ENV PATH=$PATH:/usr/local/go/bin
 
-# GStreamer: plugins and compilation dependencies
-RUN apt-get install -y gstreamer1.0-plugins-base \
+# GStreamer: plugins and compilation dependencies (libav includes avdec_h264)
+RUN apt-get update && apt-get install -y gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
-    libgstreamer-plugins-base1.0-dev
+    gstreamer1.0-libav
 
-# GStreamer: more plugins and plugin dependencies (libav includes avdec_h264, other are for OpenCV and dlib)
-RUN apt-get install -y gstreamer1.0-libav \
-    libgstreamer-opencv1.0-0 \
-    libopencv-imgproc4.5 \
-    libopenblas-base \
-    libopenblas-dev \
-    liblapack-dev \
-    libdlib-data
-
-RUN apt-get install -y libopencv-calib3d-dev
-
-# GStreamer: tools (gst-inspect-1.0)
-RUN apt-get install -y gstreamer1.0-tools
-
-# build dlib
-ENV DLIB_VER 19.22
-RUN apt-get install -y bzip2 cmake ninja-build
-RUN mkdir -p /usr/local/src
-ADD http://dlib.net/files/dlib-$DLIB_VER.tar.bz2 /usr/local/src/
-RUN tar -xvf /usr/local/src/dlib-$DLIB_VER.tar.bz2 -C /usr/local/src/
-RUN mkdir -p /usr/local/src/dlib-$DLIB_VER/build
-WORKDIR /usr/local/src/dlib-$DLIB_VER/build
-RUN cmake -GNinja \
+# conditionally build dlib
+ARG DLIB
+WORKDIR /usr/local/src
+COPY docker-deps/dlib/*.tar.bz2 .
+RUN if [ "$DLIB" = "true" ]; then echo Building *with* dlib ; else echo Building *without* dlib; fi
+RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y bzip2 cmake ninja-build; fi
+RUN if [ "$DLIB" = "true" ]; then mkdir -p /usr/local/src/dlib/build; fi
+RUN if [ "$DLIB" = "true" ]; then tar -xvf ./dlib.tar.bz2 -C dlib --strip-components 1; fi
+WORKDIR /usr/local/src/dlib/build
+RUN if [ "$DLIB" = "true" ]; then cmake -GNinja \
     -DCMAKE_INSTALL_PREFIX:PATH=/usr \
     -DCMAKE_INSTALL_LIBDIR:PATH=/usr/lib \
     -DBUILD_SHARED_LIBS=ON \
@@ -58,9 +46,21 @@ RUN cmake -GNinja \
     -DUSE_SSE4_INSTRUCTIONS=ON \
     -DUSE_AVX_INSTRUCTIONS=ON \
     -DDLIB_USE_CUDA=OFF \
-    ".."
-RUN ninja
-RUN ninja install
+    ".."; fi
+RUN if [ "$DLIB" = "true" ]; then ninja; fi
+RUN if [ "$DLIB" = "true" ]; then ninja install; fi
+# GStreamer: more plugins and dependencies (for OpenCV and dlib)
+RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y gstreamer1.0-libav \
+    libgstreamer-opencv1.0-0 \
+    libopencv-imgproc4.5 \
+    libopenblas-base \
+    libopenblas-dev \
+    liblapack-dev \
+    libdlib-data \
+    libopencv-calib3d-dev; fi
+
+# GStreamer: tools (gst-inspect-1.0)
+RUN apt-get update && apt-get install -y gstreamer1.0-tools
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/workspaces/ducksoup/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"

@@ -2,7 +2,6 @@ package gst
 
 import (
 	"log"
-	"os"
 
 	"github.com/creamlab/ducksoup/helpers"
 	"gopkg.in/yaml.v2"
@@ -33,15 +32,15 @@ var passthroughPipeline string
 var engines Engines
 
 func init() {
-	opusFxPipeline = helpers.ReadTextFile("etc/opus-fx-rec.txt")
-	opusRawPipeline = helpers.ReadTextFile("etc/opus-raw-rec.txt")
-	vp8FxPipeline = helpers.ReadTextFile("etc/vp8-fx-rec.txt")
-	vp8RawPipeline = helpers.ReadTextFile("etc/vp8-raw-rec.txt")
-	h264FxPipeline = helpers.ReadTextFile("etc/h264-fx-rec.txt")
-	h264RawPipeline = helpers.ReadTextFile("etc/h264-raw-rec.txt")
-	passthroughPipeline = helpers.ReadTextFile("etc/passthrough.txt")
+	opusFxPipeline = helpers.ReadFileAsString("etc/opus-fx-rec.txt")
+	opusRawPipeline = helpers.ReadFileAsString("etc/opus-raw-rec.txt")
+	vp8FxPipeline = helpers.ReadFileAsString("etc/vp8-fx-rec.txt")
+	vp8RawPipeline = helpers.ReadFileAsString("etc/vp8-raw-rec.txt")
+	h264FxPipeline = helpers.ReadFileAsString("etc/h264-fx-rec.txt")
+	h264RawPipeline = helpers.ReadFileAsString("etc/h264-raw-rec.txt")
+	passthroughPipeline = helpers.ReadFileAsString("etc/passthrough.txt")
 
-	f, err := os.Open("etc/engines.yml")
+	f, err := helpers.Open("etc/engines.yml")
 	if err != nil {
 		log.Fatal(err)
 	}
