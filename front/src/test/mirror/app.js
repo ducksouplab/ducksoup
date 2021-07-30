@@ -181,7 +181,7 @@ const receiveMessage = (message) => {
     } else if (kind === "error-duplicate") {
         replaceMessage("Connection denied (already connected)");
     } else if (kind === "disconnection") {
-        appendMessage("Connection lost");
+        appendMessage("Disconnected");
     } else if (kind === "error") {
         replaceMessage("Error");
     } else if (kind === "start") {
