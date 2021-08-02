@@ -39,7 +39,7 @@ Where:
 
 - assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see (Player API)[#player-api])
 
-- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`)
+- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`). The video stream is set to fill mountEl: set mountEl width and height and the DuckSoup player will adapt.
 
 - `peerOptions` (object) must contain the following properties:
 

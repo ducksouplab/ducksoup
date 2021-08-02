@@ -4,6 +4,7 @@ ducksoup
 
 # logs and recorded data
 data
+logs
 
 # GStreamer plugin libs
 *.so

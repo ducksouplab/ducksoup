@@ -278,6 +278,10 @@ class DuckSoup {
             el.id = event.track.id;
             el.srcObject = event.streams[0];
             el.autoplay = true;
+            if(event.track.kind === "video") {
+                el.style.width = "100%";
+                el.style.height = "100%";
+            }
             this._mountEl.appendChild(el);
 
             event.streams[0].onremovetrack = ({ track }) => {
