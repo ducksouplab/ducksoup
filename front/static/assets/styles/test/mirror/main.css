@@ -5,16 +5,29 @@ nav .input-group {
 
 .video-container {
     position: relative;
+    margin-bottom: 20px;
 }
 
 .video-container .overlay {
     position: absolute;
-    top: 0;
-    left: 3px;
-    color:white;
 }
 
-.video-container .overlay span {
+.video-container .overlay div {
+    padding: 0 8px;
+    height: 26px;
+    border-radius: 5px;
+    color:white;
     background: #888;
-    padding: 0 3px;
+    padding: 0 5px;
+}
+
+.video-container .overlay.overlay-top {
+    top: 3px;
+    left: 3px;
+}
+
+.video-container .overlay.overlay-bottom {
+    bottom: 3px;
+    right: 3px;
+    text-align: right;
 }

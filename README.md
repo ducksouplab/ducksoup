@@ -19,14 +19,14 @@ Using the client library `ducksoup.js` is the preferred way to interact with Duc
 
 ## DuckSoup player
 
-Let's assume we have a DuckSoup server installed and running at `ducksoup-host.example.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment.example.com`.
+Let's assume we have a DuckSoup server installed and running at `ducksoup-host.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment-host.com`.
 
-The embedding origin (`my-experiment.example.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.example.com` (see [Environment variables](#environment-variables)).
+The embedding origin (`my-experiment-host.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.com` (see [Environment variables](#environment-variables)).
 
 Then, on the experiment web page, include the `ducksoup.js` library:
 
 ```
-<script src="https://ducksoup-host.example.com//scripts/lib/ducksoup.js"></script>
+<script src="https://ducksoup-host.com//scripts/lib/ducksoup.js"></script>
 ```
 
 And render it (in JavaScript):
@@ -39,11 +39,11 @@ Where:
 
 - assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see (Player API)[#player-api])
 
-- `mountEl` (DOM node) is the node where DuckSoup interface and media streams will be mounted (obtained for instance with `document.getElementById("ducksoup-container")`)
+- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`)
 
 - `peerOptions` (object) must contain the following properties:
 
-  - `signalingUrl` (string) the URL of DuckSoup signaling websocket (for instance `wss://ducksoup-host.example.com/ws` for a DuckSoup hosted at `ducksoup-host.example.com`) 
+  - `signalingUrl` (string) the URL of DuckSoup signaling websocket (for instance `wss://ducksoup-host.com/ws` for a DuckSoup hosted at `ducksoup-host.com`) 
   - `roomId` (string) the room identifier
   - `userId` (string) a unique user identifier
   - `name` (string) the user display name
@@ -177,7 +177,7 @@ Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted W
 
 ```
 DS_ENV=DEV ./ducksoup
-DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup
+DS_ORIGINS=https://ducksoup-caller-host.com ./ducksoup
 ```
 
 To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:
@@ -190,7 +190,7 @@ Run with TLS:
 
 ```
 DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
-DS_ORIGINS=https://website-calling-ducksoup.example.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
+DS_ORIGINS=https://ducksoup-caller-host.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
 
 ### Front-ends build

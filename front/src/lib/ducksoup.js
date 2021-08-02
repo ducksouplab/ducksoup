@@ -1,115 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.0.10")
+    console.log("[DuckSoup] v1.1.0")
 });
-
-// Use single quote in templace since will be used as an iframe srcdoc value
-const TEMPLATE = `<!DOCTYPE html>
-<html>
-    <head>
-        <title>DuckSoup</title>
-        <meta charset='utf-8'>
-        <link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'>
-        <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css' rel='stylesheet'
-            integrity='sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6' crossorigin='anonymous'>
-        <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.min.js'
-            integrity='sha384-j0CNLUeiqtyaRmlzUHCPZ+Gy5fQu0dQ6eZ/xAww941Ai1SxSY+0EQqNXNE6DZiVc'
-            crossorigin='anonymous'></script>
-        <style type='text/css'>
-            html, body, .placeholder, video {
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-            }
-            .settings {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-            }
-            .settings .trigger {
-                position: absolute;
-                width: 26px;
-                height: 26px;
-                top: -40px;
-                left: 14px;
-                color: white;
-                background-color: #bbbbbbaa;
-                border-radius: 5px;
-                cursor: pointer;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-            .ending {
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                color: white;
-                border-radius: 5px;
-            }
-            .ending div {
-                position: relative;
-                text-align: right;
-                background-color: #bbbbbbcc;
-                height: 26px;
-                top: -14px;
-                right: 14px;
-                opacity: 1;
-                padding: 0 8px;
-                border-radius: 5px;
-            }
-            .modal .btn-close {
-                position: absolute;
-                top: 12px;
-                right: 12px;
-            } 
-            .modal-body {
-                padding: 1.5rem 1rem 0.5rem;
-            }
-        </style>
-    </head>
-    <body>
-        <div class='placeholder'></div>
-        <div class='settings'>
-            <div class='trigger' data-bs-toggle='modal' data-bs-target='#modal-settings'>
-                <svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='currentColor' class='bi bi-gear-fill'
-                    viewBox='0 0 16 16'>
-                    <path
-                        d='M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z' />
-                </svg>
-            </div>
-        </div>
-        <div class='ending' style='display:none'>
-            <div>Conversation bientôt terminée</div>
-        </div>
-        <div class='modal' id='modal-settings' tabindex='-1'>
-            <div class='modal-dialog modal-dialog-centered'>
-                <div class='modal-content'>
-                    <div class='modal-body'>
-                        <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
-                        <div class='row'>
-                            <div class='col'>
-                                <div class='mb-3'>
-                                    <label for='video-source' class='form-label'>Choix de la source vidéo </label>
-                                    <select id='video-source' class='video-source form-select form-select-sm'></select>
-                                </div>
-                                <div class='mb-3'>
-                                    <label for='audio-source' class='form-label'>Choix de l'entrée audio</label>
-                                    <select id='audio-source' class='audio-source form-select form-select-sm'></select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", () => {
-            window.parent.postMessage("DuckSoupContainerLoaded");
-        });
-        </script>
-    </body>
-</html>`;
 
 // Config
 
@@ -210,11 +101,15 @@ class DuckSoup {
 
     // API
 
-    constructor(document, peerOptions, embedOptions) {
+    constructor(mountEl, peerOptions, embedOptions) {
         if (!areOptionsValid(peerOptions)) {
-            document.querySelector(".placeholder").innerHTML = "Invalid DuckSoup options"
+            this._postStop({ kind: "error", payload: "Invalid DuckSoup options" });
         } else {
-            this._document = document;
+            // replace mountEl contents
+            while (mountEl.firstChild) {
+                mountEl.removeChild(mountEl.firstChild);
+            }
+            this._mountEl = mountEl;
             this._signalingUrl = peerOptions.signalingUrl;
             this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
             this._joinPayload = parseJoinPayload(peerOptions);
@@ -259,7 +154,6 @@ class DuckSoup {
     async _initialize() {
         try {
             // async calls
-            await this._renderDevices();
             await this._startRTC();
             this._running = true;
         } catch (err) {
@@ -283,12 +177,11 @@ class DuckSoup {
     }
 
 
-    _postMessage(message) {
-        if (this._callback && this._running) this._callback(message);
+    _postMessage(message, force) {
+        if (this._callback && (this._running || force)) this._callback(message);
     }
 
     _postStop(reason) {
-        this._document.querySelector("body").style.display = 'none';
         const message = typeof reason === "string" ? { kind: reason } : reason;
         this._postMessage(message);
         if (this._debugIntervalId) clearInterval(this._debugIntervalId);
@@ -361,9 +254,9 @@ class DuckSoup {
                     console.error(error)
                 }
             } else if (message.kind === "start") {
-                this._callback({ kind: "start" });
+                this._postMessage({ kind: "start" }, true); // force with true since player is not already running
             } else if (message.kind === "ending") {
-                this._document.querySelector(".ending").style.display = 'block';
+                this._postMessage({ kind: "ending" });
             } else if (message.kind.startsWith("error") || message.kind === "end") {
                 this._postStop(message);
                 this.stop(1000); // Normal Closure
@@ -385,7 +278,7 @@ class DuckSoup {
             el.id = event.track.id;
             el.srcObject = event.streams[0];
             el.autoplay = true;
-            this._document.querySelector(".placeholder").appendChild(el);
+            this._mountEl.appendChild(el);
 
             event.streams[0].onremovetrack = ({ track }) => {
                 const el = document.getElementById(track.id);
@@ -396,28 +289,6 @@ class DuckSoup {
         // Stats
         if (this._debug) {
             this._debugIntervalId = setInterval(() => this._updateStats(), 1000);
-        }
-    }
-
-    async _renderDevices() {
-        if (IS_SAFARI) {
-            // needed for safari (getUserMedia before enumerateDevices) may be a problem if constraints change for Chrome
-            await navigator.mediaDevices.getUserMedia(this._constraints);
-        }
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioSourceEl = this._document.querySelector('.audio-source');
-        const videoSourceEl = this._document.querySelector('.video-source');
-        for (let i = 0; i !== devices.length; ++i) {
-            const device = devices[i];
-            const option = document.createElement('option');
-            option.value = device.deviceId;
-            if (device.kind === 'audioinput') {
-                option.text = device.label || `microphone ${audioSourceEl.length + 1}`;
-                audioSourceEl.appendChild(option);
-            } else if (device.kind === 'videoinput') {
-                option.text = device.label || `camera ${videoSourceEl.length + 1}`;
-                videoSourceEl.appendChild(option);
-            }
         }
     }
 
@@ -477,31 +348,7 @@ class DuckSoup {
 
 window.DuckSoup = {
     render: async (mountEl, peerOptions, embedOptions) => {
-        const iframe = document.createElement("iframe");
-        iframe.srcdoc = TEMPLATE;
-        iframe.width = "100%";
-        iframe.height = "100%";
-
-        // replace mountEl contents
-        while (mountEl.firstChild) {
-            mountEl.removeChild(mountEl.firstChild);
-        }
-        mountEl.appendChild(iframe);
-        
-        const iframeWindow = iframe.contentWindow;
-
-        const waitForDOMContentLoaded = new Promise((resolve) => {
-            iframeWindow.addEventListener('DOMContentLoaded', resolve);
-        });
-        const waitForDuckSoupContainerLoaded = new Promise((resolve) => {
-            window.addEventListener('message', (event) => {
-                if (event.data === "DuckSoupContainerLoaded") resolve();
-            });
-        });
-
-        // on safari, DOMContentLoaded won't be triggered for this iframe, so we wait for the fastest triggered event
-        await Promise.race([waitForDOMContentLoaded, waitForDuckSoupContainerLoaded]);
-        const player = new DuckSoup(iframeWindow.document, peerOptions, embedOptions);
+        const player = new DuckSoup(mountEl, peerOptions, embedOptions);
         await player._initialize();
         return player;
     }

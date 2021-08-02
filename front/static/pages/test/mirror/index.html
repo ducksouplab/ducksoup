@@ -129,18 +129,19 @@
             </div>
           </div>
         </div>
-      </div>       
+      </div>
       <div class="col-8">
         <div id="stopped" class="show-when-ended">
           <p id="stopped-message"></p>
         </div>
-        <div class="video-container show-when-running">
-          <div id="ducksoup-container" class="mb-3"></div>
-          <div class="overlay"><span>Through server</span></div>
+        <div id="ducksoup-container" class="video-container show-when-running">
+          <div id="ducksoup-root" class="mb-3"></div>
+          <div class="overlay overlay-bottom show-when-ending"><div>Conversation soon ending</div></div>
+          <div class="overlay overlay-top show-when-running"><div>Through server</div></div>
         </div>
         <div class="video-container show-when-running">
           <video id="local-video" autoplay muted></video>
-          <div class="overlay"><span>Direct from webcam</span></div>
+          <div class="overlay overlay-top"><div>Direct from webcam</div></div>
         </div>
       </div>
     </div>

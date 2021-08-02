@@ -86,7 +86,12 @@ const start = async ({
     };
     console.log("peerOptions: ", peerOptions);
 
-    const mountEl = document.getElementById("ducksoup-container");
+    // Embedding element with custom UX elements
+    const containerEl = document.getElementById("ducksoup-container");
+    containerEl.style.width = width + "px";
+    containerEl.style.height = height + "px";
+    // Mounting element
+    const mountEl = document.getElementById("ducksoup-root");
     mountEl.style.width = width + "px";
     mountEl.style.height = height + "px";
     // UX
@@ -111,6 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
     show(".show-when-not-running");
     hide(".show-when-ended");
     hide(".show-when-running");
+    hide(".show-when-ending");
 
     formSettings.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -169,8 +175,14 @@ const receiveMessage = (message) => {
         show(".show-when-not-running");
         show(".show-when-ended");
         hide(".show-when-running");
+        hide(".show-when-ending");
     }
-    if (kind === "end") {
+    
+    if (kind === "start") {
+        clearMessage();
+    } else if (kind === "ending") {
+        show(".show-when-ending");
+    } else if (kind === "end") {
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";
@@ -184,8 +196,6 @@ const receiveMessage = (message) => {
         appendMessage("Disconnected");
     } else if (kind === "error") {
         replaceMessage("Error");
-    } else if (kind === "start") {
-        clearMessage();
     } else if (kind === "stats") {
         document.getElementById("audio-up").textContent = payload.audioUp;
         document.getElementById("audio-down").textContent = payload.audioDown;
