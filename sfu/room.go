@@ -319,24 +319,32 @@ func (r *Room) UpdateSignaling() {
 	log.Printf("[room %s] signaling update\n", r.shortId)
 
 signalingLoop:
-	for tries := 0; ; tries++ {
-		switch r.mixer.updateSignalingState(r) {
-		case SignalingOk:
+	for {
+		select {
+		case <-r.endCh:
 			break signalingLoop
-		case SignalingRetryWithDelay:
-			time.Sleep(time.Second * 1)
-		}
-		// case SignalingRetryNow -> continue loop
+		default:
+			for tries := 0; ; tries++ {
+				switch r.mixer.updateSignalingState(r) {
+				case SignalingOk:
+					break signalingLoop
+				case SignalingRetryWithDelay:
+					time.Sleep(time.Second * 1)
+				}
+				// case SignalingRetryNow -> continue loop
 
-		if tries == 25 {
-			// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
-			go func() {
-				time.Sleep(time.Second * 3)
-				r.UpdateSignaling()
-			}()
-			return
+				if tries == 25 {
+					// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
+					go func() {
+						time.Sleep(time.Second * 3)
+						r.UpdateSignaling()
+					}()
+					return
+				}
+			}
 		}
 	}
+
 }
 
 // dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
