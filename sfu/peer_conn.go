@@ -159,6 +159,12 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 }
 
 func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnection, err error) {
+	// create RTC API with chosen codecs
+	api, err := engine.NewWebRTCAPI()
+	if err != nil {
+		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
+		return
+	}
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -167,7 +173,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 			},
 		},
 	}
-	ppc, err = webrtc.NewPeerConnection(config)
+	ppc, err = api.NewPeerConnection(config)
 	if err != nil {
 		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
 		return

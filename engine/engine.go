@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"log"
-
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
@@ -116,13 +114,10 @@ func init() {
 	}
 }
 
-// APIs are used to create peer connections, whose preferred codecs are then set once for all (at API level)
-// But now preferred codecs are set at transceiver level -> NewWebRTCAPI is from now on unused and may be later removed
-func NewWebRTCAPI(videoCodec string) (*webrtc.API, error) {
-	if len(videoCodec) < 1 {
-		videoCodec = "vp8"
-	}
-	log.Println("[api] opus and ", videoCodec)
+// APIs are used to create peer connections, possible codecs are set once for all (at API level)
+// but preferred codecs for a given track are set at transceiver level
+// currently NewWebRTCAPI (rather than pion default one) prevents a freeze/lag observed after ~20 seconds
+func NewWebRTCAPI() (*webrtc.API, error) {
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
@@ -136,17 +131,14 @@ func NewWebRTCAPI(videoCodec string) (*webrtc.API, error) {
 	}
 
 	// select video codecs
-	if videoCodec == "VP8" {
-		for _, c := range VP8Codecs {
-			if err := m.RegisterCodec(c, webrtc.RTPCodecTypeVideo); err != nil {
-				return nil, err
-			}
+	for _, c := range VP8Codecs {
+		if err := m.RegisterCodec(c, webrtc.RTPCodecTypeVideo); err != nil {
+			return nil, err
 		}
-	} else if videoCodec == "H264" {
-		for _, c := range H264Codecs {
-			if err := m.RegisterCodec(c, webrtc.RTPCodecTypeVideo); err != nil {
-				return nil, err
-			}
+	}
+	for _, c := range H264Codecs {
+		if err := m.RegisterCodec(c, webrtc.RTPCodecTypeVideo); err != nil {
+			return nil, err
 		}
 	}
 
