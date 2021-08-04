@@ -5,6 +5,8 @@ ducksoup
 # logs and recorded data
 data
 logs
+*.mkv
+*.ogg
 
 # GStreamer plugin libs
 *.so
@@ -17,8 +19,8 @@ front/static/assets/scripts
 docker/plugins
 docker/data
 
-# src needed to build docker Image
-docker-deps/dlib
+# src needed to build docker image
+docker-deps
 
 # license and SDK
 *.uid
