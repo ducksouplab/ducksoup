@@ -81,7 +81,7 @@ func init() {
 			PayloadType: 123,
 		},
 	}
-	VP9Codecs = []webrtc.RTPCodecParameters{
+	VP8Codecs = []webrtc.RTPCodecParameters{
 		{
 			RTPCodecCapability: webrtc.RTPCodecCapability{
 				MimeType:     "video/VP8",

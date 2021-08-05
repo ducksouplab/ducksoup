@@ -179,7 +179,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 		return
 	}
 
-	// accept one audio
+	// accept one audio}
 	_, err = ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
@@ -188,7 +188,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 		return
 	}
 
-	// accept one video with codec preferences
+	// accept one video
 	videoTransceiver, err := ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
@@ -197,7 +197,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 		return
 	}
 
-	// if not, no preference is set
+	// set codec preference if H264 is required
 	if videoCodec == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
@@ -212,12 +212,12 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
 	userId := joinPayload.UserId
 
-	pionPeerConnection, err := newPionPeerConn(userId, joinPayload.VideoCodec)
+	ppc, err := newPionPeerConn(userId, joinPayload.VideoCodec)
 	if err != nil {
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, pionPeerConnection, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
+	peerConn = &PeerConn{sync.Mutex{}, ppc, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
 
 	// trickle ICE. Emit server candidate to client
 	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
