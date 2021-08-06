@@ -4,13 +4,23 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"sync"
 
+	"github.com/creamlab/ducksoup/gst"
 	"github.com/pion/webrtc/v3"
 )
 
+// expanding the mixer metaphor, a (channel) strip holds everything related to a given signal (output track, GStreamer pipeline...)
+type strip struct {
+	sync.Mutex
+	track        *webrtc.TrackLocalStaticRTP
+	pipeline     *gst.Pipeline
+	maxRateIndex map[string]uint64 // maxRate per peerConn
+}
+
 type Mixer struct {
-	shortId    string
-	trackIndex map[string]*webrtc.TrackLocalStaticRTP // per track id
+	shortId    string            // room's shortId used for logging
+	stripIndex map[string]*strip // per track id
 }
 
 type SignalingState int
@@ -24,27 +34,34 @@ const (
 func newMixer(shortId string) *Mixer {
 	return &Mixer{
 		shortId:    shortId,
-		trackIndex: map[string]*webrtc.TrackLocalStaticRTP{},
+		stripIndex: map[string]*strip{},
 	}
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *Mixer) addTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
+func (m *Mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	// Create a new TrackLocal with the same codec as the incoming one
-	track, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
+	track, err := webrtc.NewTrackLocalStaticRTP(c, id, streamID)
 
 	if err != nil {
 		log.Printf("[room %s error] NewTrackLocalStaticRTP: %v\n", m.shortId, err)
 		panic(err)
 	}
 
-	m.trackIndex[t.ID()] = track
+	m.stripIndex[id] = &strip{
+		track:        track,
+		maxRateIndex: map[string]uint64{},
+	}
 	return track
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *Mixer) removeTrack(t *webrtc.TrackLocalStaticRTP) {
-	delete(m.trackIndex, t.ID())
+func (m *Mixer) removeTrack(id string) {
+	delete(m.stripIndex, id)
+}
+
+func (m *Mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
+	m.stripIndex[id].pipeline = pipeline
 }
 
 func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
@@ -68,7 +85,7 @@ func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
 			existingSenders[sender.Track().ID()] = true
 
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
-			_, ok := m.trackIndex[sender.Track().ID()]
+			_, ok := m.stripIndex[sender.Track().ID()]
 			if !ok {
 				if err := peerConn.RemoveTrack(sender); err != nil {
 					log.Printf("[room %s error] RemoveTrack: %v\n", m.shortId, err)
@@ -89,14 +106,16 @@ func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
 		}
 
 		// add all track we aren't sending yet to the PeerConnection
-		for trackID, trackValue := range m.trackIndex {
-			if _, ok := existingSenders[trackID]; !ok {
-				rtpSender, err := peerConn.AddTrack(trackValue)
+		for id, strip := range m.stripIndex {
+			if _, ok := existingSenders[id]; !ok {
+				rtpSender, err := peerConn.AddTrack(strip.track)
 
 				if err != nil {
-					log.Printf("[room %s error] AddTrack: %v\n", m.shortId, err)
+					log.Printf("[room %s error] peerConn.AddTrack: %v\n", m.shortId, err)
 					return SignalingRetryNow
 				}
+
+				go rtcpListener(peerConn, strip.track)
 
 				// TODO check if needed
 				// Read incoming RTCP packets

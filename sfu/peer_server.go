@@ -117,7 +117,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	peerServer := newPeerServer(joinPayload, room, peerConn, wsConn)
 
 	// bind and signal
-	room.Bind(peerServer)
+	room.BindPeerServer(peerServer)
 	room.UpdateSignaling()
 
 	peerServer.loop() // blocking

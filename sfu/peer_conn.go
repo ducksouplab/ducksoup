@@ -93,8 +93,6 @@ func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
 // API
 
 func (p *PeerConn) ControlFx(payload ControlPayload) {
-
-	log.Println(">>>", payload)
 	var pipeline *gst.Pipeline
 	if payload.Kind == "audio" {
 		if p.audioPipeline == nil {
@@ -280,16 +278,16 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 
 		<-room.waitForAllCh
 
-		// prepare track and room
-		processedTrack := room.AddTrack(remoteTrack)
+		// prepare track and room, use the same ids as remoteTrack for simplicity
+		processedTrack := room.NewTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
-		defer room.RemoveTrack(processedTrack)
+		defer room.RemoveTrack(remoteTrack.ID())
 
 		kind := remoteTrack.Kind().String()
 		fx := parseFx(kind, joinPayload)
 
 		if fx == "forward" {
-			// special case for testing
+			// special case for testing: write directly to processedTrack
 			for {
 				// Read RTP packets being sent to Pion
 				rtp, _, err := remoteTrack.ReadRTP()
@@ -301,12 +299,13 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 				}
 			}
 		} else {
-			// main case: use GStreamer
+			// main case (with GStreamer): write/push to pipeline which in turn outputs to processedTrack
 			mediaFilePrefix := filePrefix(joinPayload, room)
 			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 			// create and start pipeline
 			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
+			room.BindPipeline(remoteTrack.ID(), pipeline)
 
 			// needed for further interaction from ws to pipeline
 			peerConn.setPipeline(kind, pipeline)

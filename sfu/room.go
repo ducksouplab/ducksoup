@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
@@ -222,18 +223,25 @@ func (r *Room) IncTracksReadyCount() {
 	}
 }
 
-func (r *Room) Bind(ps *PeerServer) {
+func (r *Room) BindPeerServer(ps *PeerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *Room) Unbind(ps *PeerServer) {
+func (r *Room) UnbindPeerServer(ps *PeerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	delete(r.peerServerIndex, ps.userId)
+}
+
+func (r *Room) BindPipeline(id string, pipeline *gst.Pipeline) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.mixer.bindPipeline(id, pipeline)
 }
 
 func (r *Room) DisconnectUser(userId string) {
@@ -290,22 +298,22 @@ func (r *Room) EndingDelay() (delay int) {
 	return
 }
 
-func (r *Room) AddTrack(t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
+func (r *Room) NewTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
 	defer func() {
 		r.Unlock()
 		r.UpdateSignaling()
 	}()
-	return r.mixer.addTrack(t)
+	return r.mixer.newTrack(c, id, streamID)
 }
 
-func (r *Room) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
+func (r *Room) RemoveTrack(id string) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
 		r.UpdateSignaling()
 	}()
-	r.mixer.removeTrack(t)
+	r.mixer.removeTrack(id)
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks

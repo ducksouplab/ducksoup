@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/jech/galene v0.1.0 // indirect
 	github.com/pion/ice/v2 v2.1.10
 	github.com/pion/rtcp v1.2.6
 	github.com/pion/sdp/v3 v3.0.4
