@@ -33,7 +33,7 @@ var (
 type Room struct {
 	sync.RWMutex
 	// guarded by mutex
-	mixer            *Mixer
+	mixer            *mixer
 	peerServerIndex  map[string]*PeerServer // per user id
 	connectedIndex   map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
 	joinedCountIndex map[string]int         // per user id

@@ -18,7 +18,7 @@ type strip struct {
 	maxRateIndex map[string]uint64 // maxRate per peerConn
 }
 
-type Mixer struct {
+type mixer struct {
 	shortId    string            // room's shortId used for logging
 	stripIndex map[string]*strip // per track id
 }
@@ -31,15 +31,15 @@ const (
 	SignalingRetryWithDelay
 )
 
-func newMixer(shortId string) *Mixer {
-	return &Mixer{
+func newMixer(shortId string) *mixer {
+	return &mixer{
 		shortId:    shortId,
 		stripIndex: map[string]*strip{},
 	}
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *Mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (m *mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(c, id, streamID)
 
@@ -56,15 +56,15 @@ func (m *Mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webr
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *Mixer) removeTrack(id string) {
+func (m *mixer) removeTrack(id string) {
 	delete(m.stripIndex, id)
 }
 
-func (m *Mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
+func (m *mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
 	m.stripIndex[id].pipeline = pipeline
 }
 
-func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
+func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 	for userId, ps := range room.peerServerIndex {
 
 		peerConn := ps.peerConn
@@ -114,8 +114,6 @@ func (m *Mixer) updateSignalingState(room *Room) (state SignalingState) {
 					log.Printf("[room %s error] peerConn.AddTrack: %v\n", m.shortId, err)
 					return SignalingRetryNow
 				}
-
-				go rtcpListener(peerConn, strip.track)
 
 				// TODO check if needed
 				// Read incoming RTCP packets
