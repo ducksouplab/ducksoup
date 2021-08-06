@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func newJoinPayload(origin, roomId, userId, namespace string, size int) JoinPayload {
-	return JoinPayload{
+func newJoinPayload(origin, roomId, userId, namespace string, size int) joinPayload {
+	return joinPayload{
 		origin:    origin,
 		RoomId:    roomId,
 		UserId:    userId,

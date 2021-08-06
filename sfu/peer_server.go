@@ -18,18 +18,18 @@ type peerServer struct {
 }
 
 func newPeerServer(
-	joinPayload JoinPayload,
+	join joinPayload,
 	room *trialRoom,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	userId := joinPayload.UserId
+	userId := join.UserId
 	ps := &peerServer{userId, room, pc, ws}
 	return ps
 }
 
 func (ps *peerServer) loop() {
-	var m WsMessageIn
+	var m messageIn
 
 	// sends "ending" message before rooms does end
 	go func() {
@@ -74,7 +74,7 @@ func (ps *peerServer) loop() {
 				return
 			}
 		case "control":
-			payload := ControlPayload{}
+			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
 			} else {

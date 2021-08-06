@@ -36,43 +36,43 @@ type peerConn struct {
 	videoPipeline *gst.Pipeline
 }
 
-func filePrefix(joinPayload JoinPayload, room *trialRoom) string {
-	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
+func filePrefix(join joinPayload, room *trialRoom) string {
+	connectionCount := room.JoinedCountForUser(join.UserId)
 	// time room user count
 	return room.namespace + "/" +
 		time.Now().Format("20060102-150405.000") +
-		"-r-" + joinPayload.RoomId +
-		"-u-" + joinPayload.UserId +
+		"-r-" + join.RoomId +
+		"-u-" + join.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
-func parseFx(kind string, joinPayload JoinPayload) (fx string) {
+func parseFx(kind string, join joinPayload) (fx string) {
 	if kind == "video" {
-		fx = joinPayload.VideoFx
+		fx = join.VideoFx
 	} else {
-		fx = joinPayload.AudioFx
+		fx = join.AudioFx
 	}
 	return
 }
 
-func parseWidth(joinPayload JoinPayload) (width int) {
-	width = joinPayload.Width
+func parseWidth(join joinPayload) (width int) {
+	width = join.Width
 	if width == 0 {
 		width = DefaultWidth
 	}
 	return
 }
 
-func parseHeight(joinPayload JoinPayload) (height int) {
-	height = joinPayload.Height
+func parseHeight(join joinPayload) (height int) {
+	height = join.Height
 	if height == 0 {
 		height = DefaultHeight
 	}
 	return
 }
 
-func parseFrameRate(joinPayload JoinPayload) (frameRate int) {
-	frameRate = joinPayload.FrameRate
+func parseFrameRate(join joinPayload) (frameRate int) {
+	frameRate = join.FrameRate
 	if frameRate == 0 {
 		frameRate = DefaultFrameRate
 	}
@@ -92,7 +92,7 @@ func (pc *peerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
 
 // API
 
-func (pc *peerConn) ControlFx(payload ControlPayload) {
+func (pc *peerConn) ControlFx(payload controlPayload) {
 	var pipeline *gst.Pipeline
 	if payload.Kind == "audio" {
 		if pc.audioPipeline == nil {
@@ -207,10 +207,10 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	return
 }
 
-func NewPeerConn(joinPayload JoinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
-	userId := joinPayload.UserId
+func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
+	userId := join.UserId
 
-	ppc, err := newPionPeerConn(userId, joinPayload.VideoCodec)
+	ppc, err := newPionPeerConn(userId, join.VideoCodec)
 	if err != nil {
 		return
 	}
@@ -284,7 +284,7 @@ func NewPeerConn(joinPayload JoinPayload, room *trialRoom, ws *wsConn) (pc *peer
 		defer room.RemoveTrack(remoteTrack.ID())
 
 		kind := remoteTrack.Kind().String()
-		fx := parseFx(kind, joinPayload)
+		fx := parseFx(kind, join)
 
 		if fx == "forward" {
 			// special case for testing: write directly to processedTrack
@@ -300,11 +300,11 @@ func NewPeerConn(joinPayload JoinPayload, room *trialRoom, ws *wsConn) (pc *peer
 			}
 		} else {
 			// main case (with GStreamer): write/push to pipeline which in turn outputs to processedTrack
-			mediaFilePrefix := filePrefix(joinPayload, room)
+			mediaFilePrefix := filePrefix(join, room)
 			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 			// create and start pipeline
-			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(joinPayload), parseHeight(joinPayload), parseFrameRate(joinPayload), parseFx(kind, joinPayload))
+			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
 			room.BindPipeline(remoteTrack.ID(), pipeline)
 
 			// needed for further interaction from ws to pipeline

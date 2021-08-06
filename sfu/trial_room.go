@@ -82,13 +82,13 @@ func parseNamespace(ns string) string {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func QualifiedId(joinPayload JoinPayload) string {
-	return joinPayload.origin + "#" + joinPayload.RoomId
+func QualifiedId(join joinPayload) string {
+	return join.origin + "#" + join.RoomId
 }
 
-func newRoom(qualifiedId string, joinPayload JoinPayload) *trialRoom {
+func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 	// process duration
-	duration := joinPayload.Duration
+	duration := join.Duration
 	if duration < 1 {
 		duration = DefaultDuration
 	} else if duration > MaxDuration {
@@ -96,7 +96,7 @@ func newRoom(qualifiedId string, joinPayload JoinPayload) *trialRoom {
 	}
 
 	// process size
-	size := joinPayload.Size
+	size := join.Size
 	if size < 1 {
 		size = DefaultSize
 	} else if size > MaxSize {
@@ -105,15 +105,15 @@ func newRoom(qualifiedId string, joinPayload JoinPayload) *trialRoom {
 
 	// room initialized with one connected peer
 	connectedIndex := make(map[string]bool)
-	connectedIndex[joinPayload.UserId] = true
+	connectedIndex[join.UserId] = true
 	joinedCountIndex := make(map[string]int)
-	joinedCountIndex[joinPayload.UserId] = 1
+	joinedCountIndex[join.UserId] = 1
 
 	// create folder for logs
-	namespace := parseNamespace(joinPayload.Namespace)
+	namespace := parseNamespace(join.Namespace)
 	helpers.EnsureDir("./data/" + namespace)
 
-	shortId := joinPayload.RoomId
+	shortId := join.RoomId
 
 	return &trialRoom{
 		peerServerIndex:  make(map[string]*peerServer),
@@ -155,13 +155,13 @@ func (r *trialRoom) countdown() {
 
 // API read-write
 
-func JoinRoom(joinPayload JoinPayload) (*trialRoom, error) {
+func JoinRoom(join joinPayload) (*trialRoom, error) {
 	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
 
-	qualifiedId := QualifiedId(joinPayload)
-	userId := joinPayload.UserId
+	qualifiedId := QualifiedId(join)
+	userId := join.UserId
 
 	if r, ok := roomIndex[qualifiedId]; ok {
 		r.Lock()
@@ -190,7 +190,7 @@ func JoinRoom(joinPayload JoinPayload) (*trialRoom, error) {
 		}
 	} else {
 		log.Printf("[room %s] created\n", qualifiedId)
-		newRoom := newRoom(qualifiedId, joinPayload)
+		newRoom := newRoom(qualifiedId, join)
 		roomIndex[qualifiedId] = newRoom
 		return newRoom, nil
 	}

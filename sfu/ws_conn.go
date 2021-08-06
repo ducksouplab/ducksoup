@@ -15,17 +15,17 @@ type wsConn struct {
 	userId string
 }
 
-type WsMessageOut struct {
+type messageOut struct {
 	Kind    string      `json:"kind"`
 	Payload interface{} `json:"payload"`
 }
 
-type WsMessageIn struct {
+type messageIn struct {
 	Kind    string `json:"kind"`
 	Payload string `json:"payload"`
 }
 
-type JoinPayload struct {
+type joinPayload struct {
 	RoomId   string `json:"roomId"`
 	UserId   string `json:"userId"`
 	Duration int    `json:"duration"`
@@ -42,7 +42,7 @@ type JoinPayload struct {
 	origin string
 }
 
-type ControlPayload struct {
+type controlPayload struct {
 	Kind     string  `json:"kind"`
 	Name     string  `json:"name"`
 	Property string  `json:"property"`
@@ -67,7 +67,7 @@ func (ws *wsConn) Send(text string) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
-	m := &WsMessageOut{Kind: text}
+	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
 		log.Printf("[user %s error] WriteJSON: %v\n", ws.userId, err)
 	}
@@ -78,7 +78,7 @@ func (ws *wsConn) SendWithPayload(kind string, payload interface{}) (err error) 
 	ws.Lock()
 	defer ws.Unlock()
 
-	m := &WsMessageOut{
+	m := &messageOut{
 		Kind:    kind,
 		Payload: payload,
 	}
@@ -88,8 +88,8 @@ func (ws *wsConn) SendWithPayload(kind string, payload interface{}) (err error) 
 	return
 }
 
-func (ws *wsConn) ReadJoin(origin string) (joinPayload JoinPayload, err error) {
-	var m WsMessageIn
+func (ws *wsConn) ReadJoin(origin string) (join joinPayload, err error) {
+	var m messageIn
 
 	// First message must be a join
 	err = ws.ReadJSON(&m)
@@ -97,7 +97,7 @@ func (ws *wsConn) ReadJoin(origin string) (joinPayload JoinPayload, err error) {
 		return
 	}
 
-	err = json.Unmarshal([]byte(m.Payload), &joinPayload)
-	joinPayload.origin = origin
+	err = json.Unmarshal([]byte(m.Payload), &join)
+	join.origin = origin
 	return
 }
