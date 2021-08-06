@@ -18,18 +18,13 @@ type strip struct {
 	maxRateIndex map[string]uint64 // maxRate per peerConn
 }
 
+// mixer is not guarded by a mutex since all interaction is done through room
 type mixer struct {
 	shortId    string            // room's shortId used for logging
 	stripIndex map[string]*strip // per track id
 }
 
-type signalingState int
-
-const (
-	SignalingOk signalingState = iota
-	SignalingRetryNow
-	SignalingRetryWithDelay
-)
+type success bool
 
 func newMixer(shortId string) *mixer {
 	return &mixer{
@@ -39,7 +34,7 @@ func newMixer(shortId string) *mixer {
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (m *mixer) newOutTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(c, id, streamID)
 
@@ -56,7 +51,7 @@ func (m *mixer) newTrack(c webrtc.RTPCodecCapability, id, streamID string) *webr
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeTrack(id string) {
+func (m *mixer) removeOutTrack(id string) {
 	delete(m.stripIndex, id)
 }
 
@@ -64,9 +59,9 @@ func (m *mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
 	m.stripIndex[id].pipeline = pipeline
 }
 
-func (m *mixer) updateSignalingState(room *trialRoom) (state signalingState) {
+func (m *mixer) updateTracks(room *trialRoom) success {
 	for userId, ps := range room.peerServerIndex {
-
+		// iterate to update peer connections of each PeerServer
 		pc := ps.pc
 
 		if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
@@ -89,7 +84,6 @@ func (m *mixer) updateSignalingState(room *trialRoom) (state signalingState) {
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
 					log.Printf("[room %s error] RemoveTrack: %v\n", m.shortId, err)
-					return SignalingRetryNow
 				}
 			}
 		}
@@ -107,12 +101,12 @@ func (m *mixer) updateSignalingState(room *trialRoom) (state signalingState) {
 
 		// add all track we aren't sending yet to the PeerConnection
 		for id, strip := range m.stripIndex {
-			if _, ok := existingSenders[id]; !ok {
+			if _, exists := existingSenders[id]; !exists {
 				rtpSender, err := pc.AddTrack(strip.track)
 
 				if err != nil {
 					log.Printf("[room %s error] pc.AddTrack: %v\n", m.shortId, err)
-					return SignalingRetryNow
+					return false
 				}
 
 				// TODO check if needed
@@ -133,29 +127,53 @@ func (m *mixer) updateSignalingState(room *trialRoom) (state signalingState) {
 				}()
 			}
 		}
+	}
+	return true
+}
+
+func (m *mixer) updateSignaling(room *trialRoom) success {
+	for _, ps := range room.peerServerIndex {
+
+		pc := ps.pc
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
 			log.Printf("[room %s error] CreateOffer: %v\n", m.shortId, err)
-			return SignalingRetryNow
+			return false
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
 			log.Printf("[room %s error] SetLocalDescription: %v\n", m.shortId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
-			return SignalingRetryWithDelay
+			return false
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
 			log.Printf("[room %s error] marshal offer: %v\n", m.shortId, err)
-			return SignalingRetryNow
+			return false
 		}
 
 		if err = ps.ws.SendWithPayload("offer", string(offerString)); err != nil {
-			return SignalingRetryNow
+			return false
+		}
+	}
+	return true
+}
+
+// does two things (and ask to retry if false is returned):
+// - add or remove tracks on peer connections
+// - update signaling, a boolean controlling this step not to overdo it till every out track is ready
+func (m *mixer) updatePeers(room *trialRoom, withSignaling bool) success {
+	if s := m.updateTracks(room); !s {
+		return false
+	}
+
+	if withSignaling {
+		if s := m.updateSignaling(room); !s {
+			return false
 		}
 	}
 
-	return SignalingOk
+	return true
 }

@@ -244,7 +244,7 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		case webrtc.PeerConnectionStateClosed:
 			close(pc.closedCh)
 			room.DisconnectUser(userId)
-			room.UpdateSignaling()
+			room.UpdatePeers(true)
 		}
 	})
 
@@ -274,14 +274,14 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		log.Printf("[user %s] new track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 
 		buf := make([]byte, 1500)
-		room.IncTracksReadyCount()
+		room.IncInTracksReadyCount()
 
 		<-room.waitForAllCh
 
 		// prepare track and room, use the same ids as remoteTrack for simplicity
-		processedTrack := room.NewTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
+		processedTrack := room.NewOutTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
-		defer room.RemoveTrack(remoteTrack.ID())
+		defer room.RemoveOutTrack(remoteTrack.ID())
 
 		kind := remoteTrack.Kind().String()
 		fx := parseFx(kind, join)

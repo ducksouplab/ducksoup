@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	DefaultSize          = 2
-	MaxSize              = 8
-	DefaultTracksPerPeer = 2
-	DefaultDuration      = 30
-	MaxDuration          = 1200
-	Ending               = 10
-	MaxNamespaceLength   = 30
+	DefaultSize        = 2
+	MaxSize            = 8
+	TracksPerPeer      = 2
+	DefaultDuration    = 30
+	MaxDuration        = 1200
+	Ending             = 10
+	MaxNamespaceLength = 30
 )
 
 // global state
@@ -33,24 +33,25 @@ var (
 type trialRoom struct {
 	sync.RWMutex
 	// guarded by mutex
-	mixer            *mixer
-	peerServerIndex  map[string]*peerServer // per user id
-	connectedIndex   map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
-	joinedCountIndex map[string]int         // per user id
-	filesIndex       map[string][]string    // per user id, contains media file names
-	started          bool
-	startedAt        time.Time
-	tracksReadyCount int
+	mixer               *mixer
+	peerServerIndex     map[string]*peerServer // per user id
+	connectedIndex      map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
+	joinedCountIndex    map[string]int         // per user id
+	filesIndex          map[string][]string    // per user id, contains media file names
+	started             bool
+	startedAt           time.Time
+	inTracksReadyCount  int
+	outTracksReadyCount int
 	// channels (safe)
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	qualifiedId   string
-	shortId       string
-	namespace     string
-	size          int
-	tracksPerPeer int
-	duration      int
+	qualifiedId  string
+	shortId      string
+	namespace    string
+	size         int
+	duration     int
+	neededTracks int
 }
 
 func init() {
@@ -116,20 +117,21 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 	shortId := join.RoomId
 
 	return &trialRoom{
-		peerServerIndex:  make(map[string]*peerServer),
-		filesIndex:       make(map[string][]string),
-		connectedIndex:   connectedIndex,
-		joinedCountIndex: joinedCountIndex,
-		waitForAllCh:     make(chan struct{}),
-		endCh:            make(chan struct{}),
-		tracksReadyCount: 0,
-		mixer:            newMixer(shortId),
-		qualifiedId:      qualifiedId,
-		shortId:          shortId,
-		namespace:        namespace,
-		size:             size,
-		tracksPerPeer:    DefaultTracksPerPeer,
-		duration:         duration,
+		peerServerIndex:     make(map[string]*peerServer),
+		filesIndex:          make(map[string][]string),
+		connectedIndex:      connectedIndex,
+		joinedCountIndex:    joinedCountIndex,
+		waitForAllCh:        make(chan struct{}),
+		endCh:               make(chan struct{}),
+		inTracksReadyCount:  0,
+		outTracksReadyCount: 0,
+		mixer:               newMixer(shortId),
+		qualifiedId:         qualifiedId,
+		shortId:             shortId,
+		namespace:           namespace,
+		size:                size,
+		duration:            duration,
+		neededTracks:        size * TracksPerPeer,
 	}
 }
 
@@ -196,21 +198,19 @@ func JoinRoom(join joinPayload) (*trialRoom, error) {
 	}
 }
 
-func (r *trialRoom) IncTracksReadyCount() {
+func (r *trialRoom) IncInTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
 
-	neededTracks := r.size * r.tracksPerPeer
-
-	if r.tracksReadyCount == neededTracks {
+	if r.inTracksReadyCount == r.neededTracks {
 		// reconnection case
 		return
 	}
 
-	r.tracksReadyCount++
-	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.tracksReadyCount)
+	r.inTracksReadyCount++
+	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
 
-	if r.tracksReadyCount == neededTracks {
+	if r.inTracksReadyCount == r.neededTracks {
 		log.Printf("[room %s] users are ready\n", r.shortId)
 		close(r.waitForAllCh)
 		r.started = true
@@ -298,26 +298,29 @@ func (r *trialRoom) EndingDelay() (delay int) {
 	return
 }
 
-func (r *trialRoom) NewTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (r *trialRoom) NewOutTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.UpdateSignaling()
-	}()
-	return r.mixer.newTrack(c, id, streamID)
+	defer r.Unlock()
+	track := r.mixer.newOutTrack(c, id, streamID)
+	r.outTracksReadyCount++
+
+	withSignaling := r.outTracksReadyCount == r.neededTracks
+	go r.UpdatePeers(withSignaling) // don't block
+
+	return track
 }
 
-func (r *trialRoom) RemoveTrack(id string) {
+func (r *trialRoom) RemoveOutTrack(id string) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.UpdateSignaling()
+		r.UpdatePeers(true)
 	}()
-	r.mixer.removeTrack(id)
+	r.mixer.removeOutTrack(id)
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (r *trialRoom) UpdateSignaling() {
+func (r *trialRoom) UpdatePeers(withSignaling bool) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -333,21 +336,23 @@ signalingLoop:
 			break signalingLoop
 		default:
 			for tries := 0; ; tries++ {
-				switch r.mixer.updateSignalingState(r) {
-				case SignalingOk:
+				switch r.mixer.updatePeers(r, withSignaling) {
+				case true:
+					// signaling succeeded
 					break signalingLoop
-				case SignalingRetryWithDelay:
-					time.Sleep(time.Second * 1)
-				}
-				// case SignalingRetryNow -> continue loop
-
-				if tries == 25 {
-					// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
-					go func() {
-						time.Sleep(time.Second * 3)
-						r.UpdateSignaling()
-					}()
-					return
+				case false:
+					if tries >= 20 {
+						// signaling failed too many times
+						// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
+						go func() {
+							time.Sleep(time.Second * 3)
+							r.UpdatePeers(withSignaling)
+						}()
+						return
+					} else {
+						// signaling failed
+						time.Sleep(time.Second * 1)
+					}
 				}
 			}
 		}
