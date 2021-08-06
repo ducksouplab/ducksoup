@@ -9,7 +9,7 @@ import (
 )
 
 // Helper to make Gorilla Websockets threadsafe
-type WsConn struct {
+type wsConn struct {
 	sync.Mutex
 	*websocket.Conn
 	userId string
@@ -52,47 +52,47 @@ type ControlPayload struct {
 
 // API
 
-func NewWsConn(unsafeConn *websocket.Conn) *WsConn {
-	return &WsConn{sync.Mutex{}, unsafeConn, ""}
+func NewWsConn(unsafeConn *websocket.Conn) *wsConn {
+	return &wsConn{sync.Mutex{}, unsafeConn, ""}
 }
 
-func (w *WsConn) SetUserId(userId string) {
-	w.Lock()
-	defer w.Unlock()
+func (ws *wsConn) SetUserId(userId string) {
+	ws.Lock()
+	defer ws.Unlock()
 
-	w.userId = userId
+	ws.userId = userId
 }
 
-func (w *WsConn) Send(text string) (err error) {
-	w.Lock()
-	defer w.Unlock()
+func (ws *wsConn) Send(text string) (err error) {
+	ws.Lock()
+	defer ws.Unlock()
 
 	m := &WsMessageOut{Kind: text}
-	if err := w.Conn.WriteJSON(m); err != nil {
-		log.Printf("[user %s error] WriteJSON: %v\n", w.userId, err)
+	if err := ws.Conn.WriteJSON(m); err != nil {
+		log.Printf("[user %s error] WriteJSON: %v\n", ws.userId, err)
 	}
 	return
 }
 
-func (w *WsConn) SendWithPayload(kind string, payload interface{}) (err error) {
-	w.Lock()
-	defer w.Unlock()
+func (ws *wsConn) SendWithPayload(kind string, payload interface{}) (err error) {
+	ws.Lock()
+	defer ws.Unlock()
 
 	m := &WsMessageOut{
 		Kind:    kind,
 		Payload: payload,
 	}
-	if err := w.Conn.WriteJSON(m); err != nil {
-		log.Printf("[user %s error] WriteJSON with payload: %v\n", w.userId, err)
+	if err := ws.Conn.WriteJSON(m); err != nil {
+		log.Printf("[user %s error] WriteJSON with payload: %v\n", ws.userId, err)
 	}
 	return
 }
 
-func (w *WsConn) ReadJoin(origin string) (joinPayload JoinPayload, err error) {
+func (ws *wsConn) ReadJoin(origin string) (joinPayload JoinPayload, err error) {
 	var m WsMessageIn
 
 	// First message must be a join
-	err = w.ReadJSON(&m)
+	err = ws.ReadJSON(&m)
 	if err != nil || m.Kind != "join" {
 		return
 	}

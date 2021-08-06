@@ -23,10 +23,10 @@ type mixer struct {
 	stripIndex map[string]*strip // per track id
 }
 
-type SignalingState int
+type signalingState int
 
 const (
-	SignalingOk SignalingState = iota
+	SignalingOk signalingState = iota
 	SignalingRetryNow
 	SignalingRetryWithDelay
 )
@@ -64,12 +64,12 @@ func (m *mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
 	m.stripIndex[id].pipeline = pipeline
 }
 
-func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
+func (m *mixer) updateSignalingState(room *trialRoom) (state signalingState) {
 	for userId, ps := range room.peerServerIndex {
 
-		peerConn := ps.peerConn
+		pc := ps.pc
 
-		if peerConn.ConnectionState() == webrtc.PeerConnectionStateClosed {
+		if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
 			delete(room.peerServerIndex, userId)
 			break
 		}
@@ -77,7 +77,7 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 		// map of sender we are already sending, so we don't double send
 		existingSenders := map[string]bool{}
 
-		for _, sender := range peerConn.GetSenders() {
+		for _, sender := range pc.GetSenders() {
 			if sender.Track() == nil {
 				continue
 			}
@@ -87,7 +87,7 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
 			_, ok := m.stripIndex[sender.Track().ID()]
 			if !ok {
-				if err := peerConn.RemoveTrack(sender); err != nil {
+				if err := pc.RemoveTrack(sender); err != nil {
 					log.Printf("[room %s error] RemoveTrack: %v\n", m.shortId, err)
 					return SignalingRetryNow
 				}
@@ -97,7 +97,7 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 		// when room size is 1, it acts as a mirror
 		if room.size != 1 {
 			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
-			for _, receiver := range peerConn.GetReceivers() {
+			for _, receiver := range pc.GetReceivers() {
 				if receiver.Track() == nil {
 					continue
 				}
@@ -108,10 +108,10 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 		// add all track we aren't sending yet to the PeerConnection
 		for id, strip := range m.stripIndex {
 			if _, ok := existingSenders[id]; !ok {
-				rtpSender, err := peerConn.AddTrack(strip.track)
+				rtpSender, err := pc.AddTrack(strip.track)
 
 				if err != nil {
-					log.Printf("[room %s error] peerConn.AddTrack: %v\n", m.shortId, err)
+					log.Printf("[room %s error] pc.AddTrack: %v\n", m.shortId, err)
 					return SignalingRetryNow
 				}
 
@@ -134,13 +134,13 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 			}
 		}
 
-		offer, err := peerConn.CreateOffer(nil)
+		offer, err := pc.CreateOffer(nil)
 		if err != nil {
 			log.Printf("[room %s error] CreateOffer: %v\n", m.shortId, err)
 			return SignalingRetryNow
 		}
 
-		if err = peerConn.SetLocalDescription(offer); err != nil {
+		if err = pc.SetLocalDescription(offer); err != nil {
 			log.Printf("[room %s error] SetLocalDescription: %v\n", m.shortId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
 			return SignalingRetryWithDelay
@@ -152,7 +152,7 @@ func (m *mixer) updateSignalingState(room *Room) (state SignalingState) {
 			return SignalingRetryNow
 		}
 
-		if err = ps.wsConn.SendWithPayload("offer", string(offerString)); err != nil {
+		if err = ps.ws.SendWithPayload("offer", string(offerString)); err != nil {
 			return SignalingRetryNow
 		}
 	}

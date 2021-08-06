@@ -24,10 +24,10 @@ const (
 )
 
 // Augmented pion PeerConnection
-type PeerConn struct {
+type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
-	room              *Room
+	room              *trialRoom
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
 	// if peer connection is closed before room is ended (for instance on browser page refresh)
 	closedCh chan struct{}
@@ -36,7 +36,7 @@ type PeerConn struct {
 	videoPipeline *gst.Pipeline
 }
 
-func filePrefix(joinPayload JoinPayload, room *Room) string {
+func filePrefix(joinPayload JoinPayload, room *trialRoom) string {
 	connectionCount := room.JoinedCountForUser(joinPayload.UserId)
 	// time room user count
 	return room.namespace + "/" +
@@ -79,37 +79,37 @@ func parseFrameRate(joinPayload JoinPayload) (frameRate int) {
 	return
 }
 
-func (p *PeerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
-	p.Lock()
-	defer p.Unlock()
+func (pc *peerConn) setPipeline(kind string, pipeline *gst.Pipeline) {
+	pc.Lock()
+	defer pc.Unlock()
 
 	if kind == "audio" {
-		p.audioPipeline = pipeline
+		pc.audioPipeline = pipeline
 	} else if kind == "video" {
-		p.videoPipeline = pipeline
+		pc.videoPipeline = pipeline
 	}
 }
 
 // API
 
-func (p *PeerConn) ControlFx(payload ControlPayload) {
+func (pc *peerConn) ControlFx(payload ControlPayload) {
 	var pipeline *gst.Pipeline
 	if payload.Kind == "audio" {
-		if p.audioPipeline == nil {
+		if pc.audioPipeline == nil {
 			return
 		}
-		pipeline = p.audioPipeline
+		pipeline = pc.audioPipeline
 	} else if payload.Kind == "video" {
-		if p.videoPipeline == nil {
+		if pc.videoPipeline == nil {
 			return
 		}
-		pipeline = p.videoPipeline
+		pipeline = pc.videoPipeline
 	} else {
 		return
 	}
 
 	interpolatorId := payload.Kind + payload.Name + payload.Property
-	interpolator := p.interpolatorIndex[interpolatorId]
+	interpolator := pc.interpolatorIndex[interpolatorId]
 
 	if interpolator != nil {
 		// an interpolation is already running for this pipeline, effect and property
@@ -126,22 +126,22 @@ func (p *PeerConn) ControlFx(payload ControlPayload) {
 		oldValue := pipeline.GetFxProperty(payload.Name, payload.Property)
 		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, DefaultInterpolatorStep)
 
-		p.Lock()
-		p.interpolatorIndex[interpolatorId] = newInterpolator
-		p.Unlock()
+		pc.Lock()
+		pc.interpolatorIndex[interpolatorId] = newInterpolator
+		pc.Unlock()
 
 		defer func() {
-			p.Lock()
-			delete(p.interpolatorIndex, interpolatorId)
-			p.Unlock()
+			pc.Lock()
+			delete(pc.interpolatorIndex, interpolatorId)
+			pc.Unlock()
 		}()
 
 	interpolatorLoop:
 		for {
 			select {
-			case <-p.room.endCh:
+			case <-pc.room.endCh:
 				break interpolatorLoop
-			case <-p.closedCh:
+			case <-pc.closedCh:
 				break interpolatorLoop
 			case currentValue, more := <-newInterpolator.C:
 				if more {
@@ -207,7 +207,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	return
 }
 
-func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn *PeerConn) {
+func NewPeerConn(joinPayload JoinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 	userId := joinPayload.UserId
 
 	ppc, err := newPionPeerConn(userId, joinPayload.VideoCodec)
@@ -215,10 +215,10 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 		return
 	}
 
-	peerConn = &PeerConn{sync.Mutex{}, ppc, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
+	pc = &peerConn{sync.Mutex{}, ppc, room, make(map[string]*sequencing.LinearInterpolator), make(chan struct{}), nil, nil}
 
 	// trickle ICE. Emit server candidate to client
-	peerConn.OnICECandidate(func(i *webrtc.ICECandidate) {
+	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
 			log.Printf("[user %s error] empty candidate", userId)
 			return
@@ -230,25 +230,25 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			return
 		}
 
-		wsConn.SendWithPayload("candidate", string(candidateString))
+		ws.SendWithPayload("candidate", string(candidateString))
 	})
 
 	// if PeerConnection is closed remove it from global list
-	peerConn.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
+	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
 		log.Printf("[user %s] peer connection state change: %s \n", userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
-			if err := peerConn.Close(); err != nil {
+			if err := pc.Close(); err != nil {
 				log.Printf("[user %s error] peer connection failed: %v\n", userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
-			close(peerConn.closedCh)
+			close(pc.closedCh)
 			room.DisconnectUser(userId)
 			room.UpdateSignaling()
 		}
 	})
 
-	peerConn.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		// TODO check if needed
 		// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
 		// This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
@@ -259,11 +259,11 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 				case <-room.endCh:
 					ticker.Stop()
 					return
-				case <-peerConn.closedCh:
+				case <-pc.closedCh:
 					ticker.Stop()
 					return
 				case <-ticker.C:
-					err := peerConn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
+					err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
 					if err != nil {
 						log.Printf("[user %s error] WriteRTCP: %v\n", userId, err)
 					}
@@ -308,7 +308,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 			room.BindPipeline(remoteTrack.ID(), pipeline)
 
 			// needed for further interaction from ws to pipeline
-			peerConn.setPipeline(kind, pipeline)
+			pc.setPipeline(kind, pipeline)
 
 			pipeline.Start()
 			room.AddFiles(userId, pipeline.Files)
@@ -325,7 +325,7 @@ func NewPeerConn(joinPayload JoinPayload, room *Room, wsConn *WsConn) (peerConn 
 				select {
 				case <-room.endCh:
 					break processLoop
-				case <-peerConn.closedCh:
+				case <-pc.closedCh:
 					break processLoop
 				default:
 					i, _, readErr := remoteTrack.Read(buf)

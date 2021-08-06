@@ -26,15 +26,15 @@ const (
 // global state
 var (
 	mu        sync.Mutex // TODO init here
-	roomIndex map[string]*Room
+	roomIndex map[string]*trialRoom
 )
 
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
-type Room struct {
+type trialRoom struct {
 	sync.RWMutex
 	// guarded by mutex
 	mixer            *mixer
-	peerServerIndex  map[string]*PeerServer // per user id
+	peerServerIndex  map[string]*peerServer // per user id
 	connectedIndex   map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
 	joinedCountIndex map[string]int         // per user id
 	filesIndex       map[string][]string    // per user id, contains media file names
@@ -55,10 +55,10 @@ type Room struct {
 
 func init() {
 	mu = sync.Mutex{}
-	roomIndex = make(map[string]*Room)
+	roomIndex = make(map[string]*trialRoom)
 }
 
-func (r *Room) delete() {
+func (r *trialRoom) delete() {
 	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
@@ -86,7 +86,7 @@ func QualifiedId(joinPayload JoinPayload) string {
 	return joinPayload.origin + "#" + joinPayload.RoomId
 }
 
-func newRoom(qualifiedId string, joinPayload JoinPayload) *Room {
+func newRoom(qualifiedId string, joinPayload JoinPayload) *trialRoom {
 	// process duration
 	duration := joinPayload.Duration
 	if duration < 1 {
@@ -115,8 +115,8 @@ func newRoom(qualifiedId string, joinPayload JoinPayload) *Room {
 
 	shortId := joinPayload.RoomId
 
-	return &Room{
-		peerServerIndex:  make(map[string]*PeerServer),
+	return &trialRoom{
+		peerServerIndex:  make(map[string]*peerServer),
 		filesIndex:       make(map[string][]string),
 		connectedIndex:   connectedIndex,
 		joinedCountIndex: joinedCountIndex,
@@ -133,11 +133,11 @@ func newRoom(qualifiedId string, joinPayload JoinPayload) *Room {
 	}
 }
 
-func (r *Room) userCount() int {
+func (r *trialRoom) userCount() int {
 	return len(r.connectedIndex)
 }
 
-func (r *Room) countdown() {
+func (r *trialRoom) countdown() {
 	// blocking "end" event and delete
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-endTimer.C
@@ -146,7 +146,7 @@ func (r *Room) countdown() {
 	close(r.endCh)
 
 	for _, ps := range r.peerServerIndex {
-		go ps.wsConn.SendWithPayload("end", r.Files())
+		go ps.ws.SendWithPayload("end", r.Files())
 	}
 	log.Printf("[room %s] end\n", r.shortId)
 
@@ -155,7 +155,7 @@ func (r *Room) countdown() {
 
 // API read-write
 
-func JoinRoom(joinPayload JoinPayload) (*Room, error) {
+func JoinRoom(joinPayload JoinPayload) (*trialRoom, error) {
 	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
@@ -196,7 +196,7 @@ func JoinRoom(joinPayload JoinPayload) (*Room, error) {
 	}
 }
 
-func (r *Room) IncTracksReadyCount() {
+func (r *trialRoom) IncTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
 
@@ -216,35 +216,35 @@ func (r *Room) IncTracksReadyCount() {
 		r.started = true
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
-			go ps.wsConn.Send("start")
+			go ps.ws.Send("start")
 		}
 		go r.countdown()
 		return
 	}
 }
 
-func (r *Room) BindPeerServer(ps *PeerServer) {
+func (r *trialRoom) BindPeerServer(ps *peerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *Room) UnbindPeerServer(ps *PeerServer) {
+func (r *trialRoom) UnbindPeerServer(ps *peerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	delete(r.peerServerIndex, ps.userId)
 }
 
-func (r *Room) BindPipeline(id string, pipeline *gst.Pipeline) {
+func (r *trialRoom) BindPipeline(id string, pipeline *gst.Pipeline) {
 	r.Lock()
 	defer r.Unlock()
 
 	r.mixer.bindPipeline(id, pipeline)
 }
 
-func (r *Room) DisconnectUser(userId string) {
+func (r *trialRoom) DisconnectUser(userId string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -261,7 +261,7 @@ func (r *Room) DisconnectUser(userId string) {
 	}
 }
 
-func (r *Room) AddFiles(userId string, files []string) {
+func (r *trialRoom) AddFiles(userId string, files []string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -270,21 +270,21 @@ func (r *Room) AddFiles(userId string, files []string) {
 
 // API read
 
-func (r *Room) JoinedCountForUser(userId string) int {
+func (r *trialRoom) JoinedCountForUser(userId string) int {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.joinedCountIndex[userId]
 }
 
-func (r *Room) Files() map[string][]string {
+func (r *trialRoom) Files() map[string][]string {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.filesIndex
 }
 
-func (r *Room) EndingDelay() (delay int) {
+func (r *trialRoom) EndingDelay() (delay int) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -298,7 +298,7 @@ func (r *Room) EndingDelay() (delay int) {
 	return
 }
 
-func (r *Room) NewTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (r *trialRoom) NewTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -307,7 +307,7 @@ func (r *Room) NewTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrt
 	return r.mixer.newTrack(c, id, streamID)
 }
 
-func (r *Room) RemoveTrack(id string) {
+func (r *trialRoom) RemoveTrack(id string) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -317,7 +317,7 @@ func (r *Room) RemoveTrack(id string) {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (r *Room) UpdateSignaling() {
+func (r *trialRoom) UpdateSignaling() {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -356,19 +356,19 @@ signalingLoop:
 }
 
 // dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
-func (r *Room) dispatchKeyFrame() {
+func (r *trialRoom) dispatchKeyFrame() {
 	r.RLock()
 	defer r.RUnlock()
 
 	log.Printf("[room %s] dispatchKeyFrame\n", r.shortId)
 
 	for _, ps := range r.peerServerIndex {
-		for _, receiver := range ps.peerConn.GetReceivers() {
+		for _, receiver := range ps.pc.GetReceivers() {
 			if receiver.Track() == nil {
 				continue
 			}
 
-			_ = ps.peerConn.WriteRTCP([]rtcp.Packet{
+			_ = ps.pc.WriteRTCP([]rtcp.Packet{
 				&rtcp.PictureLossIndication{
 					MediaSSRC: uint32(receiver.Track().SSRC()),
 				},

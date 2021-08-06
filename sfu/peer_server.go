@@ -10,25 +10,25 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-type PeerServer struct {
-	userId   string
-	room     *Room
-	peerConn *PeerConn
-	wsConn   *WsConn
+type peerServer struct {
+	userId string
+	room   *trialRoom
+	pc     *peerConn
+	ws     *wsConn
 }
 
 func newPeerServer(
 	joinPayload JoinPayload,
-	room *Room,
-	peerConn *PeerConn,
-	wsConn *WsConn) *PeerServer {
+	room *trialRoom,
+	pc *peerConn,
+	ws *wsConn) *peerServer {
 
 	userId := joinPayload.UserId
-	peerServer := &PeerServer{userId, room, peerConn, wsConn}
-	return peerServer
+	ps := &peerServer{userId, room, pc, ws}
+	return ps
 }
 
-func (ps *PeerServer) loop() {
+func (ps *peerServer) loop() {
 	var m WsMessageIn
 
 	// sends "ending" message before rooms does end
@@ -36,11 +36,11 @@ func (ps *PeerServer) loop() {
 		<-ps.room.waitForAllCh
 		<-time.After(time.Duration(ps.room.EndingDelay()) * time.Second)
 		log.Printf("[user %s] ending\n", ps.userId)
-		ps.wsConn.Send("ending")
+		ps.ws.Send("ending")
 	}()
 
 	for {
-		err := ps.wsConn.ReadJSON(&m)
+		err := ps.ws.ReadJSON(&m)
 
 		if err != nil {
 			ps.room.DisconnectUser(ps.userId)
@@ -58,7 +58,7 @@ func (ps *PeerServer) loop() {
 				return
 			}
 
-			if err := ps.peerConn.AddICECandidate(candidate); err != nil {
+			if err := ps.pc.AddICECandidate(candidate); err != nil {
 				log.Printf("[user %s error] add candidate: %v\n", ps.userId, err)
 				return
 			}
@@ -69,7 +69,7 @@ func (ps *PeerServer) loop() {
 				return
 			}
 
-			if err := ps.peerConn.SetRemoteDescription(answer); err != nil {
+			if err := ps.pc.SetRemoteDescription(answer); err != nil {
 				log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
 				return
 			}
@@ -78,7 +78,7 @@ func (ps *PeerServer) loop() {
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
 			} else {
-				go ps.peerConn.ControlFx(payload)
+				go ps.pc.ControlFx(payload)
 			}
 		}
 	}
@@ -89,36 +89,36 @@ func (ps *PeerServer) loop() {
 // handle incoming websockets
 func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 
-	wsConn := NewWsConn(unsafeConn)
-	defer wsConn.Close()
+	ws := NewWsConn(unsafeConn)
+	defer ws.Close()
 
 	// first message must be a join request
-	joinPayload, err := wsConn.ReadJoin(origin)
+	joinPayload, err := ws.ReadJoin(origin)
 	if err != nil {
 		log.Printf("[user unknown] join payload corrupted: %v\n", err)
 		return
 	}
 
 	// used to log info with user id
-	wsConn.SetUserId(joinPayload.UserId)
+	ws.SetUserId(joinPayload.UserId)
 
 	room, err := JoinRoom(joinPayload)
 
 	if err != nil {
 		// joinErr is meaningful to client
 		log.Printf("[user %s] join failed: %s", joinPayload.UserId, err)
-		wsConn.Send(fmt.Sprintf("error-%s", err))
+		ws.Send(fmt.Sprintf("error-%s", err))
 		return
 	}
 
-	peerConn := NewPeerConn(joinPayload, room, wsConn)
-	defer peerConn.Close()
+	pc := NewPeerConn(joinPayload, room, ws)
+	defer pc.Close()
 
-	peerServer := newPeerServer(joinPayload, room, peerConn, wsConn)
+	ps := newPeerServer(joinPayload, room, pc, ws)
 
 	// bind and signal
-	room.BindPeerServer(peerServer)
+	room.BindPeerServer(ps)
 	room.UpdateSignaling()
 
-	peerServer.loop() // blocking
+	ps.loop() // blocking
 }
