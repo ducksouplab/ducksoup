@@ -7,34 +7,46 @@ import (
 	"sync"
 
 	"github.com/creamlab/ducksoup/gst"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
-// expanding the mixer metaphor, a (channel) strip holds everything related to a given signal (output track, GStreamer pipeline...)
-type strip struct {
-	sync.Mutex
-	track        *webrtc.TrackLocalStaticRTP
-	pipeline     *gst.Pipeline
-	maxRateIndex map[string]uint64 // maxRate per peerConn
-}
+const DefaultBitrate = 80 * 8 * 1000
+const MinBitrate = 20 * 8 * 1000
+const MaxBitrate = 160 * 8 * 1000
 
 // mixer is not guarded by a mutex since all interaction is done through room
 type mixer struct {
-	shortId    string            // room's shortId used for logging
-	stripIndex map[string]*strip // per track id
+	shortId      string              // room's shortId used for logging
+	channelIndex map[string]*channel // per track id
+}
+
+// expanding the mixer metaphor, a channel strip holds everything related to a given signal (output track, GStreamer pipeline...)
+type channel struct {
+	sync.Mutex
+	localTrack            *webrtc.TrackLocalStaticRTP
+	pipeline              *gst.Pipeline
+	maxRate               uint64                       // maxRate per peerConn
+	senderControllerIndex map[string]*senderController // per user id
+}
+
+type senderController struct {
+	ssrc    webrtc.SSRC
+	sender  *webrtc.RTPSender
+	maxRate uint64
 }
 
 type success bool
 
 func newMixer(shortId string) *mixer {
 	return &mixer{
-		shortId:    shortId,
-		stripIndex: map[string]*strip{},
+		shortId:      shortId,
+		channelIndex: map[string]*channel{},
 	}
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) newOutTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (m *mixer) newLocalTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	// Create a new TrackLocal with the same codec as the incoming one
 	track, err := webrtc.NewTrackLocalStaticRTP(c, id, streamID)
 
@@ -43,20 +55,76 @@ func (m *mixer) newOutTrack(c webrtc.RTPCodecCapability, id, streamID string) *w
 		panic(err)
 	}
 
-	m.stripIndex[id] = &strip{
-		track:        track,
-		maxRateIndex: map[string]uint64{},
+	m.channelIndex[id] = &channel{
+		localTrack:            track,
+		senderControllerIndex: map[string]*senderController{},
 	}
 	return track
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeOutTrack(id string) {
-	delete(m.stripIndex, id)
+func (m *mixer) removeLocalTrack(id string) {
+	delete(m.channelIndex, id)
 }
 
 func (m *mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
-	m.stripIndex[id].pipeline = pipeline
+	m.channelIndex[id].pipeline = pipeline
+}
+
+func (controller *senderController) updateRate(loss uint8) {
+	var newMaxRate uint64
+	if loss < 5 {
+		// loss < 0.02, multiply by 1.05
+		newMaxRate = controller.maxRate * 269 / 256
+		if newMaxRate > MaxBitrate {
+			newMaxRate = MaxBitrate
+		}
+	} else if loss > 25 {
+		// loss > 0.1, multiply by (1 - loss/2)
+		newMaxRate = controller.maxRate * (512 - uint64(loss)) / 512
+		if newMaxRate < MinBitrate {
+			newMaxRate = MinBitrate
+		}
+	}
+	controller.maxRate = newMaxRate
+	log.Println("maxRate", newMaxRate, controller)
+}
+
+func runRTCPListener(controller *senderController, ssrc webrtc.SSRC, shortId string) {
+	buf := make([]byte, 1500)
+	for {
+		n, _, err := controller.sender.Read(buf)
+		if err != nil {
+			if err != io.EOF && err != io.ErrClosedPipe {
+				log.Printf("[room %s error] read RTCP: %v\n", shortId, err)
+			}
+			return
+		}
+		packets, err := rtcp.Unmarshal(buf[:n])
+		if err != nil {
+			log.Printf("Unmarshal RTCP: %v", err)
+			continue
+		}
+
+		for _, packet := range packets {
+			switch rtcpPacket := packet.(type) {
+			// 	TODO send PLI to pipeline?
+			// case *rtcp.PictureLossIndication:
+			case *rtcp.ReceiverEstimatedMaximumBitrate:
+				log.Printf("-- Estimated Bitrate: %d", rtcpPacket.Bitrate)
+				// TODO
+			case *rtcp.ReceiverReport:
+				log.Println("-- ", rtcpPacket)
+				for _, r := range rtcpPacket.Reports {
+					if r.SSRC == uint32(ssrc) {
+						//rtpState.updateRate(r.FractionLost)
+					}
+				}
+			default:
+				log.Printf("-- RTCP packet received: %T", packet)
+			}
+		}
+	}
 }
 
 func (m *mixer) updateTracks(room *trialRoom) success {
@@ -80,7 +148,7 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 			existingSenders[sender.Track().ID()] = true
 
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
-			_, ok := m.stripIndex[sender.Track().ID()]
+			_, ok := m.channelIndex[sender.Track().ID()]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
 					log.Printf("[room %s error] RemoveTrack: %v\n", m.shortId, err)
@@ -100,31 +168,30 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 		}
 
 		// add all track we aren't sending yet to the PeerConnection
-		for id, strip := range m.stripIndex {
+		for id, channel := range m.channelIndex {
 			if _, exists := existingSenders[id]; !exists {
-				rtpSender, err := pc.AddTrack(strip.track)
+				sender, err := pc.AddTrack(channel.localTrack)
 
 				if err != nil {
 					log.Printf("[room %s error] pc.AddTrack: %v\n", m.shortId, err)
 					return false
 				}
 
-				// TODO check if needed
-				// Read incoming RTCP packets
-				// Before these packets are returned they are processed by interceptors. For things
-				// like NACK this needs to be called.
-				go func() {
-					rtcpBuf := make([]byte, 1500)
-					for {
-						if _, _, err := rtpSender.Read(rtcpBuf); err != nil {
-							// EOF is an acceptable termination of this goroutine
-							if err != io.EOF {
-								log.Printf("[room %s error] read rtpSender: %v\n", m.shortId, err)
-							}
-							return
-						}
+				params := sender.GetParameters()
+				if len(params.Encodings) == 1 {
+					channel.Lock()
+					ssrc := params.Encodings[0].SSRC
+					controller := senderController{
+						ssrc:    ssrc,
+						sender:  sender,
+						maxRate: DefaultBitrate,
 					}
-				}()
+					channel.senderControllerIndex[userId] = &controller
+					channel.Unlock()
+
+					go runRTCPListener(&controller, ssrc, m.shortId)
+				}
+
 			}
 		}
 	}

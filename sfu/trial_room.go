@@ -298,10 +298,10 @@ func (r *trialRoom) EndingDelay() (delay int) {
 	return
 }
 
-func (r *trialRoom) NewOutTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (r *trialRoom) NewLocalTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
 	defer r.Unlock()
-	track := r.mixer.newOutTrack(c, id, streamID)
+	track := r.mixer.newLocalTrack(c, id, streamID)
 	r.outTracksReadyCount++
 
 	withSignaling := r.outTracksReadyCount == r.neededTracks
@@ -310,13 +310,13 @@ func (r *trialRoom) NewOutTrack(c webrtc.RTPCodecCapability, id, streamID string
 	return track
 }
 
-func (r *trialRoom) RemoveOutTrack(id string) {
+func (r *trialRoom) RemoveLocalTrack(id string) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
 		r.UpdatePeers(true)
 	}()
-	r.mixer.removeOutTrack(id)
+	r.mixer.removeLocalTrack(id)
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks

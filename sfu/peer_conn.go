@@ -279,32 +279,32 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		<-room.waitForAllCh
 
 		// prepare track and room, use the same ids as remoteTrack for simplicity
-		processedTrack := room.NewOutTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
+		localTrack := room.NewLocalTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
-		defer room.RemoveOutTrack(remoteTrack.ID())
+		defer room.RemoveLocalTrack(remoteTrack.ID())
 
 		kind := remoteTrack.Kind().String()
 		fx := parseFx(kind, join)
 
 		if fx == "forward" {
-			// special case for testing: write directly to processedTrack
+			// special case for testing: write directly to localTrack
 			for {
 				// Read RTP packets being sent to Pion
 				rtp, _, err := remoteTrack.ReadRTP()
 				if err != nil {
 					return
 				}
-				if err := processedTrack.WriteRTP(rtp); err != nil {
+				if err := localTrack.WriteRTP(rtp); err != nil {
 					return
 				}
 			}
 		} else {
-			// main case (with GStreamer): write/push to pipeline which in turn outputs to processedTrack
+			// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
 			mediaFilePrefix := filePrefix(join, room)
 			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 			// create and start pipeline
-			pipeline := gst.CreatePipeline(processedTrack, mediaFilePrefix, kind, codecName, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
+			pipeline := gst.CreatePipeline(localTrack, mediaFilePrefix, kind, codecName, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
 			room.BindPipeline(remoteTrack.ID(), pipeline)
 
 			// needed for further interaction from ws to pipeline

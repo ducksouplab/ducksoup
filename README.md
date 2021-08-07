@@ -218,12 +218,20 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`/plugins"
 
 ### Concepts in Go code
 
-On each connection to the websocket endpoint in `server.go` a new PeerServer (see `peer_server.go`) is created:
+On each connection to the websocket endpoint in `server.go` a new peerServer (see `peer_server.go`) is created:
 
-- it manages further client communication through websocket (see `ws_conn.go`) and RTC (see `peer_conn.go`)
-- join (create if necessary) room which manages the logical part (if room is full, if there is a disconnect/reconnect from same peer...)
+- it manages further client communication through a TCP websocket (`ws_conn.go`) and a RTC Peer Connection (`peer_conn.go`)
+- then it joins (creates if necessary) a room (`trial_room.go`) managing the user logic (accept/reject, deal with reconnections) and the trial sequencing
+- each room hold a reference to a mixer (`mixer.go`) that implements the SFU part: manages tracks attached to peer connections, handle signaling and RTCP feedback
 
-Thus PeerServer struct holds a reference to a Room, and each Room has references to several PeerServers.
+For a given user connected to the room, there is one peerServer (abbreviated `ps` in the code), one wsConn (`ws`) and one peerConn (`pc`).
+
+Depending on the size of the room, it may hold references to several peerServers.
+
+Each peerConn has several tracks:
+
+- remote: 2 (audio and video) client->server tracks
+- local: 2*(n-1) server->client tracks (for a room of size n, since peers don't receive back their own streams)
 
 ### Websocket messages
 
