@@ -1,10 +1,7 @@
 package engine
 
 import (
-	"log"
-
 	"github.com/pion/ice/v2"
-	"github.com/pion/interceptor"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
@@ -125,7 +122,6 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
 	m := &webrtc.MediaEngine{}
-	i := &interceptor.Registry{}
 
 	// always include opus
 	for _, c := range OpusCodecs {
@@ -155,13 +151,16 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 		webrtc.RTPCodecTypeVideo,
 	)
 
-	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-		log.Println("[engine error] could not register default interceptors")
-	}
+	// TODO: investigate why causes image loss after 20 seconds
+	// i := &interceptor.Registry{}
+	// interesting for instance for NACKs
+	// if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+	// 	log.Println("[engine error] could not register default interceptors")
+	// }
 
 	return webrtc.NewAPI(
 		webrtc.WithSettingEngine(s),
 		webrtc.WithMediaEngine(m),
-		webrtc.WithInterceptorRegistry(i),
+		// webrtc.WithInterceptorRegistry(i),
 	), nil
 }
