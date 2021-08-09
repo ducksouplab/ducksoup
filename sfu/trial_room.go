@@ -25,9 +25,14 @@ const (
 
 // global state
 var (
-	mu        sync.Mutex // TODO init here
+	mu        sync.Mutex
 	roomIndex map[string]*trialRoom
 )
+
+func init() {
+	mu = sync.Mutex{}
+	roomIndex = make(map[string]*trialRoom)
+}
 
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type trialRoom struct {
@@ -52,11 +57,6 @@ type trialRoom struct {
 	size         int
 	duration     int
 	neededTracks int
-}
-
-func init() {
-	mu = sync.Mutex{}
-	roomIndex = make(map[string]*trialRoom)
 }
 
 func (r *trialRoom) delete() {
@@ -298,10 +298,10 @@ func (r *trialRoom) EndingDelay() (delay int) {
 	return
 }
 
-func (r *trialRoom) NewLocalTrack(c webrtc.RTPCodecCapability, id, streamID string) *webrtc.TrackLocalStaticRTP {
+func (r *trialRoom) NewLocalTrackFromRemote(remoteTrack *webrtc.TrackRemote, remotePC *webrtc.PeerConnection) *webrtc.TrackLocalStaticRTP {
 	r.Lock()
 	defer r.Unlock()
-	track := r.mixer.newLocalTrack(c, id, streamID)
+	track := r.mixer.newLocalTrackFromRemote(remoteTrack, remotePC)
 	r.outTracksReadyCount++
 
 	withSignaling := r.outTracksReadyCount == r.neededTracks

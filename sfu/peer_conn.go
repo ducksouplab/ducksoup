@@ -11,7 +11,6 @@ import (
 	"github.com/creamlab/ducksoup/engine"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
-	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -249,28 +248,6 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		// TODO check if needed
-		// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
-		// This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
-		go func() {
-			ticker := time.NewTicker(time.Second * 3)
-			for {
-				select {
-				case <-room.endCh:
-					ticker.Stop()
-					return
-				case <-pc.closedCh:
-					ticker.Stop()
-					return
-				case <-ticker.C:
-					err := pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
-					if err != nil {
-						log.Printf("[user %s error] WriteRTCP: %v\n", userId, err)
-					}
-				}
-			}
-		}()
-
 		log.Printf("[user %s] new track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 
 		buf := make([]byte, 1500)
@@ -279,7 +256,7 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		<-room.waitForAllCh
 
 		// prepare track and room, use the same ids as remoteTrack for simplicity
-		localTrack := room.NewLocalTrack(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
+		localTrack := room.NewLocalTrackFromRemote(remoteTrack, pc.PeerConnection)
 		log.Printf("[user %s] %s track started\n", userId, remoteTrack.Kind().String())
 		defer room.RemoveLocalTrack(remoteTrack.ID())
 
@@ -301,10 +278,10 @@ func NewPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		} else {
 			// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
 			mediaFilePrefix := filePrefix(join, room)
-			codecName := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
+			codec := strings.Split(remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 			// create and start pipeline
-			pipeline := gst.CreatePipeline(localTrack, mediaFilePrefix, kind, codecName, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
+			pipeline := gst.CreatePipeline(localTrack, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
 			room.BindPipeline(remoteTrack.ID(), pipeline)
 
 			// needed for further interaction from ws to pipeline

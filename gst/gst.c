@@ -85,29 +85,41 @@ GstElement *gstreamer_parse_pipeline(char *pipeline)
     return gst_parse_launch(pipeline, &error);
 }
 
-float gstreamer_get_fx_property(GstElement *pipeline, char *elName, char *elProp) {
-    GstElement* fx;
+float gstreamer_get_property_float(GstElement *pipeline, char *name, char *prop) {
+    GstElement* el;
     gfloat value;
  
-    fx = gst_bin_get_by_name(GST_BIN(pipeline), elName);
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
     
-    if(fx) {
-        g_object_get(fx, elProp, &value, NULL);
-        gst_object_unref(fx);
+    if(el) {
+        g_object_get(el, prop, &value, NULL);
+        gst_object_unref(el);
     }
 
     return value;
 }
 
-void gstreamer_set_fx_property(GstElement *pipeline, char *elName, char *elProp, float elValue)
+void gstreamer_set_property_float(GstElement *pipeline, char *name, char *prop, float value)
 {
-    GstElement* fx;
+    GstElement* el;
 
-    fx = gst_bin_get_by_name(GST_BIN(pipeline), elName);
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
     
-    if(fx) {
-        g_object_set(fx, elProp, elValue, NULL);
-        gst_object_unref(fx);
+    if(el) {
+        g_object_set(el, prop, value, NULL);
+        gst_object_unref(el);
+    }
+}
+
+void gstreamer_set_property_int(GstElement *pipeline, char *name, char *prop, gint value)
+{
+    GstElement* el;
+
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_set(el, prop, value, NULL);
+        gst_object_unref(el);
     }
 }
 

@@ -24,6 +24,7 @@ type Pipeline struct {
 	track      *webrtc.TrackLocalStaticRTP
 	id         int
 	filePrefix string
+	codec      string
 }
 
 var pipelines = make(map[int]*Pipeline)
@@ -37,7 +38,7 @@ func init() {
 	}
 }
 
-func newPipelineStr(filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) (pipelineStr string) {
+func newPipelineStr(filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
 
 	// special case for testing
 	if fx == "passthrough" {
@@ -48,7 +49,7 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 	hasFx := len(fx) > 0
 	var engine Engine
 
-	switch codecName {
+	switch codec {
 	case "opus":
 		engine = engines.Opus
 		if hasFx {
@@ -71,10 +72,10 @@ func newPipelineStr(filePrefix string, kind string, codecName string, width int,
 			pipelineStr = h264RawPipeline
 		}
 	default:
-		panic("Unhandled codec " + codecName)
+		panic("Unhandled codec " + codec)
 	}
 	// set encoding and decoding
-	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast+" name=encoder", -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
 	// set file
@@ -134,9 +135,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codecName string, width int, height int, frameRate int, fx string) *Pipeline {
+func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) *Pipeline {
 
-	pipelineStr := newPipelineStr(filePrefix, kind, codecName, width, height, frameRate, fx)
+	pipelineStr := newPipelineStr(filePrefix, kind, codec, width, height, frameRate, fx)
 	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
@@ -151,6 +152,7 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 		track:      track,
 		id:         len(pipelines),
 		filePrefix: filePrefix,
+		codec:      codec,
 	}
 
 	pipelines[pipeline.id] = pipeline
@@ -176,25 +178,52 @@ func (p *Pipeline) Push(buffer []byte) {
 	C.gstreamer_push_buffer(p.Pipeline, b, C.int(len(buffer)))
 }
 
-func (p *Pipeline) SetFxProperty(elName string, elProperty string, elValue float32) {
+func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
 	// fx prefix needed (added during pipeline initialization)
-	cName := C.CString("fx" + elName)
-	cProperty := C.CString(elProperty)
-	cValue := C.float(elValue)
+	cName := C.CString(name)
+	cProp := C.CString(prop)
+	cValue := C.int(value)
 
 	defer C.free(unsafe.Pointer(cName))
-	defer C.free(unsafe.Pointer(cProperty))
+	defer C.free(unsafe.Pointer(cProp))
 
-	C.gstreamer_set_fx_property(p.Pipeline, cName, cProperty, cValue)
+	C.gstreamer_set_property_int(p.Pipeline, cName, cProp, cValue)
 }
 
-func (p *Pipeline) GetFxProperty(elName string, elProperty string) float32 {
+func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
-	cName := C.CString("fx" + elName)
-	cProperty := C.CString(elProperty)
+	cName := C.CString(name)
+	cProp := C.CString(prop)
+	cValue := C.float(value)
 
 	defer C.free(unsafe.Pointer(cName))
-	defer C.free(unsafe.Pointer(cProperty))
+	defer C.free(unsafe.Pointer(cProp))
 
-	return float32(C.gstreamer_get_fx_property(p.Pipeline, cName, cProperty))
+	C.gstreamer_set_property_float(p.Pipeline, cName, cProp, cValue)
+}
+
+func (p *Pipeline) SetEncodingRate(value64 uint64) {
+	value := int(value64)
+	prop := "bitrate"
+	if p.codec == "VP8" {
+		prop = "target-bitrate"
+	}
+	// find property
+	p.setPropertyInt("encoder", prop, value)
+}
+
+func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {
+	// fx prefix needed (added during pipeline initialization)
+	p.setPropertyFloat("fx"+name, prop, value)
+}
+
+func (p *Pipeline) GetFxProperty(name string, prop string) float32 {
+	// fx prefix needed (added during pipeline initialization)
+	cName := C.CString("fx" + name)
+	cProp := C.CString(prop)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProp))
+
+	return float32(C.gstreamer_get_property_float(p.Pipeline, cName, cProp))
 }
