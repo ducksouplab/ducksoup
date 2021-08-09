@@ -215,10 +215,10 @@ func (m *mixer) newLocalTrackFromRemote(remoteTrack *webrtc.TrackRemote, remoteP
 
 	if err != nil {
 		log.Printf("[mixer %s error] NewTrackLocalStaticRTP: %v\n", m.shortId, err)
-		panic(err)
+	} else {
+		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(track, remotePC, remoteTrack.SSRC())
 	}
 
-	m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(track, remotePC, remoteTrack.SSRC())
 	return track
 }
 
