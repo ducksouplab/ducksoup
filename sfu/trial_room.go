@@ -230,6 +230,13 @@ func (r *trialRoom) BindPeerServer(ps *peerServer) {
 	r.peerServerIndex[ps.userId] = ps
 }
 
+func (r *trialRoom) UnbindPeerServer(ps *peerServer) {
+	r.Lock()
+	defer r.Unlock()
+
+	delete(r.peerServerIndex, ps.userId)
+}
+
 func (r *trialRoom) BindPipeline(id string, pipeline *gst.Pipeline) {
 	r.Lock()
 	defer r.Unlock()
