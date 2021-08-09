@@ -31,8 +31,8 @@ type peerConn struct {
 	// if peer connection is closed before room is ended (for instance on browser page refresh)
 	closedCh chan struct{}
 	// GStreamer references
-	audioPipeline *gst.Pipeline
-	videoPipeline *gst.Pipeline
+	audioPH *gst.PipelineHandler
+	videoPH *gst.PipelineHandler
 }
 
 func filePrefix(join joinPayload, room *trialRoom) string {

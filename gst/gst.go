@@ -19,12 +19,14 @@ import (
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
-	Pipeline   *C.GstElement
-	Files      []string
-	track      *webrtc.TrackLocalStaticRTP
-	id         int
-	filePrefix string
-	codec      string
+	// public
+	Files []string
+	// private
+	id          int
+	gstPipeline *C.GstElement
+	track       *webrtc.TrackLocalStaticRTP
+	filePrefix  string
+	codec       string
 }
 
 var pipelines = make(map[int]*Pipeline)
@@ -147,12 +149,12 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 	defer pipelinesLock.Unlock()
 
 	pipeline := &Pipeline{
-		Pipeline:   C.gstreamer_parse_pipeline(pipelineStrUnsafe),
-		Files:      allFiles(filePrefix, kind, len(fx) > 0),
-		track:      track,
-		id:         len(pipelines),
-		filePrefix: filePrefix,
-		codec:      codec,
+		Files:       allFiles(filePrefix, kind, len(fx) > 0),
+		gstPipeline: C.gstreamer_parse_pipeline(pipelineStrUnsafe),
+		id:          len(pipelines),
+		track:       track,
+		filePrefix:  filePrefix,
+		codec:       codec,
 	}
 
 	pipelines[pipeline.id] = pipeline
@@ -161,13 +163,13 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
-	C.gstreamer_start_pipeline(p.Pipeline, C.int(p.id))
+	C.gstreamer_start_pipeline(p.gstPipeline, C.int(p.id))
 	log.Printf("[gst] pipeline %d started: %s\n", p.id, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
-	C.gstreamer_stop_pipeline(p.Pipeline, C.int(p.id))
+	C.gstreamer_stop_pipeline(p.gstPipeline, C.int(p.id))
 	log.Printf("[gst] pipeline %d stopped: %s\n", p.id, p.filePrefix)
 }
 
@@ -175,7 +177,7 @@ func (p *Pipeline) Stop() {
 func (p *Pipeline) Push(buffer []byte) {
 	b := C.CBytes(buffer)
 	defer C.free(b)
-	C.gstreamer_push_buffer(p.Pipeline, b, C.int(len(buffer)))
+	C.gstreamer_push_buffer(p.gstPipeline, b, C.int(len(buffer)))
 }
 
 func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
@@ -187,7 +189,7 @@ func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	C.gstreamer_set_property_int(p.Pipeline, cName, cProp, cValue)
+	C.gstreamer_set_property_int(p.gstPipeline, cName, cProp, cValue)
 }
 
 func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
@@ -199,7 +201,7 @@ func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	C.gstreamer_set_property_float(p.Pipeline, cName, cProp, cValue)
+	C.gstreamer_set_property_float(p.gstPipeline, cName, cProp, cValue)
 }
 
 func (p *Pipeline) SetEncodingRate(value64 uint64) {
@@ -225,5 +227,5 @@ func (p *Pipeline) GetFxProperty(name string, prop string) float32 {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	return float32(C.gstreamer_get_property_float(p.Pipeline, cName, cProp))
+	return float32(C.gstreamer_get_property_float(p.gstPipeline, cName, cProp))
 }
