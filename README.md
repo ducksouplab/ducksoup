@@ -5,7 +5,7 @@ Videoconferencing tool for social experiments.
 From a technical standpoint, DuckSoup is:
 
 - a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
-- with the possibility to record and optionnally transform video and audio streams thanks to GStreamer
+- with the possibility to record and optionnally transform video and audio streams thanks to [GStreamer](https://gstreamer.freedesktop.org/)
 
 ## DuckSoup server overview
 
@@ -15,11 +15,11 @@ A DuckSoup server exposes the following:
 - an HTTP websocket endpoint for signaling (TCP)
 - WebRTC (UDP)
 
-Using the client library `ducksoup.js` is the preferred way to interact with DuckSoup server (signaling and WebRTC).
+Using the client library `ducksoup.js` is the preferred way to interact with DuckSoup server (regarding signaling and WebRTC).
 
 ## DuckSoup player
 
-Let's assume we have a DuckSoup server installed and running at `ducksoup-host.com` and we want to embed a DuckSoup "player" in a website served at `my-experiment-host.com`.
+Let's assume we have a DuckSoup server installed and running at `ducksoup-host.com` and we want to embed a DuckSoup player in a webpage served from `my-experiment-host.com`.
 
 The embedding origin (`my-experiment-host.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.com` (see [Environment variables](#environment-variables)).
 
@@ -37,9 +37,9 @@ const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);
 
 Where:
 
-- assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see (Player API)[#player-api])
+- assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see [Player API](#player-api))
 
-- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`). The video stream is set to fill mountEl: set mountEl width and height and the DuckSoup player will adapt.
+- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`). The video stream is set to fill mountEl (deal with mountEl width and height and the DuckSoup player will adapt to them).
 
 - `peerOptions` (object) must contain the following properties:
 
@@ -162,8 +162,8 @@ go build
 
 ### Environment variables
 
-- DS_PORT=9000 (8000 is the default value) to set port listen by server
-- DS_ORIGINS=https://origin1,https://origin2:8080 declares comma separated allowed origins for WebSocket connections
+- DS_PORT=9000 (defaults to 8000) to set port listen by server
+- DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
 - DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
@@ -221,17 +221,17 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`/plugins"
 On each connection to the websocket endpoint in `server.go` a new peerServer (see `peer_server.go`) is created:
 
 - it manages further client communication through a TCP websocket (`ws_conn.go`) and a RTC Peer Connection (`peer_conn.go`)
-- then it joins (creates if necessary) a room (`trial_room.go`) managing the user logic (accept/reject, deal with reconnections) and the trial sequencing
-- each room hold a reference to a mixer (`mixer.go`) that implements the SFU part: manages tracks attached to peer connections, handle signaling and RTCP feedback
+- then it joins (or creates if necessary) a room (`trial_room.go`). Rooms manage the user logic (accept/reject user, deal with reconnections) and the trial sequencing and hold necessary data (for instance the list of recorded files)
+- each room holds one reference to a mixer (`mixer.go`) that implements the SFU part: the mixer manages tracks attached to peer connections, handles signaling and RTCP feedback
 
 For a given user connected to the room, there is one peerServer (abbreviated `ps` in the code), one wsConn (`ws`) and one peerConn (`pc`).
 
-Depending on the size of the room, it may hold references to several peerServers.
+Depending on its size, a room may hold references to several peerServers.
 
 Each peerConn has several tracks:
 
 - remote: 2 (audio and video) client->server tracks
-- local: 2*(n-1) server->client tracks (for a room of size n, since peers don't receive back their own streams)
+- local: 2*(n-1) server->client tracks for a room of size n (peers don't receive back their own streams)
 
 ### Websocket messages
 
