@@ -11,10 +11,12 @@ import (
 )
 
 type peerServer struct {
-	userId string
-	room   *trialRoom
-	pc     *peerConn
-	ws     *wsConn
+	userId     string
+	room       *trialRoom
+	pc         *peerConn
+	ws         *wsConn
+	audioTrack *localTrack
+	videoTrack *localTrack
 }
 
 func newPeerServer(
@@ -22,10 +24,20 @@ func newPeerServer(
 	room *trialRoom,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
+	return &peerServer{
+		userId: join.UserId,
+		room:   room,
+		pc:     pc,
+		ws:     ws,
+	}
+}
 
-	userId := join.UserId
-	ps := &peerServer{userId, room, pc, ws}
-	return ps
+func (ps *peerServer) setLocalTrack(kind string, outputTrack *localTrack) {
+	if kind == "audio" {
+		ps.audioTrack = outputTrack
+	} else if kind == "video" {
+		ps.videoTrack = outputTrack
+	}
 }
 
 func (ps *peerServer) loop() {
@@ -34,7 +46,7 @@ func (ps *peerServer) loop() {
 	// sends "ending" message before rooms does end
 	go func() {
 		<-ps.room.waitForAllCh
-		<-time.After(time.Duration(ps.room.EndingDelay()) * time.Second)
+		<-time.After(time.Duration(ps.room.endingDelay()) * time.Second)
 		log.Printf("[user %s] ending\n", ps.userId)
 		ps.ws.Send("ending")
 	}()
@@ -43,7 +55,7 @@ func (ps *peerServer) loop() {
 		err := ps.ws.ReadJSON(&m)
 
 		if err != nil {
-			ps.room.DisconnectUser(ps.userId)
+			ps.room.disconnectUser(ps.userId)
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 				log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
 			}
@@ -78,7 +90,13 @@ func (ps *peerServer) loop() {
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
 			} else {
-				go ps.pc.ControlFx(payload)
+				go func() {
+					if payload.Kind == "audio" && ps.audioTrack != nil {
+						ps.audioTrack.controlFx(payload)
+					} else if ps.videoTrack != nil {
+						ps.videoTrack.controlFx(payload)
+					}
+				}()
 			}
 		}
 	}
@@ -102,7 +120,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	// used to log info with user id
 	ws.SetUserId(joinPayload.UserId)
 
-	room, err := JoinRoom(joinPayload)
+	room, err := joinRoom(joinPayload)
 
 	if err != nil {
 		// joinErr is meaningful to client
@@ -111,14 +129,13 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 		return
 	}
 
-	pc := NewPeerConn(joinPayload, room, ws)
+	pc := newPeerConn(joinPayload, room, ws)
 	defer pc.Close()
 
 	ps := newPeerServer(joinPayload, room, pc, ws)
 
-	// bind and signal
-	room.BindPeerServer(ps)
-	room.UpdatePeers(true)
+	// bind (and automatically trigger a signaling update)
+	room.bindPeerServer(ps)
 
 	ps.loop() // blocking
 }

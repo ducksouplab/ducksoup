@@ -233,6 +233,22 @@ Each peerConn has several tracks:
 - remote: 2 (audio and video) client->server tracks
 - local: 2*(n-1) server->client tracks for a room of size n (peers don't receive back their own streams)
 
+### Step by step code description of a trial
+
+- peer P1 connects to the signaling endpoint of DuckSoup, specifying a trialRoom ID
+- the `trialRoom` is created (or joined) and a `peerServer` is launched to deal with further communication between the server and P1
+- in particular `peerServer` creates a `peerConn` initiliazed with 2 transceivers P1 audio and video tracks
+- signaling `S0` is triggered to negotiate these tracks
+- the `trialRoom` (in charge of users/peers) initializes a `mixer` (~ the SFU, in charge of peer connection)
+- at some point following `S0`, an incoming/remote video (or audio) track for P1 is received (see `OnTrack` in `peer_conn.go` ), then a resulting (processed) `localTrack` is created
+- the `localTrack` struct contains a GStreamer pipeline for processing; it runs the processing loop and interations (control fx)
+- the `localTrack` is then embedded within a `mixerSlice` which implements the network-aware behavior for this track, updating its optimal encoding bitrate depending on network conditions
+- the `mixerSlice` is added to the `mixer` of the `trialRoom` containing other peers
+- once all localTracks expected for all peers are ready, the `trialRoom` asks the `mixer` to update signaling:
+  1. P1 output tracks are added to the other peers connections (and vice versa)
+	2. New offers are created and sent to update remote peer connections
+- a by-product of this signaling step is the initialization of `senderControllers` needed by `mixerSlices` to inspect network conditions
+
 ### Websocket messages
 
 Messages from server (Go) to client (JS):

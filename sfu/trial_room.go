@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/helpers"
-	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -83,7 +81,7 @@ func parseNamespace(ns string) string {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func QualifiedId(join joinPayload) string {
+func qualifiedId(join joinPayload) string {
 	return join.origin + "#" + join.RoomId
 }
 
@@ -116,7 +114,7 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 
 	shortId := join.RoomId
 
-	return &trialRoom{
+	room := &trialRoom{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
 		connectedIndex:      connectedIndex,
@@ -125,7 +123,6 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 		endCh:               make(chan struct{}),
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
-		mixer:               newMixer(shortId),
 		qualifiedId:         qualifiedId,
 		shortId:             shortId,
 		namespace:           namespace,
@@ -133,6 +130,8 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
 	}
+	room.mixer = newMixer(room)
+	return room
 }
 
 func (r *trialRoom) userCount() int {
@@ -148,7 +147,7 @@ func (r *trialRoom) countdown() {
 	close(r.endCh)
 
 	for _, ps := range r.peerServerIndex {
-		go ps.ws.SendWithPayload("end", r.Files())
+		go ps.ws.SendWithPayload("end", r.files())
 	}
 	log.Printf("[room %s] end\n", r.shortId)
 
@@ -157,12 +156,12 @@ func (r *trialRoom) countdown() {
 
 // API read-write
 
-func JoinRoom(join joinPayload) (*trialRoom, error) {
+func joinRoom(join joinPayload) (*trialRoom, error) {
 	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
 
-	qualifiedId := QualifiedId(join)
+	qualifiedId := qualifiedId(join)
 	userId := join.UserId
 
 	if r, ok := roomIndex[qualifiedId]; ok {
@@ -198,7 +197,7 @@ func JoinRoom(join joinPayload) (*trialRoom, error) {
 	}
 }
 
-func (r *trialRoom) IncInTracksReadyCount() {
+func (r *trialRoom) incInTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
 
@@ -223,28 +222,28 @@ func (r *trialRoom) IncInTracksReadyCount() {
 	}
 }
 
-func (r *trialRoom) BindPeerServer(ps *peerServer) {
+func (r *trialRoom) incOutTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
+
+	r.outTracksReadyCount++
+
+	if r.outTracksReadyCount == r.neededTracks {
+		go r.mixer.managedUpdateSignaling()
+	}
+}
+
+func (r *trialRoom) bindPeerServer(ps *peerServer) {
+	r.Lock()
+	defer func() {
+		r.Unlock()
+		r.mixer.managedUpdateSignaling()
+	}()
 
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *trialRoom) UnbindPeerServer(ps *peerServer) {
-	r.Lock()
-	defer r.Unlock()
-
-	delete(r.peerServerIndex, ps.userId)
-}
-
-func (r *trialRoom) BindPipeline(id string, pipeline *gst.Pipeline) {
-	r.Lock()
-	defer r.Unlock()
-
-	r.mixer.bindPipeline(id, pipeline)
-}
-
-func (r *trialRoom) DisconnectUser(userId string) {
+func (r *trialRoom) disconnectUser(userId string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -261,7 +260,7 @@ func (r *trialRoom) DisconnectUser(userId string) {
 	}
 }
 
-func (r *trialRoom) AddFiles(userId string, files []string) {
+func (r *trialRoom) addFiles(userId string, files []string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -270,21 +269,21 @@ func (r *trialRoom) AddFiles(userId string, files []string) {
 
 // API read
 
-func (r *trialRoom) JoinedCountForUser(userId string) int {
+func (r *trialRoom) joinedCountForUser(userId string) int {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.joinedCountIndex[userId]
 }
 
-func (r *trialRoom) Files() map[string][]string {
+func (r *trialRoom) files() map[string][]string {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.filesIndex
 }
 
-func (r *trialRoom) EndingDelay() (delay int) {
+func (r *trialRoom) endingDelay() (delay int) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -298,86 +297,27 @@ func (r *trialRoom) EndingDelay() (delay int) {
 	return
 }
 
-func (r *trialRoom) NewLocalTrackFromRemote(remoteTrack *webrtc.TrackRemote, remotePC *webrtc.PeerConnection) *webrtc.TrackLocalStaticRTP {
-	r.Lock()
-	defer r.Unlock()
-	track := r.mixer.newLocalTrackFromRemote(remoteTrack, remotePC)
-	r.outTracksReadyCount++
+func (r *trialRoom) runLocalTrackFromRemote(
+	userId string,
+	join joinPayload,
+	pc *peerConn,
+	remoteTrack *webrtc.TrackRemote,
+	receiver *webrtc.RTPReceiver,
+) {
+	outputTrack, err := r.mixer.newLocalTrackFromRemote(userId, r, join, pc, remoteTrack, receiver)
 
-	withSignaling := r.outTracksReadyCount == r.neededTracks
-	go r.UpdatePeers(withSignaling) // don't block
+	if err != nil {
+		log.Printf("[room %s error] runLocalTrackFromRemote: %v\n", r.shortId, err)
+	} else {
+		defer r.mixer.removeLocalTrack(outputTrack.id)
 
-	return track
-}
+		// needed to relay control fx events between peer server and output track
+		ps := r.peerServerIndex[userId]
+		ps.setLocalTrack(remoteTrack.Kind().String(), outputTrack)
 
-func (r *trialRoom) RemoveLocalTrack(id string) {
-	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.UpdatePeers(true)
-	}()
-	r.mixer.removeLocalTrack(id)
-}
+		// will trigger signaling if needed
+		r.incOutTracksReadyCount()
 
-// Update each PeerConnection so that it is getting all the expected media tracks
-func (r *trialRoom) UpdatePeers(withSignaling bool) {
-	r.Lock()
-	defer func() {
-		r.Unlock()
-		go r.dispatchKeyFrame()
-	}()
-
-	log.Printf("[room %s] signaling update\n", r.shortId)
-
-signalingLoop:
-	for {
-		select {
-		case <-r.endCh:
-			break signalingLoop
-		default:
-			for tries := 0; ; tries++ {
-				switch r.mixer.updateSignaling(r, withSignaling) {
-				case true:
-					// signaling succeeded
-					break signalingLoop
-				case false:
-					if tries >= 20 {
-						// signaling failed too many times
-						// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
-						go func() {
-							time.Sleep(time.Second * 3)
-							r.UpdatePeers(withSignaling)
-						}()
-						return
-					} else {
-						// signaling failed
-						time.Sleep(time.Second * 1)
-					}
-				}
-			}
-		}
-	}
-
-}
-
-// dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
-func (r *trialRoom) dispatchKeyFrame() {
-	r.RLock()
-	defer r.RUnlock()
-
-	log.Printf("[room %s] dispatchKeyFrame\n", r.shortId)
-
-	for _, ps := range r.peerServerIndex {
-		for _, receiver := range ps.pc.GetReceivers() {
-			if receiver.Track() == nil {
-				continue
-			}
-
-			_ = ps.pc.WriteRTCP([]rtcp.Packet{
-				&rtcp.PictureLossIndication{
-					MediaSSRC: uint32(receiver.Track().SSRC()),
-				},
-			})
-		}
+		outputTrack.loop() // blocking
 	}
 }

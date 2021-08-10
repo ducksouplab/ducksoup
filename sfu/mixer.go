@@ -2,46 +2,28 @@ package sfu
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/gst"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
-// In a SFU fashion and with the example of three peers (P1, P2, P3):
-// - P1 incoming/remote video track is received in peer_conn.go (OnTrack), then a resulting processed/local track is created
-//   and added to the mixer within a mixerSlice struct
-// - indeed the mixerSlice holds everything related to this processed track (the track itself, the GStreamer pipeline...)
-//   and is added to the mixer (~ the SFU) of the room that contains P1, P2, P3
-// - in a preliminary signaling step (see updateTracks), this track is added to P2 and P3 peer connections and their corresponding RTP senders
-//   are held within senderControllers stored on the mixerSlice (senderControllerIndex)
-// - signaling is completed by updateOffers
-// - runRTCPListener acts on the senderControllers with the intent to adapt the encoding rate of the processed track to the network conditions
-// - this optimal bitrate is sent as a guideline to the GStreamer encoder element
-
-// TODO this could belong to a configuration file
-const DefaultVideoBitrate = 500 * 1000
-const MinVideoBitrate = 125 * 1000
-const MaxVideoBitrate = 750 * 1000
-const DefaultAudioBitrate = 48 * 1000
-const MinAudioBitrate = 16 * 1000
-const MaxAudioBitrate = 64 * 1000
-
 type mixer struct {
-	// TODO currently not guarded by a mutex since all interaction is done through room (lack of clarity/robustness)
+	sync.Mutex
+	room            *trialRoom
 	shortId         string                 // room's shortId used for logging
 	mixerSliceIndex map[string]*mixerSlice // per track id
 }
 
 type mixerSlice struct {
 	sync.Mutex
-	localTrack            *webrtc.TrackLocalStaticRTP
-	remotePC              *webrtc.PeerConnection
+	outputTrack           *localTrack
+	receivingPC           *webrtc.PeerConnection // peer connection holding the incoming/remote track
+	receiver              *webrtc.RTPReceiver
 	remoteSSRC            webrtc.SSRC
-	pipeline              *gst.Pipeline
 	senderControllerIndex map[string]*senderController // per user id
 	updateTicker          *time.Ticker
 	endCh                 chan struct{} // stop processing when track is removed
@@ -58,6 +40,62 @@ type senderController struct {
 
 type success bool
 
+// senderController
+
+func (sc *senderController) updateRateFromREMB(remb uint64) {
+	sc.Lock()
+	defer sc.Unlock()
+
+	sc.maxREMB = remb
+	if sc.maxRate > remb {
+		sc.maxRate = remb
+	}
+}
+
+// see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
+func (sc *senderController) updateRateFromLoss(loss uint8) {
+	sc.Lock()
+	defer sc.Unlock()
+
+	var newMaxRate uint64
+	prevMaxRate := sc.maxRate
+
+	if loss < 5 {
+		// loss < 0.02, multiply by 1.05
+		newMaxRate = prevMaxRate * 269 / 256
+		if sc.kind == "audio" {
+			if newMaxRate > maxAudioBitrate {
+				newMaxRate = maxAudioBitrate
+			}
+		} else {
+			if newMaxRate > maxVideoBitrate {
+				newMaxRate = maxVideoBitrate
+			}
+		}
+	} else if loss > 25 {
+		// loss > 0.1, multiply by (1 - loss/2)
+		newMaxRate = prevMaxRate * (512 - uint64(loss)) / 512
+
+		if sc.kind == "audio" {
+			if newMaxRate < minAudioBitrate {
+				newMaxRate = minAudioBitrate
+			}
+		} else {
+			if newMaxRate < minVideoBitrate {
+				newMaxRate = minVideoBitrate
+			}
+		}
+
+	} else {
+		newMaxRate = prevMaxRate
+	}
+
+	if newMaxRate > sc.maxREMB {
+		newMaxRate = sc.maxREMB
+	}
+	sc.maxRate = newMaxRate
+}
+
 // mixerSlice
 
 func minUint64Slice(v []uint64) (min uint64) {
@@ -72,12 +110,13 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func newMixerSlice(localTrack *webrtc.TrackLocalStaticRTP, remotePC *webrtc.PeerConnection, remoteSSRC webrtc.SSRC) *mixerSlice {
+func newMixerSlice(shortId string, pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver, remoteSSRC webrtc.SSRC) *mixerSlice {
 	updateTicker := time.NewTicker(1 * time.Second)
 
 	ms := &mixerSlice{
-		localTrack:            localTrack,
-		remotePC:              remotePC,
+		outputTrack:           outputTrack,
+		receivingPC:           pc.PeerConnection,
+		receiver:              receiver,
 		remoteSSRC:            remoteSSRC,
 		senderControllerIndex: map[string]*senderController{},
 		updateTicker:          updateTicker,
@@ -88,76 +127,25 @@ func newMixerSlice(localTrack *webrtc.TrackLocalStaticRTP, remotePC *webrtc.Peer
 	go func() {
 		for range updateTicker.C {
 			if len(ms.senderControllerIndex) > 0 {
-				controllerRates := []uint64{}
-				for _, controller := range ms.senderControllerIndex {
-					controllerRates = append(controllerRates, controller.maxRate)
+				rates := []uint64{}
+				for _, sc := range ms.senderControllerIndex {
+					rates = append(rates, sc.maxRate)
 				}
-				sliceRate := minUint64Slice(controllerRates)
-				if ms.localTrack.Kind().String() == "video" {
-					log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
-				}
-				if ms.pipeline != nil && sliceRate > 0 {
-					ms.pipeline.SetEncodingRate(sliceRate)
+				sliceRate := minUint64Slice(rates)
+				// if ms.localTrack.Kind().String() == "video" {
+				// 	log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
+				// }
+				if ms.outputTrack.pipeline != nil && sliceRate > 0 {
+					ms.outputTrack.pipeline.SetEncodingRate(sliceRate)
 				}
 			}
 		}
 	}()
 
+	// TODO enable later if receiver RTCP packets are useful to parse
+	// go ms.runReceiverListener(shortId)
+
 	return ms
-}
-
-func (controller *senderController) updateRateFromREMB(remb uint64) {
-	controller.Lock()
-	defer controller.Unlock()
-
-	controller.maxREMB = remb
-	if controller.maxRate > remb {
-		controller.maxRate = remb
-	}
-}
-
-// see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
-func (controller *senderController) updateRateFromLoss(loss uint8) {
-	controller.Lock()
-	defer controller.Unlock()
-
-	var newMaxRate uint64
-	prevMaxRate := controller.maxRate
-
-	if loss < 5 {
-		// loss < 0.02, multiply by 1.05
-		newMaxRate = prevMaxRate * 269 / 256
-		if controller.kind == "audio" {
-			if newMaxRate > MaxAudioBitrate {
-				newMaxRate = MaxAudioBitrate
-			}
-		} else {
-			if newMaxRate > MaxVideoBitrate {
-				newMaxRate = MaxVideoBitrate
-			}
-		}
-	} else if loss > 25 {
-		// loss > 0.1, multiply by (1 - loss/2)
-		newMaxRate = prevMaxRate * (512 - uint64(loss)) / 512
-
-		if controller.kind == "audio" {
-			if newMaxRate < MinAudioBitrate {
-				newMaxRate = MinAudioBitrate
-			}
-		} else {
-			if newMaxRate < MinVideoBitrate {
-				newMaxRate = MinVideoBitrate
-			}
-		}
-
-	} else {
-		newMaxRate = prevMaxRate
-	}
-
-	if newMaxRate > controller.maxREMB {
-		newMaxRate = controller.maxREMB
-	}
-	controller.maxRate = newMaxRate
 }
 
 func (ms *mixerSlice) stop() {
@@ -165,7 +153,8 @@ func (ms *mixerSlice) stop() {
 	close(ms.endCh)
 }
 
-func (ms *mixerSlice) runRTCPListener(controller *senderController, ssrc webrtc.SSRC, shortId string) {
+func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, shortId string) {
+	buf := make([]byte, receiveMTU)
 
 listenerLoop:
 	for {
@@ -173,29 +162,36 @@ listenerLoop:
 		case <-ms.endCh:
 			break listenerLoop
 		default:
-			packets, _, err := controller.sender.ReadRTCP()
+			n, _, err := sc.sender.Read(buf)
 			if err != nil {
-				log.Printf("[mixer %s error] sender ReadRTCP: %v\n", shortId, err)
+				if err != io.EOF && err != io.ErrClosedPipe {
+					log.Printf("[mixer %s error] sender read RTCP: %v\n", shortId, err)
+				}
+				return
+			}
+			packets, err := rtcp.Unmarshal(buf[:n])
+			if err != nil {
+				log.Printf("[mixer %s error] sender unmarshal RTCP: %v\n", shortId, err)
 				continue
 			}
 
 			for _, packet := range packets {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					err := ms.remotePC.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(ms.remoteSSRC)}})
+					err := ms.receivingPC.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(ms.remoteSSRC)}})
 					if err != nil {
 						log.Printf("[mixer %s error] WriteRTCP PLI: %v\n", shortId, err)
 					}
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
-					controller.updateRateFromREMB(rtcpPacket.Bitrate)
+					sc.updateRateFromREMB(rtcpPacket.Bitrate)
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(ssrc) {
-							controller.updateRateFromLoss(r.FractionLost)
+							sc.updateRateFromLoss(r.FractionLost)
 						}
 					}
 					// default:
-					// 	log.Printf("-- RTCP packet received: %T", packet)
+					// 	log.Printf("-- RTCP packet on sender: %T", rtcpPacket)
 				}
 			}
 		}
@@ -204,46 +200,52 @@ listenerLoop:
 
 // mixer
 
-func newMixer(shortId string) *mixer {
+func newMixer(room *trialRoom) *mixer {
 	return &mixer{
-		shortId:         shortId,
+		room:            room,
 		mixerSliceIndex: map[string]*mixerSlice{},
 	}
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) newLocalTrackFromRemote(remoteTrack *webrtc.TrackRemote, remotePC *webrtc.PeerConnection) *webrtc.TrackLocalStaticRTP {
-	// Create a new TrackLocal with the same codec as the incoming one
-	track, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
+func (m *mixer) newLocalTrackFromRemote(userId string, room *trialRoom, join joinPayload, pc *peerConn, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (outputTrack *localTrack, err error) {
+	outputTrack, err = newLocalTrack(userId, room, join, pc, remoteTrack)
 
-	if err != nil {
-		log.Printf("[mixer %s error] NewTrackLocalStaticRTP: %v\n", m.shortId, err)
-	} else {
-		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(track, remotePC, remoteTrack.SSRC())
+	if err == nil {
+		m.Lock()
+		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(m.shortId, pc, outputTrack, receiver, remoteTrack.SSRC())
+		m.Unlock()
+
+		// listen to pc close
+		go func() {
+			<-pc.closedCh
+			m.managedUpdateSignaling()
+		}()
 	}
-
-	return track
+	return
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
 func (m *mixer) removeLocalTrack(id string) {
+	m.Lock()
+	defer func() {
+		m.Unlock()
+		m.managedUpdateSignaling()
+	}()
+
 	if ms, exists := m.mixerSliceIndex[id]; exists {
 		ms.stop()
 		delete(m.mixerSliceIndex, id)
 	}
 }
 
-func (m *mixer) bindPipeline(id string, pipeline *gst.Pipeline) {
-	m.mixerSliceIndex[id].pipeline = pipeline
-}
-
-func (m *mixer) updateTracks(room *trialRoom) success {
-	for userId, ps := range room.peerServerIndex {
+func (m *mixer) updateTracks() success {
+	for userId, ps := range m.room.peerServerIndex {
 		// iterate to update peer connections of each PeerServer
 		pc := ps.pc
 
 		if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
-			delete(room.peerServerIndex, userId)
+			delete(m.room.peerServerIndex, userId)
 			break
 		}
 
@@ -267,7 +269,7 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 		}
 
 		// when room size is 1, it acts as a mirror
-		if room.size != 1 {
+		if m.room.size != 1 {
 			// don't receive videos we are sending, make sure we don't have loopback (remote peer point of view)
 			for _, receiver := range pc.GetReceivers() {
 				if receiver.Track() == nil {
@@ -279,8 +281,9 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 
 		// add all track we aren't sending yet to the PeerConnection
 		for id, ms := range m.mixerSliceIndex {
+
 			if _, exists := existingSenders[id]; !exists {
-				sender, err := pc.AddTrack(ms.localTrack)
+				sender, err := pc.AddTrack(ms.outputTrack.track)
 
 				if err != nil {
 					log.Printf("[mixer %s error] pc.AddTrack: %v\n", m.shortId, err)
@@ -289,13 +292,13 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 
 				params := sender.GetParameters()
 				if len(params.Encodings) == 1 {
-					kind := ms.localTrack.Kind().String()
+					kind := ms.outputTrack.track.Kind().String()
 					ssrc := params.Encodings[0].SSRC
-					defaultBitrate := DefaultVideoBitrate
+					defaultBitrate := defaultVideoBitrate
 					if kind == "audio" {
-						defaultBitrate = DefaultAudioBitrate
+						defaultBitrate = defaultAudioBitrate
 					}
-					controller := senderController{
+					sc := senderController{
 						ssrc:    ssrc,
 						kind:    kind,
 						sender:  sender,
@@ -303,10 +306,10 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 						maxREMB: uint64(defaultBitrate),
 					}
 					ms.Lock()
-					ms.senderControllerIndex[userId] = &controller
+					ms.senderControllerIndex[userId] = &sc
 					ms.Unlock()
 
-					go ms.runRTCPListener(&controller, ssrc, m.shortId)
+					go ms.runSenderListener(&sc, ssrc, m.shortId)
 				} else {
 					log.Printf("[mixer %s error] wrong number of encoding parameters: %v\n", m.shortId, err)
 				}
@@ -317,9 +320,8 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 	return true
 }
 
-func (m *mixer) updateOffers(room *trialRoom) success {
-	for _, ps := range room.peerServerIndex {
-
+func (m *mixer) updateOffers() success {
+	for _, ps := range m.room.peerServerIndex {
 		pc := ps.pc
 
 		offer, err := pc.CreateOffer(nil)
@@ -350,18 +352,111 @@ func (m *mixer) updateOffers(room *trialRoom) success {
 // Signaling is split in two steps:
 // - add or remove tracks on peer connections
 // - update and send offers, if the boolean withSignaling is true
-//   (withSignaling is helpful not to overdo signaling when all tracks of different peers have not been added yet)
 // Returning false means: please retry later
-func (m *mixer) updateSignaling(room *trialRoom, withSignaling bool) success {
-	if s := m.updateTracks(room); !s {
+func (m *mixer) updateSignaling() success {
+	if s := m.updateTracks(); !s {
 		return false
 	}
-
-	if withSignaling {
-		if s := m.updateOffers(room); !s {
-			return false
-		}
+	if s := m.updateOffers(); !s {
+		return false
 	}
-
 	return true
 }
+
+// Update each PeerConnection so that it is getting all the expected media tracks
+func (m *mixer) managedUpdateSignaling() {
+	m.Lock()
+	defer func() {
+		m.Unlock()
+		go m.dispatchKeyFrame()
+	}()
+
+	log.Printf("[mixer %s] signaling update\n", m.room.shortId)
+
+signalingLoop:
+	for {
+		select {
+		case <-m.room.endCh:
+			break signalingLoop
+		default:
+			for tries := 0; ; tries++ {
+				switch m.updateSignaling() {
+				case true:
+					// signaling succeeded
+					break signalingLoop
+				case false:
+					if tries >= 20 {
+						// signaling failed too many times
+						// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
+						go func() {
+							time.Sleep(time.Second * 3)
+							m.managedUpdateSignaling()
+						}()
+						return
+					} else {
+						// signaling failed
+						time.Sleep(time.Second * 1)
+					}
+				}
+			}
+		}
+	}
+}
+
+// dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
+func (m *mixer) dispatchKeyFrame() {
+	m.Lock()
+	defer m.Unlock()
+
+	log.Printf("[mixer %s] dispatchKeyFrame\n", m.room.shortId)
+
+	for _, ps := range m.room.peerServerIndex {
+		for _, receiver := range ps.pc.GetReceivers() {
+			if receiver.Track() == nil {
+				continue
+			}
+
+			_ = ps.pc.WriteRTCP([]rtcp.Packet{
+				&rtcp.PictureLossIndication{
+					MediaSSRC: uint32(receiver.Track().SSRC()),
+				},
+			})
+		}
+	}
+}
+
+// func (ms *mixerSlice) runReceiverListener(shortId string) {
+// 	buf := make([]byte, receiveMTU)
+
+// listenerLoop:
+// 	for {
+// 		select {
+// 		case <-ms.endCh:
+// 			break listenerLoop
+// 		default:
+// 			n, _, err := ms.receiver.Read(buf)
+// 			if err != nil {
+// 				if err != io.EOF && err != io.ErrClosedPipe {
+// 					log.Printf("[mixer %s error] receiver read RTCP: %v\n", shortId, err)
+// 				}
+// 				return
+// 			}
+// 			packets, err := rtcp.Unmarshal(buf[:n])
+// 			if err != nil {
+// 				log.Printf("[mixer %s error] receiver unmarshal RTCP: %v\n", shortId, err)
+// 				continue
+// 			}
+
+// 			for _, packet := range packets {
+// 				switch rtcpPacket := packet.(type) {
+// 				case *rtcp.ReceiverEstimatedMaximumBitrate:
+// 					log.Println(rtcpPacket)
+// 				case *rtcp.SenderReport:
+// 					log.Println(rtcpPacket)
+// 					// default:
+// 					// 	log.Printf("-- RTCP packet on receiver: %T", rtcpPacket)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
