@@ -92,13 +92,13 @@ func newMixerSlice(localTrack *webrtc.TrackLocalStaticRTP, remotePC *webrtc.Peer
 				controllerRates := []uint64{}
 				for _, controller := range ms.senderControllerIndex {
 					controllerRates = append(controllerRates, controller.maxRate)
-					sliceRate := minUint64Slice(controllerRates)
-					// if ms.localTrack.Kind().String() == "video" {
-					// 	log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
-					// }
-					if ms.pipeline != nil {
-						ms.pipeline.SetEncodingRate(sliceRate)
-					}
+				}
+				sliceRate := minUint64Slice(controllerRates)
+				// if ms.localTrack.Kind().String() == "video" {
+				// 	log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
+				// }
+				if ms.pipeline != nil && sliceRate > 0 {
+					ms.pipeline.SetEncodingRate(sliceRate)
 				}
 			}
 		}
