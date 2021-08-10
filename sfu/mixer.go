@@ -12,6 +12,17 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+// In a SFU fashion and with the example of three peers (P1, P2, P3):
+// - P1 incoming/remote video track is received in peer_conn.go (OnTrack), then a resulting processed/local track is created
+//   and added to the mixer within a mixerSlice struct
+// - indeed the mixerSlice holds everything related to this processed track (the track itself, the GStreamer pipeline...)
+//   and is added to the mixer (~ the SFU) of the room that contains P1, P2, P3
+// - in a preliminary signaling step (see updateTracks), this track is added to P2 and P3 peer connections and their corresponding RTP senders
+//   are held within senderControllers stored on the mixerSlice (senderControllerIndex)
+// - signaling is completed by updateOffers
+// - runRTCPListener acts on the senderControllers with the intent to adapt the encoding rate of the processed track to the network conditions
+// - this optimal bitrate is sent as a guideline to the GStreamer encoder element
+
 // TODO this could belong to a configuration file
 const DefaultVideoBitrate = 500 * 1000
 const MinVideoBitrate = 125 * 1000
@@ -20,14 +31,12 @@ const DefaultAudioBitrate = 48 * 1000
 const MinAudioBitrate = 16 * 1000
 const MaxAudioBitrate = 64 * 1000
 
-// mixer is not guarded by a mutex since all interaction is done through room
 type mixer struct {
+	// TODO currently not guarded by a mutex since all interaction is done through room (lack of clarity/robustness)
 	shortId         string                 // room's shortId used for logging
 	mixerSliceIndex map[string]*mixerSlice // per track id
 }
 
-// expanding the mixer metaphor, a mixerSliceholds everything related to a given signal (output track, GStreamer pipeline...)
-// there is one remote/in track per mixerSlice, one local/out track, but possibly several senders/recepients of the local track (SFU behavior)
 type mixerSlice struct {
 	sync.Mutex
 	localTrack            *webrtc.TrackLocalStaticRTP
@@ -87,7 +96,9 @@ func newMixerSlice(localTrack *webrtc.TrackLocalStaticRTP, remotePC *webrtc.Peer
 					// if ms.localTrack.Kind().String() == "video" {
 					// 	log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
 					// }
-					ms.pipeline.SetEncodingRate(sliceRate)
+					if ms.pipeline != nil {
+						ms.pipeline.SetEncodingRate(sliceRate)
+					}
 				}
 			}
 		}
@@ -106,6 +117,7 @@ func (controller *senderController) updateRateFromREMB(remb uint64) {
 	}
 }
 
+// see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 func (controller *senderController) updateRateFromLoss(loss uint8) {
 	controller.Lock()
 	defer controller.Unlock()
@@ -314,7 +326,7 @@ func (m *mixer) updateTracks(room *trialRoom) success {
 	return true
 }
 
-func (m *mixer) updateSignaling(room *trialRoom) success {
+func (m *mixer) updateOffers(room *trialRoom) success {
 	for _, ps := range room.peerServerIndex {
 
 		pc := ps.pc
@@ -344,16 +356,18 @@ func (m *mixer) updateSignaling(room *trialRoom) success {
 	return true
 }
 
-// does two things (and ask to retry if false is returned):
+// Signaling is split in two steps:
 // - add or remove tracks on peer connections
-// - update signaling, a boolean controlling this step not to overdo it till every out track is ready
-func (m *mixer) updatePeers(room *trialRoom, withSignaling bool) success {
+// - update and send offers, if the boolean withSignaling is true
+//   (withSignaling is helpful not to overdo signaling when all tracks of different peers have not been added yet)
+// Returning false means: please retry later
+func (m *mixer) updateSignaling(room *trialRoom, withSignaling bool) success {
 	if s := m.updateTracks(room); !s {
 		return false
 	}
 
 	if withSignaling {
-		if s := m.updateSignaling(room); !s {
+		if s := m.updateOffers(room); !s {
 			return false
 		}
 	}

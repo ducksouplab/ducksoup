@@ -336,7 +336,7 @@ signalingLoop:
 			break signalingLoop
 		default:
 			for tries := 0; ; tries++ {
-				switch r.mixer.updatePeers(r, withSignaling) {
+				switch r.mixer.updateSignaling(r, withSignaling) {
 				case true:
 					// signaling succeeded
 					break signalingLoop

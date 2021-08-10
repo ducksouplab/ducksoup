@@ -207,8 +207,13 @@ func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 func (p *Pipeline) SetEncodingRate(value64 uint64) {
 	value := int(value64)
 	prop := "bitrate"
+	log.Println("debug", prop, p, p.codec)
 	if p.codec == "VP8" {
+		// property name for vp8enc
 		prop = "target-bitrate"
+	} else if p.codec == "H264" {
+		// in kbit/s for x264enc and nvh264enc
+		value = value / 1000
 	}
 	// find property
 	p.setPropertyInt("encoder", prop, value)
