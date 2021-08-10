@@ -2,7 +2,7 @@ vp8:
   decode: "vp8dec"
   encode:
     fast: >-
-      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=500000 
+      vp8enc name=encoder deadline=1 cpu-used=4 end-usage=1 target-bitrate=500000 
       undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
     relaxed: >-
       vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800000 
@@ -11,7 +11,7 @@ x264:
   decode: "avdec_h264"
   encode:
     fast: >-
-      x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 
+      x264enc name=encoder pass=5 quantizer=15 speed-preset=superfast key-int-max=64 
       tune=zerolatency qos=true ! 
       video/x-h264,stream-format=byte-stream,profile=main
     relaxed: >-
@@ -20,10 +20,10 @@ x264:
 nv264:
   decode: "nvh264dec"
   encode:
-    fast: "nvh264enc"
+    fast: "nvh264enc name=encoder"
     relaxed: "nvh264enc"
 opus:
   decode: "decodebin"
   encode:
-    fast: "opusenc"
+    fast: "opusenc name=encoder"
     relaxed: "opusenc"

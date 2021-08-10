@@ -77,7 +77,7 @@ func newPipelineStr(filePrefix string, kind string, codec string, width int, hei
 		panic("Unhandled codec " + codec)
 	}
 	// set encoding and decoding
-	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast+" name=encoder", -1)
+	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
 	// set file
