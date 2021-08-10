@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"sync"
 	"time"
@@ -94,9 +93,9 @@ func newMixerSlice(localTrack *webrtc.TrackLocalStaticRTP, remotePC *webrtc.Peer
 					controllerRates = append(controllerRates, controller.maxRate)
 				}
 				sliceRate := minUint64Slice(controllerRates)
-				// if ms.localTrack.Kind().String() == "video" {
-				// 	log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
-				// }
+				if ms.localTrack.Kind().String() == "video" {
+					log.Printf("[debug] %v mixerSlice rate %v\n", ms.localTrack.Kind(), sliceRate)
+				}
 				if ms.pipeline != nil && sliceRate > 0 {
 					ms.pipeline.SetEncodingRate(sliceRate)
 				}
@@ -167,7 +166,6 @@ func (ms *mixerSlice) stop() {
 }
 
 func (ms *mixerSlice) runRTCPListener(controller *senderController, ssrc webrtc.SSRC, shortId string) {
-	buf := make([]byte, 1500)
 
 listenerLoop:
 	for {
@@ -175,16 +173,9 @@ listenerLoop:
 		case <-ms.endCh:
 			break listenerLoop
 		default:
-			n, _, err := controller.sender.Read(buf)
+			packets, _, err := controller.sender.ReadRTCP()
 			if err != nil {
-				if err != io.EOF && err != io.ErrClosedPipe {
-					log.Printf("[mixer %s error] read RTCP: %v\n", shortId, err)
-				}
-				return
-			}
-			packets, err := rtcp.Unmarshal(buf[:n])
-			if err != nil {
-				log.Printf("[mixer %s error] unmarshal RTCP: %v\n", shortId, err)
+				log.Printf("[mixer %s error] sender ReadRTCP: %v\n", shortId, err)
 				continue
 			}
 
