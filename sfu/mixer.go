@@ -12,7 +12,7 @@ import (
 )
 
 type mixer struct {
-	sync.Mutex
+	sync.RWMutex
 	room            *trialRoom
 	shortId         string                 // room's shortId used for logging
 	mixerSliceIndex map[string]*mixerSlice // per track id
@@ -215,12 +215,6 @@ func (m *mixer) newLocalTrackFromRemote(userId string, room *trialRoom, join joi
 		m.Lock()
 		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(m.shortId, pc, outputTrack, receiver, remoteTrack.SSRC())
 		m.Unlock()
-
-		// listen to pc close
-		go func() {
-			<-pc.closedCh
-			m.managedUpdateSignaling()
-		}()
 	}
 	return
 }
@@ -230,7 +224,7 @@ func (m *mixer) removeLocalTrack(id string) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
-		m.managedUpdateSignaling()
+		m.managedUpdateSignaling("removed track")
 	}()
 
 	if ms, exists := m.mixerSliceIndex[id]; exists {
@@ -364,14 +358,14 @@ func (m *mixer) updateSignaling() success {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (m *mixer) managedUpdateSignaling() {
+func (m *mixer) managedUpdateSignaling(message string) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
 		go m.dispatchKeyFrame()
 	}()
 
-	log.Printf("[mixer %s] signaling update\n", m.room.shortId)
+	log.Printf("[mixer %s] signaling update: %s\n", m.room.shortId, message)
 
 signalingLoop:
 	for {
@@ -390,7 +384,7 @@ signalingLoop:
 						// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
 						go func() {
 							time.Sleep(time.Second * 3)
-							m.managedUpdateSignaling()
+							m.managedUpdateSignaling("restarted after too many tries")
 						}()
 						return
 					} else {
@@ -403,25 +397,13 @@ signalingLoop:
 	}
 }
 
-// dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
+// sends a keyframe to all PeerConnections, used everytime a new user joins the call
 func (m *mixer) dispatchKeyFrame() {
-	m.Lock()
-	defer m.Unlock()
-
-	log.Printf("[mixer %s] dispatchKeyFrame\n", m.room.shortId)
+	m.RLock()
+	defer m.RUnlock()
 
 	for _, ps := range m.room.peerServerIndex {
-		for _, receiver := range ps.pc.GetReceivers() {
-			if receiver.Track() == nil {
-				continue
-			}
-
-			_ = ps.pc.WriteRTCP([]rtcp.Packet{
-				&rtcp.PictureLossIndication{
-					MediaSSRC: uint32(receiver.Track().SSRC()),
-				},
-			})
-		}
+		ps.pc.requestPLI()
 	}
 }
 

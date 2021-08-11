@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -11,12 +12,15 @@ import (
 )
 
 type peerServer struct {
+	sync.Mutex
 	userId     string
 	room       *trialRoom
 	pc         *peerConn
 	ws         *wsConn
 	audioTrack *localTrack
 	videoTrack *localTrack
+	closed     bool
+	closedCh   chan struct{}
 }
 
 func newPeerServer(
@@ -25,10 +29,12 @@ func newPeerServer(
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 	return &peerServer{
-		userId: join.UserId,
-		room:   room,
-		pc:     pc,
-		ws:     ws,
+		userId:   join.UserId,
+		room:     room,
+		pc:       pc,
+		ws:       ws,
+		closed:   false,
+		closedCh: make(chan struct{}),
 	}
 }
 
@@ -37,6 +43,17 @@ func (ps *peerServer) setLocalTrack(kind string, outputTrack *localTrack) {
 		ps.audioTrack = outputTrack
 	} else if kind == "video" {
 		ps.videoTrack = outputTrack
+	}
+}
+
+func (ps *peerServer) close() {
+	ps.Lock()
+	defer ps.Unlock()
+
+	if !ps.closed {
+		// ensure closedCh is not closed twice
+		ps.closed = true
+		close(ps.closedCh)
 	}
 }
 
@@ -51,52 +68,58 @@ func (ps *peerServer) loop() {
 		ps.ws.Send("ending")
 	}()
 
+readLoop:
 	for {
-		err := ps.ws.ReadJSON(&m)
+		select {
+		case <-ps.room.endCh:
+			break readLoop
+		default:
+			err := ps.ws.ReadJSON(&m)
 
-		if err != nil {
-			ps.room.disconnectUser(ps.userId)
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-				log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
-			}
-			return
-		}
-
-		switch m.Kind {
-		case "candidate":
-			candidate := webrtc.ICECandidateInit{}
-			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				log.Printf("[user %s error] unmarshal candidate: %v\n", ps.userId, err)
+			if err != nil {
+				ps.room.disconnectUser(ps.userId)
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+					log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
+				}
 				return
 			}
 
-			if err := ps.pc.AddICECandidate(candidate); err != nil {
-				log.Printf("[user %s error] add candidate: %v\n", ps.userId, err)
-				return
-			}
-		case "answer":
-			answer := webrtc.SessionDescription{}
-			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-				log.Printf("[user %s error] unmarshal answer: %v\n", ps.userId, err)
-				return
-			}
+			switch m.Kind {
+			case "candidate":
+				candidate := webrtc.ICECandidateInit{}
+				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
+					log.Printf("[user %s error] unmarshal candidate: %v\n", ps.userId, err)
+					return
+				}
 
-			if err := ps.pc.SetRemoteDescription(answer); err != nil {
-				log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
-				return
-			}
-		case "control":
-			payload := controlPayload{}
-			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
-			} else {
-				go func() {
-					if payload.Kind == "audio" && ps.audioTrack != nil {
-						ps.audioTrack.controlFx(payload)
-					} else if ps.videoTrack != nil {
-						ps.videoTrack.controlFx(payload)
-					}
-				}()
+				if err := ps.pc.AddICECandidate(candidate); err != nil {
+					log.Printf("[user %s error] add candidate: %v\n", ps.userId, err)
+					return
+				}
+			case "answer":
+				answer := webrtc.SessionDescription{}
+				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
+					log.Printf("[user %s error] unmarshal answer: %v\n", ps.userId, err)
+					return
+				}
+
+				if err := ps.pc.SetRemoteDescription(answer); err != nil {
+					log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
+					return
+				}
+			case "control":
+				payload := controlPayload{}
+				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
+					log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
+				} else {
+					go func() {
+						if payload.Kind == "audio" && ps.audioTrack != nil {
+							ps.audioTrack.controlFx(payload)
+						} else if ps.videoTrack != nil {
+							ps.videoTrack.controlFx(payload)
+						}
+					}()
+				}
 			}
 		}
 	}

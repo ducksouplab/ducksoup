@@ -127,13 +127,13 @@ const startRTC = async () => {
   const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
   ws.onopen = function () {
-    const { roomId, size, audioFx, videoFx } = state;
+    const { userId, roomId, size, audioFx, videoFx } = state;
     console.log(state)
     ws.send(
       JSON.stringify({
         kind: "join",
         payload: JSON.stringify({
-          userId: randomId(),
+          userId,
           roomId,
           size,
           videoFx,

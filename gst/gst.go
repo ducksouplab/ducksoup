@@ -17,31 +17,35 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-// Pipeline is a wrapper for a GStreamer pipeline and output track
-type Pipeline struct {
-	// public
-	Files []string
-	// private
-	id          int
-	gstPipeline *C.GstElement
-	track       *webrtc.TrackLocalStaticRTP
-	filePrefix  string
-	codec       string
-}
-
-var pipelines = make(map[int]*Pipeline)
-var pipelinesLock sync.Mutex
-var h264Engine Engine
+// global state
+var (
+	mu            sync.Mutex
+	pipelineIndex map[string]*Pipeline
+	h264Engine    Engine
+)
 
 func init() {
+	mu = sync.Mutex{}
+	pipelineIndex = make(map[string]*Pipeline)
 	h264Engine = engines.X264
 	if strings.ToLower(os.Getenv("DS_NVIDIA")) == "true" {
 		h264Engine = engines.NV264
 	}
 }
 
-func newPipelineStr(filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
+// Pipeline is a wrapper for a GStreamer pipeline and output track
+type Pipeline struct {
+	// public
+	Files []string
+	// private
+	id          string
+	gstPipeline *C.GstElement
+	track       *webrtc.TrackLocalStaticRTP
+	filePrefix  string
+	codec       string
+}
 
+func newPipelineStr(filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
 	// special case for testing
 	if fx == "passthrough" {
 		pipelineStr = passthroughPipeline
@@ -111,11 +115,24 @@ func allFiles(prefix string, kind string, hasFx bool) []string {
 	}
 }
 
-//export goHandleNewSample
-func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	pipelinesLock.Lock()
-	pipeline, ok := pipelines[int(pipelineId)]
-	pipelinesLock.Unlock()
+//export goStopCallback
+func goStopCallback(cId *C.char) {
+	id := C.GoString(cId)
+
+	mu.Lock()
+	delete(pipelineIndex, id)
+	mu.Unlock()
+
+	log.Printf("[gst] pipeline %s stop done\n", id)
+}
+
+//export goNewSampleCallback
+func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+	id := C.GoString(cId)
+
+	mu.Lock()
+	pipeline, ok := pipelineIndex[id]
+	mu.Unlock()
 
 	if ok {
 		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
@@ -125,7 +142,7 @@ func goHandleNewSample(pipelineId C.int, buffer unsafe.Pointer, bufferLen C.int,
 		}
 	} else {
 		// TODO return error to gst.c and stop processing?
-		log.Printf("[gst] discarding buffer, no pipeline with id %d", int(pipelineId))
+		log.Printf("[gst] discarding buffer, no pipeline with id %d", id)
 	}
 	C.free(buffer)
 }
@@ -140,37 +157,39 @@ func StartMainLoop() {
 func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) *Pipeline {
 
 	pipelineStr := newPipelineStr(filePrefix, kind, codec, width, height, frameRate, fx)
+	id := track.ID()
 	log.Printf("[gst] %v pipeline: %v", kind, pipelineStr)
 
-	pipelineStrUnsafe := C.CString(pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	pipelinesLock.Lock()
-	defer pipelinesLock.Unlock()
+	cPipelineStr := C.CString(pipelineStr)
+	cId := C.CString(id)
+	defer C.free(unsafe.Pointer(cPipelineStr))
+	defer C.free(unsafe.Pointer(cId))
 
 	pipeline := &Pipeline{
 		Files:       allFiles(filePrefix, kind, len(fx) > 0),
-		gstPipeline: C.gstreamer_parse_pipeline(pipelineStrUnsafe),
-		id:          len(pipelines),
+		id:          id,
+		gstPipeline: C.gstreamer_parse_pipeline(cPipelineStr, cId),
 		track:       track,
 		filePrefix:  filePrefix,
 		codec:       codec,
 	}
 
-	pipelines[pipeline.id] = pipeline
+	mu.Lock()
+	pipelineIndex[pipeline.id] = pipeline
+	mu.Unlock()
 	return pipeline
 }
 
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
-	C.gstreamer_start_pipeline(p.gstPipeline, C.int(p.id))
-	log.Printf("[gst] pipeline %d started: %s\n", p.id, p.filePrefix)
+	C.gstreamer_start_pipeline(p.gstPipeline)
+	log.Printf("[gst] pipeline %s started: %s\n", p.id, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
-	C.gstreamer_stop_pipeline(p.gstPipeline, C.int(p.id))
-	log.Printf("[gst] pipeline %d stopped: %s\n", p.id, p.filePrefix)
+	C.gstreamer_stop_pipeline(p.gstPipeline)
+	log.Printf("[gst] pipeline %s stop requested: %s\n", p.id, p.filePrefix)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline

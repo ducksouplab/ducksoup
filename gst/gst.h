@@ -6,11 +6,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-extern void goHandleNewSample(int pipelineId, void *buffer, int bufferLen, int samples);
+extern void goNewSampleCallback(char *id, void *buffer, int bufferLen, int samples);
+extern void goStopCallback(char *message);
 
-GstElement *gstreamer_parse_pipeline(char *pipeline);
-void gstreamer_start_pipeline(GstElement *pipeline, int pipelineId);
-void gstreamer_stop_pipeline(GstElement *pipeline, int pipelineId);
+GstElement *gstreamer_parse_pipeline(char *pipelineStr, char *id);
+void gstreamer_start_pipeline(GstElement *pipeline);
+void gstreamer_stop_pipeline(GstElement *pipeline);
 void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
 void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len);
 float gstreamer_get_property_float(GstElement *pipeline, char *elName, char *elProp);

@@ -229,7 +229,7 @@ func (r *trialRoom) incOutTracksReadyCount() {
 	r.outTracksReadyCount++
 
 	if r.outTracksReadyCount == r.neededTracks {
-		go r.mixer.managedUpdateSignaling()
+		go r.mixer.managedUpdateSignaling("all processed tracks are ready")
 	}
 }
 
@@ -237,7 +237,7 @@ func (r *trialRoom) bindPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.mixer.managedUpdateSignaling()
+		r.mixer.managedUpdateSignaling("new peer connection")
 	}()
 
 	r.peerServerIndex[ps.userId] = ps
@@ -309,8 +309,6 @@ func (r *trialRoom) runLocalTrackFromRemote(
 	if err != nil {
 		log.Printf("[room %s error] runLocalTrackFromRemote: %v\n", r.shortId, err)
 	} else {
-		defer r.mixer.removeLocalTrack(outputTrack.id)
-
 		// needed to relay control fx events between peer server and output track
 		ps := r.peerServerIndex[userId]
 		ps.setLocalTrack(remoteTrack.Kind().String(), outputTrack)
@@ -319,5 +317,7 @@ func (r *trialRoom) runLocalTrackFromRemote(
 		r.incOutTracksReadyCount()
 
 		outputTrack.loop() // blocking
+
+		r.mixer.removeLocalTrack(outputTrack.id)
 	}
 }

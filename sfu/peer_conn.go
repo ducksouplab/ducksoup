@@ -5,12 +5,14 @@ import (
 	"log"
 
 	"github.com/creamlab/ducksoup/engine"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
 // Augmented pion PeerConnection
 type peerConn struct {
 	*webrtc.PeerConnection
+	userId string
 	// if peer connection is closed before room is ended (for instance on browser page refresh)
 	closedCh chan struct{}
 }
@@ -76,12 +78,12 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		return
 	}
 
-	pc = &peerConn{ppc, make(chan struct{})}
+	pc = &peerConn{ppc, userId, make(chan struct{})}
 
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
-			log.Printf("[user %s error] empty candidate", userId)
+			// see https://pkg.go.dev/github.com/pion/webrtc/v3#PeerConnection.OnICECandidate
 			return
 		}
 
@@ -117,4 +119,18 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 	})
 
 	return
+}
+
+func (pc *peerConn) requestPLI() {
+	for _, receiver := range pc.GetReceivers() {
+		track := receiver.Track()
+		if track != nil && track.Kind().String() == "video" {
+			_ = pc.WriteRTCP([]rtcp.Packet{
+				&rtcp.PictureLossIndication{
+					MediaSSRC: uint32(track.SSRC()),
+				},
+			})
+			log.Printf("[user %s] sent PLI to remote\n", pc.userId)
+		}
+	}
 }
