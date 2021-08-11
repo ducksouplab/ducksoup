@@ -44,14 +44,16 @@ const getQueryVariable = (key) => {
 
 const init = async () => {
   // Init state
-  const roomId = getQueryVariable("roomId");
   const userId = getQueryVariable("userId");
+  const roomId = getQueryVariable("roomId");
+  const size = parseInt(getQueryVariable("size"), 10);
   const audioFx = getQueryVariable("audioFx").replace("+", " ");
   const videoFx = getQueryVariable("videoFx").replace("+", " ");
   if (!roomId || !userId) window.location.href = FRONT_PREFIX;
   window.history.replaceState({}, document.title, `${FRONT_PREFIX}live/`);
-  state.roomId = roomId;
   state.userId = userId;
+  state.roomId = roomId;
+  state.size = size;
   state.audioFx = audioFx;
   state.videoFx = videoFx;
   // Init UX
@@ -125,14 +127,15 @@ const startRTC = async () => {
   const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
   ws.onopen = function () {
-    const { roomId, audioFx, videoFx } = state;
+    const { roomId, size, audioFx, videoFx } = state;
     console.log(state)
     ws.send(
       JSON.stringify({
         kind: "join",
         payload: JSON.stringify({
-          roomId,
           userId: randomId(),
+          roomId,
+          size,
           videoFx,
           audioFx,
           namespace: "standalone" }),
