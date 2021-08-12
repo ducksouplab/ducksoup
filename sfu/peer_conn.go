@@ -21,7 +21,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	// create RTC API with chosen codecs
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		log.Printf("[user %s] NewWebRTCAPI codecs: %v\n", userId, err)
+		log.Printf("[pc user#%s] NewWebRTCAPI codecs: %v\n", userId, err)
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -34,7 +34,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	}
 	ppc, err = api.NewPeerConnection(config)
 	if err != nil {
-		log.Printf("[user %s error] NewPeerConnection: %v\n", userId, err)
+		log.Printf("[pc user#%s][error] NewPeerConnection: %v\n", userId, err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
+		log.Printf("[pc user#%s][error] AddTransceiverFromKind: %v\n", userId, err)
 		return
 	}
 
@@ -52,7 +52,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		log.Printf("[user %s error] AddTransceiverFromKind: %v\n", userId, err)
+		log.Printf("[pc user#%s][error] AddTransceiverFromKind: %v\n", userId, err)
 		return
 	}
 
@@ -60,7 +60,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	if videoCodec == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
-			log.Printf("[user %s error] SetCodecPreferences: %v\n", userId, err)
+			log.Printf("[pc user#%s][error] SetCodecPreferences: %v\n", userId, err)
 			return
 		}
 	}
@@ -92,7 +92,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			log.Printf("[user %s error] marshal candidate: %v\n", userId, err)
+			log.Printf("[pc user#%s][error] marshal candidate: %v\n", userId, err)
 			return
 		}
 
@@ -101,11 +101,11 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[user %s] peer connection state change: %s \n", userId, p.String())
+		log.Printf("[pc user#%s] state: %s \n", userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				log.Printf("[user %s error] peer connection failed: %v\n", userId, err)
+				log.Printf("[pc user#%s][error] peer connection failed: %v\n", userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
 			ps.close()
@@ -113,7 +113,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		log.Printf("[user %s] new incoming track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
+		log.Printf("[pc user#%s] new incoming track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
 		room.incInTracksReadyCount()
 		<-room.waitForAllCh
 
@@ -125,12 +125,16 @@ func (pc *peerConn) requestPLI() {
 	for _, receiver := range pc.GetReceivers() {
 		track := receiver.Track()
 		if track != nil && track.Kind().String() == "video" {
-			_ = pc.WriteRTCP([]rtcp.Packet{
+			err := pc.WriteRTCP([]rtcp.Packet{
 				&rtcp.PictureLossIndication{
 					MediaSSRC: uint32(track.SSRC()),
 				},
 			})
-			log.Printf("[user %s] sent PLI to remote\n", pc.userId)
+			if err != nil {
+				log.Printf("[pc user#%s][error] sending PLI: %v\n", pc.userId, err)
+			} else {
+				log.Printf("[pc user#%s] sent PLI to remote\n", pc.userId)
+			}
 		}
 	}
 }

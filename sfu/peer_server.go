@@ -59,6 +59,7 @@ func (ps *peerServer) close() {
 	defer ps.Unlock()
 
 	if !ps.closed {
+		log.Printf("[ps user#%s] closing\n", ps.userId)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -78,7 +79,7 @@ func (ps *peerServer) loop() {
 	go func() {
 		<-ps.room.waitForAllCh
 		<-time.After(time.Duration(ps.room.endingDelay()) * time.Second)
-		log.Printf("[user %s] ending\n", ps.userId)
+		log.Printf("[ps user#%s] ending message sent\n", ps.userId)
 		ps.ws.send("ending")
 	}()
 
@@ -93,7 +94,7 @@ func (ps *peerServer) loop() {
 			if err != nil {
 				ps.close()
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] reading JSON: %v\n", ps.userId, err)
 				}
 				return
 			}
@@ -102,29 +103,29 @@ func (ps *peerServer) loop() {
 			case "candidate":
 				candidate := webrtc.ICECandidateInit{}
 				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-					log.Printf("[user %s error] unmarshal candidate: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] unmarshal candidate: %v\n", ps.userId, err)
 					return
 				}
 
 				if err := ps.pc.AddICECandidate(candidate); err != nil {
-					log.Printf("[user %s error] add candidate: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] add candidate: %v\n", ps.userId, err)
 					return
 				}
 			case "answer":
 				answer := webrtc.SessionDescription{}
 				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-					log.Printf("[user %s error] unmarshal answer: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] unmarshal answer: %v\n", ps.userId, err)
 					return
 				}
 
 				if err := ps.pc.SetRemoteDescription(answer); err != nil {
-					log.Printf("[user %s error] SetRemoteDescription: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] SetRemoteDescription: %v\n", ps.userId, err)
 					return
 				}
 			case "control":
 				payload := controlPayload{}
 				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-					log.Printf("[user %s error] unmarshal control: %v\n", ps.userId, err)
+					log.Printf("[ps user#%s][error] unmarshal control: %v\n", ps.userId, err)
 				} else {
 					go func() {
 						if payload.Kind == "audio" && ps.audioTrack != nil {
@@ -151,7 +152,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
 		ws.send("error-join")
-		log.Printf("[user unknown] join payload corrupted: %v\n", err)
+		log.Printf("[ps user unknown][error] join payload corrupted: %v\n", err)
 		return
 	}
 	userId := joinPayload.UserId
@@ -163,14 +164,14 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	if err != nil {
 		// joinRoom err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
-		log.Printf("[user %s] join failed: %s", userId, err)
+		log.Printf("[ps user#%s][error] join failed: %s", userId, err)
 		return
 	}
 
 	pc, err := newPeerConn(joinPayload, room, ws)
 	if err != nil {
 		ws.send("error-peer-connection")
-		log.Printf("[user %s] pc creation failed: %s", userId, err)
+		log.Printf("[ps user#%s][error] pc creation failed: %s", userId, err)
 		return
 	}
 

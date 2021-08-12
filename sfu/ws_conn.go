@@ -69,7 +69,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[user %s error] WriteJSON: %v\n", ws.userId, err)
+		log.Printf("[ws user#%s][error] WriteJSON: %v\n", ws.userId, err)
 	}
 	return
 }
@@ -83,7 +83,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[user %s error] WriteJSON with payload: %v\n", ws.userId, err)
+		log.Printf("[ws user#%s][error] WriteJSON with payload: %v\n", ws.userId, err)
 	}
 	return
 }

@@ -261,6 +261,8 @@ Messages from server (Go) to client (JS):
 - kind `end` when time is over (payload contains an index of media files recorded for this experiment)
 - kind `error-full` when room limit has been reached and user can't enter room
 - kind `error-duplicate` when same user is already in room
+- kind `error-join` when `peerOptions` passed to DuckSoup player are incorrect
+- kind `error-peer-connection` when server-side peer connection can't be established
 
 ### Docker and dlib
 

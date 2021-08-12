@@ -123,7 +123,7 @@ func goStopCallback(cId *C.char) {
 	delete(pipelineIndex, id)
 	mu.Unlock()
 
-	log.Printf("[pipeline %s] stop done\n", id)
+	log.Printf("[pipeline#%s] stop done\n", id)
 }
 
 //export goNewSampleCallback
@@ -138,11 +138,11 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, du
 		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
 			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
-			log.Printf("[pipeline %s error] %v", id, err)
+			log.Printf("[pipeline#%s][error] %v", id, err)
 		}
 	} else {
 		// TODO return error to gst.c and stop processing?
-		log.Printf("[pipeline %s error] pipeline not found, discarding buffer", id)
+		log.Printf("[pipeline#%s][error] pipeline not found, discarding buffer", id)
 	}
 	C.free(buffer)
 }
@@ -158,7 +158,7 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 
 	pipelineStr := newPipelineStr(filePrefix, kind, codec, width, height, frameRate, fx)
 	id := track.ID()
-	log.Printf("[pipeline %s] %v pipeline initialized:\n%v\n", id, kind, pipelineStr)
+	log.Printf("[pipeline#%s] %v pipeline initialized:\n%v\n", id, kind, pipelineStr)
 
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
@@ -183,14 +183,14 @@ func CreatePipeline(track *webrtc.TrackLocalStaticRTP, filePrefix string, kind s
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
 	C.gstreamer_start_pipeline(p.gstPipeline)
-	log.Printf("[pipeline %s] started\n", p.id)
-	log.Printf("[pipeline %s] recording prefix: %s\n", p.id, p.filePrefix)
+	log.Printf("[pipeline#%s] started\n", p.id)
+	log.Printf("[pipeline#%s] recording prefix: %s\n", p.id, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	C.gstreamer_stop_pipeline(p.gstPipeline)
-	log.Printf("[pipeline %s] stop requested\n", p.id)
+	log.Printf("[pipeline#%s] stop requested\n", p.id)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline

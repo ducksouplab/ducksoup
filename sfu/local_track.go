@@ -70,7 +70,7 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 
 	if err != nil {
-		log.Printf("[user %s error] NewTrackLocalStaticRTP: %v\n", ps.userId, err)
+		log.Printf("[track user#%s][error] NewTrackLocalStaticRTP: %v\n", ps.userId, err)
 		return
 	}
 
@@ -114,10 +114,10 @@ func (l *localTrack) loop() needsSignaling {
 		pipeline.Start()
 		room.addFiles(userId, pipeline.Files)
 		defer func() {
-			log.Printf("[user %s] stopping %s\n", userId, kind)
+			log.Printf("[track user#%s] %s stopping\n", userId, kind)
 			pipeline.Stop()
 			if r := recover(); r != nil {
-				log.Printf("[user %s] recover OnTrack\n", userId)
+				log.Printf("[track user#%s] recover\n", userId)
 			}
 		}()
 
@@ -180,7 +180,6 @@ func (l *localTrack) controlFx(payload controlPayload) {
 			case currentValue, more := <-newInterpolator.C:
 				if more {
 					l.pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
-					//log.Println("[interpolate]", payload.Name, payload.Property, currentValue)
 				} else {
 					break interpolatorLoop
 				}

@@ -41,7 +41,7 @@ type trialRoom struct {
 	connectedIndex      map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
 	joinedCountIndex    map[string]int         // per user id
 	filesIndex          map[string][]string    // per user id, contains media file names
-	started             bool
+	running             bool
 	startedAt           time.Time
 	inTracksReadyCount  int
 	outTracksReadyCount int
@@ -62,7 +62,7 @@ func (r *trialRoom) delete() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Printf("[room %s] deleted\n", r.shortId)
+	log.Printf("[room %s] deleting\n", r.shortId)
 	delete(roomIndex, r.qualifiedId)
 }
 
@@ -147,11 +147,12 @@ func (r *trialRoom) countdown() {
 		ps.ws.sendWithPayload("end", r.files())
 	}
 
+	r.Lock()
+	r.running = false
+	r.Unlock()
+
 	// listened by peerServers, mixer, localTracks
 	close(r.endCh)
-
-	// delete global reference in roomIndex, but still temporarily attached to peerServer
-	r.delete()
 }
 
 // API read-write
@@ -210,9 +211,9 @@ func (r *trialRoom) incInTracksReadyCount() {
 	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		log.Printf("[room %s] peers are ready\n", r.shortId)
+		log.Printf("[room %s] users are ready\n", r.shortId)
 		close(r.waitForAllCh)
-		r.started = true
+		r.running = true
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
 			go ps.ws.send("start")
@@ -253,7 +254,7 @@ func (r *trialRoom) disconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
-		if r.userCount() == 1 && !r.started {
+		if r.userCount() == 1 && !r.running {
 			// don't keep this room
 			r.delete()
 		}
@@ -305,7 +306,7 @@ func (r *trialRoom) runLocalTrackFromRemote(
 	outputTrack, err := r.mixer.newLocalTrackFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[room %s error] runLocalTrackFromRemote: %v\n", r.shortId, err)
+		log.Printf("[room %s][error] runLocalTrackFromRemote: %v\n", r.shortId, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps := r.peerServerIndex[ps.userId]
