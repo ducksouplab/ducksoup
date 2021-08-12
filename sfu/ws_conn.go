@@ -56,43 +56,11 @@ func newWsConn(unsafeConn *websocket.Conn) *wsConn {
 	return &wsConn{sync.Mutex{}, unsafeConn, ""}
 }
 
-func (ws *wsConn) setUserId(userId string) {
-	ws.Lock()
-	defer ws.Unlock()
-
-	ws.userId = userId
-}
-
 func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		log.Printf("[ws user#%s][error] reading JSON: %v\n", ws.userId, err)
-	}
-	return
-}
-
-func (ws *wsConn) send(text string) (err error) {
-	ws.Lock()
-	defer ws.Unlock()
-
-	m := &messageOut{Kind: text}
-	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[ws user#%s][error] WriteJSON: %v\n", ws.userId, err)
-	}
-	return
-}
-
-func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) {
-	ws.Lock()
-	defer ws.Unlock()
-
-	m := &messageOut{
-		Kind:    kind,
-		Payload: payload,
-	}
-	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[ws user#%s][error] WriteJSON with payload: %v\n", ws.userId, err)
+		log.Printf("[ws user#%s][error] while reading: %v\n", ws.userId, err)
 	}
 	return
 }
@@ -108,5 +76,37 @@ func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
 
 	err = json.Unmarshal([]byte(m.Payload), &join)
 	join.origin = origin
+	return
+}
+
+func (ws *wsConn) setUserId(userId string) {
+	ws.Lock()
+	defer ws.Unlock()
+
+	ws.userId = userId
+}
+
+func (ws *wsConn) send(text string) (err error) {
+	ws.Lock()
+	defer ws.Unlock()
+
+	m := &messageOut{Kind: text}
+	if err := ws.Conn.WriteJSON(m); err != nil {
+		log.Printf("[ws user#%s][error] while sending: %v\n", ws.userId, err)
+	}
+	return
+}
+
+func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) {
+	ws.Lock()
+	defer ws.Unlock()
+
+	m := &messageOut{
+		Kind:    kind,
+		Payload: payload,
+	}
+	if err := ws.Conn.WriteJSON(m); err != nil {
+		log.Printf("[ws user#%s][error] while sending with payload: %v\n", ws.userId, err)
+	}
 	return
 }
