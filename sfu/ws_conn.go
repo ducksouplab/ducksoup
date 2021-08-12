@@ -52,18 +52,18 @@ type controlPayload struct {
 
 // API
 
-func NewWsConn(unsafeConn *websocket.Conn) *wsConn {
+func newWsConn(unsafeConn *websocket.Conn) *wsConn {
 	return &wsConn{sync.Mutex{}, unsafeConn, ""}
 }
 
-func (ws *wsConn) SetUserId(userId string) {
+func (ws *wsConn) setUserId(userId string) {
 	ws.Lock()
 	defer ws.Unlock()
 
 	ws.userId = userId
 }
 
-func (ws *wsConn) Send(text string) (err error) {
+func (ws *wsConn) send(text string) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
@@ -74,7 +74,7 @@ func (ws *wsConn) Send(text string) (err error) {
 	return
 }
 
-func (ws *wsConn) SendWithPayload(kind string, payload interface{}) (err error) {
+func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
@@ -88,7 +88,7 @@ func (ws *wsConn) SendWithPayload(kind string, payload interface{}) (err error) 
 	return
 }
 
-func (ws *wsConn) ReadJoin(origin string) (join joinPayload, err error) {
+func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
 	var m messageIn
 
 	// First message must be a join

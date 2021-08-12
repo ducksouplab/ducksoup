@@ -15,6 +15,7 @@ type peerServer struct {
 	sync.Mutex
 	userId     string
 	room       *trialRoom
+	join       joinPayload
 	pc         *peerConn
 	ws         *wsConn
 	audioTrack *localTrack
@@ -28,14 +29,21 @@ func newPeerServer(
 	room *trialRoom,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
-	return &peerServer{
+	ps := &peerServer{
 		userId:   join.UserId,
 		room:     room,
+		join:     join,
 		pc:       pc,
 		ws:       ws,
 		closed:   false,
 		closedCh: make(chan struct{}),
 	}
+
+	// connect components for further communication
+	room.connectPeerServer(ps) // also triggers signaling
+	pc.connectPeerServer(ps)
+
+	return ps
 }
 
 func (ps *peerServer) setLocalTrack(kind string, outputTrack *localTrack) {
@@ -51,9 +59,15 @@ func (ps *peerServer) close() {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		// ensure closedCh is not closed twice
+		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
+
+		// listened by localTracks
 		close(ps.closedCh)
+		// clean up bound components
+		ps.room.disconnectUser(ps.userId)
+		ps.pc.Close()
+		ps.ws.Close()
 	}
 }
 
@@ -65,19 +79,19 @@ func (ps *peerServer) loop() {
 		<-ps.room.waitForAllCh
 		<-time.After(time.Duration(ps.room.endingDelay()) * time.Second)
 		log.Printf("[user %s] ending\n", ps.userId)
-		ps.ws.Send("ending")
+		ps.ws.send("ending")
 	}()
 
-readLoop:
 	for {
 		select {
 		case <-ps.room.endCh:
-			break readLoop
+			ps.close()
+			return
 		default:
 			err := ps.ws.ReadJSON(&m)
 
 			if err != nil {
-				ps.room.disconnectUser(ps.userId)
+				ps.close()
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					log.Printf("[user %s error] reading JSON: %v\n", ps.userId, err)
 				}
@@ -130,35 +144,37 @@ readLoop:
 // handle incoming websockets
 func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 
-	ws := NewWsConn(unsafeConn)
+	ws := newWsConn(unsafeConn)
 	defer ws.Close()
 
 	// first message must be a join request
-	joinPayload, err := ws.ReadJoin(origin)
+	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
+		ws.send("error-join")
 		log.Printf("[user unknown] join payload corrupted: %v\n", err)
 		return
 	}
+	userId := joinPayload.UserId
 
 	// used to log info with user id
-	ws.SetUserId(joinPayload.UserId)
+	ws.setUserId(userId)
 
 	room, err := joinRoom(joinPayload)
-
 	if err != nil {
-		// joinErr is meaningful to client
-		log.Printf("[user %s] join failed: %s", joinPayload.UserId, err)
-		ws.Send(fmt.Sprintf("error-%s", err))
+		// joinRoom err is meaningful to client
+		ws.send(fmt.Sprintf("error-%s", err))
+		log.Printf("[user %s] join failed: %s", userId, err)
 		return
 	}
 
-	pc := newPeerConn(joinPayload, room, ws)
-	defer pc.Close()
+	pc, err := newPeerConn(joinPayload, room, ws)
+	if err != nil {
+		ws.send("error-peer-connection")
+		log.Printf("[user %s] pc creation failed: %s", userId, err)
+		return
+	}
 
 	ps := newPeerServer(joinPayload, room, pc, ws)
-
-	// bind (and automatically trigger a signaling update)
-	room.bindPeerServer(ps)
 
 	ps.loop() // blocking
 }

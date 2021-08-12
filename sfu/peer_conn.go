@@ -9,12 +9,10 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-// Augmented pion PeerConnection
+// New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {
 	*webrtc.PeerConnection
 	userId string
-	// if peer connection is closed before room is ended (for instance on browser page refresh)
-	closedCh chan struct{}
 }
 
 // API
@@ -70,15 +68,20 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	return
 }
 
-func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
-	userId := join.UserId
+func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
+	userId, videoCodec := join.UserId, join.VideoCodec
 
-	ppc, err := newPionPeerConn(userId, join.VideoCodec)
+	ppc, err := newPionPeerConn(userId, videoCodec)
 	if err != nil {
 		return
 	}
 
-	pc = &peerConn{ppc, userId, make(chan struct{})}
+	pc = &peerConn{ppc, userId}
+	return
+}
+
+func (pc *peerConn) connectPeerServer(ps *peerServer) {
+	userId, room, ws := ps.userId, ps.room, ps.ws
 
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -93,7 +96,7 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 			return
 		}
 
-		ws.SendWithPayload("candidate", string(candidateString))
+		ws.sendWithPayload("candidate", string(candidateString))
 	})
 
 	// if PeerConnection is closed remove it from global list
@@ -105,8 +108,7 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 				log.Printf("[user %s error] peer connection failed: %v\n", userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
-			close(pc.closedCh)
-			room.disconnectUser(userId)
+			ps.close()
 		}
 	})
 
@@ -115,10 +117,8 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn) {
 		room.incInTracksReadyCount()
 		<-room.waitForAllCh
 
-		room.runLocalTrackFromRemote(userId, join, pc, remoteTrack, receiver)
+		room.runLocalTrackFromRemote(ps, remoteTrack, receiver)
 	})
-
-	return
 }
 
 func (pc *peerConn) requestPLI() {

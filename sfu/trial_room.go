@@ -143,14 +143,14 @@ func (r *trialRoom) countdown() {
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-endTimer.C
 
-	// listened by peer_conn
+	for _, ps := range r.peerServerIndex {
+		ps.ws.sendWithPayload("end", r.files())
+	}
+
+	// listened by peerServers, mixer, localTracks
 	close(r.endCh)
 
-	for _, ps := range r.peerServerIndex {
-		go ps.ws.SendWithPayload("end", r.files())
-	}
-	log.Printf("[room %s] end\n", r.shortId)
-
+	// delete global reference in roomIndex, but still temporarily attached to peerServer
 	r.delete()
 }
 
@@ -210,12 +210,12 @@ func (r *trialRoom) incInTracksReadyCount() {
 	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		log.Printf("[room %s] users are ready\n", r.shortId)
+		log.Printf("[room %s] peers are ready\n", r.shortId)
 		close(r.waitForAllCh)
 		r.started = true
 		r.startedAt = time.Now()
 		for _, ps := range r.peerServerIndex {
-			go ps.ws.Send("start")
+			go ps.ws.send("start")
 		}
 		go r.countdown()
 		return
@@ -233,7 +233,7 @@ func (r *trialRoom) incOutTracksReadyCount() {
 	}
 }
 
-func (r *trialRoom) bindPeerServer(ps *peerServer) {
+func (r *trialRoom) connectPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -298,26 +298,25 @@ func (r *trialRoom) endingDelay() (delay int) {
 }
 
 func (r *trialRoom) runLocalTrackFromRemote(
-	userId string,
-	join joinPayload,
-	pc *peerConn,
+	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
 ) {
-	outputTrack, err := r.mixer.newLocalTrackFromRemote(userId, r, join, pc, remoteTrack, receiver)
+	outputTrack, err := r.mixer.newLocalTrackFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
 		log.Printf("[room %s error] runLocalTrackFromRemote: %v\n", r.shortId, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
-		ps := r.peerServerIndex[userId]
+		ps := r.peerServerIndex[ps.userId]
 		ps.setLocalTrack(remoteTrack.Kind().String(), outputTrack)
 
 		// will trigger signaling if needed
 		r.incOutTracksReadyCount()
 
-		outputTrack.loop() // blocking
+		signalingTrigger := outputTrack.loop() // blocking
 
-		r.mixer.removeLocalTrack(outputTrack.id)
+		// outputTrack has ended
+		r.mixer.removeLocalTrack(outputTrack.id, signalingTrigger)
 	}
 }

@@ -40,6 +40,8 @@ type senderController struct {
 
 type success bool
 
+type needsSignaling bool
+
 // senderController
 
 func (sc *senderController) updateRateFromREMB(remb uint64) {
@@ -208,23 +210,25 @@ func newMixer(room *trialRoom) *mixer {
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) newLocalTrackFromRemote(userId string, room *trialRoom, join joinPayload, pc *peerConn, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (outputTrack *localTrack, err error) {
-	outputTrack, err = newLocalTrack(userId, room, join, pc, remoteTrack)
+func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (outputTrack *localTrack, err error) {
+	outputTrack, err = newLocalTrack(ps, remoteTrack)
 
 	if err == nil {
 		m.Lock()
-		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(m.shortId, pc, outputTrack, receiver, remoteTrack.SSRC())
+		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(m.shortId, ps.pc, outputTrack, receiver, remoteTrack.SSRC())
 		m.Unlock()
 	}
 	return
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeLocalTrack(id string) {
+func (m *mixer) removeLocalTrack(id string, signalingTrigger needsSignaling) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
-		m.managedUpdateSignaling("removed track")
+		if signalingTrigger {
+			m.managedUpdateSignaling("removed track")
+		}
 	}()
 
 	if ms, exists := m.mixerSliceIndex[id]; exists {
@@ -336,7 +340,7 @@ func (m *mixer) updateOffers() success {
 			return false
 		}
 
-		if err = ps.ws.SendWithPayload("offer", string(offerString)); err != nil {
+		if err = ps.ws.sendWithPayload("offer", string(offerString)); err != nil {
 			return false
 		}
 	}

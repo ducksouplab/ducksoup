@@ -64,7 +64,7 @@ func TestJoinRoom(t *testing.T) {
 
 		room, _ := joinRoom(joinPayload1)
 		joinRoom(joinPayload2)
-		room.disconnectUser("user-2")
+		room.disconnectUser(joinPayload2.UserId)
 
 		_, err := joinRoom(joinPayload2bis)
 

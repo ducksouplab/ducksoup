@@ -15,10 +15,7 @@ import (
 type localTrack struct {
 	sync.Mutex
 	id                string
-	userId            string
-	join              joinPayload
-	room              *trialRoom
-	pc                *peerConn
+	ps                *peerServer
 	track             *webrtc.TrackLocalStaticRTP
 	pipeline          *gst.Pipeline
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
@@ -68,21 +65,18 @@ func parseFrameRate(join joinPayload) (frameRate int) {
 	return
 }
 
-func newLocalTrack(userId string, room *trialRoom, join joinPayload, pc *peerConn, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
+func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
 	// Create a new TrackLocal with the same codec as the incoming one
 	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 
 	if err != nil {
-		log.Printf("[user %s error] NewTrackLocalStaticRTP: %v\n", userId, err)
+		log.Printf("[user %s error] NewTrackLocalStaticRTP: %v\n", ps.userId, err)
 		return
 	}
 
 	track = &localTrack{
 		id:                remoteTrack.ID(), // reuse of remoteTrack ID
-		userId:            userId,
-		join:              join,
-		room:              room,
-		pc:                pc,
+		ps:                ps,
 		track:             rtpTrack,
 		remoteTrack:       remoteTrack,
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
@@ -90,8 +84,9 @@ func newLocalTrack(userId string, room *trialRoom, join joinPayload, pc *peerCon
 	return
 }
 
-func (l *localTrack) loop() {
-	join := l.join
+func (l *localTrack) loop() needsSignaling {
+	userId, join, room := l.ps.userId, l.ps.join, l.ps.room
+
 	kind := l.remoteTrack.Kind().String()
 	fx := parseFx(kind, join)
 
@@ -101,15 +96,15 @@ func (l *localTrack) loop() {
 			// Read RTP packets being sent to Pion
 			rtp, _, err := l.remoteTrack.ReadRTP()
 			if err != nil {
-				return
+				return true
 			}
 			if err := l.track.WriteRTP(rtp); err != nil {
-				return
+				return true
 			}
 		}
 	} else {
 		// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
-		mediaFilePrefix := filePrefix(join, l.room)
+		mediaFilePrefix := filePrefix(join, room)
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
@@ -117,27 +112,28 @@ func (l *localTrack) loop() {
 		l.pipeline = pipeline
 
 		pipeline.Start()
-		l.room.addFiles(l.userId, pipeline.Files)
+		room.addFiles(userId, pipeline.Files)
 		defer func() {
-			log.Printf("[user %s] stopping %s\n", l.userId, kind)
+			log.Printf("[user %s] stopping %s\n", userId, kind)
 			pipeline.Stop()
 			if r := recover(); r != nil {
-				log.Printf("[user %s] recover OnTrack\n", l.userId)
+				log.Printf("[user %s] recover OnTrack\n", userId)
 			}
 		}()
 
 		buf := make([]byte, receiveMTU)
-	processLoop:
 		for {
 			select {
-			case <-l.room.endCh:
-				break processLoop
-			case <-l.pc.closedCh:
-				break processLoop
+			case <-room.endCh:
+				// trial is over, no need to trigger signaling on every closing track
+				return false
+			case <-l.ps.closedCh:
+				// peer may quit early (for instance page refresh), other peers need to be updated
+				return true
 			default:
 				i, _, readErr := l.remoteTrack.Read(buf)
 				if readErr != nil {
-					return
+					return true
 				}
 				pipeline.Push(buf[:i])
 			}
@@ -177,9 +173,9 @@ func (l *localTrack) controlFx(payload controlPayload) {
 	interpolatorLoop:
 		for {
 			select {
-			case <-l.room.endCh:
+			case <-l.ps.room.endCh:
 				break interpolatorLoop
-			case <-l.pc.closedCh:
+			case <-l.ps.closedCh:
 				break interpolatorLoop
 			case currentValue, more := <-newInterpolator.C:
 				if more {
