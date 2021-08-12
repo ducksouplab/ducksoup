@@ -170,18 +170,17 @@ func (l *localTrack) controlFx(payload controlPayload) {
 			l.Unlock()
 		}()
 
-	interpolatorLoop:
 		for {
 			select {
 			case <-l.ps.room.endCh:
-				break interpolatorLoop
+				return
 			case <-l.ps.closedCh:
-				break interpolatorLoop
+				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
 					l.pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
 				} else {
-					break interpolatorLoop
+					return
 				}
 			}
 		}

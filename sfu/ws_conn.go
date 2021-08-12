@@ -63,6 +63,15 @@ func (ws *wsConn) setUserId(userId string) {
 	ws.userId = userId
 }
 
+func (ws *wsConn) read() (m messageIn, err error) {
+	err = ws.ReadJSON(&m)
+
+	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		log.Printf("[ws user#%s][error] reading JSON: %v\n", ws.userId, err)
+	}
+	return
+}
+
 func (ws *wsConn) send(text string) (err error) {
 	ws.Lock()
 	defer ws.Unlock()

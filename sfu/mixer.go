@@ -153,11 +153,10 @@ func (ms *mixerSlice) stop() {
 func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, shortId string) {
 	buf := make([]byte, receiveMTU)
 
-listenerLoop:
 	for {
 		select {
 		case <-ms.endCh:
-			break listenerLoop
+			return
 		default:
 			n, _, err := sc.sender.Read(buf)
 			if err != nil {
@@ -363,17 +362,16 @@ func (m *mixer) managedUpdateSignaling(message string) {
 
 	log.Printf("[mixer room#%s] signaling update: %s\n", m.room.shortId, message)
 
-signalingLoop:
 	for {
 		select {
 		case <-m.room.endCh:
-			break signalingLoop
+			return
 		default:
 			for tries := 0; ; tries++ {
 				switch m.updateSignaling() {
 				case true:
 					// signaling succeeded
-					break signalingLoop
+					return
 				case false:
 					if tries >= 20 {
 						// signaling failed too many times
@@ -406,11 +404,10 @@ func (m *mixer) dispatchKeyFrame() {
 // func (ms *mixerSlice) runReceiverListener(shortId string) {
 // 	buf := make([]byte, receiveMTU)
 
-// listenerLoop:
 // 	for {
 // 		select {
 // 		case <-ms.endCh:
-// 			break listenerLoop
+// 			return
 // 		default:
 // 			n, _, err := ms.receiver.Read(buf)
 // 			if err != nil {

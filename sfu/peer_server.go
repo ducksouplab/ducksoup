@@ -73,7 +73,6 @@ func (ps *peerServer) close() {
 }
 
 func (ps *peerServer) loop() {
-	var m messageIn
 
 	// sends "ending" message before rooms does end
 	go func() {
@@ -89,13 +88,10 @@ func (ps *peerServer) loop() {
 			ps.close()
 			return
 		default:
-			err := ps.ws.ReadJSON(&m)
+			m, err := ps.ws.read()
 
 			if err != nil {
 				ps.close()
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					log.Printf("[ps user#%s][error] reading JSON: %v\n", ps.userId, err)
-				}
 				return
 			}
 
