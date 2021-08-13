@@ -14,7 +14,6 @@ import (
 type mixer struct {
 	sync.RWMutex
 	room            *trialRoom
-	shortId         string                 // room's shortId used for logging
 	mixerSliceIndex map[string]*mixerSlice // per track id
 }
 
@@ -111,7 +110,7 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func newMixerSlice(shortId string, pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver) *mixerSlice {
+func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver) *mixerSlice {
 	updateTicker := time.NewTicker(1 * time.Second)
 
 	ms := &mixerSlice{
@@ -139,9 +138,6 @@ func newMixerSlice(shortId string, pc *peerConn, outputTrack *localTrack, receiv
 		}
 	}()
 
-	// TODO enable later if receiver RTCP packets are useful to parse
-	// go ms.runReceiverListener(shortId)
-
 	return ms
 }
 
@@ -161,13 +157,13 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 			n, _, err := sc.sender.Read(buf)
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					log.Printf("[mixer room#%s][error] sender read RTCP: %v\n", shortId, err)
+					log.Printf("[error] [mixer room#%s] sender read RTCP: %v\n", shortId, err)
 				}
 				return
 			}
 			packets, err := rtcp.Unmarshal(buf[:n])
 			if err != nil {
-				log.Printf("[mixer room#%s][error] sender unmarshal RTCP: %v\n", shortId, err)
+				log.Printf("[error] [mixer room#%s] sender unmarshal RTCP: %v\n", shortId, err)
 				continue
 			}
 
@@ -184,7 +180,7 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 						}
 					}
 					// default:
-					// 	log.Printf("-- RTCP packet on sender: %T", rtcpPacket)
+					// 	log.Printf("-- RTCP packet on sender: %T\n", rtcpPacket)
 				}
 			}
 		}
@@ -206,7 +202,7 @@ func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.Trac
 
 	if err == nil {
 		m.Lock()
-		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(m.shortId, ps.pc, outputTrack, receiver)
+		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(ps.pc, outputTrack, receiver)
 		m.Unlock()
 	}
 	return
@@ -252,7 +248,7 @@ func (m *mixer) updateTracks() success {
 			_, ok := m.mixerSliceIndex[sender.Track().ID()]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					log.Printf("[mixer room#%s][error] RemoveTrack: %v\n", m.shortId, err)
+					log.Printf("[error] [room#%s] [mixer] can't RemoveTrack: %v\n", m.room.shortId, err)
 				}
 			}
 		}
@@ -268,14 +264,17 @@ func (m *mixer) updateTracks() success {
 			}
 		}
 
+		log.Printf("[info] [room#%s] [mixer] [user#%s] existing:\n%v\n", m.room.shortId, userId, existingSenders)
 		// add all track we aren't sending yet to the PeerConnection
 		for id, ms := range m.mixerSliceIndex {
+			log.Printf("[info] [room#%s] [mixer] [slice]:\n%v\n", m.room.shortId, id)
 
 			if _, exists := existingSenders[id]; !exists {
 				sender, err := pc.AddTrack(ms.outputTrack.track)
+				log.Printf("[info] [room#%s] [mixer] [user#%s] local track added to pc: %s\n", m.room.shortId, userId, id)
 
 				if err != nil {
-					log.Printf("[mixer room#%s][error] pc.AddTrack: %v\n", m.shortId, err)
+					log.Printf("[error] [room#%s] [mixer] [user#%s] can't AddTrack: %v\n", m.room.shortId, userId, err)
 					return false
 				}
 
@@ -298,11 +297,10 @@ func (m *mixer) updateTracks() success {
 					ms.senderControllerIndex[userId] = &sc
 					ms.Unlock()
 
-					go ms.runSenderListener(&sc, ssrc, m.shortId)
+					go ms.runSenderListener(&sc, ssrc, m.room.shortId)
 				} else {
-					log.Printf("[mixer room#%s][error] wrong number of encoding parameters: %v\n", m.shortId, err)
+					log.Printf("[error] [room#%s] [mixer] [user#%s] wrong number of encoding parameters: %v\n", m.room.shortId, userId, err)
 				}
-
 			}
 		}
 	}
@@ -315,19 +313,19 @@ func (m *mixer) updateOffers() success {
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			log.Printf("[mixer room#%s][error] CreateOffer: %v\n", m.shortId, err)
+			log.Printf("[error] [room#%s] [mixer] [user#%s] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
 			return false
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			log.Printf("[mixer room#%s][error] SetLocalDescription: %v\n", m.shortId, err)
+			log.Printf("[error] [room#%s] [mixer] [user#%s] can'tSetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
 			return false
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			log.Printf("[mixer room#%s][error] marshal offer: %v\n", m.shortId, err)
+			log.Printf("[error] [room#%s] [mixer] [user#%s] can't marshal offer: %v\n", m.room.shortId, ps.userId, err)
 			return false
 		}
 
@@ -353,14 +351,14 @@ func (m *mixer) updateSignaling() success {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (m *mixer) managedUpdateSignaling(message string) {
+func (m *mixer) managedUpdateSignaling(reason string) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
 		go m.dispatchKeyFrame()
 	}()
 
-	log.Printf("[mixer room#%s] signaling update: %s\n", m.room.shortId, message)
+	log.Printf("[info] [room#%s] [mixer] signaling update, reason: %s\n", m.room.shortId, reason)
 
 	for {
 		select {
@@ -412,13 +410,13 @@ func (m *mixer) dispatchKeyFrame() {
 // 			n, _, err := ms.receiver.Read(buf)
 // 			if err != nil {
 // 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					log.Printf("[mixer room#%s][error] receiver read RTCP: %v\n", shortId, err)
+// 					log.Printf("[error] [mixer room#%s] receiver read RTCP: %v\n", shortId, err)
 // 				}
 // 				return
 // 			}
 // 			packets, err := rtcp.Unmarshal(buf[:n])
 // 			if err != nil {
-// 				log.Printf("[mixer room#%s][error] receiver unmarshal RTCP: %v\n", shortId, err)
+// 				log.Printf("[error] [mixer room#%s] receiver unmarshal RTCP: %v\n", shortId, err)
 // 				continue
 // 			}
 
@@ -429,7 +427,7 @@ func (m *mixer) dispatchKeyFrame() {
 // 				case *rtcp.SenderReport:
 // 					log.Println(rtcpPacket)
 // 					// default:
-// 					// 	log.Printf("-- RTCP packet on receiver: %T", rtcpPacket)
+// 					// 	log.Printf("-- RTCP packet on receiver: %T\n", rtcpPacket)
 // 				}
 // 			}
 // 		}

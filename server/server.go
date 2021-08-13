@@ -26,7 +26,7 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Println("[ws] upgrade from origin: ", origin)
+			log.Println("[info] [ws] upgrade from origin: ", origin)
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
@@ -50,7 +50,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// upgrade HTTP request to Websocket
 	unsafeConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		log.Print("[error] [ws] can't upgrade:", err)
 		return
 	}
 
@@ -121,10 +121,10 @@ func ListenAndServe() {
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Println("[main] https listening on " + port)
+		log.Println("[info] [main] https listening on " + port)
 		log.Fatal(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Println("[main] http listening on " + port)
+		log.Println("[info] [main] http listening on " + port)
 		log.Fatal(server.ListenAndServe()) // blocking
 	}
 }

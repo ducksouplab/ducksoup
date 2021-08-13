@@ -234,8 +234,6 @@ class DuckSoup {
         ws.onmessage = async (event) => {
             let message = looseJSONParse(event.data);
 
-            console.log("message", message);
-
             if (message.kind === "offer") {
                 const offer = looseJSONParse(message.payload);
                 pc.setRemoteDescription(offer);

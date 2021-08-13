@@ -42,13 +42,13 @@ func init() {
 
 	f, err := helpers.Open("etc/engines.yml")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("[fatal] ", err)
 	}
 	defer f.Close()
 
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(&engines)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("[fatal] ", err)
 	}
 }

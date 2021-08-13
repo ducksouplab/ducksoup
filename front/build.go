@@ -45,14 +45,14 @@ func Build() {
 			buildOptions.Watch = &api.WatchMode{
 				OnRebuild: func(result api.BuildResult) {
 					if len(result.Errors) > 0 {
-						log.Printf("watch build failed: %d errors\n", len(result.Errors))
+						log.Printf("[error] [build] %d errors\n", len(result.Errors))
 						log.Println(result.Errors)
 					} else {
 						if len(result.Warnings) > 0 {
-							log.Printf("watch build succeeded: %d warnings\n", len(result.Warnings))
+							log.Printf("[info] [build] success with %d warnings\n", len(result.Warnings))
 							log.Println(result.Warnings)
 						} else {
-							log.Println("watch build succeeded")
+							log.Println("[info] [build] success")
 						}
 					}
 				},
@@ -61,7 +61,7 @@ func Build() {
 		build := api.Build(buildOptions)
 
 		if len(build.Errors) > 0 {
-			log.Fatal(build.Errors)
+			log.Fatal("[fatal] ", build.Errors)
 		}
 	}
 }

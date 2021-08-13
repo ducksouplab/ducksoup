@@ -70,7 +70,6 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
 
 	if err != nil {
-		log.Printf("[track user#%s][error] NewTrackLocalStaticRTP: %v\n", ps.userId, err)
 		return
 	}
 
@@ -108,16 +107,16 @@ func (l *localTrack) loop() needsSignaling {
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(l.track, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
+		pipeline := gst.CreatePipeline(userId, l.track, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
 		l.pipeline = pipeline
 
 		pipeline.Start()
 		room.addFiles(userId, pipeline.Files)
 		defer func() {
-			log.Printf("[track user#%s] %s stopping\n", userId, kind)
+			log.Printf("[info] [user#%s] [%s track] stopping\n", userId, kind)
 			pipeline.Stop()
 			if r := recover(); r != nil {
-				log.Printf("[track user#%s] recover\n", userId)
+				log.Printf("[recov] [user#%s] [%s track] recover\n", userId, kind)
 			}
 		}()
 

@@ -155,7 +155,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	// i := &interceptor.Registry{}
 	// interesting for instance for NACKs
 	// if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-	// 	log.Println("[engine error] could not register default interceptors")
+	// 	log.Println("[error] [engine] could not register default interceptors")
 	// }
 
 	return webrtc.NewAPI(

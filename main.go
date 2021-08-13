@@ -32,7 +32,7 @@ func main() {
 	if !cmdBuildMode {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Println("[main] recovered: ", r)
+				log.Println("[recov] main has recovered: ", r)
 			}
 		}()
 

@@ -60,7 +60,7 @@ func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		log.Printf("[ws user#%s][error] while reading: %v\n", ws.userId, err)
+		log.Printf("[error] [ws user#%s] can't read: %v\n", ws.userId, err)
 	}
 	return
 }
@@ -92,7 +92,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[ws user#%s][error] while sending: %v\n", ws.userId, err)
+		log.Printf("[error] [ws user#%s] can't send: %v\n", ws.userId, err)
 	}
 	return
 }
@@ -106,7 +106,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[ws user#%s][error] while sending with payload: %v\n", ws.userId, err)
+		log.Printf("[error] [ws user#%s] can't send with payload: %v\n", ws.userId, err)
 	}
 	return
 }

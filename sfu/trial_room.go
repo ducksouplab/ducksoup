@@ -62,7 +62,7 @@ func (r *trialRoom) delete() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Printf("[room %s] deleting\n", r.shortId)
+	log.Printf("[info] [room#%s] deleting\n", r.shortId)
 	delete(roomIndex, r.qualifiedId)
 }
 
@@ -138,6 +138,10 @@ func (r *trialRoom) userCount() int {
 	return len(r.connectedIndex)
 }
 
+func (r *trialRoom) connectedUserCount() (count int) {
+	return len(r.peerServerIndex)
+}
+
 func (r *trialRoom) countdown() {
 	// blocking "end" event and delete
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
@@ -151,9 +155,9 @@ func (r *trialRoom) countdown() {
 	r.running = false
 	r.Unlock()
 
-	r.delete()
 	// listened by peerServers, mixer, localTracks
 	close(r.endCh)
+	// actual deleting is done when all users have disconnected, see disconnectUser
 }
 
 // API read-write
@@ -188,11 +192,11 @@ func joinRoom(join joinPayload) (*trialRoom, error) {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Printf("[room %s] joined\n", qualifiedId)
+			log.Printf("[info] [room#%s] [user#%s] joined\n", join.RoomId, userId)
 			return r, nil
 		}
 	} else {
-		log.Printf("[room %s] created\n", qualifiedId)
+		log.Printf("[info] [room#%s] [user#%s] created for origin: %s\n", join.RoomId, userId, join.origin)
 		newRoom := newRoom(qualifiedId, join)
 		roomIndex[qualifiedId] = newRoom
 		return newRoom, nil
@@ -209,10 +213,10 @@ func (r *trialRoom) incInTracksReadyCount() {
 	}
 
 	r.inTracksReadyCount++
-	log.Printf("[room %s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
+	log.Printf("[info] [room#%s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		log.Printf("[room %s] users are ready\n", r.shortId)
+		log.Printf("[info] [room#%s] users are ready\n", r.shortId)
 		close(r.waitForAllCh)
 		r.running = true
 		r.startedAt = time.Now()
@@ -235,6 +239,13 @@ func (r *trialRoom) incOutTracksReadyCount() {
 	}
 }
 
+func (r *trialRoom) decOutTracksReadyCount() {
+	r.Lock()
+	defer r.Unlock()
+
+	r.outTracksReadyCount--
+}
+
 func (r *trialRoom) connectPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
@@ -255,7 +266,8 @@ func (r *trialRoom) disconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
-		if r.userCount() == 1 && !r.running {
+
+		if r.connectedUserCount() == 0 && !r.running {
 			// don't keep this room
 			r.delete()
 		}
@@ -307,7 +319,7 @@ func (r *trialRoom) runLocalTrackFromRemote(
 	outputTrack, err := r.mixer.newLocalTrackFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[room %s][error] runLocalTrackFromRemote: %v\n", r.shortId, err)
+		log.Printf("[error] [room#%s] runLocalTrackFromRemote: %v\n", r.shortId, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps := r.peerServerIndex[ps.userId]
@@ -320,5 +332,6 @@ func (r *trialRoom) runLocalTrackFromRemote(
 
 		// outputTrack has ended
 		r.mixer.removeLocalTrack(outputTrack.id, signalingTrigger)
+		r.decOutTracksReadyCount()
 	}
 }

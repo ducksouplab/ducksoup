@@ -243,6 +243,16 @@ Here is an overview of what is happening from connecting to videoconferencing:
 	2. new offers are created and sent to update remote peer connections (in the browser)
 - a by-product of this signaling step is the initialization of `senderControllers` needed by `mixerSlices` to inspect network conditions and estimate optimal bitrates
 
+### Logs
+
+Logs are prefixed by:
+
+- `[fatal]`: can't launch server
+- `[error]`: server error
+- `[info]`: information about the trial events (initialization of resources, signaling, closing...)
+- `[wrong]`: client side error (for instance wrong `peerOptions`)
+- `[recov]`: recover from panic
+
 ### Websocket messages
 
 Messages from server (Go) to client (JS):

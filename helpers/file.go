@@ -25,7 +25,7 @@ func ReadFile(name string) string {
 	f, err := os.Open(path)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("[fatal] ", err)
 	}
 
 	defer f.Close()
@@ -37,7 +37,7 @@ func ReadFile(name string) string {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		log.Fatal("[fatal] ", err)
 	}
 
 	return output
