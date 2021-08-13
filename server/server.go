@@ -97,13 +97,11 @@ func ListenAndServe() {
 	// js & css and html without basic auth
 	router.PathPrefix("/scripts/").Handler(http.StripPrefix("/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
 	router.PathPrefix("/styles/").Handler(http.StripPrefix("/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
-	router.PathPrefix("/embed/").Handler(http.StripPrefix("/embed/", http.FileServer(http.Dir("./front/static/pages/embed/"))))
 	// html with basic auth
 	testRouter := router.PathPrefix("/test").Subrouter()
 	testRouter.Use(basicAuth)
-	testRouter.PathPrefix("/embed/").Handler(http.StripPrefix("/test/embed/", http.FileServer(http.Dir("./front/static/pages/test/embed/"))))
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix("/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
-	testRouter.PathPrefix("/standalone/").Handler(http.StripPrefix("/test/standalone/", http.FileServer(http.Dir("./front/static/pages/test/standalone/"))))
+	testRouter.PathPrefix("/room/").Handler(http.StripPrefix("/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
 
 	// websocket handler
 	router.HandleFunc("/ws", websocketHandler)

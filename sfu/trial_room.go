@@ -151,6 +151,7 @@ func (r *trialRoom) countdown() {
 	r.running = false
 	r.Unlock()
 
+	r.delete()
 	// listened by peerServers, mixer, localTracks
 	close(r.endCh)
 }

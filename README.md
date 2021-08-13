@@ -125,18 +125,10 @@ The following methods are available on a DuckSoup player:
 
 ### Front-end examples
 
-There are several ways to use DuckSoup:
+If DuckSoup is running and accessible for instance at http://localhost:8000, there are a few available test front-ends:
 
-- the official and maintained way is to rely on ducksoup.js as described in [DuckSoup Player](#ducksoup-player)
-- `static/test/standalone` communicates with DuckSoup server without ducksoup.js, reimplementing signaling and RTC logic (may be later deprecated / unmaintained)
-- an alternate implementation relies on a served DuckSoup page meant to be embedded in an iframe. A full example is available in `static/test/embed` which contains an iframe that embeds `static/embed` (may be later deprecated / unmaintained)
-
-Once the app is running, you may try them at:
-
-- http://localhost:8000/test/mirror/ (one user, relies on ducksoup.js)
-- http://localhost:8000/test/standalone/ (two users -> two tabs)
-- http://localhost:8000/test/embed/ (two users -> two tabs)
-
+- http://localhost:8000/test/mirror/ one user reflection with a form to set peerOptions
+- http://localhost:8000/test/room/ choose a user name, room name and size and open in multiple tabs (same number as room size)
 
 ## DuckSoup server
 

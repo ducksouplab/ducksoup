@@ -32,17 +32,25 @@ const show = (selector) => {
 }
 
 const start = async ({
+    isMirror: im,
+    userId: uid,
+    roomId: rid,
+    size: s,
     videoCodec,
     width: w,
     height: h,
     frameRate: fr,
     duration: d,
     audioFx: afx,
-    videoFx: vfx
+    videoFx: vfx,
+    audioDevice: ad
 }) => {
+    const isMirror = !!im;
     // required
-    const roomId = randomId();
-    const userId = randomId();
+    const roomId = isMirror ? randomId() : rid;
+    const userId = isMirror ? randomId() : uid;
+    const size = isMirror ? 1 : parseInt(s, 10);
+    const namespace = isMirror ? "mirror" : "room";    
     state.userId = userId;
     // parse
     const width = parseInt(w, 10);
@@ -66,6 +74,10 @@ const start = async ({
         ...(frameRate && { frameRate: { ideal: frameRate } }),
     }
     
+    const audio = {
+        ...(ad && { deviceId: { ideal: ad }}),
+    }
+    
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
 
     const peerOptions = {
@@ -75,9 +87,10 @@ const start = async ({
         duration,
         // optional
         videoCodec,
-        namespace: "mirror",
-        size: 1, // size 1 for mirroring
+        namespace,
+        size,
         video,
+        audio,
         width,
         height,
         frameRate,
@@ -109,7 +122,7 @@ const start = async ({
     document.getElementById("local-video").srcObject = state.ducksoup.stream;
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async() => {
     const formSettings = document.getElementById("settings");
 
     // UX
@@ -151,6 +164,19 @@ document.addEventListener("DOMContentLoaded", () => {
             state.ducksoup.videoControl("fx", property, value,duration);
         }
     });
+
+    // audio input selection
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInput = document.getElementById("input-audio");
+    for (let i = 0; i !== devices.length; ++i) {
+        const device = devices[i];
+        if (device.kind === "audioinput") {
+        const option = document.createElement("option");
+        option.text =  device.label || `microphone ${audioInputSelect.length + 1}`;
+        option.value = device.deviceId,
+        audioInput.appendChild(option);
+        }
+    }
   });
 
 const clearMessage = () => {
