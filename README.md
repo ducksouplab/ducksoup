@@ -32,23 +32,37 @@ Then, on the experiment web page, include the `ducksoup.js` library:
 And render it (in JavaScript):
 
 ```
-const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);
+const dsPlayer = await DuckSoup.render(embedOptions, peerOptions);
 ```
 
 Where:
 
 - assigning to a variable (`dsPlayer` above) is only needed if you want to further control the DuckSoup audio/video player instance (see [Player API](#player-api))
 
-- `mountEl` (DOM node) is the node where DuckSoup media streams will be rendered (obtained for instance with `document.getElementById("ducksoup-root")`). The video stream is set to fill mountEl (deal with mountEl width and height and the DuckSoup player will adapt to them).
+- `embedOptions` (object) must define `mountEl` or `callback` (or both):
+
+  - `mountEl` (DOM node, obtained for instance with `document.getElementById("ducksoup-root")`): set this property if you want the player to automatically append `<audio>` and `<video>` HTML elements to `mountEl` for each incoming audio or video stream. If you want to manage how to append and render tracks in the DOM, don't define `mountEl` and prefer `callback` 
+  - `callback` (JavaScript function) to receive events from DuckSoup in the form `({ kind, payload }) => { /* callback body */ }`. The different `kind`s of events the player may trigger are:
+    - `"track"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a new track sent by the server is available. This event is used to render the track to the DOM, It won't be triggered if you defined `mountEl`
+    - `"removetrack"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a track is removed by the server. This event is used to update the DOM accordingly. It won't be triggered if you defined `mountEl`
+    - `"start"` (no payload) when videoconferencing starts
+    - `"ending"` (no payload) when videoconferencing is soon ending
+    - `"end"` (no payload) when videoconferencing has ended
+    - `"disconnection"` (no payload) when communication with server has stopped
+    - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect
+    - `"error-duplicate"` (no payload) when a user with same `userId` (see `peerOptions` below) is already connected
+    - `"error-full"` (no payload) when the videoconference room is full
+    - `"error` with more information in payload
+    - `"stats"` (payload contains bandwidth usage information) periodically triggered (fired only when `debug` is set to true)
+  - `debug` (boolean, defaults to false) to enable `"stats"` messages to be received by callback
 
 - `peerOptions` (object) must contain the following properties:
 
   - `signalingUrl` (string) the URL of DuckSoup signaling websocket (for instance `wss://ducksoup-host.com/ws` for a DuckSoup hosted at `ducksoup-host.com`) 
   - `roomId` (string) the room identifier
   - `userId` (string) a unique user identifier
-  - `name` (string) the user display name
 
-- `peerOptions` may also contain the following optional properties:
+- `peerOptions` may contain the following optional properties:
 
   - `duration` (integer, defaults to 30) the duration of the experiment in seconds
   - `size` (integer, defaults to 2) the size of the room (size == 1 for a mirror effect)
@@ -63,15 +77,7 @@ Where:
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
 
-- `embedOptions` (object) may be empty or contain the following optional properties:
-
-  - `callback` (JavaScript function) to receive messages from DuckSoup (see following paragraph)
-  - `debug` (boolean, defaults to false) to enable receiving debug messages (in callback)
-
-The callback function will receive messages as `{ kind, payload }` objects where:
-
-- kind (string) may be: `"start"`, `"end"`, `"error-duplicate"`, `"error-full"`, `"disconnection"` (and `"stats"` if debug is enabled) 
-- payload (unrestricted type) is an optional payload
+For a usage example, you may have a look at `front/src/test/app.js`
 
 ### GStreamer effects
 

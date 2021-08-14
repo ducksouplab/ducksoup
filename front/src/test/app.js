@@ -4,16 +4,12 @@ const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr
 
 const processMozza = (videoFx) => {
     if(!videoFx.startsWith("mozza")) return videoFx;
-    console.log("blabla");
     // already using file paths
     if(videoFx.includes("/")) return videoFx;
     let output = videoFx.replace(/deform=([^\s]+)/, "deform=plugins/$1.dfm")
     output = output.replace(/shape-model=([^\s]+)/, "shape-model=plugins/$1.dat")
     return output;
 }
-
-// mozza deform=plugins/gui1.dfm alpha=1 overlay=true
-// mozza deform=plugins/gui1.dfm alpha=1 overlay=true
 
 const hide = (selector) => {
     const targets = document.querySelectorAll(selector);
@@ -29,6 +25,11 @@ const show = (selector) => {
     for (let i = 0; i < targets.length; i++) {
         targets[i].classList.remove("d-none");
     }
+}
+
+const parseIntWithFallback = (raw, fallback) => {
+    const parsed = parseInt(raw, 10);
+    return isNaN(parsed) ? fallback : parsed;
 }
 
 const start = async ({
@@ -53,10 +54,12 @@ const start = async ({
     const namespace = isMirror ? "mirror" : "room";    
     state.userId = userId;
     // parse
-    const width = parseInt(w, 10);
-    const height = parseInt(h, 10);
-    const frameRate = parseInt(fr, 10);
-    const duration = parseInt(d, 10);
+    const width = parseIntWithFallback(w, 800);
+    const height = parseIntWithFallback(h, 600);
+    const frameRate = parseIntWithFallback(fr, 30);
+    const duration = parseIntWithFallback(d, 30);
+    state.width = width;
+    state.height = height;
     // add name if fx is not empty
     let audioFx = afx;
     let videoFx = vfx;
@@ -64,7 +67,6 @@ const start = async ({
     if(!!afx && afx.length > 0 && !["passthrough", "forward"].includes(afx)) audioFx += " name=fx";
     if(!!vfx && vfx.length > 0 && !["passthrough", "forward"].includes(vfx)) videoFx += " name=fx";
     videoFx = processMozza(videoFx);
-    console.log(videoFx);
 
     // optional
 
@@ -99,27 +101,27 @@ const start = async ({
     };
     console.log("peerOptions: ", peerOptions);
 
-    // Embedding element with custom UX elements
     const containerEl = document.getElementById("ducksoup-container");
     containerEl.style.width = width + "px";
-    containerEl.style.height = height + "px";
-    // Mounting element
+    containerEl.style.minHeight = height + "px";
     const mountEl = document.getElementById("ducksoup-root");
-    mountEl.style.width = width + "px";
-    mountEl.style.height = height + "px";
+    mountEl.style.width = state.width + "px";
+    mountEl.style.minHeight = state.height + "px";
     // UX
-    mountEl.classList.remove("d-none");
     hide(".show-when-not-running");
     hide(".show-when-ended");
     show(".show-when-running");
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
-    state.ducksoup = await DuckSoup.render(mountEl, peerOptions, {
-        callback: receiveMessage,
+    state.ducksoup = await DuckSoup.render({
+        callback: ducksoupListener,
         debug: true,
-    });
-    document.getElementById("local-video").srcObject = state.ducksoup.stream;
+    }, peerOptions);
+    // display direct stream in mirror mode
+    if(isMirror) {
+        document.getElementById("local-video").srcObject = state.ducksoup.stream;
+    }
 };
 
 document.addEventListener("DOMContentLoaded", async() => {
@@ -192,8 +194,10 @@ const appendMessage = (message) => {
 }
 
 // communication with iframe
-const receiveMessage = (message) => {
+const ducksoupListener = (message) => {
     const { kind, payload } = message;
+
+    // generic cases
     if(kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
@@ -204,8 +208,28 @@ const receiveMessage = (message) => {
         hide(".show-when-ending");
     }
     
+    // specific cases
     if (kind === "start") {
         clearMessage();
+    } else if (kind === "track") {
+        // prepare mountEl
+        const mountEl = document.getElementById("ducksoup-root");
+        mountEl.classList.remove("d-none");
+        // append stream
+        const { track, streams } = payload;
+        let el = document.createElement(track.kind);
+        el.id = track.id;
+        el.srcObject = streams[0];
+        el.autoplay = true;
+        if(track.kind === "video") {
+            el.style.width = state.width + "px";
+            el.style.height = state.height + "px";
+        }
+        mountEl.appendChild(el);
+    } else if (kind === "removetrack") {
+        const { track } = payload;
+        const el = document.getElementById(track.id);
+        if (el) el.parentNode.removeChild(el);
     } else if (kind === "ending") {
         show(".show-when-ending");
     } else if (kind === "end") {

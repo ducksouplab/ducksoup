@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.1.1")
+    console.log("[DuckSoup] v1.2.0")
 });
 
 // Config
@@ -38,10 +38,10 @@ const IS_SAFARI = (() => {
 
 // Pure functions
 
-const areOptionsValid = ({ roomId, userId, duration }) => {
-    return typeof roomId !== 'undefined' &&
-        typeof userId !== 'undefined' &&
-        !isNaN(duration);
+const firstOptionsError = ({ mountEl, callback }, { roomId, userId, duration }) => {
+    if (!mountEl && !callback) return "invalid embedOptions";
+    if (typeof roomId === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) return "invalid peerOptions";
+    return null;
 }
 
 const clean = (obj) => {
@@ -101,33 +101,34 @@ class DuckSoup {
 
     // API
 
-    constructor(mountEl, peerOptions, embedOptions) {
-        if (!areOptionsValid(peerOptions)) {
-            this._postStop({ kind: "error", payload: "Invalid DuckSoup options" });
-        } else {
+    constructor(embedOptions, peerOptions) {
+        const err = firstOptionsError(embedOptions, peerOptions);
+        if (err) throw new Error(err);
+
+        if (embedOptions.mountEl) {
+            this._mountEl = mountEl;
             // replace mountEl contents
             while (mountEl.firstChild) {
                 mountEl.removeChild(mountEl.firstChild);
             }
-            this._mountEl = mountEl;
-            this._signalingUrl = peerOptions.signalingUrl;
-            this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
-            this._joinPayload = parseJoinPayload(peerOptions);
-            this._constraints = {
-                audio: { ...DEFAULT_CONSTRAINTS.audio, ...peerOptions.audio },
-                video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
+        }
+        this._signalingUrl = peerOptions.signalingUrl;
+        this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
+        this._joinPayload = parseJoinPayload(peerOptions);
+        this._constraints = {
+            audio: { ...DEFAULT_CONSTRAINTS.audio, ...peerOptions.audio },
+            video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
+        };
+        this._debug = embedOptions && embedOptions.debug;
+        this._callback = embedOptions && embedOptions.callback;
+        if (this._debug) {
+            this._debugInfo = {
+                now: Date.now(),
+                audioBytesSent: 0,
+                audioBytesReceived: 0,
+                videoBytesSent: 0,
+                videoBytesReceived: 0
             };
-            this._debug = embedOptions && embedOptions.debug;
-            this._callback = embedOptions && embedOptions.callback;
-            if (this._debug) {
-                this._debugInfo = {
-                    now: Date.now(),
-                    audioBytesSent: 0,
-                    audioBytesReceived: 0,
-                    videoBytesSent: 0,
-                    videoBytesReceived: 0
-                };
-            }
         }
     };
 
@@ -157,7 +158,7 @@ class DuckSoup {
             await this._startRTC();
             this._running = true;
         } catch (err) {
-            this._postStop({ kind: "error", payload: err });
+            this._sendStop({ kind: "error", payload: err });
         }
     }
 
@@ -177,13 +178,13 @@ class DuckSoup {
     }
 
 
-    _postMessage(message, force) {
+    _sendEvent(message, force) {
         if (this._callback && (this._running || force)) this._callback(message);
     }
 
-    _postStop(reason) {
+    _sendStop(reason) {
         const message = typeof reason === "string" ? { kind: reason } : reason;
-        this._postMessage(message);
+        this._sendEvent(message);
         if (this._debugIntervalId) clearInterval(this._debugIntervalId);
     }
 
@@ -222,12 +223,12 @@ class DuckSoup {
         };
 
         ws.onclose = () => {
-            this._postStop("disconnection");
+            this._sendStop("disconnection");
             this._stopRTC();
         };
 
         ws.onerror = (event) => {
-            this._postStop({ kind: "error", payload: event.data });
+            this._sendStop({ kind: "error", payload: event.data });
             this.stop(4000); // used as error
         };
 
@@ -254,11 +255,11 @@ class DuckSoup {
                     console.error(error)
                 }
             } else if (message.kind === "start") {
-                this._postMessage({ kind: "start" }, true); // force with true since player is not already running
+                this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
             } else if (message.kind === "ending") {
-                this._postMessage({ kind: "ending" });
+                this._sendEvent({ kind: "ending" });
             } else if (message.kind.startsWith("error") || message.kind === "end") {
-                this._postStop(message);
+                this._sendStop(message);
                 this.stop(1000); // Normal Closure
             }
         };
@@ -274,20 +275,41 @@ class DuckSoup {
         };
 
         pc.ontrack = (event) => {
-            let el = document.createElement(event.track.kind);
-            el.id = event.track.id;
-            el.srcObject = event.streams[0];
-            el.autoplay = true;
-            if(event.track.kind === "video") {
-                el.style.width = "100%";
-                el.style.height = "100%";
-            }
-            this._mountEl.appendChild(el);
+            if(this._mountEl) {
+                let el = document.createElement(event.track.kind);
+                el.id = event.track.id;
+                el.srcObject = event.streams[0];
+                el.autoplay = true;
+                if(event.track.kind === "video") {
+                    if(this._joinPayload.width) {
+                        el.style.width = this._joinPayload.width + "px";
+                    } else {
+                        el.style.width = "100%";
+                    }
+                    if(this._joinPayload.height) {
+                        el.style.height = this._joinPayload.height + "px";
+                    } 
+                }
+                this._mountEl.appendChild(el);
+                // on remove
+                event.streams[0].onremovetrack = ({ track }) => {
+                    const el = document.getElementById(track.id);
+                    if (el) el.parentNode.removeChild(el);
+                };
+            } else {
+                this._sendEvent({
+                    kind: "track",
+                    payload: event
+                });
+                // on remove
+                event.streams[0].onremovetrack = (event) => {
+                    this._sendEvent({
+                        kind: "removetrack",
+                        payload: event
+                    });
+                };
 
-            event.streams[0].onremovetrack = ({ track }) => {
-                const el = document.getElementById(track.id);
-                if (el) el.parentNode.removeChild(el);
-            };
+            }
         };
 
         // Stats
@@ -334,7 +356,7 @@ class DuckSoup {
             newVideoBytesReceived - this._debugInfo.videoBytesReceived,
             elapsed
         );
-        this._postMessage({
+        this._sendEvent({
             kind: "stats",
             payload: { audioUp, audioDown, videoUp, videoDown }
         });
@@ -351,8 +373,8 @@ class DuckSoup {
 // API
 
 window.DuckSoup = {
-    render: async (mountEl, peerOptions, embedOptions) => {
-        const player = new DuckSoup(mountEl, peerOptions, embedOptions);
+    render: async (embedOptions, peerOptions) => {
+        const player = new DuckSoup(embedOptions, peerOptions);
         await player._initialize();
         return player;
     }
