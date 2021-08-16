@@ -44,7 +44,6 @@ Where:
   - `mountEl` (DOM node, obtained for instance with `document.getElementById("ducksoup-root")`): set this property if you want the player to automatically append `<audio>` and `<video>` HTML elements to `mountEl` for each incoming audio or video stream. If you want to manage how to append and render tracks in the DOM, don't define `mountEl` and prefer `callback` 
   - `callback` (JavaScript function) to receive events from DuckSoup in the form `({ kind, payload }) => { /* callback body */ }`. The different `kind`s of events the player may trigger are:
     - `"track"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a new track sent by the server is available. This event is used to render the track to the DOM, It won't be triggered if you defined `mountEl`
-    - `"removetrack"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a track is removed by the server. This event is used to update the DOM accordingly. It won't be triggered if you defined `mountEl`
     - `"start"` (no payload) when videoconferencing starts
     - `"ending"` (no payload) when videoconferencing is soon ending
     - `"end"` (no payload) when videoconferencing has ended

@@ -1,4 +1,4 @@
-const state = {};
+let state;
 
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
 
@@ -52,14 +52,13 @@ const start = async ({
     const userId = isMirror ? randomId() : uid;
     const size = isMirror ? 1 : parseInt(s, 10);
     const namespace = isMirror ? "mirror" : "room";    
-    state.userId = userId;
     // parse
     const width = parseIntWithFallback(w, 800);
     const height = parseIntWithFallback(h, 600);
     const frameRate = parseIntWithFallback(fr, 30);
     const duration = parseIntWithFallback(d, 30);
-    state.width = width;
-    state.height = height;
+    // initialize state
+    state = { userId, width, height, isMirror, peerCount: 0};
     // add name if fx is not empty
     let audioFx = afx;
     let videoFx = vfx;
@@ -67,21 +66,20 @@ const start = async ({
     if(!!afx && afx.length > 0 && !["passthrough", "forward"].includes(afx)) audioFx += " name=fx";
     if(!!vfx && vfx.length > 0 && !["passthrough", "forward"].includes(vfx)) videoFx += " name=fx";
     videoFx = processMozza(videoFx);
+    // signaling
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
 
     // optional
-
     const video = {
         ...(width && { width: { ideal: width } }),
         ...(height && { height: { ideal: height } }),
         ...(frameRate && { frameRate: { ideal: frameRate } }),
     }
-    
     const audio = {
         ...(ad && { deviceId: { ideal: ad }}),
     }
     
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-
+    // full peerOptions
     const peerOptions = {
         signalingUrl: `${wsProtocol}://${window.location.host}/ws`,
         roomId,
@@ -101,16 +99,16 @@ const start = async ({
     };
     console.log("peerOptions: ", peerOptions);
 
-    const containerEl = document.getElementById("ducksoup-container");
-    containerEl.style.width = width + "px";
-    containerEl.style.minHeight = height + "px";
-    const mountEl = document.getElementById("ducksoup-root");
-    mountEl.style.width = state.width + "px";
-    mountEl.style.minHeight = state.height + "px";
     // UX
     hide(".show-when-not-running");
     hide(".show-when-ended");
     show(".show-when-running");
+    if(isMirror) {
+        // save space for remote video before local video
+        const mountEl = document.getElementById("ducksoup-root");
+        mountEl.style.width = state.width + "px";
+        mountEl.style.height = state.height + "px";
+    }
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
@@ -120,6 +118,7 @@ const start = async ({
     }, peerOptions);
     // display direct stream in mirror mode
     if(isMirror) {
+        // insert local video
         document.getElementById("local-video").srcObject = state.ducksoup.stream;
     }
 };
@@ -131,7 +130,6 @@ document.addEventListener("DOMContentLoaded", async() => {
     show(".show-when-not-running");
     hide(".show-when-ended");
     hide(".show-when-running");
-    hide(".show-when-ending");
 
     formSettings.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -196,6 +194,7 @@ const appendMessage = (message) => {
 // communication with iframe
 const ducksoupListener = (message) => {
     const { kind, payload } = message;
+    const mountEl = document.getElementById("ducksoup-root");
 
     // grouped cases
     if(kind !== "stats") {
@@ -212,27 +211,52 @@ const ducksoupListener = (message) => {
     if (kind === "start") {
         clearMessage();
     } else if (kind === "track") {
-        // prepare mountEl
-        const mountEl = document.getElementById("ducksoup-root");
         mountEl.classList.remove("d-none");
-        // append stream
         const { track, streams } = payload;
-        let el = document.createElement(track.kind);
-        el.id = track.id;
-        el.srcObject = streams[0];
-        el.autoplay = true;
         if(track.kind === "video") {
+            // append stream
+            let container = document.createElement("div");
+            container.id = track.id;
+            container.classList.add("video-container")
+            // create <video>
+            let el = document.createElement(track.kind);
+            el.srcObject = streams[0];
+            el.autoplay = true;
+            // size
+            container.style.width = state.width + "px";
+            container.style.height = state.height + "px";
             el.style.width = state.width + "px";
             el.style.height = state.height + "px";
+            // append
+            container.appendChild(el);
+            container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-bottom show-when-ending'><div>Conversation soon ending</div></div>");
+            if(state.isMirror) {
+                container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-top show-when-running'><div>Through server</div></div>");
+            } else {
+                ++state.peerCount;
+                container.insertAdjacentHTML("beforeend", `<div class='overlay overlay-top show-when-running'><div>Peer #${state.peerCount}</div></div>`);
+            }
+            mountEl.appendChild(container);;
+            hide(".show-when-ending");
+        } else {
+            let el = document.createElement(track.kind);
+            el.id = track.id;
+            el.srcObject = streams[0];
+            el.autoplay = true;
+            mountEl.appendChild(el);
         }
-        mountEl.appendChild(el);
-    } else if (kind === "removetrack") {
-        const { track } = payload;
-        const el = document.getElementById(track.id);
-        if (el) el.parentNode.removeChild(el);
+        // on remove
+        streams[0].onremovetrack = ({ track }) => {
+            const el = document.getElementById(track.id);
+            if (el) el.parentNode.removeChild(el);
+        };
     } else if (kind === "ending") {
         show(".show-when-ending");
     } else if (kind === "end") {
+        // replace mountEl contents
+        while (mountEl.firstChild) {
+            mountEl.removeChild(mountEl.firstChild);
+        }
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";

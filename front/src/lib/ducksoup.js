@@ -301,14 +301,6 @@ class DuckSoup {
                     kind: "track",
                     payload: event
                 });
-                // on remove
-                event.streams[0].onremovetrack = (event) => {
-                    this._sendEvent({
-                        kind: "removetrack",
-                        payload: event
-                    });
-                };
-
             }
         };
 
