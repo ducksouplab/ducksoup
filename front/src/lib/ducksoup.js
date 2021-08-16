@@ -42,14 +42,14 @@ const firstOptionsError = ({ mountEl, callback }, { roomId, userId, duration }) 
     if (!mountEl && !callback) return "invalid embedOptions";
     if (typeof roomId === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) return "invalid peerOptions";
     return null;
-}
+};
 
 const clean = (obj) => {
     for (let prop in obj) {
         if (obj[prop] === null || obj[prop] === undefined) delete obj[prop];
     }
     return obj;
-}
+};
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
@@ -61,7 +61,7 @@ const parseJoinPayload = (peerOptions) => {
     if (isNaN(frameRate)) frameRate = null;
 
     return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
-}
+};
 
 const forceMozillaMono = (sdp) => {
     if (!window.navigator.userAgent.includes("Mozilla")) return sdp;
@@ -93,7 +93,7 @@ const looseJSONParse = (str) => {
     } catch (error) {
         console.error(error);
     }
-}
+};
 
 // DuckSoup
 
@@ -205,6 +205,9 @@ class DuckSoup {
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
         stream.getTracks().forEach((track) => {
+            console.log("---")
+            console.log(track)
+            console.log(stream)
             pc.addTrack(track, stream);
         });
         this._stream = stream;
@@ -378,4 +381,4 @@ window.DuckSoup = {
         await player._initialize();
         return player;
     }
-}
+};

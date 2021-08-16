@@ -9,7 +9,7 @@ const processMozza = (videoFx) => {
     let output = videoFx.replace(/deform=([^\s]+)/, "deform=plugins/$1.dfm")
     output = output.replace(/shape-model=([^\s]+)/, "shape-model=plugins/$1.dat")
     return output;
-}
+};
 
 const hide = (selector) => {
     const targets = document.querySelectorAll(selector);
@@ -17,7 +17,7 @@ const hide = (selector) => {
     for (let i = 0; i < targets.length; i++) {
         targets[i].classList.add("d-none");
     }
-}
+};
 
 const show = (selector) => {
     const targets = document.querySelectorAll(selector);
@@ -25,12 +25,12 @@ const show = (selector) => {
     for (let i = 0; i < targets.length; i++) {
         targets[i].classList.remove("d-none");
     }
-}
+};
 
 const parseIntWithFallback = (raw, fallback) => {
     const parsed = parseInt(raw, 10);
     return isNaN(parsed) ? fallback : parsed;
-}
+};
 
 const start = async ({
     isMirror: im,
@@ -173,31 +173,31 @@ document.addEventListener("DOMContentLoaded", async() => {
     for (let i = 0; i !== devices.length; ++i) {
         const device = devices[i];
         if (device.kind === "audioinput") {
-        const option = document.createElement("option");
-        option.text =  device.label || `microphone ${audioInputSelect.length + 1}`;
-        option.value = device.deviceId,
-        audioInput.appendChild(option);
+            const option = document.createElement("option");
+            option.text =  device.label || `microphone ${audioInputSelect.length + 1}`;
+            option.value = device.deviceId,
+            audioInput.appendChild(option);
         }
     }
-  });
+});
 
 const clearMessage = () => {
     document.getElementById("stopped-message").innerHTML = "";
-}
+};
 
 const replaceMessage = (message) => {
     document.getElementById("stopped-message").innerHTML = message + '<br/>' ;
-}
+};
 
 const appendMessage = (message) => {
     document.getElementById("stopped-message").innerHTML += message + '<br/>' ;
-}
+};
 
 // communication with iframe
 const ducksoupListener = (message) => {
     const { kind, payload } = message;
 
-    // generic cases
+    // grouped cases
     if(kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
