@@ -250,7 +250,7 @@ func (r *trialRoom) connectPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.mixer.managedUpdateSignaling("new peer connection")
+		r.mixer.managedUpdateSignaling("new user#" + ps.userId)
 	}()
 
 	r.peerServerIndex[ps.userId] = ps

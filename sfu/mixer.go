@@ -214,7 +214,7 @@ func (m *mixer) removeLocalTrack(id string, signalingTrigger needsSignaling) {
 	defer func() {
 		m.Unlock()
 		if signalingTrigger {
-			m.managedUpdateSignaling("removed track")
+			m.managedUpdateSignaling("removed track#" + id)
 		}
 	}()
 
@@ -235,14 +235,14 @@ func (m *mixer) updateTracks() success {
 		}
 
 		// map of sender we are already sending, so we don't double send
-		existingSenders := map[string]bool{}
+		dontAddToSendersIndex := map[string]bool{}
 
 		for _, sender := range pc.GetSenders() {
 			if sender.Track() == nil {
 				continue
 			}
 
-			existingSenders[sender.Track().ID()] = true
+			dontAddToSendersIndex[sender.Track().ID()] = true
 
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
 			_, ok := m.mixerSliceIndex[sender.Track().ID()]
@@ -260,16 +260,17 @@ func (m *mixer) updateTracks() success {
 				if receiver.Track() == nil {
 					continue
 				}
-				existingSenders[receiver.Track().ID()] = true
+				dontAddToSendersIndex[receiver.Track().ID()] = true
 			}
 		}
 
-		log.Printf("[info] [room#%s] [mixer] [user#%s] existing:\n%v\n", m.room.shortId, userId, existingSenders)
-		// add all track we aren't sending yet to the PeerConnection
+		// add all necessary track (not yet to the PeerConnection or not coming from same peer)
 		for id, ms := range m.mixerSliceIndex {
-			log.Printf("[info] [room#%s] [mixer] [slice]:\n%v\n", m.room.shortId, id)
+			_, dontAdd := dontAddToSendersIndex[id]
 
-			if _, exists := existingSenders[id]; !exists {
+			if dontAdd {
+				log.Printf("[info] [room#%s] [mixer] [user#%s] don't add local track to pc: %s\n", m.room.shortId, userId, id)
+			} else {
 				sender, err := pc.AddTrack(ms.outputTrack.track)
 				log.Printf("[info] [room#%s] [mixer] [user#%s] local track added to pc: %s\n", m.room.shortId, userId, id)
 
@@ -311,14 +312,20 @@ func (m *mixer) updateOffers() success {
 	for _, ps := range m.room.peerServerIndex {
 		pc := ps.pc
 
+		log.Printf("[info] [room#%s] [mixer] [user#%s] signaling state: %v\n", m.room.shortId, ps.userId, pc.SignalingState())
+
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
 			log.Printf("[error] [room#%s] [mixer] [user#%s] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
 			return false
 		}
 
+		if pc.PendingLocalDescription() != nil {
+			log.Printf("[error] [room#%s] [mixer] [user#%s] pending local description\n", m.room.shortId, ps.userId)
+		}
+
 		if err = pc.SetLocalDescription(offer); err != nil {
-			log.Printf("[error] [room#%s] [mixer] [user#%s] can'tSetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [mixer] [user#%s] can't SetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
 			return false
 		}
