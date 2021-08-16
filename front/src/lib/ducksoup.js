@@ -205,9 +205,6 @@ class DuckSoup {
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
         stream.getTracks().forEach((track) => {
-            console.log("---")
-            console.log(track)
-            console.log(stream)
             pc.addTrack(track, stream);
         });
         this._stream = stream;

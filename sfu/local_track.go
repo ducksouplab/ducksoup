@@ -9,6 +9,7 @@ import (
 
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -66,8 +67,12 @@ func parseFrameRate(join joinPayload) (frameRate int) {
 }
 
 func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
-	// Create a new TrackLocal with the same codec as the incoming one
-	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, remoteTrack.ID(), remoteTrack.StreamID())
+	// create a new localTrack with:
+	// - the same codec as the incoming/remote one
+	// - a unique trackId
+	// - a streamId shared among peerServer tracks (audio/video)
+	trackId := uuid.New().String()
+	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, trackId, ps.streamId)
 
 	if err != nil {
 		return

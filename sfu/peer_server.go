@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
@@ -14,6 +15,7 @@ import (
 type peerServer struct {
 	sync.Mutex
 	userId     string
+	streamId   string // one stream Id shared by localTracks on a given pc
 	room       *trialRoom
 	join       joinPayload
 	pc         *peerConn
@@ -31,6 +33,7 @@ func newPeerServer(
 	ws *wsConn) *peerServer {
 	ps := &peerServer{
 		userId:   join.UserId,
+		streamId: uuid.New().String(),
 		room:     room,
 		join:     join,
 		pc:       pc,
