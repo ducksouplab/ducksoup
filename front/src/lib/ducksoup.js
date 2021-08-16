@@ -38,7 +38,7 @@ const IS_SAFARI = (() => {
 
 // Pure functions
 
-const firstOptionsError = ({ mountEl, callback }, { roomId, userId, duration }) => {
+const optionsFirstError = ({ mountEl, callback }, { roomId, userId, duration }) => {
     if (!mountEl && !callback) return "invalid embedOptions";
     if (typeof roomId === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) return "invalid peerOptions";
     return null;
@@ -102,10 +102,11 @@ class DuckSoup {
     // API
 
     constructor(embedOptions, peerOptions) {
-        const err = firstOptionsError(embedOptions, peerOptions);
+        const err = optionsFirstError(embedOptions, peerOptions);
         if (err) throw new Error(err);
 
-        if (embedOptions.mountEl) {
+        const { mountEl } = embedOptions;
+        if (mountEl) {
             this._mountEl = mountEl;
             // replace mountEl contents
             while (mountEl.firstChild) {
