@@ -335,12 +335,12 @@ If the goal is to distribute and minimize the image size, consider the (Debian b
 
 ```
 docker build -f docker/Dockerfile.build.multi --build-arg DLIB=true -t ducksoup_multi:latest .
+```
+
+Tag and deploy image to docker hub (replace `creamlab` by your Docker Hub login):
+
+```
 docker tag ducksoup_multi creamlab/ducksoup
-```
-
-Deploy image to docker hub (replace `creamlab` by your Docker Hub login):
-
-```
 docker push creamlab/ducksoup:latest
 ```
 
