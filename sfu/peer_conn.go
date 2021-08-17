@@ -3,16 +3,22 @@ package sfu
 import (
 	"encoding/json"
 	"log"
+	"sync"
+	"time"
 
 	"github.com/creamlab/ducksoup/engine"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
+const delayBetweenPLIs = 500 * time.Millisecond
+
 // New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {
+	sync.Mutex
 	*webrtc.PeerConnection
-	userId string
+	userId  string
+	lastPLI time.Time
 }
 
 // API
@@ -72,7 +78,7 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, e
 		return
 	}
 
-	pc = &peerConn{ppc, userId}
+	pc = &peerConn{sync.Mutex{}, ppc, userId, time.Now()}
 	return
 }
 
@@ -97,7 +103,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[info] [user#%s] [pc] state: %s \n", userId, p.String())
+		log.Printf("[info] [user#%s] [pc] OnConnectionStateChange: %s\n", userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
@@ -106,6 +112,14 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 		case webrtc.PeerConnectionStateClosed:
 			ps.close("pc closed")
 		}
+	})
+
+	pc.OnNegotiationNeeded(func() {
+		log.Printf("[info] [user#%s] [pc] OnNegotiationNeeded\n", userId)
+	})
+
+	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
+		log.Printf("[info] [user#%s] [pc] OnSignalingStateChange: %v\n", userId, state)
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -118,18 +132,28 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 }
 
 func (pc *peerConn) requestPLI() {
+	pc.Lock()
+	defer pc.Unlock()
+
 	for _, receiver := range pc.GetReceivers() {
 		track := receiver.Track()
 		if track != nil && track.Kind().String() == "video" {
-			err := pc.WriteRTCP([]rtcp.Packet{
-				&rtcp.PictureLossIndication{
-					MediaSSRC: uint32(track.SSRC()),
-				},
-			})
-			if err != nil {
-				log.Printf("[error] [user#%s] [pc] can't send PLI: %v\n", pc.userId, err)
+			durationSinceLastPLI := time.Since(pc.lastPLI)
+			if durationSinceLastPLI < delayBetweenPLIs {
+				// throttle: don't send too many PLIs
+				log.Printf("[info] [user#%s] [pc] PLI skipped (throttle)\n", pc.userId)
 			} else {
-				log.Printf("[info] [user#%s] [pc] sent PLI to remote\n", pc.userId)
+				err := pc.WriteRTCP([]rtcp.Packet{
+					&rtcp.PictureLossIndication{
+						MediaSSRC: uint32(track.SSRC()),
+					},
+				})
+				if err != nil {
+					log.Printf("[error] [user#%s] [pc] can't send PLI: %v\n", pc.userId, err)
+				} else {
+					pc.lastPLI = time.Now()
+					log.Printf("[info] [user#%s] [pc] PLI sent\n", pc.userId)
+				}
 			}
 		}
 	}

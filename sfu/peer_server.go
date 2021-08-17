@@ -80,9 +80,16 @@ func (ps *peerServer) loop() {
 	// sends "ending" message before rooms does end
 	go func() {
 		<-ps.room.waitForAllCh
-		<-time.After(time.Duration(ps.room.endingDelay()) * time.Second)
-		log.Printf("[info] [user#%s] [ps] ending message sent\n", ps.userId)
-		ps.ws.send("ending")
+
+		select {
+		case <-time.After(time.Duration(ps.room.endingDelay()) * time.Second):
+			// user might have reconnected and this ps could be
+			log.Printf("[info] [user#%s] [ps] ending message sent\n", ps.userId)
+			ps.ws.send("ending")
+		case <-ps.closedCh:
+			// user might have disconnected
+			return
+		}
 	}()
 
 	for {
@@ -94,7 +101,7 @@ func (ps *peerServer) loop() {
 			m, err := ps.ws.read()
 
 			if err != nil {
-				ps.close("ws error")
+				ps.close("[ws] " + err.Error())
 				return
 			}
 

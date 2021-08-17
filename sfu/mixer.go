@@ -36,7 +36,13 @@ type senderController struct {
 	maxREMB uint64
 }
 
-type success bool
+type signalingState int
+
+const (
+	signalingOk signalingState = iota
+	signalingRetryNow
+	signalingRetryWithDelay
+)
 
 type needsSignaling bool
 
@@ -224,7 +230,7 @@ func (m *mixer) removeLocalTrack(id string, signalingTrigger needsSignaling) {
 	}
 }
 
-func (m *mixer) updateTracks() success {
+func (m *mixer) updateTracks() signalingState {
 	for userId, ps := range m.room.peerServerIndex {
 		// iterate to update peer connections of each PeerServer
 		pc := ps.pc
@@ -276,7 +282,7 @@ func (m *mixer) updateTracks() success {
 
 				if err != nil {
 					log.Printf("[error] [room#%s] [mixer] [user#%s] can't AddTrack: %v\n", m.room.shortId, userId, err)
-					return false
+					return signalingRetryNow
 				}
 
 				params := sender.GetParameters()
@@ -305,10 +311,10 @@ func (m *mixer) updateTracks() success {
 			}
 		}
 	}
-	return true
+	return signalingOk
 }
 
-func (m *mixer) updateOffers() success {
+func (m *mixer) updateOffers() signalingState {
 	for _, ps := range m.room.peerServerIndex {
 		pc := ps.pc
 
@@ -317,7 +323,7 @@ func (m *mixer) updateOffers() success {
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
 			log.Printf("[error] [room#%s] [mixer] [user#%s] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
-			return false
+			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
@@ -327,34 +333,30 @@ func (m *mixer) updateOffers() success {
 		if err = pc.SetLocalDescription(offer); err != nil {
 			log.Printf("[error] [room#%s] [mixer] [user#%s] can't SetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
-			return false
+			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
 			log.Printf("[error] [room#%s] [mixer] [user#%s] can't marshal offer: %v\n", m.room.shortId, ps.userId, err)
-			return false
+			return signalingRetryNow
 		}
 
 		if err = ps.ws.sendWithPayload("offer", string(offerString)); err != nil {
-			return false
+			return signalingRetryNow
 		}
 	}
-	return true
+	return signalingOk
 }
 
 // Signaling is split in two steps:
 // - add or remove tracks on peer connections
-// - update and send offers, if the boolean withSignaling is true
-// Returning false means: please retry later
-func (m *mixer) updateSignaling() success {
-	if s := m.updateTracks(); !s {
-		return false
+// - update and send offers
+func (m *mixer) updateSignaling() signalingState {
+	if s := m.updateTracks(); s != signalingOk {
+		return s
 	}
-	if s := m.updateOffers(); !s {
-		return false
-	}
-	return true
+	return m.updateOffers()
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
@@ -373,23 +375,22 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 			return
 		default:
 			for tries := 0; ; tries++ {
-				switch m.updateSignaling() {
-				case true:
-					// signaling succeeded
+				state := m.updateSignaling()
+
+				if state == signalingOk {
+					// signaling is done
 					return
-				case false:
-					if tries >= 20 {
-						// signaling failed too many times
-						// release the lock and attempt a sync in 3 seconds. We might be blocking a RemoveTrack or AddTrack
-						go func() {
-							time.Sleep(time.Second * 3)
-							m.managedUpdateSignaling("restarted after too many tries")
-						}()
-						return
-					} else {
-						// signaling failed
-						time.Sleep(time.Second * 1)
-					}
+				} else if (state == signalingRetryNow) && (tries < 20) {
+					// redo signaling / for loop
+					break
+				} else {
+					// signalingRetryWithDelay OR signaling failed too many times
+					// we might be blocking a RemoveTrack or AddTrack
+					go func() {
+						time.Sleep(time.Second * 3)
+						m.managedUpdateSignaling("restarted after too many tries")
+					}()
+					return
 				}
 			}
 		}
