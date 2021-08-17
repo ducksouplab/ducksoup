@@ -19,6 +19,7 @@ import (
 var (
 	port           string
 	allowedOrigins = []string{}
+	webPrefix      string
 	testLogin      string
 	testPassword   string
 	cert           = flag.String("cert", "", "cert file")
@@ -40,6 +41,8 @@ func init() {
 	if os.Getenv("DS_ENV") == "DEV" {
 		allowedOrigins = append(allowedOrigins, "https://localhost:8080", "https://localhost:8000", "http://localhost:8000")
 	}
+	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
+	webPrefix = helpers.Getenv("DS_WEB_PREFIX", "")
 	// basict Auth
 	testLogin = helpers.Getenv("DS_TEST_LOGIN", "ducksoup")
 	testPassword = helpers.Getenv("DS_TEST_PASSWORD", "ducksoup")
@@ -95,16 +98,16 @@ func ListenAndServe() {
 	router := mux.NewRouter()
 
 	// js & css and html without basic auth
-	router.PathPrefix("/scripts/").Handler(http.StripPrefix("/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
-	router.PathPrefix("/styles/").Handler(http.StripPrefix("/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
+	router.PathPrefix(webPrefix + "/scripts/").Handler(http.StripPrefix(webPrefix+"/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
+	router.PathPrefix(webPrefix + "/styles/").Handler(http.StripPrefix(webPrefix+"/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
 	// html with basic auth
-	testRouter := router.PathPrefix("/test").Subrouter()
+	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 	testRouter.Use(basicAuth)
-	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix("/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
-	testRouter.PathPrefix("/room/").Handler(http.StripPrefix("/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
+	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
+	testRouter.PathPrefix("/room/").Handler(http.StripPrefix(webPrefix+"/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
 
 	// websocket handler
-	router.HandleFunc("/ws", websocketHandler)
+	router.HandleFunc(webPrefix+"/ws", websocketHandler)
 
 	// port
 	port = ":" + os.Getenv("DS_PORT")

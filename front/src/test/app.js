@@ -1,3 +1,7 @@
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("[DuckSoup test] v1.0.0")
+});
+
 let state;
 
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
@@ -68,6 +72,9 @@ const start = async ({
     videoFx = processMozza(videoFx);
     // signaling
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
+    // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
+    const pathPrefix = pathPrefixhMatch[1];
 
     // optional
     const video = {
@@ -81,7 +88,7 @@ const start = async ({
     
     // full peerOptions
     const peerOptions = {
-        signalingUrl: `${wsProtocol}://${window.location.host}/ws`,
+        signalingUrl: `${wsProtocol}://${window.location.host}${pathPrefix}ws`,
         roomId,
         userId,
         duration,

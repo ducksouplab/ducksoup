@@ -161,6 +161,7 @@ go build
 
 - DS_PORT=9000 (defaults to 8000) to set port listen by server
 - DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
+- DS_WEB_PREFIX=/path (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
 - DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
