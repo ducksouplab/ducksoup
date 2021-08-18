@@ -1,4 +1,4 @@
-FROM debian:bullseye AS builder
+FROM debian:buster
 
 RUN apt-get upgrade -y
 
@@ -20,31 +20,6 @@ ENV PATH=$PATH:/usr/local/go/bin
 
 # needed to build DuckSoup
 RUN apt-get update && apt-get install -y libgstreamer-plugins-base1.0-dev
-
-# build DuckSoup
-WORKDIR /usr/local/src/ducksoup
-
-# layer with deps
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-
-# layer more frequently updated (DuckSoup source)
-COPY . .
-RUN go build
-RUN mkdir -p /build
-RUN cp ./ducksoup /build
-RUN cp -r ./etc /build
-RUN cp -r ./front /build
-
-# runner stage
-FROM debian:bullseye AS final
-
-RUN apt-get upgrade -y
-RUN apt-get update
-
-# needed for dlib
-RUN apt-get update && apt-get install -y build-essential
 
 # GStreamer: plugins and compilation dependencies (libav includes avdec_h264)
 RUN apt-get update && apt-get install -y gstreamer1.0-plugins-base \
@@ -77,7 +52,7 @@ RUN if [ "$DLIB" = "true" ]; then ninja install; fi
 # GStreamer: more plugins and dependencies (for OpenCV and dlib)
 RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y gstreamer1.0-libav \
     libgstreamer-opencv1.0-0 \
-    libopencv-imgproc4.5 \
+    libopencv-imgproc3.2 \
     libopenblas-base \
     libopenblas-dev \
     liblapack-dev \
@@ -87,10 +62,22 @@ RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y gstreamer
 # useful when inspecting container state / bad when image size needs to be optimized
 RUN apt-get update && apt-get install -y gstreamer1.0-tools
 
+# DuckSoup
 WORKDIR /app
 
-COPY --from=builder /build .
+# layer with deps
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
+# layer more frequently updated (DuckSoup source)
+COPY . .
+RUN go build
+
+ARG appuser
+ARG appgroup
+RUN chown -R $appuser:$appgroup front/static
+USER $appuser:$appgroup
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 

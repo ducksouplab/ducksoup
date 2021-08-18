@@ -4,22 +4,22 @@ RUN apt-get upgrade -y
 
 # build-essential needed for CGO (gcc)
 RUN apt-get update && apt-get install -y curl build-essential
-# needed to (later) build DuckSoup
-RUN apt-get update && apt-get install -y libgstreamer-plugins-base1.0-dev
 
 # install go, choose version on https://golang.org/dl/
-WORKDIR /usr/local/src/go
-ENV GO_ARCHIVE=go1.16.6.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="be333ef18b3016e9d7cb7b1ff1fdb0cac800ca0be4cf2290fe613b3d069dfe0d"
+WORKDIR /tmp
+ENV GO_ARCHIVE=go1.17.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="6bf89fc4f5ad763871cf7eac80a2d594492de7a818303283f1366a7f6a30372d"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
-RUN tar -xzf $GO_ARCHIVE
+RUN tar -C /usr/local -xzf $GO_ARCHIVE
 
-RUN mv go /usr/local
 RUN rm $GO_ARCHIVE
 
 ENV PATH=$PATH:/usr/local/go/bin
+
+# needed to build DuckSoup
+RUN apt-get update && apt-get install -y libgstreamer-plugins-base1.0-dev
 
 # GStreamer: plugins and compilation dependencies (libav includes avdec_h264)
 RUN apt-get update && apt-get install -y gstreamer1.0-plugins-base \
