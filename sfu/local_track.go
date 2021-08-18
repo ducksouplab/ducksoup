@@ -26,8 +26,7 @@ type localTrack struct {
 func filePrefix(join joinPayload, room *trialRoom) string {
 	connectionCount := room.joinedCountForUser(join.UserId)
 	// time room user count
-	return room.namespace + "/" +
-		time.Now().Format("20060102-150405.000") +
+	return time.Now().Format("20060102-150405.000") +
 		"-r-" + join.RoomId +
 		"-u-" + join.UserId +
 		"-c-" + fmt.Sprint(connectionCount)
@@ -112,7 +111,7 @@ func (l *localTrack) loop() needsSignaling {
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(userId, l.track, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
+		pipeline := gst.CreatePipeline(userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
 		l.pipeline = pipeline
 
 		pipeline.Start()

@@ -11,11 +11,12 @@ x264:
   decode: "avdec_h264"
   encode:
     fast: >-
-      x264enc name=encoder pass=5 quantizer=15 speed-preset=superfast key-int-max=64 
-      tune=zerolatency qos=true ! 
+      x264enc name=encoder pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.log 
+      speed-preset=ultrafast tune=zerolatency qos=true ! 
       video/x-h264,stream-format=byte-stream,profile=main
     relaxed: >-
-      x264enc pass=5 quantizer=15 speed-preset=superfast key-int-max=64 ! 
+      x264enc pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.relaxed.log 
+      speed-preset=ultrafast ! 
       video/x-h264,stream-format=byte-stream,profile=main
 nv264:
   decode: "nvh264dec"

@@ -42,11 +42,12 @@ type Pipeline struct {
 	userId      string
 	gstPipeline *C.GstElement
 	track       *webrtc.TrackLocalStaticRTP
+	namespace   string
 	filePrefix  string
 	codec       string
 }
 
-func newPipelineStr(filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
+func newPipelineStr(namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
 	// special case for testing
 	if fx == "passthrough" {
 		pipelineStr = passthroughPipeline
@@ -86,6 +87,7 @@ func newPipelineStr(filePrefix string, kind string, codec string, width int, hei
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
 	// set file
+	pipelineStr = strings.Replace(pipelineStr, "${namespace}", namespace, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
 	// set fx
 	if hasFx {
@@ -100,19 +102,19 @@ func newPipelineStr(filePrefix string, kind string, codec string, width int, hei
 	return
 }
 
-func fileName(prefix string, kind string, suffix string) string {
+func fileName(namespace string, prefix string, kind string, suffix string) string {
 	ext := ".mkv"
 	if kind == "audio" {
 		ext = ".ogg"
 	}
-	return prefix + "-" + kind + "-" + suffix + ext
+	return namespace + "/" + prefix + "-" + kind + "-" + suffix + ext
 }
 
-func allFiles(prefix string, kind string, hasFx bool) []string {
+func allFiles(namespace string, prefix string, kind string, hasFx bool) []string {
 	if hasFx {
-		return []string{fileName(prefix, kind, "raw"), fileName(prefix, kind, "fx")}
+		return []string{fileName(namespace, prefix, kind, "raw"), fileName(namespace, prefix, kind, "fx")}
 	} else {
-		return []string{fileName(prefix, kind, "raw")}
+		return []string{fileName(namespace, prefix, kind, "raw")}
 	}
 }
 
@@ -160,9 +162,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) *Pipeline {
+func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) *Pipeline {
 
-	pipelineStr := newPipelineStr(filePrefix, kind, codec, width, height, frameRate, fx)
+	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx)
 	id := track.ID()
 	log.Printf("[info] [user#%s] [pipeline#%s] %v pipeline initialized\n", userId, id, kind)
 	// log.Println(pipelineStr)
@@ -173,11 +175,12 @@ func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, filePrefix
 	defer C.free(unsafe.Pointer(cId))
 
 	pipeline := &Pipeline{
-		Files:       allFiles(filePrefix, kind, len(fx) > 0),
+		Files:       allFiles(namespace, filePrefix, kind, len(fx) > 0),
 		id:          id,
 		userId:      userId,
 		gstPipeline: C.gstreamer_parse_pipeline(cPipelineStr, cId),
 		track:       track,
+		namespace:   namespace,
 		filePrefix:  filePrefix,
 		codec:       codec,
 	}
@@ -192,7 +195,7 @@ func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, filePrefix
 func (p *Pipeline) Start() {
 	C.gstreamer_start_pipeline(p.gstPipeline)
 	log.Printf("[info] [user#%s] [pipeline#%s] started\n", p.userId, p.id)
-	log.Printf("[info] [user#%s] [pipeline#%s] recording prefix: %s\n", p.userId, p.id, p.filePrefix)
+	log.Printf("[info] [user#%s] [pipeline#%s] recording prefix: %s/%s\n", p.userId, p.id, p.namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline

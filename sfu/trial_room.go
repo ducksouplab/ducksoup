@@ -111,6 +111,7 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 	// create folder for logs
 	namespace := parseNamespace(join.Namespace)
 	helpers.EnsureDir("./data/" + namespace)
+	helpers.EnsureDir("./data/" + namespace + "/logs") // used by x264 mutipass cache
 
 	shortId := join.RoomId
 
