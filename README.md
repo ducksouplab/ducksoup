@@ -160,8 +160,8 @@ go build
 ### Environment variables
 
 - DS_PORT=9000 (defaults to 8000) to set port listen by server
-- DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
 - DS_WEB_PREFIX=/path (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
+- DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
 - DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
@@ -213,6 +213,12 @@ If a plugin depends on an additinal dynamic library, just add the `*.so` file to
 ```
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`/plugins"
 ```
+
+If a plugin can't be found, you may check:
+
+- it's located in `$GST_PLUGIN_PATH`
+- it's not been blacklisted (for instance if in a previous version a dynamic dependency is missing) by seeing the output of `gst-inspect-1.0 -b`
+- if it has been blacklisted, one solution may be to delete GStreamer cache (possibly under `/root/.cache`)
 
 ### Concepts in Go code
 
