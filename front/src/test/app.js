@@ -152,6 +152,7 @@ document.addEventListener("DOMContentLoaded", async() => {
       .getElementById("stop")
       .addEventListener("click", () => {
         if(state.ducksoup) state.ducksoup.stop();
+        clearMount();
       });
 
     document.getElementById("audio-control").addEventListener("click", () => {
@@ -185,6 +186,13 @@ document.addEventListener("DOMContentLoaded", async() => {
         }
     }
 });
+
+const clearMount = () => {
+    const mountEl = document.getElementById("ducksoup-root");
+    while (mountEl.firstChild) {
+        mountEl.removeChild(mountEl.firstChild);
+    }
+};
 
 const clearMessage = () => {
     document.getElementById("stopped-message").innerHTML = "";
@@ -261,9 +269,7 @@ const ducksoupListener = (message) => {
         show(".show-when-ending");
     } else if (kind === "end") {
         // replace mountEl contents
-        while (mountEl.firstChild) {
-            mountEl.removeChild(mountEl.firstChild);
-        }
+        clearMount()
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";
