@@ -27,13 +27,17 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Println("[info] [ws] upgrade from origin: ", origin)
+			log.Println("[info] [server] [ws] upgrade from origin: ", origin)
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
 )
 
 func init() {
+	// init logging
+	log.SetFlags(log.Lmicroseconds)
+	log.SetOutput(os.Stdout)
+	// environment variables use
 	envOrigins := os.Getenv("DS_ORIGINS")
 	if len(envOrigins) > 0 {
 		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
@@ -41,6 +45,7 @@ func init() {
 	if os.Getenv("DS_ENV") == "DEV" {
 		allowedOrigins = append(allowedOrigins, "https://localhost:8080", "https://localhost:8000", "http://localhost:8000")
 	}
+	log.Printf("[info] [server] allowed ws origins: %v\n", allowedOrigins)
 	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
 	webPrefix = helpers.Getenv("DS_WEB_PREFIX", "")
 	// basict Auth
@@ -53,7 +58,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// upgrade HTTP request to Websocket
 	unsafeConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("[error] [ws] can't upgrade:", err)
+		log.Print("[error] [server] [ws] can't upgrade:", err)
 		return
 	}
 
@@ -91,10 +96,6 @@ func ListenAndServe() {
 	// parse the flags passed to program
 	flag.Parse()
 
-	// init logging
-	log.SetFlags(log.Lmicroseconds)
-	log.SetOutput(os.Stdout)
-
 	router := mux.NewRouter()
 
 	// js & css and html without basic auth
@@ -110,24 +111,24 @@ func ListenAndServe() {
 	router.HandleFunc(webPrefix+"/ws", websocketHandler)
 
 	// port
-	port = ":" + os.Getenv("DS_PORT")
+	port = os.Getenv("DS_PORT")
 	if len(port) < 2 {
-		port = ":8000"
+		port = "8000"
 	}
 
 	server := &http.Server{
 		Handler:      router,
-		Addr:         port,
+		Addr:         ":" + port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Println("[info] [main] https listening on " + port)
+		log.Println("[info] [server] https listening on port " + port)
 		log.Fatal(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Println("[info] [main] http listening on " + port)
+		log.Println("[info] [server] http listening on port " + port)
 		log.Fatal(server.ListenAndServe()) // blocking
 	}
 }
