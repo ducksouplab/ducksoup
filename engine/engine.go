@@ -1,5 +1,7 @@
 package engine
 
+// inspired by https://github.com/jech/galene group package
+
 import (
 	"github.com/pion/ice/v2"
 	"github.com/pion/sdp/v3"
@@ -22,6 +24,7 @@ func init() {
 		{Type: "ccm", Parameter: "fir"},
 		{Type: "nack", Parameter: ""},
 		{Type: "nack", Parameter: "pli"},
+		{Type: "transport-cc", Parameter: ""},
 	}
 	OpusCodecs = []webrtc.RTPCodecParameters{
 		{

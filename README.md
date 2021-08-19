@@ -319,9 +319,8 @@ docker run --name ducksoup_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
   --env GST_DEBUG=2 \
-  --mount type=bind,source="$(pwd)"/etc,target=/app/etc \
-  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
+  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --env DS_ORIGINS=http://localhost:8000 \
   --rm \
   ducksoup:latest
@@ -364,8 +363,8 @@ docker run --name ducksoup_multi_1 \
   -p 8000:8000 \
   --user $(id deploy -u):$(id deploy -g) \
   --env GST_DEBUG=2 \
-  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
+  --mount type=bind,source="$(pwd)"/data,target=/app/data \
   --env DS_ORIGINS=http://localhost:8000 \
   --rm \
   ducksoup_multi:latest
@@ -395,3 +394,7 @@ It triggers tests in the project subfolders, setting appropriate environment var
 ```
 go get -t -u ./...
 ```
+
+## Credits
+
+Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene) in particular.
