@@ -187,7 +187,7 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 						}
 					}
 					// default:
-					// 	log.Printf("-- RTCP packet on sender: %T\n", rtcpPacket)
+					// 	log.Printf("-- RTCP packet on sender %T:\n%v\n", rtcpPacket, rtcpPacket)
 				}
 			}
 		}
@@ -399,6 +399,8 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 }
 
 // sends a keyframe to all PeerConnections, used everytime a new user joins the call
+// (in that case, requesting a FullIntraRequest may be preferred/more accurate, over a PictureLossIndicator
+// but the effect is probably the same)
 func (m *mixer) dispatchKeyFrame() {
 	m.RLock()
 	defer m.RUnlock()

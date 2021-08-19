@@ -21,8 +21,8 @@ x264:
 nv264:
   decode: "nvh264dec"
   encode:
-    fast: "nvh264enc name=encoder"
-    relaxed: "nvh264enc"
+    fast: "nvh264enc name=encoder ! h264parse"
+    relaxed: "nvh264enc ! h264parse"
 opus:
   decode: "decodebin"
   encode:
