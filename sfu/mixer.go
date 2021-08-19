@@ -59,6 +59,7 @@ func (sc *senderController) updateRateFromREMB(remb uint64) {
 }
 
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
+// credits to https://github.com/jech/galene
 func (sc *senderController) updateRateFromLoss(loss uint8) {
 	sc.Lock()
 	defer sc.Unlock()
@@ -69,6 +70,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	if loss < 5 {
 		// loss < 0.02, multiply by 1.05
 		newMaxRate = prevMaxRate * 269 / 256
+
 		if sc.kind == "audio" {
 			if newMaxRate > maxAudioBitrate {
 				newMaxRate = maxAudioBitrate
@@ -91,7 +93,6 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 				newMaxRate = minVideoBitrate
 			}
 		}
-
 	} else {
 		newMaxRate = prevMaxRate
 	}
