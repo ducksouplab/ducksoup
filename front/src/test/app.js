@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.0")
+    console.log("[DuckSoup test] v1.0.1")
 });
 
 let state;
@@ -131,13 +131,9 @@ const start = async ({
 };
 
 document.addEventListener("DOMContentLoaded", async() => {
+    reinitUX();
+
     const formSettings = document.getElementById("settings");
-
-    // UX
-    show(".show-when-not-running");
-    hide(".show-when-ended");
-    hide(".show-when-running");
-
     formSettings.addEventListener("submit", (e) => {
         e.preventDefault();
         const settings = {};
@@ -194,6 +190,16 @@ const clearMount = () => {
     }
 };
 
+const reinitUX = () => {
+    // replace mountEl contents
+    clearMount();
+    // update UX
+    show(".show-when-not-running");
+    show(".show-when-ended");
+    hide(".show-when-running");
+    hide(".show-when-ending");
+}
+
 const clearMessage = () => {
     document.getElementById("stopped-message").innerHTML = "";
 };
@@ -216,10 +222,7 @@ const ducksoupListener = (message) => {
         console.log("[DuckSoup]", kind);
     }
     if(kind.startsWith("error") || kind === "end" || kind === "disconnection") {
-        show(".show-when-not-running");
-        show(".show-when-ended");
-        hide(".show-when-running");
-        hide(".show-when-ending");
+        reinitUX();
     }
     
     // specific cases
@@ -268,8 +271,6 @@ const ducksoupListener = (message) => {
     } else if (kind === "ending") {
         show(".show-when-ending");
     } else if (kind === "end") {
-        // replace mountEl contents
-        clearMount()
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";

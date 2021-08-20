@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.0")
+    console.log("[DuckSoup] v1.2.1")
 });
 
 // Config
@@ -142,6 +142,7 @@ class DuckSoup {
     }
 
     stop(wsStatusCode) {
+        //console.log("[DuckSoup] stop ", wsStatusCode);
         this._stopRTC()
         // see status codes https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#status_codes
         this._ws.close(wsStatusCode);
@@ -190,6 +191,7 @@ class DuckSoup {
     }
 
     _stopRTC() {
+        //console.log("[DuckSoup] _stopRTC");
         if(this._stream) {
             this._stream.getTracks().forEach((track) => track.stop());
         }
@@ -223,17 +225,20 @@ class DuckSoup {
             );
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
+            //console.log("[DuckSoup] ws.onclose ", event);
             this._sendStop("disconnection");
             this._stopRTC();
         };
 
         ws.onerror = (event) => {
+            //console.log("[DuckSoup] ws.onerror ", event);
             this._sendStop({ kind: "error", payload: event.data });
             this.stop(4000); // used as error
         };
 
         ws.onmessage = async (event) => {
+            //console.log("[DuckSoup] ws.onmessage ", event);
             let message = looseJSONParse(event.data);
 
             if (message.kind === "offer") {
