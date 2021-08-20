@@ -7,6 +7,7 @@ package gst
 */
 import "C"
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -211,6 +212,16 @@ func (p *Pipeline) Push(buffer []byte) {
 	C.gstreamer_push_buffer(p.gstPipeline, b, C.int(len(buffer)))
 }
 
+func (p *Pipeline) getPropertyInt(name string, prop string) int {
+	cName := C.CString(name)
+	cProp := C.CString(prop)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProp))
+
+	return int(C.gstreamer_get_property_int(p.gstPipeline, cName, cProp))
+}
+
 func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString(name)
@@ -245,8 +256,19 @@ func (p *Pipeline) SetEncodingRate(value64 uint64) {
 		// in kbit/s for x264enc and nvh264enc
 		value = value / 1000
 	}
-	// find property
+	// get previous value
+	oldValue := p.getPropertyInt("encoder", prop)
+	// set new value
 	p.setPropertyInt("encoder", prop, value)
+
+	// log
+	valueDisplay := fmt.Sprintf("%v kbit/s", value)
+	oldValueDisplay := fmt.Sprintf("%v kbit/s", oldValue)
+	if p.codec != "H264" {
+		valueDisplay = fmt.Sprintf("%v kbit/s", value/1000)
+		oldValueDisplay = fmt.Sprintf("%v kbit/s", oldValue/1000)
+	}
+	log.Printf("[info] [user#%s] [pipeline#%s] [%v] old bitrate: %v | new bitrate: %v\n", p.userId, p.id, p.track.Kind(), oldValueDisplay, valueDisplay)
 }
 
 func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {

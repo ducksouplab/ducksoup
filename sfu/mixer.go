@@ -29,11 +29,11 @@ type mixerSlice struct {
 
 type senderController struct {
 	sync.Mutex
-	ssrc    webrtc.SSRC
-	kind    string
-	sender  *webrtc.RTPSender
-	maxRate uint64
-	maxREMB uint64
+	ssrc           webrtc.SSRC
+	kind           string
+	sender         *webrtc.RTPSender
+	optimalBitrate uint64
+	maxBitrate     uint64
 }
 
 type signalingState int
@@ -52,9 +52,9 @@ func (sc *senderController) updateRateFromREMB(remb uint64) {
 	sc.Lock()
 	defer sc.Unlock()
 
-	sc.maxREMB = remb
-	if sc.maxRate > remb {
-		sc.maxRate = remb
+	sc.maxBitrate = remb
+	if sc.optimalBitrate > remb {
+		sc.optimalBitrate = remb
 	}
 }
 
@@ -64,43 +64,43 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	sc.Lock()
 	defer sc.Unlock()
 
-	var newMaxRate uint64
-	prevMaxRate := sc.maxRate
+	var newOptimalBitrate uint64
+	prevOptimalBitrate := sc.optimalBitrate
 
 	if loss < 5 {
 		// loss < 0.02, multiply by 1.05
-		newMaxRate = prevMaxRate * 269 / 256
+		newOptimalBitrate = prevOptimalBitrate * 269 / 256
 
 		if sc.kind == "audio" {
-			if newMaxRate > maxAudioBitrate {
-				newMaxRate = maxAudioBitrate
+			if newOptimalBitrate > maxAudioBitrate {
+				newOptimalBitrate = maxAudioBitrate
 			}
 		} else {
-			if newMaxRate > maxVideoBitrate {
-				newMaxRate = maxVideoBitrate
+			if newOptimalBitrate > maxVideoBitrate {
+				newOptimalBitrate = maxVideoBitrate
 			}
 		}
 	} else if loss > 25 {
 		// loss > 0.1, multiply by (1 - loss/2)
-		newMaxRate = prevMaxRate * (512 - uint64(loss)) / 512
+		newOptimalBitrate = prevOptimalBitrate * (512 - uint64(loss)) / 512
 
 		if sc.kind == "audio" {
-			if newMaxRate < minAudioBitrate {
-				newMaxRate = minAudioBitrate
+			if newOptimalBitrate < minAudioBitrate {
+				newOptimalBitrate = minAudioBitrate
 			}
 		} else {
-			if newMaxRate < minVideoBitrate {
-				newMaxRate = minVideoBitrate
+			if newOptimalBitrate < minVideoBitrate {
+				newOptimalBitrate = minVideoBitrate
 			}
 		}
 	} else {
-		newMaxRate = prevMaxRate
+		newOptimalBitrate = prevOptimalBitrate
 	}
 
-	if newMaxRate > sc.maxREMB {
-		newMaxRate = sc.maxREMB
+	if newOptimalBitrate > sc.maxBitrate {
+		newOptimalBitrate = sc.maxBitrate
 	}
-	sc.maxRate = newMaxRate
+	sc.optimalBitrate = newOptimalBitrate
 }
 
 // mixerSlice
@@ -135,7 +135,7 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 			if len(ms.senderControllerIndex) > 0 {
 				rates := []uint64{}
 				for _, sc := range ms.senderControllerIndex {
-					rates = append(rates, sc.maxRate)
+					rates = append(rates, sc.optimalBitrate)
 				}
 				sliceRate := minUint64Slice(rates)
 				if ms.outputTrack.pipeline != nil && sliceRate > 0 {
@@ -294,12 +294,16 @@ func (m *mixer) updateTracks() signalingState {
 					if kind == "audio" {
 						defaultBitrate = defaultAudioBitrate
 					}
+					maxBitrate := maxVideoBitrate
+					if kind == "audio" {
+						maxBitrate = maxAudioBitrate
+					}
 					sc := senderController{
-						ssrc:    ssrc,
-						kind:    kind,
-						sender:  sender,
-						maxRate: uint64(defaultBitrate),
-						maxREMB: uint64(defaultBitrate),
+						ssrc:           ssrc,
+						kind:           kind,
+						sender:         sender,
+						optimalBitrate: uint64(defaultBitrate),
+						maxBitrate:     uint64(maxBitrate),
 					}
 					ms.Lock()
 					ms.senderControllerIndex[userId] = &sc

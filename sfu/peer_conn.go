@@ -141,7 +141,7 @@ func (pc *peerConn) requestPLI() {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < delayBetweenPLIs {
 				// throttle: don't send too many PLIs
-				log.Printf("[info] [user#%s] [pc] PLI skipped (throttle)\n", pc.userId)
+				//log.Printf("[info] [user#%s] [pc] PLI skipped (throttle)\n", pc.userId)
 			} else {
 				err := pc.WriteRTCP([]rtcp.Packet{
 					&rtcp.PictureLossIndication{

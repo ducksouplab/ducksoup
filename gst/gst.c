@@ -163,6 +163,20 @@ void gstreamer_set_property_float(GstElement *pipeline, char *name, char *prop, 
     }
 }
 
+gint gstreamer_get_property_int(GstElement *pipeline, char *name, char *prop) {
+    GstElement* el;
+    gint value;
+ 
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_get(el, prop, &value, NULL);
+        gst_object_unref(el);
+    }
+
+    return value;
+}
+
 void gstreamer_set_property_int(GstElement *pipeline, char *name, char *prop, gint value)
 {
     GstElement* el;
