@@ -1,4 +1,4 @@
-FROM creamlab/bullseye-gstreamer-nv:latest
+FROM debian:bullseye
 
 RUN apt-get upgrade -y
 
@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.17.1.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="dab7d9c34361dc21ec237d584590d72500652e7c909bf082758fb63064fca0ef"
+ENV GO_ARCHIVE=go1.17.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="6bf89fc4f5ad763871cf7eac80a2d594492de7a818303283f1366a7f6a30372d"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
@@ -17,6 +17,16 @@ RUN tar -C /usr/local -xzf $GO_ARCHIVE
 RUN rm $GO_ARCHIVE
 
 ENV PATH=$PATH:/usr/local/go/bin
+
+# needed to build DuckSoup
+RUN apt-get update && apt-get install -y libgstreamer-plugins-base1.0-dev
+
+# GStreamer: plugins and compilation dependencies (libav includes avdec_h264)
+RUN apt-get update && apt-get install -y gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav
 
 # conditionally build dlib
 ARG DLIB
@@ -40,7 +50,8 @@ RUN if [ "$DLIB" = "true" ]; then cmake -GNinja \
 RUN if [ "$DLIB" = "true" ]; then ninja; fi
 RUN if [ "$DLIB" = "true" ]; then ninja install; fi
 # GStreamer: more plugins and dependencies (for OpenCV and dlib)
-RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y \
+RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y gstreamer1.0-libav \
+    libgstreamer-opencv1.0-0 \
     libopencv-imgproc4.5 \
     libopenblas-base \
     libopenblas-dev \
@@ -48,9 +59,8 @@ RUN if [ "$DLIB" = "true" ]; then apt-get update && apt-get install -y \
     libdlib-data \
     libopencv-calib3d-dev; fi
 
-# needed to build DuckSoup
-ENV CGO_LDFLAGS="-L/opt/gstreamer/lib/x86_64-linux-gnu"
-ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
+# GStreamer: tools (gst-inspect-1.0)
+RUN apt-get update && apt-get install -y gstreamer1.0-tools
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/workspaces/ducksoup/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"
