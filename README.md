@@ -404,14 +404,14 @@ The `docker/docker-compose.yml` example relies on `creamlab/ducksoup`, let's to 
 DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
 ```
 
-### Use nvcodec-enabled Docker containers
+### GPU-enabled Docker containers
 
-The nvcodec GStreamer plugin enables in particular NVIDIA GPU accelerated encoding and decoding for H264 video streams.
+The nvcodec GStreamer plugin enables NVIDIA GPU accelerated encoding and decoding of H264 video streams.
 
-When GStreamer is used within a Docker container, a few operations have to be done in order to access the host GPU from the container. One shoud refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up to date instructions, as the time of this writing this may be summed up as:
+When GStreamer is used within a Docker container, a few operations are necessary to access the host GPU from the container. One shoud refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up-to-date instructions, but as the time of this writing this may be summed up as:
 
-- install `nvidia-container-runtime` on container host (for instance with `sudo apt-get install nvidia-container-runtime`)
-- edit or add a `runtimes` section in `/etc/docker/daemon.json`:
+- install `nvidia-container-runtime` on the Docker host (for instance with `sudo apt-get install nvidia-container-runtime`)
+- on the host, edit or add a `runtimes` section in `/etc/docker/daemon.json`:
 ```json
 {
     "runtimes": {
@@ -427,8 +427,8 @@ When GStreamer is used within a Docker container, a few operations have to be do
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
-- set the desired NVIDIA capabilities within the container thanks to [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/bullseye-gstreamer` image has these variables set so this step should not be necessary
-- run container with GPU enabled:
+- set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/bullseye-gstreamer` base image has these already set (so this step should not be necessary)
+- run the container with GPU enabled:
 ```
 docker run --name ducksoup_multi_1 \
   --gpus all \
