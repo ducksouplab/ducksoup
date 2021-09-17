@@ -7,7 +7,6 @@ package gst
 */
 import "C"
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -257,18 +256,18 @@ func (p *Pipeline) SetEncodingRate(value64 uint64) {
 		value = value / 1000
 	}
 	// get previous value
-	oldValue := p.getPropertyInt("encoder", prop)
+	//oldValue := p.getPropertyInt("encoder", prop)
 	// set new value
 	p.setPropertyInt("encoder", prop, value)
 
 	// log
-	valueDisplay := fmt.Sprintf("%v kbit/s", value)
-	oldValueDisplay := fmt.Sprintf("%v kbit/s", oldValue)
-	if p.codec != "H264" {
-		valueDisplay = fmt.Sprintf("%v kbit/s", value/1000)
-		oldValueDisplay = fmt.Sprintf("%v kbit/s", oldValue/1000)
-	}
-	log.Printf("[info] [user#%s] [pipeline#%s] [%v] old bitrate: %v | new bitrate: %v\n", p.userId, p.id, p.track.Kind(), oldValueDisplay, valueDisplay)
+	// valueDisplay := fmt.Sprintf("%v kbit/s", value)
+	// oldValueDisplay := fmt.Sprintf("%v kbit/s", oldValue)
+	// if p.codec != "H264" {
+	// 	valueDisplay = fmt.Sprintf("%v kbit/s", value/1000)
+	// 	oldValueDisplay = fmt.Sprintf("%v kbit/s", oldValue/1000)
+	// }
+	//log.Printf("[info] [user#%s] [pipeline#%s] [%v] old bitrate: %v | new bitrate: %v\n", p.userId, p.id, p.track.Kind(), oldValueDisplay, valueDisplay)
 }
 
 func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {

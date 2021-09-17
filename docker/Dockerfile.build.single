@@ -1,4 +1,4 @@
-FROM creamlab/bullseye-gstreamer:latest AS builder
+FROM creamlab/bullseye-gstreamer:latest
 
 RUN apt-get upgrade -y
 
@@ -22,8 +22,8 @@ ENV PATH=$PATH:/usr/local/go/bin
 ENV CGO_LDFLAGS="-L/opt/gstreamer/lib/x86_64-linux-gnu"
 ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
 
-# build DuckSoup
-WORKDIR /usr/local/src/ducksoup
+# DuckSoup
+WORKDIR /app
 
 # layer with deps
 COPY go.mod .
@@ -33,20 +33,6 @@ RUN go mod download
 # layer more frequently updated (DuckSoup source)
 COPY . .
 RUN go build
-
-RUN mkdir -p /build
-RUN cp ./ducksoup /build
-RUN cp -r ./etc /build
-RUN cp -r ./front /build
-
-# runner stage
-FROM creamlab/bullseye-gstreamer:latest AS final
-
-RUN apt-get upgrade -y
-
-WORKDIR /app
-
-COPY --from=builder /build .
 
 # Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup

@@ -19,9 +19,6 @@ front/static/assets/scripts
 docker/plugins
 docker/data
 
-# src needed to build docker image
-docker-deps
-
 # license and SDK
 *.uid
 *.key

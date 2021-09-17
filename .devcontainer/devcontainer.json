@@ -16,9 +16,9 @@
 		"esbenp.prettier-vscode"
 	],
 	// build options
-	"build": {
-		"args": { "DLIB": "true"},
-	},
+	// "build": {
+	// 	"args": { "ARG": "value"},
+	// },
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [8000],
 	// Uncomment the next line to run commands after the container is created - for example installing curl.

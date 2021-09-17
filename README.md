@@ -157,6 +157,8 @@ Then build:
 go build
 ```
 
+Depending on the GStreamer plugins used, additional dependencies may be needed (opencv, dlib...).
+
 ### Environment variables
 
 - DS_PORT=9000 (defaults to 8000) to set port listen by server
@@ -278,17 +280,6 @@ Messages from server (Go) to client (JS):
 - kind `error-join` when `peerOptions` passed to DuckSoup player are incorrect
 - kind `error-peer-connection` when server-side peer connection can't be established
 
-### Docker and dlib
-
-If you want to build the following Docker images with dlib (if you use GStreamer plugins that rely on dlib), choose a dlib version (>=19.22) and add its source to `docker/dlib` as `dlib.tar.bz2`:
-
-```
-mkdir -p docker-deps/dlib
-curl http://dlib.net/files/dlib-19.22.tar.bz2 --output docker-deps/dlib/dlib.tar.bz2
-```
-
-Then build the images with `--build-arg DLIB=true` (used in all examples below).
-
 ### Code within a Docker container
 
 One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for instance using VSCode containers integration).
@@ -296,88 +287,6 @@ One may develop DuckSoup in a container based from `docker/Dockerfile.code` (for
 This Dockerfile prefers specifying a Debian version and installing go from source (rather than using the golang base image) so it's possible to choose the same OS version than in production and control gstreamer (apt) packages versions.
 
 If you want to disable dlib compilation within the vscode Docker container, change the `build.args` property of `.devcontainer/devcontainer.json`.
-
-### Build Docker image
-
-The image build starts with the container root user (for apt dependencies) but then switch to a different appuser:appgroup to run the app:
-
-```
-docker build -f docker/Dockerfile.build --build-arg DLIB=true -t ducksoup:latest .
-```
-
-Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
-
-```
-sudo chown -R deploy:deploy data
-```
-
-Run (note the `--user` option), mounting `etc` being optional and a convenient way to edit the configuration files it contains without rebuilding the image:
-
-```
-# bind port, mount volumes, set environment variable and remove container when stopped
-docker run --name ducksoup_1 \
-  -p 8000:8000 \
-  --user $(id deploy -u):$(id deploy -g) \
-  --env GST_DEBUG=2 \
-  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
-  --mount type=bind,source="$(pwd)"/data,target=/app/data \
-  --env DS_ORIGINS=http://localhost:8000 \
-  --rm \
-  ducksoup:latest
-
-# and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_1 bash
-```
-
-Or run with docker-compose:
-
-```
-DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
-```
-
-### Build multistage Docker image
-
-If the goal is to distribute and minimize the image size, consider the (Debian based) multistage build:
-
-```
-docker build -f docker/Dockerfile.build.multi --build-arg DLIB=true -t ducksoup_multi:latest .
-```
-
-Tag and deploy image to docker hub (replace `creamlab` by your Docker Hub login):
-
-```
-docker tag ducksoup_multi creamlab/ducksoup
-docker push creamlab/ducksoup:latest
-```
-
-Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
-
-```
-sudo chown -R deploy:deploy data
-```
-
-Run (note the `--user` option, see running `ducksoup:latest` above if you want to mount `etc`):
-
-```
-docker run --name ducksoup_multi_1 \
-  -p 8000:8000 \
-  --user $(id deploy -u):$(id deploy -g) \
-  --env GST_DEBUG=2 \
-  --mount type=bind,source="$(pwd)"/plugins,target=/app/plugins,readonly \
-  --mount type=bind,source="$(pwd)"/data,target=/app/data \
-  --env DS_ORIGINS=http://localhost:8000 \
-  --rm \
-  ducksoup_multi:latest
-
-# and if needed enter the running ducksoup_1 container
-docker exec -it ducksoup_multi_1 bash
-```
-
-Or run with docker-compose:
-
-```
-DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
-```
 
 ### Run tests
 
@@ -393,6 +302,144 @@ It triggers tests in the project subfolders, setting appropriate environment var
 
 ```
 go get -t -u ./...
+```
+
+## Using Docker
+
+It is possible to build DuckSoup server from source within your preferred environment as long as you install the dependencies described in [Build from source](#build-from-source).
+
+One may prefer relying on Docker to provide images with everything needed to build and run DuckSoup. Two options are suggested:
+
+1. start from a debian image and install dependencies using apt: `docker/from-packages/Dockerfile.code` is provided as such an example
+2. use the custom [creamlab/bullseye-gstreamer](https://hub.docker.com/repository/docker/creamlab/bullseye-gstreamer) image published on Docker Hub and whose definition is available [here](https://github.com/creamlab/docker-gstreamer)
+
+The first option is good enough to work, and one may prefer it to have a simple installation process but with package manager versions of GStreamer and Go.
+
+The second option relies on the `creamlab/bullseye-gstreamer` base image, managed in a [separate repository](https://github.com/creamlab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
+
+In this project, we use `creamlab/bullseye-gstreamer` as a base for:
+
+- `docker/Dockerfile.code` defines the image used to run a container within vscode (Go is installed, but DuckSoup remains to be compiled by the developer when needed)
+- `docker/Dockerfile.build.single` defines an image with Go installed and DuckSoup compiled
+- `docker/Dockerfile.build.multi` defines a multi-stage build image: in the first stage Go is installed and DuckSoup is compiled, in the final stage we only keep DuckSoup binary
+
+### DuckSoup "single" Docker image
+
+Build image:
+
+```
+docker build -f docker/Dockerfile.build.single -t ducksoup:latest .
+```
+
+Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
+
+```
+sudo chown -R deploy:deploy data
+```
+
+Run by binding to port *8100* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
+
+```
+docker run --name ducksoup_1 \
+  -p 8100:8000 \
+  -u $(id deploy -u):$(id deploy -g) \
+  -e GST_DEBUG=2 \
+  -e DS_ORIGINS=http://localhost:8100 \
+  -v "$(pwd)"/plugins:/app/plugins:ro \
+  -v "$(pwd)"/data:/app/data \
+  --rm \
+  ducksoup:latest
+```
+
+To enter the container:
+
+```
+docker exec -it ducksoup_1 bash
+```
+
+### DuckSoup multi-stage Docker image
+
+If the goal is to distribute and minimize the image size, consider the multi-stage image built with:
+
+```
+docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
+```
+
+Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
+
+```
+sudo chown -R deploy:deploy data
+```
+
+Run by binding to port *8100* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
+
+```
+docker run --name ducksoup_multi_1 \
+  -p 8100:8000 \
+  -u $(id deploy -u):$(id deploy -g) \
+  -e GST_DEBUG=2 \
+  -e DS_ORIGINS=http://localhost:8100 \
+  -v "$(pwd)"/plugins:/app/plugins:ro \
+  -v "$(pwd)"/data:/app/data \
+  --rm \
+  ducksoup_multi:latest
+```
+
+To enter the container:
+
+```
+docker exec -it ducksoup_multi_1 bash
+```
+
+As an aside, this multi-stage image is published on Docker Hub as `creamlab/ducksoup`, let's tag it and push it:
+
+```
+docker tag ducksoup_multi creamlab/ducksoup
+docker push creamlab/ducksoup:latest
+```
+
+The `docker/docker-compose.yml` example relies on `creamlab/ducksoup`, let's to run it with docker-compose:
+
+```
+DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
+```
+
+### Use nvcodec-enabled Docker containers
+
+The nvcodec GStreamer plugin enables in particular NVIDIA GPU accelerated encoding and decoding for H264 video streams.
+
+When GStreamer is used within a Docker container, a few operations have to be done in order to access the host GPU from the container. One shoud refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up to date instructions, as the time of this writing this may be summed up as:
+
+- install `nvidia-container-runtime` on container host (for instance with `sudo apt-get install nvidia-container-runtime`)
+- edit or add a `runtimes` section in `/etc/docker/daemon.json`:
+```json
+{
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
+```
+- restart docker:
+```
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+- set the desired NVIDIA capabilities within the container thanks to [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/bullseye-gstreamer` image has these variables set so this step should not be necessary
+- run container with GPU enabled:
+```
+docker run --name ducksoup_multi_1 \
+  --gpus all \
+  -p 8100:8000 \
+  -u $(id deploy -u):$(id deploy -g) \
+  -e GST_DEBUG=2 \
+  -e DS_ORIGINS=http://localhost:8100 \
+  -v "$(pwd)"/plugins:/app/plugins:ro \
+  -v "$(pwd)"/data:/app/data \
+  --rm \
+  ducksoup_multi:latest
 ```
 
 ## Credits
