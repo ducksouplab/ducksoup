@@ -408,7 +408,9 @@ DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker
 
 The nvcodec GStreamer plugin enables NVIDIA GPU accelerated encoding and decoding of H264 video streams.
 
-When GStreamer is used within a Docker container, a few operations are necessary to access the host GPU from the container. One shoud refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up-to-date instructions, but as the time of this writing this may be summed up as:
+Here is a list of Docker host platforms [supported by NVIDIA](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#supported-platforms).
+
+When GStreamer is used within a Docker container, a few operations are necessary to access the host GPU from the container. One should refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up-to-date instructions, but as the time of this writing this may be summed up as:
 
 - install `nvidia-container-runtime` on the Docker host (for instance with `sudo apt-get install nvidia-container-runtime`)
 - on the host, edit or add a `runtimes` section in `/etc/docker/daemon.json`:
