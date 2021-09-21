@@ -33,11 +33,11 @@ var engines Engines
 
 func init() {
 	opusFxPipeline = helpers.ReadFile("etc/opus-fx-rec.txt")
-	opusRawPipeline = helpers.ReadFile("etc/opus-raw-rec.txt")
+	opusRawPipeline = helpers.ReadFile("etc/opus-nofx-rec.txt")
 	vp8FxPipeline = helpers.ReadFile("etc/vp8-fx-rec.txt")
-	vp8RawPipeline = helpers.ReadFile("etc/vp8-raw-rec.txt")
+	vp8RawPipeline = helpers.ReadFile("etc/vp8-nofx-rec.txt")
 	h264FxPipeline = helpers.ReadFile("etc/h264-fx-rec.txt")
-	h264RawPipeline = helpers.ReadFile("etc/h264-raw-rec.txt")
+	h264RawPipeline = helpers.ReadFile("etc/h264-nofx-rec.txt")
 	passthroughPipeline = helpers.ReadFile("etc/passthrough.txt")
 
 	f, err := helpers.Open("etc/engines.yml")

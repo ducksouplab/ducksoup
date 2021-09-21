@@ -7,10 +7,9 @@ rtpjitterbuffer latency=100 !
 rtph264depay ! 
 h264parse ! 
 ${decode} !
-videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,format=I420,framerate=30/1,width=${width},height=${height} ! 
+video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height} ! 
 ${encodeFast} ! 
 h264parse ! 
 matroskamux ! 

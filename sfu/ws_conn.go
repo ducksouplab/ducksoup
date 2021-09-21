@@ -38,6 +38,7 @@ type joinPayload struct {
 	Width      int    `json:"width"`
 	Height     int    `json:"height"`
 	FrameRate  int    `json:"frameRate"`
+	GPU        bool   `json:"gpu"`
 	// Not from JSON
 	origin string
 }

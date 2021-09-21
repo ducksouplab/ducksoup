@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.1")
+    console.log("[DuckSoup] v1.2.2")
 });
 
 // Config
@@ -53,14 +53,15 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec } = peerOptions;
+    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec, gpu } = peerOptions;
     if (!["VP8", "H264"].includes(videoCodec)) videoCodec = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
     if (isNaN(height)) height = null;
     if (isNaN(frameRate)) frameRate = null;
+    if (!gpu) gpu = null;
 
-    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec });
+    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec, gpu });
 };
 
 const forceMozillaMono = (sdp) => {

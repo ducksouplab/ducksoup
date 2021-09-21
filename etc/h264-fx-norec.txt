@@ -8,7 +8,7 @@ videoconvert !
 ${fx} ! 
 videoconvert ! 
 videorate ! 
-video/x-raw,format=I420,framerate=30/1 ! 
+video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height} ! 
 ${encodeFast} ! 
 rtph264pay ! 
 appsink name=sink qos=true

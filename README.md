@@ -75,6 +75,7 @@ Where:
   - `videoCodec` (string) possible values: "VP8" (default if none) or "H264"
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
+  - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding, if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVIDIA=true` environment variable (see [Environment variables](#environment-variables))
 
 For a usage example, you may have a look at `front/src/test/app.js`
 
@@ -168,7 +169,7 @@ Depending on the GStreamer plugins used, additional dependencies may be needed (
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
-- DS_NVIDIA=true (default to false) if NVIDIA accelerated encoding and decoding is accessible on the host
+- DS_NVIDIA=true (default to false) if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 
 ### Run DuckSoup server

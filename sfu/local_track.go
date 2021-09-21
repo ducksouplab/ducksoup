@@ -41,6 +41,10 @@ func parseFx(kind string, join joinPayload) (fx string) {
 	return
 }
 
+func parseGPU(join joinPayload) bool {
+	return join.GPU
+}
+
 func parseWidth(join joinPayload) (width int) {
 	width = join.Width
 	if width == 0 {
@@ -111,7 +115,7 @@ func (l *localTrack) loop() needsSignaling {
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join))
+		pipeline := gst.CreatePipeline(userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join), parseGPU(join))
 		l.pipeline = pipeline
 
 		pipeline.Start()

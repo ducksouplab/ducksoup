@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.1")
+    console.log("[DuckSoup test] v1.0.2")
 });
 
 let state;
@@ -48,7 +48,8 @@ const start = async ({
     duration: d,
     audioFx: afx,
     videoFx: vfx,
-    audioDevice: ad
+    audioDevice: ad,
+    gpu: g
 }) => {
     const isMirror = !!im;
     // required
@@ -61,6 +62,7 @@ const start = async ({
     const height = parseIntWithFallback(h, 600);
     const frameRate = parseIntWithFallback(fr, 30);
     const duration = parseIntWithFallback(d, 30);
+    const gpu = !!g;
     // initialize state
     state = { userId, width, height, isMirror, peerCount: 0};
     // add name if fx is not empty
@@ -102,7 +104,8 @@ const start = async ({
         height,
         frameRate,
         audioFx,
-        videoFx
+        videoFx,
+        gpu
     };
     console.log("peerOptions: ", peerOptions);
 

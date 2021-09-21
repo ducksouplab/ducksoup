@@ -10,7 +10,7 @@ queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 !
 videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
+video/x-raw, framerate=${framerate}/1, width=${width}, height=${height} !
 ${encode} !
 h264parse ! 
 matroskamux ! 
@@ -23,12 +23,12 @@ ${fx} !
 videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw,framerate=${framerate}/1,width=${width},height=${height} !
+video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height} ! 
 ${encodeFast} ! 
+h264parse ! 
 
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-h264parse ! 
 matroskamux ! 
 filesink location=data/${namespace}/${prefix}-video-fx.mkv 
 

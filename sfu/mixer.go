@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -24,7 +25,9 @@ type mixerSlice struct {
 	receiver              *webrtc.RTPReceiver
 	senderControllerIndex map[string]*senderController // per user id
 	updateTicker          *time.Ticker
+	logTicker             *time.Ticker
 	endCh                 chan struct{} // stop processing when track is removed
+	optimalBitrate        uint64
 }
 
 type senderController struct {
@@ -117,8 +120,9 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver) *mixerSlice {
+func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver, room *trialRoom) *mixerSlice {
 	updateTicker := time.NewTicker(1 * time.Second)
+	logTicker := time.NewTicker(7300 * time.Millisecond)
 
 	ms := &mixerSlice{
 		outputTrack:           outputTrack,
@@ -126,6 +130,7 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 		receiver:              receiver,
 		senderControllerIndex: map[string]*senderController{},
 		updateTicker:          updateTicker,
+		logTicker:             logTicker,
 		endCh:                 make(chan struct{}),
 	}
 
@@ -139,17 +144,31 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 				}
 				sliceRate := minUint64Slice(rates)
 				if ms.outputTrack.pipeline != nil && sliceRate > 0 {
+					ms.Lock()
+					ms.optimalBitrate = sliceRate
+					ms.Unlock()
 					ms.outputTrack.pipeline.SetEncodingRate(sliceRate)
 				}
 			}
 		}
 	}()
 
+	// periodical log for video
+	if outputTrack.track.Kind().String() == "video" {
+		go func() {
+			for range logTicker.C {
+				display := fmt.Sprintf("%v kbit/s", ms.optimalBitrate)
+				log.Printf("[info] [room#%s] [mixer] [user#%s] new video broadcasted bitrate: %s\n", room.shortId, pc.userId, display)
+			}
+		}()
+	}
+
 	return ms
 }
 
 func (ms *mixerSlice) stop() {
 	ms.updateTicker.Stop()
+	ms.logTicker.Stop()
 	close(ms.endCh)
 }
 
@@ -209,7 +228,7 @@ func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.Trac
 
 	if err == nil {
 		m.Lock()
-		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(ps.pc, outputTrack, receiver)
+		m.mixerSliceIndex[remoteTrack.ID()] = newMixerSlice(ps.pc, outputTrack, receiver, m.room)
 		m.Unlock()
 	}
 	return

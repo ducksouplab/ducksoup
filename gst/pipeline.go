@@ -21,16 +21,13 @@ import (
 var (
 	mu            sync.Mutex
 	pipelineIndex map[string]*Pipeline
-	h264Engine    Engine
+	nvidiaEnabled bool
 )
 
 func init() {
 	mu = sync.Mutex{}
 	pipelineIndex = make(map[string]*Pipeline)
-	h264Engine = engines.X264
-	if strings.ToLower(os.Getenv("DS_NVIDIA")) == "true" {
-		h264Engine = engines.NV264
-	}
+	nvidiaEnabled = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -45,9 +42,10 @@ type Pipeline struct {
 	namespace   string
 	filePrefix  string
 	codec       string
+	gpu         bool
 }
 
-func newPipelineStr(namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) (pipelineStr string) {
+func newPipelineStr(namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string, gpu bool) (pipelineStr string) {
 	// special case for testing
 	if fx == "passthrough" {
 		pipelineStr = passthroughPipeline
@@ -73,7 +71,11 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 			pipelineStr = vp8RawPipeline
 		}
 	case "H264":
-		engine = h264Engine
+		if nvidiaEnabled && gpu {
+			engine = engines.NV264
+		} else {
+			engine = engines.X264
+		}
 		if hasFx {
 			pipelineStr = h264FxPipeline
 		} else {
@@ -162,9 +164,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string) *Pipeline {
+func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string, gpu bool) *Pipeline {
 
-	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx)
+	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx, gpu)
 	id := track.ID()
 	log.Printf("[info] [user#%s] [pipeline#%s] %v pipeline initialized\n", userId, id, kind)
 	log.Println(pipelineStr)
@@ -183,6 +185,7 @@ func CreatePipeline(userId string, track *webrtc.TrackLocalStaticRTP, namespace 
 		namespace:   namespace,
 		filePrefix:  filePrefix,
 		codec:       codec,
+		gpu:         gpu,
 	}
 
 	mu.Lock()
@@ -247,13 +250,18 @@ func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 
 func (p *Pipeline) SetEncodingRate(value64 uint64) {
 	value := int(value64)
+	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
 	prop := "bitrate"
 	if p.codec == "VP8" {
-		// property name for vp8enc
+		// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
 		prop = "target-bitrate"
 	} else if p.codec == "H264" {
 		// in kbit/s for x264enc and nvh264enc
 		value = value / 1000
+		if p.gpu {
+			// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
+			prop = "max-bitrate"
+		}
 	}
 	// get previous value
 	//oldValue := p.getPropertyInt("encoder", prop)
