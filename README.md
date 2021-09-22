@@ -409,35 +409,29 @@ DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker
 
 The nvcodec GStreamer plugin enables NVIDIA GPU accelerated encoding and decoding of H264 video streams.
 
-Here is a list of Docker host platforms [supported by NVIDIA](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#supported-platforms).
+Here are a few considerations regarding Docker and NVIDIA:
 
-When GStreamer is used within a Docker container, a few operations are necessary to access the host GPU from the container. One should refer to [nvidia-container-runtime](https://github.com/NVIDIA/nvidia-container-runtime) for up-to-date instructions, but as the time of this writing this may be summed up as:
+- to start with, please check the list of Docker [host platforms supported by NVIDIA](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#supported-platforms)
 
-- install `nvidia-container-runtime` on the Docker host (for instance with `sudo apt-get install nvidia-container-runtime`)
-- on the host, edit or add a `runtimes` section in `/etc/docker/daemon.json`:
-```json
-{
-    "runtimes": {
-        "nvidia": {
-            "path": "/usr/bin/nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    }
-}
-```
-- restart docker:
-```
-sudo systemctl daemon-reload
-sudo systemctl restart docker
-```
+- regarding needed installations on the host:
+
+  1. NVIDIA driver: first check if already installed (try `nvidia-smi`), if not search for available versions (`apt-cache search nvidia-driver`) and install (for instance with `apt-get install nvidia-driver-460`)
+  
+  2. NVIDIA and Docker: this [description](https://github.com/NVIDIA/nvidia-docker/issues/1268#issuecomment-632692949) tends to show that installing `nvidia-container-runtime` is sufficient to have Docker containers benefit from NVIDIA GPUs. To do so, update your host repository configuration following [these instructions](https://nvidia.github.io/nvidia-container-runtime/) and `apt-get install nvidia-container-runtime`
+
+  3. Restart Docker (`systemctl restart docker`)
+
 - set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/bullseye-gstreamer` base image has these already set (so this step should not be necessary)
+
 - run the container with GPU enabled:
+
 ```
 docker run --name ducksoup_multi_1 \
   --gpus all \
   -p 8100:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
+  -e DS_NVIDIA=true \
   -e DS_ORIGINS=http://localhost:8100 \
   -v "$(pwd)"/plugins:/app/plugins:ro \
   -v "$(pwd)"/data:/app/data \
