@@ -6,6 +6,9 @@ ${decode} !
 videoconvert ! 
 ${fx} ! 
 videoconvert ! 
+videorate ! 
+videoscale ! 
+video/x-raw, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg ! 
 ${encodeFast} !
 rtpvp8pay !
 appsink name=sink qos=true

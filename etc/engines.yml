@@ -19,7 +19,7 @@ x264:
       speed-preset=ultrafast ! 
       video/x-h264, stream-format=byte-stream, profile=main
 nv264:
-  decode: "avdec_h264"
+  decode: "nvh264dec"
   encode:
     fast: >-
       nvh264enc name=encoder rc-mode=7 preset=3 zerolatency=true qos=true
