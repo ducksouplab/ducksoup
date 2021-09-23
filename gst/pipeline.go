@@ -251,6 +251,7 @@ func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 func (p *Pipeline) SetEncodingRate(value64 uint64) {
 	value := int(value64)
 	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
+	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	prop := "bitrate"
 	if p.codec == "VP8" {
 		// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
@@ -258,24 +259,8 @@ func (p *Pipeline) SetEncodingRate(value64 uint64) {
 	} else if p.codec == "H264" {
 		// in kbit/s for x264enc and nvh264enc
 		value = value / 1000
-		if p.gpu {
-			// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
-			prop = "max-bitrate"
-		}
 	}
-	// get previous value
-	//oldValue := p.getPropertyInt("encoder", prop)
-	// set new value
 	p.setPropertyInt("encoder", prop, value)
-
-	// log
-	// valueDisplay := fmt.Sprintf("%v kbit/s", value)
-	// oldValueDisplay := fmt.Sprintf("%v kbit/s", oldValue)
-	// if p.codec != "H264" {
-	// 	valueDisplay = fmt.Sprintf("%v kbit/s", value/1000)
-	// 	oldValueDisplay = fmt.Sprintf("%v kbit/s", oldValue/1000)
-	// }
-	//log.Printf("[info] [user#%s] [pipeline#%s] [%v] old bitrate: %v | new bitrate: %v\n", p.userId, p.id, p.track.Kind(), oldValueDisplay, valueDisplay)
 }
 
 func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {

@@ -37,6 +37,10 @@ type senderController struct {
 	sender         *webrtc.RTPSender
 	optimalBitrate uint64
 	maxBitrate     uint64
+	// for logging
+	shortId    string
+	fromUserId string
+	toUserId   string
 }
 
 type signalingState int
@@ -51,15 +55,15 @@ type needsSignaling bool
 
 // senderController
 
-func (sc *senderController) updateRateFromREMB(remb uint64) {
-	sc.Lock()
-	defer sc.Unlock()
+// func (sc *senderController) updateRateFromREMB(remb uint64) {
+// 	sc.Lock()
+// 	defer sc.Unlock()
 
-	sc.maxBitrate = remb
-	if sc.optimalBitrate > remb {
-		sc.optimalBitrate = remb
-	}
-}
+// 	sc.maxBitrate = remb
+// 	if sc.optimalBitrate > remb {
+// 		sc.optimalBitrate = remb
+// 	}
+// }
 
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 // credits to https://github.com/jech/galene
@@ -96,6 +100,8 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 				newOptimalBitrate = minVideoBitrate
 			}
 		}
+		log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] %d packets lost, previous bitrate %d, new bitrate %d\n",
+			sc.shortId, sc.fromUserId, sc.toUserId, loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
 	} else {
 		newOptimalBitrate = prevOptimalBitrate
 	}
@@ -197,8 +203,9 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
 					ms.receivingPC.requestPLI()
-				case *rtcp.ReceiverEstimatedMaximumBitrate:
-					sc.updateRateFromREMB(rtcpPacket.Bitrate)
+				// case *rtcp.ReceiverEstimatedMaximumBitrate:
+				// disabling REMB feedback for now: too many identical REMB received, need to be investigated
+				// sc.updateRateFromREMB(rtcpPacket.Bitrate)
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(ssrc) {
@@ -323,6 +330,9 @@ func (m *mixer) updateTracks() signalingState {
 						sender:         sender,
 						optimalBitrate: uint64(defaultBitrate),
 						maxBitrate:     uint64(maxBitrate),
+						shortId:        m.room.shortId,
+						fromUserId:     ms.receivingPC.userId,
+						toUserId:       userId,
 					}
 					ms.Lock()
 					ms.senderControllerIndex[userId] = &sc

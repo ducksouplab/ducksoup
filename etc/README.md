@@ -6,6 +6,10 @@ A few notes:
 
 - when bandwidth fluctuates, the video caps may be updated (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux`, which is why video caps are constrained (and `videoconvert` is used) in the pipelines.
 
+- in the pipelines, the `${variable}` notation means a variable that is interpolated by `pipeline.go`
+
+- when an encoder is named (`name=encoder`) it means it will be controlled (by `pipeline.go`) regarding its target bitrate
+
 Encoder settings:
 
 https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c

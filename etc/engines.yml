@@ -12,19 +12,21 @@ x264:
   encode:
     fast: >-
       x264enc name=encoder pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.log 
-      speed-preset=ultrafast tune=zerolatency qos=true ! 
-      video/x-h264, stream-format=byte-stream, profile=main
+      speed-preset=ultrafast tune=zerolatency qos=true !
+      video/x-h264, profile=high
     relaxed: >-
       x264enc pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.relaxed.log 
-      speed-preset=ultrafast ! 
-      video/x-h264, stream-format=byte-stream, profile=main
+      speed-preset=ultrafast !
+      video/x-h264, profile=high
 nv264:
   decode: "nvh264dec"
   encode:
     fast: >-
-      nvh264enc name=encoder rc-mode=7 preset=3 zerolatency=true qos=true
+      nvh264enc name=encoder rc-mode=3 preset=4 bframes=2 gop-size=15 zerolatency=true qos=true !
+      video/x-h264, profile=high
     relaxed: >-
-      nvh264enc rc-mode=7 preset=3
+      nvh264enc rc-mode=3 preset=4 bframes=2 gop-size=15 !
+      video/x-h264, profile=high
 opus:
   decode: "decodebin"
   encode:
