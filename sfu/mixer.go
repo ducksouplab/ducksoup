@@ -157,7 +157,7 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 	if outputTrack.track.Kind().String() == "video" {
 		go func() {
 			for range logTicker.C {
-				display := fmt.Sprintf("%v kbit/s", ms.optimalBitrate)
+				display := fmt.Sprintf("%v kbit/s", ms.optimalBitrate/1000)
 				log.Printf("[info] [room#%s] [mixer] [user#%s] new video broadcasted bitrate: %s\n", room.shortId, pc.userId, display)
 			}
 		}()
