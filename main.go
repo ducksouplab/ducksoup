@@ -31,6 +31,7 @@ func main() {
 	// run ducksoup only if not in BUILD_FRONT DS_ENV
 	if !cmdBuildMode {
 		defer func() {
+			log.Println("[main] stopped")
 			if r := recover(); r != nil {
 				log.Println("[recov] main has recovered: ", r)
 			}
