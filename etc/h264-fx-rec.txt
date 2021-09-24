@@ -3,21 +3,15 @@ application/x-rtp,encoding-name=H264 !
 rtpjitterbuffer latency=100 ! 
 rtph264depay ! 
 h264parse ! 
-${decode} !
 
 tee name=teein ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-videoconvert ! 
-videorate ! 
-videoscale ! 
-video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg !
-${encode} !
-h264parse ! 
-matroskamux ! 
-filesink location=data/${namespace}/${prefix}-video-raw.mkv 
+mpegtsmux ! 
+filesink location=data/${namespace}/${prefix}-video-in.mts 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
+${decode} !
 videoconvert ! 
 ${fx} ! 
 videoconvert ! 
@@ -29,8 +23,8 @@ h264parse !
 
 tee name=teeout ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-matroskamux ! 
-filesink location=data/${namespace}/${prefix}-video-fx.mkv 
+mpegtsmux ! 
+filesink location=data/${namespace}/${prefix}-video-fx.mts 
 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 

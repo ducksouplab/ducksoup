@@ -114,9 +114,9 @@ func fileName(namespace string, prefix string, kind string, suffix string) strin
 
 func allFiles(namespace string, prefix string, kind string, hasFx bool) []string {
 	if hasFx {
-		return []string{fileName(namespace, prefix, kind, "raw"), fileName(namespace, prefix, kind, "fx")}
+		return []string{fileName(namespace, prefix, kind, "in"), fileName(namespace, prefix, kind, "fx")}
 	} else {
-		return []string{fileName(namespace, prefix, kind, "raw")}
+		return []string{fileName(namespace, prefix, kind, "in")}
 	}
 }
 

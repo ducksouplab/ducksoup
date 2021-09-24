@@ -5,10 +5,9 @@ tee name=teein !
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
 rtpjitterbuffer latency=100 ! 
 rtpopusdepay ! 
-${decode} ! 
-${encodeFast} ! 
+opusparse ! 
 oggmux ! 
-filesink location=data/${namespace}/${prefix}-audio-raw.ogg 
+filesink location=data/${namespace}/${prefix}-audio-in.ogg 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0  ! 

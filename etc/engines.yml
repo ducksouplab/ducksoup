@@ -30,5 +30,5 @@ nv264:
 opus:
   decode: "decodebin"
   encode:
-    fast: "opusenc name=encoder"
-    relaxed: "opusenc"
+    fast: "opusenc name=encoder audio-type=2048 bitrate-type=1"
+    relaxed: "opusenc audio-type=2048 bitrate-type=1"

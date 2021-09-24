@@ -6,14 +6,8 @@ queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 !
 rtpjitterbuffer latency=100 ! 
 rtph264depay ! 
 h264parse ! 
-${decode} !
-videorate ! 
-videoscale ! 
-video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg !
-${encodeFast} ! 
-h264parse ! 
-matroskamux ! 
-filesink location=data/${namespace}/${prefix}-video-raw.mkv 
+mpegtsmux ! 
+filesink location=data/${namespace}/${prefix}-video-in.mts 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
