@@ -2,15 +2,20 @@ appsrc format=time is-live=true do-timestamp=true name=src !
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
 rtpjitterbuffer latency=100 ! 
 rtpvp8depay ! 
+${decode} !
 
 tee name=teein ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+videoconvert ! 
+videorate ! 
+videoscale ! 
+video/x-raw, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg ! 
+${encode} ! 
 webmmux ! 
-filesink location=data/${namespace}/${prefix}-video-in.webm 
+filesink location=data/${namespace}/${prefix}-video-raw.webm 
 
 teein. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
-${decode} !
 videoconvert ! 
 ${fx} ! 
 videoconvert ! 
