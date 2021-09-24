@@ -1,12 +1,13 @@
 A few notes:
 
-- input media streams are stored with an `-in.extension` suffix (for instance in the form `datetime-identifier-audio-raw.ogg`). When an effect is applied to a media stream, the recorded file of this processed stream is stored with an `-fx.extension` suffix. 
+- input media streams are stored with an `-in.extension` suffix (for instance in the form `datetime-identifier-audio-raw.ogg`). When an effect is applied to a media stream, the recorded file of this processed stream ends with `-fx.extension`
+
+- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `mp4mux`). One solution (previously used) is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more CPU resources. The current solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264) and `webmmux` (for vp8). `oggmux` is still used for audio streams.
 
 - queue params: `max-size-buffers=0 max-size-bytes=0` disable max-size on buffers and bytes. When teeing, the branch that does recording has an additionnal `max-size-time=5000000000` property. A queue blocks whenever one of the 3 dimensions (buffers, bytes, time) max is reached (unless `leaky`)
 
 - rtpjitterbuffer proves to be necessary for h264, more tests needed (including on its latency value) for other formats (it indeed seems necessary when using the smile effect even with vp8)
 
-- when bandwidth fluctuates, the video caps may be updated (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `mp4mux`). One solution (previously used) is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies this operation is done on a video/x-raw stream and thus the input video stream has to be decoded/capped/reencoded for it to work. More CPU resources are 
 
 - in the pipelines, the `${variable}` notation means a variable that is interpolated by `pipeline.go`
 
