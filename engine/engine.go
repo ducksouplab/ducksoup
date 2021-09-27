@@ -3,7 +3,10 @@ package engine
 // inspired by https://github.com/jech/galene group package
 
 import (
+	"log"
+
 	"github.com/pion/ice/v2"
+	"github.com/pion/interceptor"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
@@ -155,15 +158,15 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	)
 
 	// TODO: investigate why causes image loss after 20 seconds
-	// i := &interceptor.Registry{}
+	i := &interceptor.Registry{}
 	// interesting for instance for NACKs
-	// if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-	// 	log.Println("[error] [engine] could not register default interceptors")
-	// }
+	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+		log.Println("[error] [engine] could not register default interceptors")
+	}
 
 	return webrtc.NewAPI(
 		webrtc.WithSettingEngine(s),
 		webrtc.WithMediaEngine(m),
-		// webrtc.WithInterceptorRegistry(i),
+		webrtc.WithInterceptorRegistry(i),
 	), nil
 }

@@ -303,6 +303,7 @@ It triggers tests in the project subfolders, setting appropriate environment var
 
 ```
 go get -t -u ./...
+go mod tidy
 ```
 
 ## Using Docker

@@ -261,6 +261,10 @@ func (p *Pipeline) SetEncodingRate(value64 uint64) {
 		value = value / 1000
 	}
 	p.setPropertyInt("encoder", prop, value)
+	if p.gpu {
+		// acts both on bitrate and max-bitrate for nvh264enc
+		p.setPropertyInt("encoder", "max-bitrate", value*320/256)
+	}
 }
 
 func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {
