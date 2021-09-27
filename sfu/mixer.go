@@ -55,16 +55,6 @@ type needsSignaling bool
 
 // senderController
 
-func (sc *senderController) updateRateFromREMB(remb uint64) {
-	sc.Lock()
-	defer sc.Unlock()
-
-	sc.maxBitrate = remb
-	if sc.optimalBitrate > remb {
-		sc.optimalBitrate = remb
-	}
-}
-
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 // credits to https://github.com/jech/galene
 func (sc *senderController) updateRateFromLoss(loss uint8) {
@@ -203,9 +193,6 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
 					ms.receivingPC.requestPLI()
-				case *rtcp.ReceiverEstimatedMaximumBitrate:
-					// disabling REMB feedback for now: too many identical REMB received, need to be investigated
-					sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(ssrc) {
