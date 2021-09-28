@@ -11,5 +11,5 @@ videorate !
 videoscale ! 
 video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg !
 ${encodeFast} ! 
-rtph264pay ! 
+rtph264pay config-interval=-1 ! 
 appsink name=sink qos=true

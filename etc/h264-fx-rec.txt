@@ -28,5 +28,5 @@ filesink location=data/${namespace}/${prefix}-video-fx.mts
 
 teeout. ! 
 queue max-size-buffers=0 max-size-bytes=0 ! 
-rtph264pay !
+rtph264pay config-interval=-1 !
 appsink name=sink qos=true
