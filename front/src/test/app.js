@@ -49,6 +49,7 @@ const start = async ({
     audioFx: afx,
     videoFx: vfx,
     audioDevice: ad,
+    videoDevice: vd,
     gpu: g
 }) => {
     const isMirror = !!im;
@@ -83,6 +84,7 @@ const start = async ({
         ...(width && { width: { ideal: width } }),
         ...(height && { height: { ideal: height } }),
         ...(frameRate && { frameRate: { ideal: frameRate } }),
+        ...(vd && { deviceId: { ideal: vd }}),
     }
     const audio = {
         ...(ad && { deviceId: { ideal: ad }}),
@@ -175,6 +177,7 @@ document.addEventListener("DOMContentLoaded", async() => {
     // audio input selection
     const devices = await navigator.mediaDevices.enumerateDevices();
     const audioInput = document.getElementById("input-audio");
+    const videoInput = document.getElementById("input-video");
     for (let i = 0; i !== devices.length; ++i) {
         const device = devices[i];
         if (device.kind === "audioinput") {
@@ -182,7 +185,12 @@ document.addEventListener("DOMContentLoaded", async() => {
             option.text =  device.label || `microphone ${audioInputSelect.length + 1}`;
             option.value = device.deviceId,
             audioInput.appendChild(option);
-        }
+        } else if (device.kind === "videoinput") {
+            const option = document.createElement("option");
+            option.text =  device.label || `camera ${audioInputSelect.length + 1}`;
+            option.value = device.deviceId,
+            videoInput.appendChild(option);
+        } 
     }
 });
 
