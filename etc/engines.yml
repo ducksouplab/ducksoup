@@ -22,10 +22,10 @@ nv264:
   decode: "nvh264dec"
   encode:
     fast: >-
-      nvh264enc name=encoder rc-mode=3 preset=4 bframes=2 gop-size=15 zerolatency=true qos=true !
+      nvh264enc name=encoder rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
       video/x-h264, profile=high
     relaxed: >-
-      nvh264enc rc-mode=3 preset=4 bframes=2 gop-size=15 !
+      nvh264enc rc-mode=3 preset=4 gop-size=15 !
       video/x-h264, profile=high
 opus:
   decode: "decodebin"

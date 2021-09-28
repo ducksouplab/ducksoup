@@ -8,6 +8,8 @@ A few notes:
 
 - rtpjitterbuffer proves to be necessary for h264, more tests needed (including on its latency value) for other formats (it indeed seems necessary when using the smile effect even with vp8)
 
+- use codec without B-frames (since they rely on future keyframes)
+
 
 - in the pipelines, the `${variable}` notation means a variable that is interpolated by `pipeline.go`
 
