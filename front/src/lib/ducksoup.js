@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.2")
+    console.log("[DuckSoup] v1.2.3")
 });
 
 // Config
@@ -142,10 +142,9 @@ class DuckSoup {
         this._control("video", effectName, property, value, transitionDuration);
     }
 
-    stop(wsStatusCode) {
-        //console.log("[DuckSoup] stop ", wsStatusCode);
+    // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    stop(wsStatusCode = 1000) {
         this._stopRTC()
-        // see status codes https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#status_codes
         this._ws.close(wsStatusCode);
     }
 

@@ -62,7 +62,7 @@ func (ps *peerServer) close(reason string) {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		log.Printf("[info] [room#%s] [user#%s] [ps] closing, reason: %s\n", ps.room.shortId, ps.userId, reason)
+		log.Printf("[info] [room#%s] [user#%s] [ps] closing for reason: %s\n", ps.room.shortId, ps.userId, reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -102,7 +102,7 @@ func (ps *peerServer) loop() {
 			m, err := ps.ws.read()
 
 			if err != nil {
-				ps.close("[ws] " + err.Error())
+				ps.close(err.Error())
 				return
 			}
 
