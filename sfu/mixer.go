@@ -407,17 +407,24 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 				if state == signalingOk {
 					// signaling is done
 					return
-				} else if (state == signalingRetryNow) && (tries < 20) {
-					// redo signaling / for loop
-					break
-				} else {
-					// signalingRetryWithDelay OR signaling failed too many times
-					// we might be blocking a RemoveTrack or AddTrack
+				} else if state == signalingRetryWithDelay {
 					go func() {
-						time.Sleep(time.Second * 3)
-						m.managedUpdateSignaling("restarted after too many tries")
+						time.Sleep(time.Second * 2)
+						m.managedUpdateSignaling("asked restart with delay")
 					}()
 					return
+				} else if state == signalingRetryNow {
+					if tries < 20 {
+						// redo signaling / for loop
+						break
+					} else {
+						// we might be blocking a RemoveTrack or AddTrack
+						go func() {
+							time.Sleep(time.Second * 3)
+							m.managedUpdateSignaling("restarted after too many tries")
+						}()
+						return
+					}
 				}
 			}
 		}
