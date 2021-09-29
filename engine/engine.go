@@ -20,7 +20,7 @@ var (
 
 func init() {
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
-		{Type: "goog-remb", Parameter: ""},
+		// {Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},
 		{Type: "nack", Parameter: ""},
 		{Type: "nack", Parameter: "pli"},
