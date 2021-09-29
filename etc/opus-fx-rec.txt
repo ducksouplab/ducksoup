@@ -1,6 +1,6 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,payload=111,encoding-name=OPUS ! 
-rtpjitterbuffer latency=100 ! 
+rtpjitterbuffer latency=${jitterBufferLatency} ! 
 rtpopusdepay ! 
 
 tee name=teein ! 

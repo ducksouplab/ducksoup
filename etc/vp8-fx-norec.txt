@@ -1,6 +1,6 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
-rtpjitterbuffer latency=100 ! 
+rtpjitterbuffer latency=${jitterBufferLatency} ! 
 rtpvp8depay ! 
 ${decode} !
 videoconvert ! 

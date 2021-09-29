@@ -200,8 +200,8 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 							sc.updateRateFromLoss(r.FractionLost)
 						}
 					}
-				default:
-					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T:\n%v\n", shortId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
+					// default:
+					// 	log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T:\n%v\n", shortId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
 				}
 			}
 		}

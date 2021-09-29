@@ -1,6 +1,6 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=H264 ! 
-rtpjitterbuffer latency=100 ! 
+rtpjitterbuffer latency=${jitterBufferLatency} ! 
 rtph264depay ! 
 h264parse ! 
 ${decode} !

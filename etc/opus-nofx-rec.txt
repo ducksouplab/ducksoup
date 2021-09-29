@@ -3,7 +3,7 @@ application/x-rtp,payload=111,encoding-name=OPUS !
 
 tee name=teein ! 
 queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-rtpjitterbuffer latency=100 ! 
+rtpjitterbuffer latency=${jitterBufferLatency} ! 
 rtpopusdepay ! 
 opusparse ! 
 oggmux ! 

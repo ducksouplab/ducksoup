@@ -1,3 +1,5 @@
+common:
+  jitterBufferLatency: "140"
 vp8:
   decode: "vp8dec"
   encode:

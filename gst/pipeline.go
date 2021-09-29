@@ -54,18 +54,18 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 	}
 
 	hasFx := len(fx) > 0
-	var engine Engine
+	var engine EngineSettings
 
 	switch codec {
 	case "opus":
-		engine = engines.Opus
+		engine = settings.Opus
 		if hasFx {
 			pipelineStr = opusFxPipeline
 		} else {
 			pipelineStr = opusRawPipeline
 		}
 	case "VP8":
-		engine = engines.VP8
+		engine = settings.VP8
 		if hasFx {
 			pipelineStr = vp8FxPipeline
 		} else {
@@ -73,9 +73,9 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 		}
 	case "H264":
 		if nvidiaEnabled && gpu {
-			engine = engines.NV264
+			engine = settings.NV264
 		} else {
-			engine = engines.X264
+			engine = settings.X264
 		}
 		if hasFx {
 			pipelineStr = h264FxPipeline
@@ -86,6 +86,7 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 		panic("Unhandled codec " + codec)
 	}
 	// set encoding and decoding
+	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferLatency}", settings.Common.JitterBufferLatency, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)

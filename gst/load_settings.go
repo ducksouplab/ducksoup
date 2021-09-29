@@ -7,7 +7,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Engine struct {
+type CommonSettings struct {
+	JitterBufferLatency string `yaml:"jitterBufferLatency"`
+}
+
+type EngineSettings struct {
 	Decode string
 	Encode struct {
 		Fast    string
@@ -15,11 +19,12 @@ type Engine struct {
 	}
 }
 
-type Engines struct {
-	VP8   Engine `yaml:"vp8"`
-	X264  Engine
-	NV264 Engine `yaml:"nv264"`
-	Opus  Engine
+type Settings struct {
+	Common CommonSettings
+	VP8    EngineSettings `yaml:"vp8"`
+	X264   EngineSettings
+	NV264  EngineSettings `yaml:"nv264"`
+	Opus   EngineSettings
 }
 
 var opusFxPipeline string
@@ -29,7 +34,7 @@ var vp8RawPipeline string
 var h264FxPipeline string
 var h264RawPipeline string
 var passthroughPipeline string
-var engines Engines
+var settings Settings
 
 func init() {
 	opusFxPipeline = helpers.ReadFile("etc/opus-fx-rec.txt")
@@ -40,14 +45,14 @@ func init() {
 	h264RawPipeline = helpers.ReadFile("etc/h264-nofx-rec.txt")
 	passthroughPipeline = helpers.ReadFile("etc/passthrough.txt")
 
-	f, err := helpers.Open("etc/engines.yml")
+	f, err := helpers.Open("etc/settings.yml")
 	if err != nil {
 		log.Fatal("[fatal] ", err)
 	}
 	defer f.Close()
 
 	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&engines)
+	err = decoder.Decode(&settings)
 	if err != nil {
 		log.Fatal("[fatal] ", err)
 	}
