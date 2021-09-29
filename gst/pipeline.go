@@ -35,7 +35,7 @@ type Pipeline struct {
 	// public
 	Files []string
 	// private
-	id          string
+	id          string // same as local/output track id
 	roomId      string
 	userId      string
 	gstPipeline *C.GstElement
@@ -130,7 +130,7 @@ func goStopCallback(cId *C.char) {
 	id := C.GoString(cId)
 	pipeline, ok := pipelineIndex[id]
 	if ok {
-		log.Printf("[info] [room#%s] [user#%s] [pipeline#%s] stop done\n", pipeline.roomId, pipeline.userId, id)
+		log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] stop done\n", pipeline.roomId, pipeline.userId, id)
 
 	}
 
@@ -150,11 +150,11 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, du
 		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
 			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
-			log.Printf("[error] [room#%s] [user#%s] [pipeline#%s] can't Write: %v\n", pipeline.roomId, pipeline.userId, id, err)
+			log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline]  can't Write: %v\n", pipeline.roomId, pipeline.userId, id, err)
 		}
 	} else {
 		// TODO return error to gst.c and stop processing?
-		log.Printf("[error] [room#%s] [user#%s] [pipeline#%s] pipeline not found, discarding buffer\n", pipeline.roomId, pipeline.userId, id)
+		log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline] pipeline not found, discarding buffer\n", pipeline.roomId, pipeline.userId, id)
 	}
 	C.free(buffer)
 }
@@ -170,7 +170,7 @@ func CreatePipeline(roomId string, userId string, track *webrtc.TrackLocalStatic
 
 	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx, gpu)
 	id := track.ID()
-	log.Printf("[info] [room#%s] [user#%s] [pipeline#%s] %v pipeline initialized\n", roomId, userId, id, kind)
+	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline]  %v pipeline initialized\n", roomId, userId, id, kind)
 	log.Println(pipelineStr)
 
 	cPipelineStr := C.CString(pipelineStr)
@@ -200,13 +200,13 @@ func CreatePipeline(roomId string, userId string, track *webrtc.TrackLocalStatic
 // start the GStreamer pipeline
 func (p *Pipeline) Start() {
 	C.gstreamer_start_pipeline(p.gstPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [pipeline#%s] started with recording prefix: %s/%s\n", p.roomId, p.userId, p.id, p.namespace, p.filePrefix)
+	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] started with recording prefix: %s/%s\n", p.roomId, p.userId, p.id, p.namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	C.gstreamer_stop_pipeline(p.gstPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [pipeline#%s] stop requested\n", p.roomId, p.userId, p.id)
+	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] stop requested\n", p.roomId, p.userId, p.id)
 }
 
 // push a buffer on the appsrc of the GStreamer Pipeline

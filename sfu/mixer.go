@@ -15,7 +15,7 @@ import (
 type mixer struct {
 	sync.RWMutex
 	room            *trialRoom
-	mixerSliceIndex map[string]*mixerSlice // per track id
+	mixerSliceIndex map[string]*mixerSlice // per remote track id
 }
 
 type mixerSlice struct {
@@ -291,17 +291,18 @@ func (m *mixer) updateTracks() signalingState {
 			_, alreadySent := alreadySentIndex[id]
 			_, ownTrack := ownTrackIndex[id]
 
+			outputTrackId := ms.outputTrack.track.ID()
 			if alreadySent {
-				log.Printf("[info] [room#%s] [mixer] [user#%s] [already] don't add local track to pc: %s\n", m.room.shortId, userId, id)
+				log.Printf("[info] [room#%s] [mixer] [user#%s] [already] skip add output track to pc: %s\n", m.room.shortId, userId, outputTrackId)
 			} else if ownTrack {
-				log.Printf("[info] [room#%s] [mixer] [user#%s] [own] don't add local track to pc: %s\n", m.room.shortId, userId, id)
+				log.Printf("[info] [room#%s] [mixer] [user#%s] [own] skip add local track to pc: %s\n", m.room.shortId, userId, outputTrackId)
 			} else {
 				sender, err := pc.AddTrack(ms.outputTrack.track)
-				log.Printf("[info] [room#%s] [mixer] [user#%s] local track added to pc: %s\n", m.room.shortId, userId, id)
-
 				if err != nil {
-					log.Printf("[error] [room#%s] [mixer] [user#%s] can't AddTrack: %v\n", m.room.shortId, userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack %s: %v\n", m.room.shortId, userId, id, err)
 					return signalingRetryNow
+				} else {
+					log.Printf("[info] [room#%s] [user#%s] [mixer] added local track to pc: %s\n", m.room.shortId, userId, outputTrackId)
 				}
 
 				params := sender.GetParameters()
