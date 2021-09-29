@@ -11,7 +11,7 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-const delayBetweenPLIs = 500 * time.Millisecond
+const delayBetweenPLIs = 300 * time.Millisecond
 
 // New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {
@@ -24,11 +24,11 @@ type peerConn struct {
 
 // API
 
-func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnection, err error) {
+func newPionPeerConn(roomId string, userId string, videoCodec string) (ppc *webrtc.PeerConnection, err error) {
 	// create RTC API with chosen codecs
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		log.Printf("[info] [room#%s] [user#%s] [pc] NewWebRTCAPI codecs: %v\n", userId, err)
+		log.Printf("[info] [room#%s] [user#%s] [pc] NewWebRTCAPI codecs: %v\n", roomId, userId, err)
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -72,14 +72,17 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 }
 
 func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
-	userId, videoCodec := join.UserId, join.VideoCodec
+	roomId, userId, videoCodec := join.RoomId, join.UserId, join.VideoCodec
 
-	ppc, err := newPionPeerConn(userId, videoCodec)
+	ppc, err := newPionPeerConn(roomId, userId, videoCodec)
 	if err != nil {
 		return
 	}
 
-	pc = &peerConn{sync.Mutex{}, ppc, room.shortId, userId, time.Now()}
+	// initial lastPLI far enough the past
+	lastPLI := time.Now().Add(-2 * delayBetweenPLIs)
+
+	pc = &peerConn{sync.Mutex{}, ppc, roomId, userId, lastPLI}
 	return
 }
 
@@ -132,7 +135,33 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 }
 
-func (pc *peerConn) requestPLI() {
+func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
+	err = pc.WriteRTCP([]rtcp.Packet{
+		&rtcp.PictureLossIndication{
+			MediaSSRC: uint32(track.SSRC()),
+		},
+	})
+	if err != nil {
+		log.Printf("[error] [room#%s] [user#%s] [pc] can't send PLI: %v\n", pc.roomId, pc.userId, err)
+	} else {
+		log.Printf("[info] [room#%s] [user#%s] [pc] PLI sent\n", pc.roomId, pc.userId)
+	}
+	return
+}
+
+func (pc *peerConn) forcedPLIRequest() {
+	pc.Lock()
+	defer pc.Unlock()
+
+	for _, receiver := range pc.GetReceivers() {
+		track := receiver.Track()
+		if track != nil && track.Kind().String() == "video" {
+			pc.writePLI(track)
+		}
+	}
+}
+
+func (pc *peerConn) throttledPLIRequest() {
 	pc.Lock()
 	defer pc.Unlock()
 
@@ -142,18 +171,11 @@ func (pc *peerConn) requestPLI() {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < delayBetweenPLIs {
 				// throttle: don't send too many PLIs
-				//log.Printf("[info] [user#%s] [pc] PLI skipped (throttle)\n", pc.userId)
+				log.Printf("[info] [room#%s] [user#%s] [pc] PLI skipped (throttle)\n", pc.roomId, pc.userId)
 			} else {
-				err := pc.WriteRTCP([]rtcp.Packet{
-					&rtcp.PictureLossIndication{
-						MediaSSRC: uint32(track.SSRC()),
-					},
-				})
-				if err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [pc] can't send PLI: %v\n", pc.roomId, pc.userId, err)
-				} else {
+				err := pc.writePLI(track)
+				if err == nil {
 					pc.lastPLI = time.Now()
-					log.Printf("[info] [room#%s] [user#%s] [pc] PLI sent\n", pc.roomId, pc.userId)
 				}
 			}
 		}

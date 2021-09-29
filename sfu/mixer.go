@@ -192,8 +192,8 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 			for _, packet := range packets {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] PLI\n", shortId, sc.fromUserId, sc.toUserId)
-					ms.receivingPC.requestPLI()
+					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] PLI received\n", shortId, sc.fromUserId, sc.toUserId)
+					ms.receivingPC.throttledPLIRequest()
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(ssrc) {
@@ -432,7 +432,7 @@ func (m *mixer) dispatchKeyFrame() {
 	defer m.RUnlock()
 
 	for _, ps := range m.room.peerServerIndex {
-		ps.pc.requestPLI()
+		ps.pc.forcedPLIRequest()
 	}
 }
 
