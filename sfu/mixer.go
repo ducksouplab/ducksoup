@@ -179,19 +179,20 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 			n, _, err := sc.sender.Read(buf)
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					log.Printf("[error] [mixer room#%s] sender read RTCP: %v\n", shortId, err)
+					log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] read RTCP: %v\n", shortId, sc.fromUserId, sc.toUserId, err)
 				}
 				return
 			}
 			packets, err := rtcp.Unmarshal(buf[:n])
 			if err != nil {
-				log.Printf("[error] [mixer room#%s] sender unmarshal RTCP: %v\n", shortId, err)
+				log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] sender unmarshal RTCP: %v\n", shortId, sc.fromUserId, sc.toUserId, err)
 				continue
 			}
 
 			for _, packet := range packets {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
+					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] PLI\n", shortId, sc.fromUserId, sc.toUserId)
 					ms.receivingPC.requestPLI()
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
@@ -199,8 +200,8 @@ func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, 
 							sc.updateRateFromLoss(r.FractionLost)
 						}
 					}
-					// default:
-					// 	log.Printf("-- RTCP packet on sender %T:\n%v\n", rtcpPacket, rtcpPacket)
+				default:
+					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T:\n%v\n", shortId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
 				}
 			}
 		}
@@ -255,14 +256,15 @@ func (m *mixer) updateTracks() signalingState {
 		}
 
 		// map of sender we are already sending, so we don't double send
-		dontAddToSendersIndex := map[string]bool{}
+		alreadySentIndex := map[string]bool{}
+		ownTrackIndex := map[string]bool{}
 
 		for _, sender := range pc.GetSenders() {
 			if sender.Track() == nil {
 				continue
 			}
 
-			dontAddToSendersIndex[sender.Track().ID()] = true
+			alreadySentIndex[sender.Track().ID()] = true
 
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
 			_, ok := m.mixerSliceIndex[sender.Track().ID()]
@@ -280,16 +282,19 @@ func (m *mixer) updateTracks() signalingState {
 				if receiver.Track() == nil {
 					continue
 				}
-				dontAddToSendersIndex[receiver.Track().ID()] = true
+				ownTrackIndex[receiver.Track().ID()] = true
 			}
 		}
 
 		// add all necessary track (not yet to the PeerConnection or not coming from same peer)
 		for id, ms := range m.mixerSliceIndex {
-			_, dontAdd := dontAddToSendersIndex[id]
+			_, alreadySent := alreadySentIndex[id]
+			_, ownTrack := ownTrackIndex[id]
 
-			if dontAdd {
-				log.Printf("[info] [room#%s] [mixer] [user#%s] don't add local track to pc: %s\n", m.room.shortId, userId, id)
+			if alreadySent {
+				log.Printf("[info] [room#%s] [mixer] [user#%s] [already] don't add local track to pc: %s\n", m.room.shortId, userId, id)
+			} else if ownTrack {
+				log.Printf("[info] [room#%s] [mixer] [user#%s] [own] don't add local track to pc: %s\n", m.room.shortId, userId, id)
 			} else {
 				sender, err := pc.AddTrack(ms.outputTrack.track)
 				log.Printf("[info] [room#%s] [mixer] [user#%s] local track added to pc: %s\n", m.room.shortId, userId, id)

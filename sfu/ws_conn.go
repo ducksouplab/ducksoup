@@ -12,6 +12,7 @@ import (
 type wsConn struct {
 	sync.Mutex
 	*websocket.Conn
+	roomId string
 	userId string
 }
 
@@ -54,14 +55,14 @@ type controlPayload struct {
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
-	return &wsConn{sync.Mutex{}, unsafeConn, ""}
+	return &wsConn{sync.Mutex{}, unsafeConn, "", ""}
 }
 
 func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		log.Printf("[error] [ws user#%s] can't read: %v\n", ws.userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [ws] can't read: %v\n", ws.roomId, ws.userId, err)
 	}
 	return
 }
@@ -80,10 +81,11 @@ func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
 	return
 }
 
-func (ws *wsConn) setUserId(userId string) {
+func (ws *wsConn) setIds(roomId string, userId string) {
 	ws.Lock()
 	defer ws.Unlock()
 
+	ws.roomId = roomId
 	ws.userId = userId
 }
 
@@ -93,7 +95,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[error] [ws user#%s] can't send: %v\n", ws.userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [ws] can't send: %v\n", ws.roomId, ws.userId, err)
 	}
 	return
 }
@@ -107,7 +109,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[error] [ws user#%s] can't send with payload: %v\n", ws.userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [ws] can't send with payload: %v\n", ws.roomId, ws.userId, err)
 	}
 	return
 }

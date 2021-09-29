@@ -115,16 +115,16 @@ func (l *localTrack) loop() needsSignaling {
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join), parseGPU(join))
+		pipeline := gst.CreatePipeline(room.shortId, userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join), parseGPU(join))
 		l.pipeline = pipeline
 
 		pipeline.Start()
 		room.addFiles(userId, pipeline.Files)
 		defer func() {
-			log.Printf("[info] [user#%s] [%s track] stopping\n", userId, kind)
+			log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", room.shortId, userId, kind)
 			pipeline.Stop()
 			if r := recover(); r != nil {
-				log.Printf("[recov] [user#%s] [%s track] recover\n", userId, kind)
+				log.Printf("[recov] [room#%s] [user#%s] [%s track] recover\n", room.shortId, userId, kind)
 			}
 		}()
 

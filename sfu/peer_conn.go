@@ -17,6 +17,7 @@ const delayBetweenPLIs = 500 * time.Millisecond
 type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
+	roomId  string
 	userId  string
 	lastPLI time.Time
 }
@@ -27,7 +28,7 @@ func newPionPeerConn(userId string, videoCodec string) (ppc *webrtc.PeerConnecti
 	// create RTC API with chosen codecs
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		log.Printf("[info] [user#%s] [pc] NewWebRTCAPI codecs: %v\n", userId, err)
+		log.Printf("[info] [room#%s] [user#%s] [pc] NewWebRTCAPI codecs: %v\n", userId, err)
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -78,12 +79,12 @@ func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, e
 		return
 	}
 
-	pc = &peerConn{sync.Mutex{}, ppc, userId, time.Now()}
+	pc = &peerConn{sync.Mutex{}, ppc, room.shortId, userId, time.Now()}
 	return
 }
 
 func (pc *peerConn) connectPeerServer(ps *peerServer) {
-	userId, room, ws := ps.userId, ps.room, ps.ws
+	userId, roomId := pc.userId, pc.roomId
 
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -94,20 +95,20 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			log.Printf("[error] [user#%s] [pc] can't marshal candidate: %v\n", userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [pc] can't marshal candidate: %v\n", roomId, userId, err)
 			return
 		}
 
-		ws.sendWithPayload("candidate", string(candidateString))
+		ps.ws.sendWithPayload("candidate", string(candidateString))
 	})
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[info] [user#%s] [pc] OnConnectionStateChange: %s\n", userId, p.String())
+		log.Printf("[info] [room#%s] [user#%s] [pc] OnConnectionStateChange: %s\n", roomId, userId, p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				log.Printf("[error] [user#%s] [pc] peer connection failed: %v\n", userId, err)
+				log.Printf("[error] [room#%s] [user#%s] [pc] peer connection failed: %v\n", roomId, userId, err)
 			}
 		case webrtc.PeerConnectionStateClosed:
 			ps.close("pc closed")
@@ -115,19 +116,19 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		log.Printf("[info] [user#%s] [pc] OnNegotiationNeeded\n", userId)
+		log.Printf("[info] [room#%s] [user#%s] [pc] OnNegotiationNeeded\n", roomId, userId)
 	})
 
 	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		log.Printf("[info] [user#%s] [pc] OnSignalingStateChange: %v\n", userId, state)
+		log.Printf("[info] [room#%s] [user#%s] [pc] OnSignalingStateChange: %v\n", roomId, userId, state)
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		log.Printf("[info] [user#%s] [pc] new incoming track: %s\n", userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
-		room.incInTracksReadyCount()
-		<-room.waitForAllCh
+		log.Printf("[info] [room#%s] [user#%s] [pc] new incoming track: %s\n", roomId, userId, remoteTrack.Codec().RTPCodecCapability.MimeType)
+		ps.room.incInTracksReadyCount()
+		<-ps.room.waitForAllCh
 
-		room.runLocalTrackFromRemote(ps, remoteTrack, receiver)
+		ps.room.runLocalTrackFromRemote(ps, remoteTrack, receiver)
 	})
 }
 
@@ -149,10 +150,10 @@ func (pc *peerConn) requestPLI() {
 					},
 				})
 				if err != nil {
-					log.Printf("[error] [user#%s] [pc] can't send PLI: %v\n", pc.userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [pc] can't send PLI: %v\n", pc.roomId, pc.userId, err)
 				} else {
 					pc.lastPLI = time.Now()
-					log.Printf("[info] [user#%s] [pc] PLI sent\n", pc.userId)
+					log.Printf("[info] [room#%s] [user#%s] [pc] PLI sent\n", pc.roomId, pc.userId)
 				}
 			}
 		}

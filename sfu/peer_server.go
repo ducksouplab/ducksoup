@@ -62,7 +62,7 @@ func (ps *peerServer) close(reason string) {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		log.Printf("[info] [user#%s] [ps] closing, reason: %s\n", ps.userId, reason)
+		log.Printf("[info] [room#%s] [user#%s] [ps] closing, reason: %s\n", ps.room.shortId, ps.userId, reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -84,7 +84,7 @@ func (ps *peerServer) loop() {
 		select {
 		case <-time.After(time.Duration(ps.room.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
-			log.Printf("[info] [user#%s] [ps] ending message sent\n", ps.userId)
+			log.Printf("[info] [room#%s] [user#%s] [ps] ending message sent\n", ps.room.shortId, ps.userId)
 			ps.ws.send("ending")
 		case <-ps.closedCh:
 			// user might have disconnected
@@ -92,6 +92,7 @@ func (ps *peerServer) loop() {
 		}
 	}()
 
+	roomId, userId := ps.room.shortId, ps.userId
 	for {
 		select {
 		case <-ps.room.endCh:
@@ -109,29 +110,29 @@ func (ps *peerServer) loop() {
 			case "candidate":
 				candidate := webrtc.ICECandidateInit{}
 				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-					log.Printf("[error] [ps user#%s] can't unmarshal candidate: %v\n", ps.userId, err)
+					log.Printf("[error] [room#%s] [user#%s]] [ps] can't unmarshal candidate: %v\n", roomId, userId, err)
 					return
 				}
 
 				if err := ps.pc.AddICECandidate(candidate); err != nil {
-					log.Printf("[error] [ps user#%s] can't add candidate: %v\n", ps.userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [ps] can't add candidate: %v\n", roomId, userId, err)
 					return
 				}
 			case "answer":
 				answer := webrtc.SessionDescription{}
 				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-					log.Printf("[error] [ps user#%s] can't unmarshal answer: %v\n", ps.userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [ps] can't unmarshal answer: %v\n", roomId, userId, err)
 					return
 				}
 
 				if err := ps.pc.SetRemoteDescription(answer); err != nil {
-					log.Printf("[error] [ps user#%s] cant' SetRemoteDescription: %v\n", ps.userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [ps] can't SetRemoteDescription: %v\n", roomId, userId, err)
 					return
 				}
 			case "control":
 				payload := controlPayload{}
 				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-					log.Printf("[error] [ps user#%s] can't unmarshal control: %v\n", ps.userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [ps] can't unmarshal control: %v\n", roomId, userId, err)
 				} else {
 					go func() {
 						if payload.Kind == "audio" && ps.audioTrack != nil {
@@ -158,26 +159,27 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
 		ws.send("error-join")
-		log.Printf("[wrong] [ps user unknown] join payload corrupted: %v\n", err)
+		log.Printf("[error] [user unknown] [ps] join payload corrupted: %v\n", err)
 		return
 	}
 	userId := joinPayload.UserId
+	roomId := joinPayload.RoomId
 
-	// used to log info with user id
-	ws.setUserId(userId)
+	// used to log info with room and user id
+	ws.setIds(roomId, userId)
 
 	room, err := joinRoom(joinPayload)
 	if err != nil {
 		// joinRoom err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
-		log.Printf("[wrong] [ps user#%s] join failed: %s\n", userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [ps] join failed: %s\n", room.shortId, userId, err)
 		return
 	}
 
 	pc, err := newPeerConn(joinPayload, room, ws)
 	if err != nil {
 		ws.send("error-peer-connection")
-		log.Printf("[error] [ps user#%s] can't create pc: %s\n", userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [ps] can't create pc: %s\n", room.shortId, userId, err)
 		return
 	}
 
