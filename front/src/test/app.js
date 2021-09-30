@@ -300,15 +300,25 @@ const ducksoupListener = (message) => {
         document.getElementById("audio-down").textContent = payload.audioDown;
         document.getElementById("video-up").textContent = payload.videoUp;
         document.getElementById("video-down").textContent = payload.videoDown;
-        const { outboundRTPVideo } = payload;
-        if (!!outboundRTPVideo) {
-            document.getElementById("video-width").textContent = outboundRTPVideo.frameWidth;
-            document.getElementById("video-height").textContent = outboundRTPVideo.frameHeight;
-            document.getElementById("video-framerate").textContent = outboundRTPVideo.framesPerSecond;
-            document.getElementById("video-limitation").textContent = outboundRTPVideo.qualityLimitationReason;
-            document.getElementById("video-key").textContent = outboundRTPVideo.keyFramesEncoded;
-            document.getElementById("video-pli").textContent = outboundRTPVideo.pliCount;
-            document.getElementById("video-nack").textContent = outboundRTPVideo.nackCount;
+        const { outboundRTPVideo, inboundRTPVideo } = payload;
+        if (outboundRTPVideo) {
+            document.getElementById("video-width-up").textContent = outboundRTPVideo.frameWidth;
+            document.getElementById("video-height-up").textContent = outboundRTPVideo.frameHeight;
+            document.getElementById("video-framerate-up").textContent = outboundRTPVideo.framesPerSecond;
+            document.getElementById("video-limitation-up").textContent = outboundRTPVideo.qualityLimitationReason;
+            document.getElementById("video-key-up").textContent = outboundRTPVideo.keyFramesEncoded;
+            document.getElementById("video-pli-up").textContent = outboundRTPVideo.pliCount;
+            document.getElementById("video-nack-up").textContent = outboundRTPVideo.nackCount;
+        }
+        if (inboundRTPVideo) {
+            document.getElementById("video-width-down").textContent = inboundRTPVideo.frameWidth;
+            document.getElementById("video-height-down").textContent = inboundRTPVideo.frameHeight;
+            document.getElementById("video-framerate-down").textContent = inboundRTPVideo.framesPerSecond;
+            document.getElementById("video-limitation-down").textContent = inboundRTPVideo.qualityLimitationReason;
+            document.getElementById("video-key-down").textContent = inboundRTPVideo.keyFramesEncoded;
+            document.getElementById("video-pli-down").textContent = inboundRTPVideo.pliCount;
+            document.getElementById("video-nack-down").textContent = inboundRTPVideo.nackCount;
+            document.getElementById("video-jitter-down").textContent = inboundRTPVideo.jitter;
         }
     }
 };

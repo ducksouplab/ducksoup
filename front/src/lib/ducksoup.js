@@ -325,6 +325,7 @@ class DuckSoup {
         let newVideoBytesSent = 0;
         let newVideoBytesReceived = 0;
         let outboundRTPVideo;
+        let inboundRTPVideo;
 
         pcStats.forEach((report) => {
             if (report.type === "outbound-rtp" && report.kind === "audio") {
@@ -336,6 +337,7 @@ class DuckSoup {
                 outboundRTPVideo = report;
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
+                inboundRTPVideo = report;
             }
         });
 
@@ -358,7 +360,7 @@ class DuckSoup {
         );
         this._sendEvent({
             kind: "stats",
-            payload: { audioUp, audioDown, videoUp, videoDown, ...(outboundRTPVideo && { outboundRTPVideo }) }
+            payload: { audioUp, audioDown, videoUp, videoDown, ...(outboundRTPVideo && { outboundRTPVideo }), ...(inboundRTPVideo && { inboundRTPVideo }) }
         });
         this._debugInfo = {
             now: newNow,
