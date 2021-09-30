@@ -19,17 +19,17 @@ import (
 
 // global state
 var (
-	mu              sync.Mutex
-	pipelineIndex   map[string]*Pipeline
-	nvidia          bool
-	forceEncodeSize bool
+	mu                sync.Mutex
+	pipelineIndex     map[string]*Pipeline
+	nvidia            bool
+	forceEncodingSize bool
 )
 
 func init() {
 	mu = sync.Mutex{}
 	pipelineIndex = make(map[string]*Pipeline)
 	nvidia = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
-	forceEncodeSize = strings.ToLower(os.Getenv("DS_FORCE_ENCODE_SIZE")) == "true"
+	forceEncodingSize = strings.ToLower(os.Getenv("DS_FORCE_ENCODING_SIZE")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -102,7 +102,7 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
 	}
 	// set caps
-	if forceEncodeSize {
+	if forceEncodingSize {
 		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(width), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(height), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(frameRate)+"/1", -1)
