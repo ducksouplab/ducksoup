@@ -91,7 +91,7 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 	return
 }
 
-func (l *localTrack) loop() needsSignaling {
+func (l *localTrack) loop() {
 	userId, join, room := l.ps.userId, l.ps.join, l.ps.room
 
 	kind := l.remoteTrack.Kind().String()
@@ -103,10 +103,10 @@ func (l *localTrack) loop() needsSignaling {
 			// Read RTP packets being sent to Pion
 			rtp, _, err := l.remoteTrack.ReadRTP()
 			if err != nil {
-				return true
+				return
 			}
 			if err := l.track.WriteRTP(rtp); err != nil {
-				return true
+				return
 			}
 		}
 	} else {
@@ -133,14 +133,14 @@ func (l *localTrack) loop() needsSignaling {
 			select {
 			case <-room.endCh:
 				// trial is over, no need to trigger signaling on every closing track
-				return false
+				return
 			case <-l.ps.closedCh:
 				// peer may quit early (for instance page refresh), other peers need to be updated
-				return true
+				return
 			default:
 				i, _, readErr := l.remoteTrack.Read(buf)
 				if readErr != nil {
-					return true
+					return
 				}
 				pipeline.Push(buf[:i])
 			}

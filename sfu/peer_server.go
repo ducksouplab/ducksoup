@@ -69,9 +69,9 @@ func (ps *peerServer) close(reason string) {
 		// listened by localTracks
 		close(ps.closedCh)
 		// clean up bound components
-		ps.room.disconnectUser(ps.userId)
 		ps.pc.Close()
 		ps.ws.Close()
+		ps.room.disconnectUser(ps.userId)
 	}
 }
 

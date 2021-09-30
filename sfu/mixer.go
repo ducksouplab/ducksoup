@@ -230,13 +230,10 @@ func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.Trac
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeLocalTrack(id string, signalingTrigger needsSignaling) {
+func (m *mixer) removeLocalTrack(id string) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
-		if signalingTrigger {
-			m.managedUpdateSignaling("removed track#" + id)
-		}
 	}()
 
 	if ms, exists := m.mixerSliceIndex[id]; exists {

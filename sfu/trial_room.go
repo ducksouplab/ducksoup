@@ -267,6 +267,7 @@ func (r *trialRoom) disconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
+		go r.mixer.managedUpdateSignaling("disconnected")
 
 		if r.connectedUserCount() == 0 && !r.running {
 			// don't keep this room
@@ -329,10 +330,10 @@ func (r *trialRoom) runLocalTrackFromRemote(
 		// will trigger signaling if needed
 		r.incOutTracksReadyCount()
 
-		signalingTrigger := outputTrack.loop() // blocking
+		outputTrack.loop() // blocking
 
 		// outputTrack has ended
-		r.mixer.removeLocalTrack(outputTrack.id, signalingTrigger)
+		r.mixer.removeLocalTrack(outputTrack.id)
 		r.decOutTracksReadyCount()
 	}
 }
