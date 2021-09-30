@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.3")
+    console.log("[DuckSoup] v1.2.4")
 });
 
 // Config
@@ -324,6 +324,7 @@ class DuckSoup {
         let newAudioBytesReceived = 0;
         let newVideoBytesSent = 0;
         let newVideoBytesReceived = 0;
+        let outboundRTPVideo;
 
         pcStats.forEach((report) => {
             if (report.type === "outbound-rtp" && report.kind === "audio") {
@@ -332,6 +333,7 @@ class DuckSoup {
                 newAudioBytesReceived += report.bytesReceived;
             } else if (report.type === "outbound-rtp" && report.kind === "video") {
                 newVideoBytesSent += report.bytesSent;
+                outboundRTPVideo = report;
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
             }
@@ -356,7 +358,7 @@ class DuckSoup {
         );
         this._sendEvent({
             kind: "stats",
-            payload: { audioUp, audioDown, videoUp, videoDown }
+            payload: { audioUp, audioDown, videoUp, videoDown, ...(outboundRTPVideo && { outboundRTPVideo }) }
         });
         this._debugInfo = {
             now: newNow,

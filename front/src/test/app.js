@@ -300,5 +300,15 @@ const ducksoupListener = (message) => {
         document.getElementById("audio-down").textContent = payload.audioDown;
         document.getElementById("video-up").textContent = payload.videoUp;
         document.getElementById("video-down").textContent = payload.videoDown;
+        const { outboundRTPVideo } = payload;
+        if (!!outboundRTPVideo) {
+            document.getElementById("video-width").textContent = outboundRTPVideo.frameWidth;
+            document.getElementById("video-height").textContent = outboundRTPVideo.frameHeight;
+            document.getElementById("video-framerate").textContent = outboundRTPVideo.framesPerSecond;
+            document.getElementById("video-limitation").textContent = outboundRTPVideo.qualityLimitationReason;
+            document.getElementById("video-key").textContent = outboundRTPVideo.keyFramesEncoded;
+            document.getElementById("video-pli").textContent = outboundRTPVideo.pliCount;
+            document.getElementById("video-nack").textContent = outboundRTPVideo.nackCount;
+        }
     }
 };
