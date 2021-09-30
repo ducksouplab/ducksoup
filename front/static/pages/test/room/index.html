@@ -64,24 +64,28 @@
             <div class="col">
               <div class="mb-3" style="padding-top: 28px;">
                 <input class="form-check-input" id="input-gpu" type="checkbox" value="false" name="gpu">
-                <label class="form-check-label" for="input-gpu">GPU encoding (if H264)</label>
+                <label class="form-check-label" for="input-gpu">GPU encoder (if H264)</label>
+              </div>
+            </div>
+          </div>
+          <hr/>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-audio" class="form-label">Audio input</label>
+                <select class="form-select" id="input-audio" name="audioDevice"></select>
               </div>
             </div>
           </div>
           <div class="row">
             <div class="col">
               <div class="mb-3">
-                <label for="input-width" class="form-label">Width</label>
-                <input class="form-control" id="input-width" type="number" name="width" value="800">
-              </div>
-            </div>
-            <div class="col">
-              <div class="mb-3">
-                <label for="input-height" class="form-label">Height</label>
-                <input class="form-control" id="input-height" type="number" name="height" value="600">
+                <label for="input-video" class="form-label">Video input</label>
+                <select class="form-select" id="input-video" name="videoDevice"></select>
               </div>
             </div>
           </div>
+          <hr/>
           <div class="row">
             <div class="col">
               <div class="mb-3">
@@ -103,18 +107,17 @@
             </div>
           </div>
           <div class="row">
+            <p>Width/height may not apply depending on browser encoder and DuckSoup configuration</p>
             <div class="col">
               <div class="mb-3">
-                <label for="input-audio" class="form-label">Audio input</label>
-                <select class="form-select" id="input-audio" name="audioDevice"></select>
+                <label for="input-width" class="form-label">Width</label>
+                <input class="form-control" id="input-width" type="number" name="width" value="800">
               </div>
             </div>
-          </div>
-          <div class="row">
             <div class="col">
               <div class="mb-3">
-                <label for="input-video" class="form-label">Video input</label>
-                <select class="form-select" id="input-video" name="videoDevice"></select>
+                <label for="input-height" class="form-label">Height</label>
+                <input class="form-control" id="input-height" type="number" name="height" value="600">
               </div>
             </div>
           </div>
@@ -131,14 +134,14 @@
             <div class="col">
               <div class="mb-3">
                 <label for="input-video-fx" class="form-label">Video FX</label>
-                <input class="form-control" id="input-video-fx" type="text" name="videoFx" value="coloreffects preset=heat" placeholder="fx_name prop1=value1 prop2=value2...">
+                <input class="form-control" id="input-video-fx" type="text" name="videoFx" value="" placeholder="fx_name prop1=value1 prop2=value2...">
               </div>
             </div>
           </div>
         </form>
         <div id="live-control" class="show-when-running">
           <div class="mb-3">
-            <label for="input-width" class="form-label">Update audio FX property</label>
+            <label class="form-label">Update audio FX property</label>
             <div class="row">
               <div class="col-3">
                 <input type="text" class="form-control" id="audio-property" value="pitch">
@@ -161,7 +164,7 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="input-width" class="form-label">Update video FX property</label>
+            <label class="form-label">Update video FX property</label>
             <div class="row">
               <div class="col-3">
                 <input type="text" class="form-control" id="video-property" >

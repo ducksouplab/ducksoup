@@ -19,15 +19,17 @@ import (
 
 // global state
 var (
-	mu            sync.Mutex
-	pipelineIndex map[string]*Pipeline
-	nvidiaEnabled bool
+	mu              sync.Mutex
+	pipelineIndex   map[string]*Pipeline
+	nvidia          bool
+	forceEncodeSize bool
 )
 
 func init() {
 	mu = sync.Mutex{}
 	pipelineIndex = make(map[string]*Pipeline)
-	nvidiaEnabled = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
+	nvidia = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
+	forceEncodeSize = strings.ToLower(os.Getenv("DS_FORCE_ENCODE_SIZE")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -72,7 +74,7 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 			pipelineStr = vp8RawPipeline
 		}
 	case "H264":
-		if nvidiaEnabled && gpu {
+		if nvidia && gpu {
 			engine = settings.NV264
 		} else {
 			engine = settings.X264
@@ -99,10 +101,16 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 		prefixedFx := strings.Replace(fx, "name=", "name=fx", 1)
 		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
 	}
-	// set dimensionts
-	pipelineStr = strings.Replace(pipelineStr, "${width}", strconv.Itoa(width), -1)
-	pipelineStr = strings.Replace(pipelineStr, "${height}", strconv.Itoa(height), -1)
-	pipelineStr = strings.Replace(pipelineStr, "${framerate}", strconv.Itoa(frameRate), -1)
+	// set caps
+	if forceEncodeSize {
+		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(width), -1)
+		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(height), -1)
+		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(frameRate)+"/1", -1)
+	} else {
+		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", "", -1)
+		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", "", -1)
+		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", "", -1)
+	}
 	return
 }
 

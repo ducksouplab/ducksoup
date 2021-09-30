@@ -169,7 +169,8 @@ Depending on the GStreamer plugins used, additional dependencies may be needed (
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
-- DS_NVIDIA=true (default to false) if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
+- DS_NVIDIA (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
+- DS_FORCE_ENCODE_SIZE (defaults to false) set to true to force width/height/frameRate of the encoded video streams. By default it is let as sent by browsers
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 
 ### Run DuckSoup server

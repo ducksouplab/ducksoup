@@ -17,7 +17,7 @@ ${fx} !
 videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw, format=I420, framerate=${framerate}/1, width=${width}, height=${height}, colorimetry=bt601, chroma-site=jpeg ! 
+video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg${framerateCap}${widthCap}${heightCap} ! 
 ${encodeFast} ! 
 h264parse ! 
 
