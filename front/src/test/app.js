@@ -296,29 +296,30 @@ const ducksoupListener = (message) => {
     } else if (kind === "error") {
         replaceMessage("Error");
     } else if (kind === "stats") {
-        document.getElementById("audio-up").textContent = payload.audioUp;
-        document.getElementById("audio-down").textContent = payload.audioDown;
-        document.getElementById("video-up").textContent = payload.videoUp;
-        document.getElementById("video-down").textContent = payload.videoDown;
+        document.getElementById("audio-up-bitrate").textContent = payload.audioUp;
+        document.getElementById("audio-down-bitrate").textContent = payload.audioDown;
+        document.getElementById("video-up-bitrate").textContent = payload.videoUp;
+        document.getElementById("video-down-bitrate").textContent = payload.videoDown;
         const { outboundRTPVideo, inboundRTPVideo } = payload;
         if (outboundRTPVideo) {
-            document.getElementById("video-width-up").textContent = outboundRTPVideo.frameWidth;
-            document.getElementById("video-height-up").textContent = outboundRTPVideo.frameHeight;
-            document.getElementById("video-framerate-up").textContent = outboundRTPVideo.framesPerSecond;
-            document.getElementById("video-limitation-up").textContent = outboundRTPVideo.qualityLimitationReason;
-            document.getElementById("video-key-up").textContent = outboundRTPVideo.keyFramesEncoded;
-            document.getElementById("video-pli-up").textContent = outboundRTPVideo.pliCount;
-            document.getElementById("video-nack-up").textContent = outboundRTPVideo.nackCount;
+            // add processed props
+            outboundRTPVideo.averageEncodeTime = Number(outboundRTPVideo.totalEncodeTime / outboundRTPVideo.framesEncoded).toFixed(3);
+            // select displayed props
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount","framesDiscardedOnSend", "averageEncodeTime"];
+            // render
+            for (let p of props) {
+                document.getElementById(`video-up-${p}`).textContent = outboundRTPVideo[p];
+            }
         }
         if (inboundRTPVideo) {
-            document.getElementById("video-width-down").textContent = inboundRTPVideo.frameWidth;
-            document.getElementById("video-height-down").textContent = inboundRTPVideo.frameHeight;
-            document.getElementById("video-framerate-down").textContent = inboundRTPVideo.framesPerSecond;
-            document.getElementById("video-limitation-down").textContent = inboundRTPVideo.qualityLimitationReason;
-            document.getElementById("video-key-down").textContent = inboundRTPVideo.keyFramesEncoded;
-            document.getElementById("video-pli-down").textContent = inboundRTPVideo.pliCount;
-            document.getElementById("video-nack-down").textContent = inboundRTPVideo.nackCount;
-            document.getElementById("video-jitter-down").textContent = inboundRTPVideo.jitter;
+            // add processed props
+            inboundRTPVideo.processedJitter = Number(inboundRTPVideo.jitterBufferDelay / inboundRTPVideo.jitterBufferEmittedCount).toFixed(3);
+            // select displayed props
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "packetsDuplicated", "estimatedPlayoutTimestamp", "processedJitter"];
+            // render
+            for (let p of props) {
+                document.getElementById(`video-down-${p}`).textContent = inboundRTPVideo[p];
+            }
         }
     }
 };

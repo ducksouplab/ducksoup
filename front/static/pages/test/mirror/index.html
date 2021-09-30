@@ -171,6 +171,45 @@
           <p id="stopped-message"></p>
         </div>
         <div id="ducksoup-root" class="show-when-running mb-3"></div>
+        <div id="stats" class="row show-when-running mb-3">
+          <div class="col-3">
+            <p>audio down ↓</p>
+            <p><strong>bitrate:</strong> <span id="audio-down-bitrate">0.0</span> kb/s</p>
+          </div>
+          <div class="col-3">
+            <p>video down ↓</p>
+            <p><strong>bitrate:</strong> <span id="video-down-bitrate">0.0</span> kb/s</p>
+            <p><strong>decoding:</strong> <span id="video-down-frameWidth">0</span>x<span id="video-down-frameHeight">0</span>@<span id="video-down-framesPerSecond">0</span>fps</p>
+            <p><strong>keyframes decoded:</strong> <span id="video-down-keyFramesDecoded"></span></p>
+            <p><strong>packets duplicated:</strong> <span id="video-down-packetsDuplicated"></span></p>
+            <p><strong>sent:</strong>
+              PLI: <span id="video-down-pliCount">0</span>
+              SLI: <span id="video-down-sliCount">0</span>
+              FIR: <span id="video-down-firCount">0</span>
+              NACK: <span id="video-down-nackCount">0</span> 
+            </p>
+            <p><strong>jitter:</strong> <span id="video-down-processedJitter"></span></p>
+            <p><strong>timestamp:</strong> <span id="video-down-estimatedPlayoutTimestamp"></span></p>
+          </div>
+          <div class="col-3">
+            <p>audio up ↑</p>
+            <p><strong>bitrate:</strong> <span id="audio-up-bitrate">0.0</span> kb/s</p>
+          </div>
+          <div class="col-3">
+            <p>video up ↑</p>
+            <p><strong>bitrate:</strong> <span id="video-up-bitrate">0.0</span> kb/s</p>
+            <p><strong>encoding:</strong> <span id="video-up-frameWidth">0</span>x<span id="video-up-frameHeight">0</span>@<span id="video-up-framesPerSecond">0</span>fps</p>
+            <p><strong>average encode time:</strong> <span id="video-up-averageEncodeTime">0</span></p>
+            <p><strong>quality limitation:</strong> <span id="video-up-qualityLimitationReason">none</span></p>  
+            <p><strong>keyframes encoded:</strong> <span id="video-up-keyFramesEncoded"></span></p>
+            <p><strong>frames discarded on send:</strong> <span id="video-up-framesDiscardedOnSend"></span></p>
+            <p><strong>received:</strong>
+              PLI: <span id="video-up-pliCount">0</span>
+              SLI: <span id="video-up-sliCount">0</span>
+              FIR: <span id="video-up-firCount">0</span>
+              NACK: <span id="video-up-nackCount">0</span> 
+            </p>
+          </div>
         <div class="video-container show-when-running">
           <video id="local-video" autoplay muted></video>
           <div class="overlay overlay-top"><div>Direct from webcam</div></div>
@@ -178,15 +217,5 @@
       </div>
     </div>
   </div>
-  <footer class="footer mt-auto py-3 bg-light">
-    <div class="container">
-      <div class="row">
-        <div class="text-end">audio ↑ <span id="audio-up">0.0</span> kb/s ↓ <span id="audio-down">0.0</span> kb/s</div>
-        <div class="text-end">video ↑ <span id="video-up">0.0</span> kb/s ↓ <span id="video-down">0.0</span> kb/s</div>
-        <div class="text-end">encoded video ↑ <span id="video-width-up">0</span>x<span id="video-height-up">0</span>@<span id="video-framerate-up">0</span>fps | limitation: <span id="video-limitation-up">none</span> | keyframes: <span id="video-key-up">0</span> | PLI: <span id="video-pli-up">0</span> | NACK: <span id="video-nack-up">0</span></div>
-        <div class="text-end">encoded video ↓ <span id="video-width-down">0</span>x<span id="video-height-down">0</span>@<span id="video-framerate-down">0</span>fps | limitation: <span id="video-limitation-down">none</span> | keyframes: <span id="video-key-down">0</span> | PLI: <span id="video-pli-down">0</span> | NACK: <span id="video-nack-down">0</span> | jitter: <span id="video-jitter-down">0</span></div>
-      </div>
-    </div>
-  </footer>
 </body>
 </html>
