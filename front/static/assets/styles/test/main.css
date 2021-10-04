@@ -31,3 +31,7 @@ nav .input-group {
     right: 3px;
     text-align: right;
 }
+
+#stats p {
+    margin-bottom: 3px;
+}

@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.2")
+    console.log("[DuckSoup test] v1.0.3")
 });
 
 let state;
@@ -300,7 +300,7 @@ const ducksoupListener = (message) => {
         document.getElementById("audio-down-bitrate").textContent = payload.audioDown;
         document.getElementById("video-up-bitrate").textContent = payload.videoUp;
         document.getElementById("video-down-bitrate").textContent = payload.videoDown;
-        const { outboundRTPVideo, inboundRTPVideo } = payload;
+        const { outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio } = payload;
         if (outboundRTPVideo) {
             // add processed props
             outboundRTPVideo.averageEncodeTime = Number(outboundRTPVideo.totalEncodeTime / outboundRTPVideo.framesEncoded).toFixed(3);
@@ -310,15 +310,34 @@ const ducksoupListener = (message) => {
             for (let p of props) {
                 document.getElementById(`video-up-${p}`).textContent = outboundRTPVideo[p];
             }
-        }
+        } 
         if (inboundRTPVideo) {
             // add processed props
             inboundRTPVideo.processedJitter = Number(inboundRTPVideo.jitterBufferDelay / inboundRTPVideo.jitterBufferEmittedCount).toFixed(3);
             // select displayed props
-            const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "packetsDuplicated", "estimatedPlayoutTimestamp", "processedJitter"];
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "processedJitter"];
             // render
             for (let p of props) {
                 document.getElementById(`video-down-${p}`).textContent = inboundRTPVideo[p];
+            }
+        }
+        if (outboundRTPAudio) {
+            // select displayed props
+            const props = ["nackCount", "targetBitrate"];
+            // render
+            for (let p of props) {
+                document.getElementById(`audio-up-${p}`).textContent = outboundRTPAudio[p];
+            }
+        }
+        if (inboundRTPAudio) {
+            // add processed props
+            inboundRTPAudio.processedJitter = Number(inboundRTPAudio.jitterBufferDelay / inboundRTPAudio.jitterBufferEmittedCount).toFixed(3);
+            inboundRTPAudio.totalSamplesDuration = inboundRTPAudio.totalSamplesDuration.toFixed(2);
+            // select displayed props
+            const props = ["processedJitter", "nackCount", "concealedSamples", "totalSamplesDuration"];
+            // render
+            for (let p of props) {
+                document.getElementById(`audio-down-${p}`).textContent = inboundRTPAudio[p];
             }
         }
     }

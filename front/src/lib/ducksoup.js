@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.4")
+    console.log("[DuckSoup] v1.2.5")
 });
 
 // Config
@@ -324,14 +324,15 @@ class DuckSoup {
         let newAudioBytesReceived = 0;
         let newVideoBytesSent = 0;
         let newVideoBytesReceived = 0;
-        let outboundRTPVideo;
-        let inboundRTPVideo;
+        let outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio;
 
         pcStats.forEach((report) => {
             if (report.type === "outbound-rtp" && report.kind === "audio") {
                 newAudioBytesSent += report.bytesSent;
+                outboundRTPAudio = report;
             } else if (report.type === "inbound-rtp" && report.kind === "audio") {
                 newAudioBytesReceived += report.bytesReceived;
+                inboundRTPAudio = report;
             } else if (report.type === "outbound-rtp" && report.kind === "video") {
                 newVideoBytesSent += report.bytesSent;
                 outboundRTPVideo = report;
@@ -360,7 +361,16 @@ class DuckSoup {
         );
         this._sendEvent({
             kind: "stats",
-            payload: { audioUp, audioDown, videoUp, videoDown, ...(outboundRTPVideo && { outboundRTPVideo }), ...(inboundRTPVideo && { inboundRTPVideo }) }
+            payload: {
+                audioUp,
+                audioDown,
+                videoUp,
+                videoDown,
+                ...(outboundRTPVideo && { outboundRTPVideo }),
+                ...(inboundRTPVideo && { inboundRTPVideo }),
+                ...(outboundRTPAudio && { outboundRTPAudio }),
+                ...(inboundRTPAudio && { inboundRTPAudio })
+            }
         });
         this._debugInfo = {
             now: newNow,
