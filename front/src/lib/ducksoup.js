@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.6")
+    console.log("[DuckSoup] v1.2.7")
 });
 
 // Config
@@ -208,6 +208,9 @@ class DuckSoup {
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
         stream.getTracks().forEach((track) => {
+            // implement a mute-like behavior (with `enabled`) until the room does start
+            // see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/enabled
+            track.enabled = false;
             pc.addTrack(track, stream);
         });
         this._stream = stream;
@@ -261,6 +264,10 @@ class DuckSoup {
                     console.error(error)
                 }
             } else if (message.kind === "start") {
+                stream.getTracks().forEach((track) => {
+                    // unmute
+                    track.enabled = true;
+                });
                 this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
             } else if (message.kind === "ending") {
                 this._sendEvent({ kind: "ending" });
@@ -339,6 +346,8 @@ class DuckSoup {
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
                 inboundRTPVideo = report;
+            } else if (report.type === "remote-inbound-rtp" || report.type === "remote-outbound-rtp") {
+                console.log(report);
             }
         });
 
