@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.7")
+    console.log("[DuckSoup] v1.2.8")
 });
 
 // Config

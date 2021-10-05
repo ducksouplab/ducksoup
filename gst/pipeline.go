@@ -178,7 +178,7 @@ func CreatePipeline(roomId string, userId string, track *webrtc.TrackLocalStatic
 
 	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx, gpu)
 	id := track.ID()
-	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline]  %v pipeline initialized\n", roomId, userId, id, kind)
+	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", roomId, userId, id, kind)
 	log.Println(pipelineStr)
 
 	cPipelineStr := C.CString(pipelineStr)

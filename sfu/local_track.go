@@ -72,7 +72,7 @@ func parseFrameRate(join joinPayload) (frameRate int) {
 func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
 	// create a new localTrack with:
 	// - the same codec as the incoming/remote one
-	// - a unique trackId
+	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
 	// - a streamId shared among peerServer tracks (audio/video)
 	trackId := uuid.New().String()
 	rtpTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, trackId, ps.streamId)

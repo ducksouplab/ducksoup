@@ -51,8 +51,6 @@ const (
 	signalingRetryWithDelay
 )
 
-type needsSignaling bool
-
 // senderController
 
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
