@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/engine"
+	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
@@ -71,7 +72,7 @@ func newPionPeerConn(roomId string, userId string, videoCodec string) (ppc *webr
 	return
 }
 
-func newPeerConn(join joinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
+func newPeerConn(join types.JoinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
 	roomId, userId, videoCodec := join.RoomId, join.UserId, join.VideoCodec
 
 	ppc, err := newPionPeerConn(roomId, userId, videoCodec)

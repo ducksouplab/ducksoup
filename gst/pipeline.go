@@ -14,6 +14,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -37,18 +38,19 @@ type Pipeline struct {
 	// public
 	Files []string
 	// private
-	id          string // same as local/output track id
-	roomId      string
-	userId      string
-	gstPipeline *C.GstElement
-	track       *webrtc.TrackLocalStaticRTP
-	namespace   string
-	filePrefix  string
-	codec       string
-	gpu         bool
+	id                 string // same as local/output track id
+	roomId             string
+	userId             string
+	namespace          string
+	gstPipeline        *C.GstElement
+	track              *webrtc.TrackLocalStaticRTP
+	filePrefix         string
+	codec              string
+	gpu                bool
+	pliRequestCallback func()
 }
 
-func newPipelineStr(namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string, gpu bool) (pipelineStr string) {
+func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, codec string, fx string) (pipelineStr string) {
 	// special case for testing
 	if fx == "passthrough" {
 		pipelineStr = passthroughPipeline
@@ -74,7 +76,7 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 			pipelineStr = vp8RawPipeline
 		}
 	case "H264":
-		if nvidia && gpu {
+		if nvidia && join.GPU {
 			engine = settings.NV264
 		} else {
 			engine = settings.X264
@@ -93,7 +95,7 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
 	// set file
-	pipelineStr = strings.Replace(pipelineStr, "${namespace}", namespace, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${namespace}", join.Namespace, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
 	// set fx
 	if hasFx {
@@ -103,9 +105,9 @@ func newPipelineStr(namespace string, filePrefix string, kind string, codec stri
 	}
 	// set caps
 	if forceEncodingSize {
-		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(width), -1)
-		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(height), -1)
-		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(frameRate)+"/1", -1)
+		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(join.Width), -1)
+		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(join.Height), -1)
+		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(join.FrameRate)+"/1", -1)
 	} else {
 		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", "", -1)
 		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", "", -1)
@@ -167,6 +169,20 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, du
 	C.free(buffer)
 }
 
+//export goForceKeyUnitCallback
+func goForceKeyUnitCallback(cId *C.char) {
+	id := C.GoString(cId)
+
+	mu.Lock()
+	pipeline, ok := pipelineIndex[id]
+	mu.Unlock()
+
+	if ok {
+		log.Printf("[info] [room#%s] [user#%s] [pipeline] PLI requested from GStreamer\n", pipeline.roomId, pipeline.userId)
+		pipeline.pliRequestCallback()
+	}
+}
+
 // API
 
 func StartMainLoop() {
@@ -174,11 +190,11 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(roomId string, userId string, track *webrtc.TrackLocalStaticRTP, namespace string, filePrefix string, kind string, codec string, width int, height int, frameRate int, fx string, gpu bool) *Pipeline {
+func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, kind string, codec string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
 
-	pipelineStr := newPipelineStr(namespace, filePrefix, kind, codec, width, height, frameRate, fx, gpu)
+	pipelineStr := newPipelineStr(join, filePrefix, kind, codec, fx)
 	id := track.ID()
-	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", roomId, userId, id, kind)
+	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", join.RoomId, join.UserId, id, kind)
 	log.Println(pipelineStr)
 
 	cPipelineStr := C.CString(pipelineStr)
@@ -187,16 +203,17 @@ func CreatePipeline(roomId string, userId string, track *webrtc.TrackLocalStatic
 	defer C.free(unsafe.Pointer(cId))
 
 	pipeline := &Pipeline{
-		Files:       allFiles(namespace, filePrefix, kind, len(fx) > 0),
-		id:          id,
-		roomId:      roomId,
-		userId:      userId,
-		gstPipeline: C.gstreamer_parse_pipeline(cPipelineStr, cId),
-		track:       track,
-		namespace:   namespace,
-		filePrefix:  filePrefix,
-		codec:       codec,
-		gpu:         gpu,
+		Files:              allFiles(join.Namespace, filePrefix, kind, len(fx) > 0),
+		id:                 id,
+		roomId:             join.RoomId,
+		userId:             join.UserId,
+		namespace:          join.Namespace,
+		gstPipeline:        C.gstreamer_parse_pipeline(cPipelineStr, cId),
+		track:              track,
+		filePrefix:         filePrefix,
+		codec:              codec,
+		gpu:                join.GPU,
+		pliRequestCallback: pliRequestCallback,
 	}
 
 	mu.Lock()

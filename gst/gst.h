@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 extern void goNewSampleCallback(char *id, void *buffer, int bufferLen, int samples);
+extern void goForceKeyUnitCallback(char *id);
 extern void goStopCallback(char *message);
 
 GstElement *gstreamer_parse_pipeline(char *pipelineStr, char *id);

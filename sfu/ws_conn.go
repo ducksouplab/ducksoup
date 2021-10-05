@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sync"
 
+	"github.com/creamlab/ducksoup/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -31,24 +32,6 @@ type messageIn struct {
 	Payload string `json:"payload"`
 }
 
-type joinPayload struct {
-	RoomId   string `json:"roomId"`
-	UserId   string `json:"userId"`
-	Duration int    `json:"duration"`
-	// optional
-	Namespace  string `json:"namespace"`
-	VideoCodec string `json:"videoCodec"`
-	Size       int    `json:"size"`
-	AudioFx    string `json:"audioFx"`
-	VideoFx    string `json:"videoFx"`
-	Width      int    `json:"width"`
-	Height     int    `json:"height"`
-	FrameRate  int    `json:"frameRate"`
-	GPU        bool   `json:"gpu"`
-	// Not from JSON
-	origin string
-}
-
 type controlPayload struct {
 	Kind     string  `json:"kind"`
 	Name     string  `json:"name"`
@@ -70,6 +53,30 @@ func parseString(str string) string {
 	return clean
 }
 
+func parseWidth(join types.JoinPayload) (width int) {
+	width = join.Width
+	if width == 0 {
+		width = defaultWidth
+	}
+	return
+}
+
+func parseHeight(join types.JoinPayload) (height int) {
+	height = join.Height
+	if height == 0 {
+		height = defaultHeight
+	}
+	return
+}
+
+func parseFrameRate(join types.JoinPayload) (frameRate int) {
+	frameRate = join.FrameRate
+	if frameRate == 0 {
+		frameRate = defaultFrameRate
+	}
+	return
+}
+
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
@@ -85,7 +92,7 @@ func (ws *wsConn) read() (m messageIn, err error) {
 	return
 }
 
-func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
+func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	var m messageIn
 
 	// First message must be a join
@@ -95,12 +102,16 @@ func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
 	}
 
 	err = json.Unmarshal([]byte(m.Payload), &join)
-	// restrict to authorized characters
+	// restrict to authorized values
 	join.RoomId = parseString(join.RoomId)
 	join.UserId = parseString(join.UserId)
 	join.Namespace = parseString(join.Namespace)
+	join.Width = parseWidth(join)
+	join.Height = parseHeight(join)
+	join.FrameRate = parseFrameRate(join)
 	// add property
-	join.origin = origin
+	join.Origin = origin
+
 	return
 }
 

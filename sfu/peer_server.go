@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
@@ -17,7 +18,7 @@ type peerServer struct {
 	userId     string
 	streamId   string // one stream Id shared by localTracks on a given pc
 	room       *trialRoom
-	join       joinPayload
+	join       types.JoinPayload
 	pc         *peerConn
 	ws         *wsConn
 	audioTrack *localTrack
@@ -27,7 +28,7 @@ type peerServer struct {
 }
 
 func newPeerServer(
-	join joinPayload,
+	join types.JoinPayload,
 	room *trialRoom,
 	pc *peerConn,
 	ws *wsConn) *peerServer {

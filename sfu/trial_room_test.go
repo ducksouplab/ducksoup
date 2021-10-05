@@ -2,11 +2,13 @@ package sfu
 
 import (
 	"testing"
+
+	"github.com/creamlab/ducksoup/types"
 )
 
-func newJoinPayload(origin, roomId, userId, namespace string, size int) joinPayload {
-	return joinPayload{
-		origin:    origin,
+func newJoinPayload(origin, roomId, userId, namespace string, size int) types.JoinPayload {
+	return types.JoinPayload{
+		Origin:    origin,
 		RoomId:    roomId,
 		UserId:    userId,
 		Namespace: namespace,

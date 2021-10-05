@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/helpers"
+	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -66,11 +67,11 @@ func (r *trialRoom) delete() {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func qualifiedId(join joinPayload) string {
-	return join.origin + "#" + join.RoomId
+func qualifiedId(join types.JoinPayload) string {
+	return join.Origin + "#" + join.RoomId
 }
 
-func newRoom(qualifiedId string, join joinPayload) *trialRoom {
+func newRoom(qualifiedId string, join types.JoinPayload) *trialRoom {
 	// process duration
 	duration := join.Duration
 	if duration < 1 {
@@ -147,7 +148,7 @@ func (r *trialRoom) countdown() {
 
 // API read-write
 
-func joinRoom(join joinPayload) (*trialRoom, error) {
+func joinRoom(join types.JoinPayload) (*trialRoom, error) {
 	// guard `roomIndex`
 	mu.Lock()
 	defer mu.Unlock()
@@ -181,7 +182,7 @@ func joinRoom(join joinPayload) (*trialRoom, error) {
 			return r, nil
 		}
 	} else {
-		log.Printf("[info] [room#%s] [user#%s] created for origin: %s\n", join.RoomId, userId, join.origin)
+		log.Printf("[info] [room#%s] [user#%s] created for origin: %s\n", join.RoomId, userId, join.Origin)
 		newRoom := newRoom(qualifiedId, join)
 		roomIndex[qualifiedId] = newRoom
 		return newRoom, nil

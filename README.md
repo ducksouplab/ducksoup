@@ -443,4 +443,4 @@ docker run --name ducksoup_multi_1 \
 
 ## Credits
 
-Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene) in particular.
+Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene), [ion-cluster](https://github.com/cryptagon/ion-cluster) in particular.

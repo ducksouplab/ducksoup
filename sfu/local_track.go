@@ -9,6 +9,7 @@ import (
 
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
+	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 )
@@ -23,7 +24,7 @@ type localTrack struct {
 	remoteTrack       *webrtc.TrackRemote
 }
 
-func filePrefix(join joinPayload, room *trialRoom) string {
+func filePrefixWithCount(join types.JoinPayload, room *trialRoom) string {
 	connectionCount := room.joinedCountForUser(join.UserId)
 	// time room user count
 	return time.Now().Format("20060102-150405.000") +
@@ -32,39 +33,11 @@ func filePrefix(join joinPayload, room *trialRoom) string {
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
-func parseFx(kind string, join joinPayload) (fx string) {
+func parseFx(kind string, join types.JoinPayload) (fx string) {
 	if kind == "video" {
 		fx = join.VideoFx
 	} else {
 		fx = join.AudioFx
-	}
-	return
-}
-
-func parseGPU(join joinPayload) bool {
-	return join.GPU
-}
-
-func parseWidth(join joinPayload) (width int) {
-	width = join.Width
-	if width == 0 {
-		width = defaultWidth
-	}
-	return
-}
-
-func parseHeight(join joinPayload) (height int) {
-	height = join.Height
-	if height == 0 {
-		height = defaultHeight
-	}
-	return
-}
-
-func parseFrameRate(join joinPayload) (frameRate int) {
-	frameRate = join.FrameRate
-	if frameRate == 0 {
-		frameRate = defaultFrameRate
 	}
 	return
 }
@@ -92,7 +65,7 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 }
 
 func (l *localTrack) loop() {
-	userId, join, room := l.ps.userId, l.ps.join, l.ps.room
+	join, userId, room, pc := l.ps.join, l.ps.userId, l.ps.room, l.ps.pc
 
 	kind := l.remoteTrack.Kind().String()
 	fx := parseFx(kind, join)
@@ -111,11 +84,14 @@ func (l *localTrack) loop() {
 		}
 	} else {
 		// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
-		mediaFilePrefix := filePrefix(join, room)
+		filePrefix := filePrefixWithCount(join, room)
 		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
-		pipeline := gst.CreatePipeline(room.shortId, userId, l.track, room.namespace, mediaFilePrefix, kind, codec, parseWidth(join), parseHeight(join), parseFrameRate(join), parseFx(kind, join), parseGPU(join))
+		pliRequestCallback := func() {
+			pc.throttledPLIRequest()
+		}
+		pipeline := gst.CreatePipeline(join, l.track, kind, codec, fx, filePrefix, pliRequestCallback)
 		l.pipeline = pipeline
 
 		pipeline.Start()

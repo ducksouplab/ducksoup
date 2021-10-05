@@ -93,6 +93,43 @@ GstFlowReturn gstreamer_new_sample_handler(GstElement *object, gpointer data)
     return GST_FLOW_OK;
 }
 
+// TODO use <gst/video/video.h> implementation
+gboolean gst_video_event_is_force_key_unit (GstEvent * event)
+{
+  const GstStructure *s;
+
+  g_return_val_if_fail (event != NULL, FALSE);
+
+  if (GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_DOWNSTREAM &&
+      GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_UPSTREAM)
+    return FALSE;               /* Not a force key unit event */
+
+  s = gst_event_get_structure (event);
+  if (s == NULL
+      || !gst_structure_has_name (s, "GstForceKeyUnit"))
+    return FALSE;
+
+  return TRUE;
+}
+
+// credits to https://github.com/cryptagon/ion-cluster
+// This pad probe will get triggered when UPSTREAM events get fired on the appsrc.  
+// We use this to listen for GstEventForceKeyUnit, and forward that to the go binding to request a PLI
+static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, GstPadProbeInfo * info, gpointer data)
+{
+    GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+    GstElement *pipeline = (GstElement*) data;
+
+    // use previously set name as id
+    char *id = gst_element_get_name(pipeline);
+
+    if (GST_EVENT_TYPE(event) == GST_EVENT_CUSTOM_UPSTREAM && gst_video_event_is_force_key_unit (event)) {
+        g_print("pad_probe got upstream forceKeyUnit for track\n");
+        goForceKeyUnitCallback(id);
+    }
+    return GST_PAD_PROBE_OK;
+}
+
 void gstreamer_start_pipeline(GstElement *pipeline)
 {
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
@@ -100,7 +137,14 @@ void gstreamer_start_pipeline(GstElement *pipeline)
     gst_bus_add_watch(bus, gstreamer_bus_call, pipeline);
     gst_object_unref(bus);
 
+    GstElement *appsrc = gst_bin_get_by_name(GST_BIN(pipeline), "src");
+    GstPad *srcpad = gst_element_get_static_pad(appsrc, "src");
     GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");
+    // src
+    gst_pad_add_probe (srcpad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, gstreamer_input_track_event_pad_probe_cb, pipeline, NULL);
+    gst_object_unref(appsrc);
+    gst_object_unref(srcpad);
+    // sink
     g_object_set(appsink, "emit-signals", TRUE, NULL);
     g_signal_connect(appsink, "new-sample", G_CALLBACK(gstreamer_new_sample_handler), pipeline);
     gst_object_unref(appsink);
