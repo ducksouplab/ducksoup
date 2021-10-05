@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.3")
+    console.log("[DuckSoup test] v1.0.4")
 });
 
 let state;
@@ -305,7 +305,7 @@ const ducksoupListener = (message) => {
             // add processed props
             outboundRTPVideo.averageEncodeTime = Number(outboundRTPVideo.totalEncodeTime / outboundRTPVideo.framesEncoded).toFixed(3);
             // select displayed props
-            const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount","framesDiscardedOnSend", "averageEncodeTime"];
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount","framesDiscardedOnSend", "averageEncodeTime", "packetsSent"];
             // render
             for (let p of props) {
                 document.getElementById(`video-up-${p}`).textContent = outboundRTPVideo[p];
@@ -315,7 +315,7 @@ const ducksoupListener = (message) => {
             // add processed props
             inboundRTPVideo.processedJitter = Number(inboundRTPVideo.jitterBufferDelay / inboundRTPVideo.jitterBufferEmittedCount).toFixed(3);
             // select displayed props
-            const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "processedJitter"];
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "processedJitter", "jitter", "packetsReceived", "packetsLost", "packetsDiscarded", "packetsRepaired", "framesDropped"];
             // render
             for (let p of props) {
                 document.getElementById(`video-down-${p}`).textContent = inboundRTPVideo[p];
@@ -323,7 +323,7 @@ const ducksoupListener = (message) => {
         }
         if (outboundRTPAudio) {
             // select displayed props
-            const props = ["nackCount", "targetBitrate"];
+            const props = ["nackCount", "targetBitrate", "packetsSent"];
             // render
             for (let p of props) {
                 document.getElementById(`audio-up-${p}`).textContent = outboundRTPAudio[p];
@@ -334,7 +334,7 @@ const ducksoupListener = (message) => {
             inboundRTPAudio.processedJitter = Number(inboundRTPAudio.jitterBufferDelay / inboundRTPAudio.jitterBufferEmittedCount).toFixed(3);
             inboundRTPAudio.totalSamplesDuration = inboundRTPAudio.totalSamplesDuration.toFixed(2);
             // select displayed props
-            const props = ["processedJitter", "nackCount", "concealedSamples", "totalSamplesDuration"];
+            const props = ["processedJitter", "nackCount", "concealedSamples", "totalSamplesDuration", "jitter", "packetsReceived", "packetsLost", "packetsDiscarded", "packetsRepaired"];
             // render
             for (let p of props) {
                 document.getElementById(`audio-down-${p}`).textContent = inboundRTPAudio[p];

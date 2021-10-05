@@ -3,9 +3,14 @@ package sfu
 import (
 	"encoding/json"
 	"log"
+	"regexp"
 	"sync"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	MaxParsedLength = 50
 )
 
 // Helper to make Gorilla Websockets threadsafe
@@ -52,6 +57,19 @@ type controlPayload struct {
 	Duration int     `json:"duration"`
 }
 
+// remove special characters like / . *
+func parseString(str string) string {
+	reg, _ := regexp.Compile("[^a-zA-Z0-9-]+")
+	clean := reg.ReplaceAllString(str, "")
+	if len(clean) == 0 {
+		return "default"
+	}
+	if len(clean) > MaxParsedLength {
+		return clean[0 : MaxParsedLength-1]
+	}
+	return clean
+}
+
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
@@ -77,6 +95,11 @@ func (ws *wsConn) readJoin(origin string) (join joinPayload, err error) {
 	}
 
 	err = json.Unmarshal([]byte(m.Payload), &join)
+	// restrict to authorized characters
+	join.RoomId = parseString(join.RoomId)
+	join.UserId = parseString(join.UserId)
+	join.Namespace = parseString(join.Namespace)
+	// add property
 	join.origin = origin
 	return
 }

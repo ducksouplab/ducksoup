@@ -3,7 +3,6 @@ package sfu
 import (
 	"errors"
 	"log"
-	"regexp"
 	"sync"
 	"time"
 
@@ -12,13 +11,12 @@ import (
 )
 
 const (
-	DefaultSize        = 2
-	MaxSize            = 8
-	TracksPerPeer      = 2
-	DefaultDuration    = 30
-	MaxDuration        = 1200
-	Ending             = 10
-	MaxNamespaceLength = 30
+	DefaultSize     = 2
+	MaxSize         = 8
+	TracksPerPeer   = 2
+	DefaultDuration = 30
+	MaxDuration     = 1200
+	Ending          = 10
 )
 
 // global state
@@ -66,19 +64,6 @@ func (r *trialRoom) delete() {
 	delete(roomIndex, r.qualifiedId)
 }
 
-// remove special characters like / . *
-func parseNamespace(ns string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9-]+")
-	clean := reg.ReplaceAllString(ns, "")
-	if len(clean) == 0 {
-		return "default"
-	}
-	if len(clean) > MaxNamespaceLength {
-		return clean[0 : MaxNamespaceLength-1]
-	}
-	return clean
-}
-
 // private and not guarded by mutex locks, since called by other guarded methods
 
 func qualifiedId(join joinPayload) string {
@@ -109,9 +94,8 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 	joinedCountIndex[join.UserId] = 1
 
 	// create folder for logs
-	namespace := parseNamespace(join.Namespace)
-	helpers.EnsureDir("./data/" + namespace)
-	helpers.EnsureDir("./data/" + namespace + "/logs") // used by x264 mutipass cache
+	helpers.EnsureDir("./data/" + join.Namespace)
+	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
 
 	shortId := join.RoomId
 
@@ -126,7 +110,7 @@ func newRoom(qualifiedId string, join joinPayload) *trialRoom {
 		outTracksReadyCount: 0,
 		qualifiedId:         qualifiedId,
 		shortId:             shortId,
-		namespace:           namespace,
+		namespace:           join.Namespace,
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,

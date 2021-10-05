@@ -208,6 +208,7 @@
             <p><strong>av. encode time:</strong> <span id="video-up-averageEncodeTime">0</span></p>
             <p><strong>qlty limitation:</strong> <span id="video-up-qualityLimitationReason">none</span></p>  
             <p><strong>frames discarded on send:</strong> <span id="video-up-framesDiscardedOnSend">0</span></p>
+            <p><strong>sent packets:</strong> <span id="video-up-packetsSent">0</span></p>
           </div>
           <div class="col-3">
             <p>video down ↓</p>
@@ -220,7 +221,15 @@
               FIR: <span id="video-down-firCount">0</span>
               NACK: <span id="video-down-nackCount">0</span> 
             </p>
-            <p><strong>jitter:</strong> <span id="video-down-processedJitter"></span></p>
+            <p><strong>proc. jitter:</strong> <span id="video-down-processedJitter"></span></p>
+            <p><strong>jitter:</strong> <span id="video-down-jitter"></span></p>
+            <p><strong>packets:</strong><br/>
+              rec.: <span id="video-down-packetsReceived">0</span>
+              lost: <span id="video-down-packetsLost">0</span>
+              disc.: <span id="video-down-packetsDiscarded">0</span>
+              rep: <span id="video-down-packetsRepaired">0</span> 
+            </p>
+            <p><strong>frames dropped:</strong> <span id="video-down-framesDropped">0</span></p>
           </div>
           <div class="col-3">
             <p>audio up ↑</p>
@@ -229,6 +238,7 @@
             <p><strong>received:</strong><br/>
               NACK: <span id="audio-up-nackCount">0</span> 
             </p>
+            <p><strong>sent packets:</strong> <span id="audio-up-packetsSent">0</span></p>
           </div>
           <div class="col-3">
             <p>audio down ↓</p>
@@ -238,7 +248,14 @@
               NACK: <span id="audio-down-nackCount">0</span> 
             </p>
             <p><strong>total duration:</strong> <span id="audio-down-totalSamplesDuration"></span></p>
-            <p><strong>jitter:</strong> <span id="audio-down-processedJitter">0</span></p>
+            <p><strong>proc. jitter:</strong> <span id="audio-down-processedJitter">0</span></p>
+            <p><strong>jitter:</strong> <span id="audio-down-jitter"></span></p>
+            <p><strong>packets:</strong><br/>
+              rec.: <span id="audio-down-packetsReceived">0</span>
+              lost: <span id="audio-down-packetsLost">0</span>
+              disc.: <span id="audio-down-packetsDiscarded">0</span>
+              rep: <span id="audio-down-packetsRepaired">0</span> 
+            </p>
           </div>
         </div>
       </div>
