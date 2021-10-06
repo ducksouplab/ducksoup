@@ -134,6 +134,14 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 		ps.room.runLocalTrackFromRemote(ps, remoteTrack, receiver)
 	})
+
+	// Debug: send periodic PLIs
+	// ticker := time.NewTicker(2 * time.Second)
+	// go func() {
+	// 	for range ticker.C {
+	// 		pc.forcedPLIRequest()
+	// 	}
+	// }()
 }
 
 func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {

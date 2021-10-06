@@ -1,6 +1,3 @@
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup] v1.2.8")
-});
 
 // Config
 
@@ -29,12 +26,20 @@ const DEFAULT_RTC_CONFIG = {
     ],
 };
 
-const IS_SAFARI = (() => {
+// Init
+
+document.addEventListener("DOMContentLoaded", async () => {
+    console.log("[DuckSoup] v1.2.10");
+
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
     const containsSafari = ua.indexOf("Safari") > -1;
-    return containsSafari && !containsChrome;
-})();
+    // needed for safari (getUserMedia before enumerateDevices), but could be a problem if constraints change for Chrome
+    if(containsSafari && !containsChrome) {
+        await navigator.mediaDevices.getUserMedia(DEFAULT_CONSTRAINTS);
+    }
+});
+
 
 // Pure functions
 
@@ -332,6 +337,7 @@ class DuckSoup {
         let newVideoBytesSent = 0;
         let newVideoBytesReceived = 0;
         let outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio;
+        let remoteOutboundRTPVideo, remoteInboundRTPVideo, remoteOutboundRTPAudio, remoteInboundRTPAudio;
 
         pcStats.forEach((report) => {
             if (report.type === "outbound-rtp" && report.kind === "audio") {
@@ -346,8 +352,14 @@ class DuckSoup {
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
                 inboundRTPVideo = report;
-            } else if (report.type === "remote-inbound-rtp" || report.type === "remote-outbound-rtp") {
-                console.log(report);
+            } else if (report.type === "remote-outbound-rtp" && report.kind === "audio") {
+                remoteOutboundRTPAudio = report;
+            } else if (report.type === "remote-inbound-rtp" && report.kind === "audio") {
+                remoteInboundRTPAudio = report;
+            } else if (report.type === "remote-outbound-rtp" && report.kind === "video") {
+                remoteOutboundRTPVideo = report;
+            } else if (report.type === "remote-inbound-rtp" && report.kind === "video") {
+                remoteInboundRTPVideo = report;
             }
         });
 
@@ -375,12 +387,17 @@ class DuckSoup {
                 audioDown,
                 videoUp,
                 videoDown,
-                ...(outboundRTPVideo && { outboundRTPVideo }),
-                ...(inboundRTPVideo && { inboundRTPVideo }),
-                ...(outboundRTPAudio && { outboundRTPAudio }),
-                ...(inboundRTPAudio && { inboundRTPAudio })
+                outboundRTPVideo,
+                inboundRTPVideo,
+                outboundRTPAudio,
+                inboundRTPAudio,
+                remoteOutboundRTPVideo,
+                remoteInboundRTPVideo,
+                remoteOutboundRTPAudio,
+                remoteInboundRTPAudio
             }
         });
+
         this._debugInfo = {
             now: newNow,
             audioBytesSent: newAudioBytesSent,

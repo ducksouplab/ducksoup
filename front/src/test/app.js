@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.5")
+    console.log("[DuckSoup test] v1.0.6")
 });
 
 let state;
@@ -296,11 +296,11 @@ const ducksoupListener = (message) => {
     } else if (kind === "error") {
         replaceMessage("Error");
     } else if (kind === "stats") {
-        document.getElementById("audio-up-bitrate").textContent = payload.audioUp;
-        document.getElementById("audio-down-bitrate").textContent = payload.audioDown;
-        document.getElementById("video-up-bitrate").textContent = payload.videoUp;
-        document.getElementById("video-down-bitrate").textContent = payload.videoDown;
-        const { outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio } = payload;
+        document.getElementById("audio-out-bitrate").textContent = payload.audioUp;
+        document.getElementById("audio-in-bitrate").textContent = payload.audioDown;
+        document.getElementById("video-out-bitrate").textContent = payload.videoUp;
+        document.getElementById("video-in-bitrate").textContent = payload.videoDown;
+        const { outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio, remoteOutboundRTPVideo, remoteInboundRTPVideo, remoteOutboundRTPAudio, remoteInboundRTPAudio } = payload;
         if (outboundRTPVideo) {
             // add processed props
             outboundRTPVideo.averageEncodeTime = Number(outboundRTPVideo.totalEncodeTime / outboundRTPVideo.framesEncoded).toFixed(3);
@@ -308,7 +308,7 @@ const ducksoupListener = (message) => {
             const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount","framesDiscardedOnSend", "averageEncodeTime", "packetsSent"];
             // render
             for (let p of props) {
-                document.getElementById(`video-up-${p}`).textContent = outboundRTPVideo[p];
+                document.getElementById(`video-out-${p}`).textContent = outboundRTPVideo[p];
             }
         } 
         if (inboundRTPVideo) {
@@ -318,7 +318,7 @@ const ducksoupListener = (message) => {
             const props = ["frameWidth", "frameHeight", "framesPerSecond", "keyFramesDecoded", "pliCount", "firCount", "sliCount", "nackCount", "processedJitter", "jitter", "packetsReceived", "packetsLost", "packetsDiscarded", "packetsRepaired", "framesDropped"];
             // render
             for (let p of props) {
-                document.getElementById(`video-down-${p}`).textContent = inboundRTPVideo[p];
+                document.getElementById(`video-in-${p}`).textContent = inboundRTPVideo[p];
             }
         }
         if (outboundRTPAudio) {
@@ -326,7 +326,7 @@ const ducksoupListener = (message) => {
             const props = ["nackCount", "targetBitrate", "packetsSent"];
             // render
             for (let p of props) {
-                document.getElementById(`audio-up-${p}`).textContent = outboundRTPAudio[p];
+                document.getElementById(`audio-out-${p}`).textContent = outboundRTPAudio[p];
             }
         }
         if (inboundRTPAudio) {
@@ -339,7 +339,45 @@ const ducksoupListener = (message) => {
             const props = ["processedJitter", "nackCount", "concealedSamples", "totalSamplesDuration", "jitter", "packetsReceived", "packetsLost", "packetsDiscarded", "packetsRepaired"];
             // render
             for (let p of props) {
-                document.getElementById(`audio-down-${p}`).textContent = inboundRTPAudio[p];
+                document.getElementById(`audio-in-${p}`).textContent = inboundRTPAudio[p];
+            }
+        }
+        if (remoteOutboundRTPAudio) {
+            // select displayed props
+            const props = ["packetsSent", "fractionLost", "packetsLost", "roundTripTime", "roundTripTimeMeasurements", "totalRoundTripTime"];
+            // render
+            for (let p of props) {
+                document.getElementById(`remote-audio-out-${p}`).textContent = remoteOutboundRTPAudio[p];
+            }
+        }
+        if (remoteOutboundRTPVideo) {
+            // select displayed props
+            const props = ["packetsSent", "fractionLost", "packetsLost", "roundTripTime", "roundTripTimeMeasurements", "totalRoundTripTime"];
+            // render
+            for (let p of props) {
+                document.getElementById(`remote-video-out-${p}`).textContent = remoteOutboundRTPVideo[p];
+            }
+        }
+        if (remoteInboundRTPAudio) {
+            if(remoteInboundRTPAudio.jitter) {
+                remoteInboundRTPAudio.jitter = remoteInboundRTPAudio.jitter.toFixed(3);
+            }
+            // select displayed props
+            const props = ["jitter", "fractionLost", "packetsLost", "roundTripTime", "roundTripTimeMeasurements", "totalRoundTripTime"];
+            // render
+            for (let p of props) {
+                document.getElementById(`remote-audio-in-${p}`).textContent = remoteInboundRTPAudio[p];
+            }
+        }
+        if (remoteInboundRTPVideo) {
+            if(remoteInboundRTPVideo.jitter) {
+                remoteInboundRTPVideo.jitter = remoteInboundRTPVideo.jitter.toFixed(3);
+            }
+            // select displayed props
+            const props = ["jitter", "fractionLost", "packetsLost", "roundTripTime", "roundTripTimeMeasurements", "totalRoundTripTime"];
+            // render
+            for (let p of props) {
+                document.getElementById(`remote-video-in-${p}`).textContent = remoteInboundRTPVideo[p];
             }
         }
     }
