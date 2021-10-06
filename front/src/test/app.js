@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.4")
+    console.log("[DuckSoup test] v1.0.5")
 });
 
 let state;
@@ -182,12 +182,12 @@ document.addEventListener("DOMContentLoaded", async() => {
         const device = devices[i];
         if (device.kind === "audioinput") {
             const option = document.createElement("option");
-            option.text =  device.label || `microphone ${audioInputSelect.length + 1}`;
+            option.text =  device.label || `microphone ${audioInput.length + 1}`;
             option.value = device.deviceId,
             audioInput.appendChild(option);
         } else if (device.kind === "videoinput") {
             const option = document.createElement("option");
-            option.text =  device.label || `camera ${audioInputSelect.length + 1}`;
+            option.text =  device.label || `camera ${videoInput.length + 1}`;
             option.value = device.deviceId,
             videoInput.appendChild(option);
         } 
@@ -332,7 +332,9 @@ const ducksoupListener = (message) => {
         if (inboundRTPAudio) {
             // add processed props
             inboundRTPAudio.processedJitter = Number(inboundRTPAudio.jitterBufferDelay / inboundRTPAudio.jitterBufferEmittedCount).toFixed(3);
-            inboundRTPAudio.totalSamplesDuration = inboundRTPAudio.totalSamplesDuration.toFixed(2);
+            if(inboundRTPAudio.totalSamplesDuration) {
+                inboundRTPAudio.totalSamplesDuration = inboundRTPAudio.totalSamplesDuration.toFixed(2);
+            }
             // select displayed props
             const props = ["processedJitter", "nackCount", "concealedSamples", "totalSamplesDuration", "jitter", "packetsReceived", "packetsLost", "packetsDiscarded", "packetsRepaired"];
             // render
