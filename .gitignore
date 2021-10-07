@@ -1,6 +1,7 @@
 certs
 ducksoup
 .DS_Store
+core
 
 # logs and recorded data
 data
