@@ -26,10 +26,13 @@ const DEFAULT_RTC_CONFIG = {
     ],
 };
 
+const MAX_VIDEO_BITRATE = 1000000;
+const MAX_AUDIO_BITRATE = 64000;
+
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.2.10");
+    console.log("[DuckSoup] v1.2.12");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -269,8 +272,18 @@ class DuckSoup {
                     console.error(error)
                 }
             } else if (message.kind === "start") {
+                // set encoding parameters
+                for(const sender of pc.getSenders()) {
+                    const params = sender.getParameters();
+                    if(!params.encodings) params.encodings = [{}];// needed for FF
+                    for(const encoding of params.encodings) {
+                        encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
+                    }
+                    await sender.setParameters(params);
+                    console.log(params);
+                }
+                // unmute
                 stream.getTracks().forEach((track) => {
-                    // unmute
                     track.enabled = true;
                 });
                 this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
