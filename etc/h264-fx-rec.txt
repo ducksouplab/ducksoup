@@ -1,6 +1,6 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=H264 ! 
-rtpjitterbuffer latency=${jitterBufferLatency} ! 
+rtpjitterbuffer latency=${jitterBufferLatency} do-retransmission=${jitterBufferRetransmission} ! 
 rtph264depay ! 
 h264parse ! 
 
@@ -13,11 +13,12 @@ teein. !
 queue max-size-buffers=0 max-size-bytes=0 ! 
 ${decode} !
 videoconvert ! 
-${fx} ! 
-videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg${framerateCap}${widthCap}${heightCap} ! 
+video/x-raw${framerateCap}${widthCap}${heightCap} ! 
+${fx} ! 
+videoconvert ! 
+video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg ! 
 ${encodeFast} ! 
 h264parse ! 
 

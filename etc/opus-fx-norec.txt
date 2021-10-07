@@ -1,7 +1,8 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,payload=111,encoding-name=OPUS ! 
-rtpjitterbuffer latency=${jitterBufferLatency} ! 
+rtpjitterbuffer latency=${jitterBufferLatency} do-retransmission=${jitterBufferRetransmission} ! 
 rtpopusdepay ! 
+opusparse ! 
 ${decode} ! 
 audioconvert ! 
 ${fx} ! 

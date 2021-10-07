@@ -4,6 +4,9 @@
 
 #include "gst.h"
 
+#define GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME "GstForceKeyUnit"
+#define GST_RTP_EVENT_RETRANSMISSION_REQUEST "GstRTPRetransmissionRequest"
+
 GMainLoop *gstreamer_main_loop = NULL;
 void gstreamer_start_mainloop(void)
 {
@@ -94,19 +97,17 @@ GstFlowReturn gstreamer_new_sample_handler(GstElement *object, gpointer data)
 }
 
 // TODO use <gst/video/video.h> implementation
-gboolean gst_video_event_is_force_key_unit (GstEvent * event)
+gboolean gst_event_is (GstEvent * event, const gchar * name)
 {
   const GstStructure *s;
 
   g_return_val_if_fail (event != NULL, FALSE);
 
-  if (GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_DOWNSTREAM &&
-      GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_UPSTREAM)
+  if (GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_UPSTREAM)
     return FALSE;               /* Not a force key unit event */
 
   s = gst_event_get_structure (event);
-  if (s == NULL
-      || !gst_structure_has_name (s, "GstForceKeyUnit"))
+  if (s == NULL || !gst_structure_has_name (s, name))
     return FALSE;
 
   return TRUE;
@@ -123,10 +124,14 @@ static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
 
-    if (GST_EVENT_TYPE(event) == GST_EVENT_CUSTOM_UPSTREAM && gst_video_event_is_force_key_unit (event)) {
-        g_print("pad_probe got upstream forceKeyUnit for track\n");
+    if (gst_event_is (event, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME)) {
+        g_print ("[info] [gst.c] pad_probe got upstream forceKeyUnit\n");
         goForceKeyUnitCallback(id);
     }
+    // else if (gst_event_is (event, GST_RTP_EVENT_RETRANSMISSION_REQUEST)) {
+    //     // TODO handle as a nack and possibly disable pion nack interceptor
+    //     g_print ("[info] [gst.c] pad_probe got upstream RTP transmission request\n");
+    // }
     return GST_PAD_PROBE_OK;
 }
 

@@ -88,6 +88,7 @@ func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, code
 	}
 	// set encoding and decoding
 	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferLatency}", settings.Common.JitterBufferLatency, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferRetransmission}", settings.Common.JitterBufferRetransmission, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
@@ -100,8 +101,8 @@ func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, code
 		prefixedFx := strings.Replace(fx, "name=", "name=fx", 1)
 		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
 	}
-	// set caps
-	if forceEncodingSize {
+	// enforce size and framerate, VP8 muxer (webmux/matroskamux) does not handle well size changes, so we enforce them
+	if forceEncodingSize || codec == "VP8" {
 		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(join.Width), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(join.Height), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(join.FrameRate)+"/1", -1)

@@ -1,14 +1,15 @@
 appsrc format=time is-live=true do-timestamp=true name=src ! 
 application/x-rtp,encoding-name=VP8-DRAFT-IETF-01 ! 
-rtpjitterbuffer latency=${jitterBufferLatency} ! 
+rtpjitterbuffer latency=${jitterBufferLatency} do-retransmission=${jitterBufferRetransmission} ! 
 rtpvp8depay ! 
 ${decode} !
 videoconvert ! 
-${fx} ! 
-videoconvert ! 
 videorate ! 
 videoscale ! 
-video/x-raw, colorimetry=bt601, chroma-site=jpeg${framerateCap}${widthCap}${heightCap} ! 
+video/x-raw${framerateCap}${widthCap}${heightCap} ! 
+${fx} ! 
+videoconvert ! 
+video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg ! 
 ${encodeFast} !
 rtpvp8pay !
 appsink name=sink qos=true

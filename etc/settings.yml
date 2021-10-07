@@ -1,5 +1,6 @@
 common:
   jitterBufferLatency: "140"
+  jitterBufferRetransmission: "false"
 vp8:
   decode: "vp8dec"
   encode:

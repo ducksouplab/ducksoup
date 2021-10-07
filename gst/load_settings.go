@@ -8,7 +8,8 @@ import (
 )
 
 type CommonSettings struct {
-	JitterBufferLatency string `yaml:"jitterBufferLatency"`
+	JitterBufferLatency        string `yaml:"jitterBufferLatency"`
+	JitterBufferRetransmission string `yaml:"jitterBufferRetransmission"`
 }
 
 type EngineSettings struct {
