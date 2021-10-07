@@ -152,7 +152,7 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 		go func() {
 			for range logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", ms.optimalBitrate/1000)
-				log.Printf("[info] [room#%s] [mixer] [user#%s] new video broadcasted bitrate: %s\n", room.shortId, pc.userId, display)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] new video broadcasted bitrate: %s\n", room.shortId, pc.userId, display)
 			}
 		}()
 	}
@@ -259,13 +259,16 @@ func (m *mixer) updateTracks() signalingState {
 				continue
 			}
 
-			alreadySentIndex[sender.Track().ID()] = true
+			sentTrackId := sender.Track().ID()
+			alreadySentIndex[sentTrackId] = true
 
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
-			_, ok := m.mixerSliceIndex[sender.Track().ID()]
+			_, ok := m.mixerSliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					log.Printf("[error] [room#%s] [mixer] can't RemoveTrack: %v\n", m.room.shortId, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] can't RemoveTrack#%s:\n%v\n", m.room.shortId, userId, sentTrackId, err)
+				} else {
+					log.Printf("[info] [room#%s] [user#%s] [mixer] RemoveTrack#%s\n", m.room.shortId, userId, sentTrackId)
 				}
 			}
 		}
@@ -288,16 +291,16 @@ func (m *mixer) updateTracks() signalingState {
 
 			outputTrackId := ms.outputTrack.track.ID()
 			if alreadySent {
-				log.Printf("[info] [room#%s] [mixer] [user#%s] [already] skip add output track to pc: %s\n", m.room.shortId, userId, outputTrackId)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] [already] skip AddTrack: %s\n", m.room.shortId, userId, outputTrackId)
 			} else if ownTrack {
-				log.Printf("[info] [room#%s] [mixer] [user#%s] [own] skip add local track to pc: %s\n", m.room.shortId, userId, outputTrackId)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] [own] skip AddTrack: %s\n", m.room.shortId, userId, outputTrackId)
 			} else {
 				sender, err := pc.AddTrack(ms.outputTrack.track)
 				if err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack %s: %v\n", m.room.shortId, userId, id, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack#%s: %v\n", m.room.shortId, userId, id, err)
 					return signalingRetryNow
 				} else {
-					log.Printf("[info] [room#%s] [user#%s] [mixer] added local track to pc: %s\n", m.room.shortId, userId, outputTrackId)
+					log.Printf("[info] [room#%s] [user#%s] [mixer] AddTrack#%s\n", m.room.shortId, userId, outputTrackId)
 				}
 
 				params := sender.GetParameters()
@@ -328,7 +331,7 @@ func (m *mixer) updateTracks() signalingState {
 
 					go ms.runSenderListener(&sc, ssrc, m.room.shortId)
 				} else {
-					log.Printf("[error] [room#%s] [mixer] [user#%s] wrong number of encoding parameters: %v\n", m.room.shortId, userId, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] wrong number of encoding parameters: %v\n", m.room.shortId, userId, err)
 				}
 			}
 		}
@@ -340,27 +343,27 @@ func (m *mixer) updateOffers() signalingState {
 	for _, ps := range m.room.peerServerIndex {
 		pc := ps.pc
 
-		log.Printf("[info] [room#%s] [mixer] [user#%s] signaling state: %v\n", m.room.shortId, ps.userId, pc.SignalingState())
+		log.Printf("[info] [room#%s] [user#%s] [mixer] signaling state: %v\n", m.room.shortId, ps.userId, pc.SignalingState())
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			log.Printf("[error] [room#%s] [mixer] [user#%s] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
 			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
-			log.Printf("[error] [room#%s] [mixer] [user#%s] pending local description\n", m.room.shortId, ps.userId)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] pending local description\n", m.room.shortId, ps.userId)
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			log.Printf("[error] [room#%s] [mixer] [user#%s] can't SetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't SetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
 			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			log.Printf("[error] [room#%s] [mixer] [user#%s] can't marshal offer: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't marshal offer: %v\n", m.room.shortId, ps.userId, err)
 			return signalingRetryNow
 		}
 

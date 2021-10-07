@@ -189,12 +189,13 @@ func joinRoom(join types.JoinPayload) (*trialRoom, error) {
 	}
 }
 
-func (r *trialRoom) incInTracksReadyCount() {
+func (r *trialRoom) incInTracksReadyCount(fromPs *peerServer) {
 	r.Lock()
 	defer r.Unlock()
 
 	if r.inTracksReadyCount == r.neededTracks {
-		// reconnection case
+		// reconnection case, send start
+		go fromPs.ws.send("start")
 		return
 	}
 
@@ -206,6 +207,7 @@ func (r *trialRoom) incInTracksReadyCount() {
 		close(r.waitForAllCh)
 		r.running = true
 		r.startedAt = time.Now()
+		// send start to all peers
 		for _, ps := range r.peerServerIndex {
 			go ps.ws.send("start")
 		}
