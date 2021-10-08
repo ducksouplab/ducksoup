@@ -32,7 +32,7 @@ func RegisterInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 
 // ConfigureRTCPReports will setup everything necessary for generating Sender and Receiver Reports
 func configureRTCPReports(interceptorRegistry *interceptor.Registry) error {
-	reciver, err := report.NewReceiverInterceptor()
+	receiver, err := report.NewReceiverInterceptor()
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func configureRTCPReports(interceptorRegistry *interceptor.Registry) error {
 		return err
 	}
 
-	interceptorRegistry.Add(reciver)
+	interceptorRegistry.Add(receiver)
 	interceptorRegistry.Add(sender)
 	return nil
 }
