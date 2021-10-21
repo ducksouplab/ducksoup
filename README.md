@@ -184,8 +184,8 @@ GStreamer settings are defined in `config/gst.yml`:
 
 DuckSoup SFU-related settings are defined in `config/sfu.yml`:
 
-- `audio` define min/max/default values of target bitrates for output (reencoded) audio tracks
-- `video` define min/max/default values of target bitrates for output (reencoded) video tracks
+- `audio` defines min/max/default values of target bitrates for output (reencoded) audio tracks
+- `video` defines min/max/default values of target bitrates for output (reencoded) video tracks
 
 
 ### Run DuckSoup server

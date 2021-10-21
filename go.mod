@@ -3,7 +3,7 @@ module github.com/creamlab/ducksoup
 go 1.17
 
 require (
-	github.com/evanw/esbuild v0.13.3
+	github.com/evanw/esbuild v0.13.8
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
@@ -11,13 +11,13 @@ require (
 	github.com/pion/interceptor v0.1.0
 	github.com/pion/rtcp v1.2.8
 	github.com/pion/sdp/v3 v3.0.4
-	github.com/pion/webrtc/v3 v3.1.2
+	github.com/pion/webrtc/v3 v3.1.5
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	github.com/pion/datachannel v1.4.21 // indirect
-	github.com/pion/dtls/v2 v2.0.9 // indirect
+	github.com/pion/dtls/v2 v2.0.10 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
@@ -29,8 +29,8 @@ require (
 	github.com/pion/turn/v2 v2.0.5 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
-	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
-	golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365 // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/net v0.0.0-20211020060615-d418f374d309 // indirect
+	golang.org/x/sys v0.0.0-20211020174200-9d6173849985 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
