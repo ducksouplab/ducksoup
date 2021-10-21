@@ -72,7 +72,7 @@ Where:
   - `videoFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if video effect has to be applied
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
-  - `videoCodec` (string) possible values: "VP8" (default if none) or "H264"
+  - `videoFormat` (string) possible values: "H264" (default if none) or "VP8"
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
   - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding, if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVIDIA=true` environment variable (see [Environment variables](#environment-variables))
@@ -160,7 +160,11 @@ go build
 
 Depending on the GStreamer plugins used, additional dependencies may be needed (opencv, dlib...).
 
-### Environment variables
+### Settings
+
+When changing settings (either as environment variables or defined in `config/*.yml` files) one needs to restart the DuckSoup server so that changes are taken into account.
+
+Security related settings and settings defining how DuckSoup is run on host are controlled by environment variables:
 
 - DS_PORT=9000 (defaults to 8000) to set port listen by server
 - DS_WEB_PREFIX=/path (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
@@ -170,8 +174,19 @@ Depending on the GStreamer plugins used, additional dependencies may be needed (
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_NVIDIA (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
-- DS_FORCE_ENCODING_SIZE (defaults to false) set to true to force width/height/frameRate of the encoded video streams. By default it is let as sent by browsers
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
+
+GStreamer settings are defined in `config/gst.yml`:
+
+- `forceEncodingSize` set to true to force width/height/framerate of the encoded video streams. If false, width/height/framerate of output streams are identical to input (browser sent) streams.
+- `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
+- `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
+
+DuckSoup SFU-related settings are defined in `config/sfu.yml`:
+
+- `audio` define min/max/default values of target bitrates for output (reencoded) audio tracks
+- `video` define min/max/default values of target bitrates for output (reencoded) video tracks
+
 
 ### Run DuckSoup server
 

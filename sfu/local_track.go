@@ -14,6 +14,11 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+const (
+	defaultInterpolatorStep = 30
+	maxInterpolatorDuration = 5000
+)
+
 type localTrack struct {
 	sync.Mutex
 	id                string
@@ -44,7 +49,7 @@ func parseFx(kind string, join types.JoinPayload) (fx string) {
 
 func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
 	// create a new localTrack with:
-	// - the same codec as the incoming/remote one
+	// - the same codec format as the incoming/remote one
 	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
 	// - a streamId shared among peerServer tracks (audio/video)
 	trackId := uuid.New().String()
@@ -85,13 +90,13 @@ func (l *localTrack) loop() {
 	} else {
 		// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
 		filePrefix := filePrefixWithCount(join, room)
-		codec := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
+		format := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
 		pliRequestCallback := func() {
 			pc.throttledPLIRequest()
 		}
-		pipeline := gst.CreatePipeline(join, l.track, kind, codec, fx, filePrefix, pliRequestCallback)
+		pipeline := gst.CreatePipeline(join, l.track, kind, format, fx, filePrefix, pliRequestCallback)
 		l.pipeline = pipeline
 
 		pipeline.Start()
@@ -104,7 +109,7 @@ func (l *localTrack) loop() {
 			}
 		}()
 
-		buf := make([]byte, receiveMTU)
+		buf := make([]byte, defaultMTU)
 		for {
 			select {
 			case <-room.endCh:

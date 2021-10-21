@@ -25,11 +25,11 @@ type peerConn struct {
 
 // API
 
-func newPionPeerConn(roomId string, userId string, videoCodec string) (ppc *webrtc.PeerConnection, err error) {
-	// create RTC API with chosen codecs
+func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *webrtc.PeerConnection, err error) {
+	// create RTC API
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		log.Printf("[info] [room#%s] [user#%s] [pc] NewWebRTCAPI codecs: %v\n", roomId, userId, err)
+		log.Printf("[error] [room#%s] [user#%s] [pc] NewWebRTCAPI: %v\n", roomId, userId, err)
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -61,8 +61,8 @@ func newPionPeerConn(roomId string, userId string, videoCodec string) (ppc *webr
 		return
 	}
 
-	// set codec preference if H264 is required
-	if videoCodec == "H264" {
+	// force codec preference if H264 (so VP8 won't prevail)
+	if videoFormat == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
 			return
@@ -73,9 +73,9 @@ func newPionPeerConn(roomId string, userId string, videoCodec string) (ppc *webr
 }
 
 func newPeerConn(join types.JoinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
-	roomId, userId, videoCodec := join.RoomId, join.UserId, join.VideoCodec
+	roomId, userId, videoFormat := join.RoomId, join.UserId, join.VideoFormat
 
-	ppc, err := newPionPeerConn(roomId, userId, videoCodec)
+	ppc, err := newPionPeerConn(roomId, userId, videoFormat)
 	if err != nil {
 		return
 	}

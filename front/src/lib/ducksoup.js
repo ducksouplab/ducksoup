@@ -32,7 +32,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.2.12");
+    console.log("[DuckSoup] v1.3.0");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -61,15 +61,15 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec, gpu } = peerOptions;
-    if (!["VP8", "H264"].includes(videoCodec)) videoCodec = null;
+    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, gpu } = peerOptions;
+    if (!["VP8", "H264"].includes(videoFormat)) videoFormat = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
     if (isNaN(height)) height = null;
     if (isNaN(frameRate)) frameRate = null;
     if (!gpu) gpu = null;
 
-    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoCodec, gpu });
+    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, gpu });
 };
 
 const forceMozillaMono = (sdp) => {

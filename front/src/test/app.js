@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.0.6")
+    console.log("[DuckSoup test] v1.1.0")
 });
 
 let state;
@@ -41,7 +41,7 @@ const start = async ({
     userId: uid,
     roomId: rid,
     size: s,
-    videoCodec,
+    videoFormat,
     width: w,
     height: h,
     frameRate: fr,
@@ -97,7 +97,7 @@ const start = async ({
         userId,
         duration,
         // optional
-        videoCodec,
+        videoFormat,
         namespace,
         size,
         video,

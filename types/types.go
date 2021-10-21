@@ -5,15 +5,15 @@ type JoinPayload struct {
 	UserId   string `json:"userId"`
 	Duration int    `json:"duration"`
 	// optional
-	Namespace  string `json:"namespace"`
-	VideoCodec string `json:"videoCodec"`
-	Size       int    `json:"size"`
-	AudioFx    string `json:"audioFx"`
-	VideoFx    string `json:"videoFx"`
-	Width      int    `json:"width"`
-	Height     int    `json:"height"`
-	FrameRate  int    `json:"frameRate"`
-	GPU        bool   `json:"gpu"`
+	Namespace   string `json:"namespace"`
+	VideoFormat string `json:"videoFormat"`
+	Size        int    `json:"size"`
+	AudioFx     string `json:"audioFx"`
+	VideoFx     string `json:"videoFx"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	FrameRate   int    `json:"frameRate"`
+	GPU         bool   `json:"gpu"`
 	// Not from JSON
 	Origin string
 }

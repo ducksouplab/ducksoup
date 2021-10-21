@@ -62,32 +62,26 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	var newOptimalBitrate uint64
 	prevOptimalBitrate := sc.optimalBitrate
 
+	streamConfig := config.Video
+	if sc.kind == "audio" {
+		streamConfig = config.Audio
+	}
+
 	if loss < 5 {
 		// loss < 0.02, multiply by 1.05
 		newOptimalBitrate = prevOptimalBitrate * 269 / 256
 
-		if sc.kind == "audio" {
-			if newOptimalBitrate > maxAudioBitrate {
-				newOptimalBitrate = maxAudioBitrate
-			}
-		} else {
-			if newOptimalBitrate > maxVideoBitrate {
-				newOptimalBitrate = maxVideoBitrate
-			}
+		if newOptimalBitrate > streamConfig.MaxBitrate {
+			newOptimalBitrate = streamConfig.MaxBitrate
 		}
 	} else if loss > 25 {
 		// loss > 0.1, multiply by (1 - loss/2)
 		newOptimalBitrate = prevOptimalBitrate * (512 - uint64(loss)) / 512
 
-		if sc.kind == "audio" {
-			if newOptimalBitrate < minAudioBitrate {
-				newOptimalBitrate = minAudioBitrate
-			}
-		} else {
-			if newOptimalBitrate < minVideoBitrate {
-				newOptimalBitrate = minVideoBitrate
-			}
+		if newOptimalBitrate < streamConfig.MinBitrate {
+			newOptimalBitrate = streamConfig.MinBitrate
 		}
+
 		log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] %d packets lost, previous bitrate %d, new bitrate %d\n",
 			sc.shortId, sc.fromUserId, sc.toUserId, loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
 	} else {
@@ -167,7 +161,7 @@ func (ms *mixerSlice) stop() {
 }
 
 func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, shortId string) {
-	buf := make([]byte, receiveMTU)
+	buf := make([]byte, defaultMTU)
 
 	for {
 		select {
@@ -307,20 +301,16 @@ func (m *mixer) updateTracks() signalingState {
 				if len(params.Encodings) == 1 {
 					kind := ms.outputTrack.track.Kind().String()
 					ssrc := params.Encodings[0].SSRC
-					defaultBitrate := defaultVideoBitrate
+					streamConfig := config.Video
 					if kind == "audio" {
-						defaultBitrate = defaultAudioBitrate
-					}
-					maxBitrate := maxVideoBitrate
-					if kind == "audio" {
-						maxBitrate = maxAudioBitrate
+						streamConfig = config.Audio
 					}
 					sc := senderController{
 						ssrc:           ssrc,
 						kind:           kind,
 						sender:         sender,
-						optimalBitrate: uint64(defaultBitrate),
-						maxBitrate:     uint64(maxBitrate),
+						optimalBitrate: streamConfig.DefaultBitrate,
+						maxBitrate:     streamConfig.MaxBitrate,
 						shortId:        m.room.shortId,
 						fromUserId:     ms.receivingPC.userId,
 						toUserId:       userId,

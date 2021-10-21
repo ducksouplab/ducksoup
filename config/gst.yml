@@ -1,6 +1,7 @@
-common:
-  jitterBufferLatency: "140"
-  jitterBufferRetransmission: "false"
+forceEncodingSize: false
+rtpJitterBuffer: 
+  latency: "140"
+  retransmission: "false"
 vp8:
   decode: "vp8dec"
   encode:

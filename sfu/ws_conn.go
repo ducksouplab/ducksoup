@@ -53,6 +53,14 @@ func parseString(str string) string {
 	return clean
 }
 
+func parseVideoFormat(join types.JoinPayload) (videoFormat string) {
+	videoFormat = join.VideoFormat
+	if videoFormat != "VP8" && videoFormat != "H264" {
+		videoFormat = defaultVideoFormat
+	}
+	return
+}
+
 func parseWidth(join types.JoinPayload) (width int) {
 	width = join.Width
 	if width == 0 {
@@ -106,6 +114,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	join.RoomId = parseString(join.RoomId)
 	join.UserId = parseString(join.UserId)
 	join.Namespace = parseString(join.Namespace)
+	join.VideoFormat = parseVideoFormat(join)
 	join.Width = parseWidth(join)
 	join.Height = parseHeight(join)
 	join.FrameRate = parseFrameRate(join)

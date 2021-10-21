@@ -30,7 +30,6 @@ func init() {
 	mu = sync.Mutex{}
 	pipelineIndex = make(map[string]*Pipeline)
 	nvidia = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
-	forceEncodingSize = strings.ToLower(os.Getenv("DS_FORCE_ENCODING_SIZE")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -43,30 +42,30 @@ type Pipeline struct {
 	gstPipeline        *C.GstElement
 	track              *webrtc.TrackLocalStaticRTP
 	filePrefix         string
-	codec              string
+	format             string
 	pliRequestCallback func()
 }
 
-func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, codec string, fx string) (pipelineStr string) {
+func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, format string, fx string) (pipelineStr string) {
 	// special case for testing
 	if fx == "passthrough" {
 		pipelineStr = passthroughPipeline
 		return
 	}
 
+	var pipelineCodec codec
 	hasFx := len(fx) > 0
-	var engine EngineSettings
 
-	switch codec {
+	switch format {
 	case "opus":
-		engine = settings.Opus
+		pipelineCodec = config.Opus
 		if hasFx {
 			pipelineStr = opusFxPipeline
 		} else {
 			pipelineStr = opusRawPipeline
 		}
 	case "VP8":
-		engine = settings.VP8
+		pipelineCodec = config.VP8
 		if hasFx {
 			pipelineStr = vp8FxPipeline
 		} else {
@@ -74,9 +73,9 @@ func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, code
 		}
 	case "H264":
 		if nvidia && join.GPU {
-			engine = settings.NV264
+			pipelineCodec = config.NV264
 		} else {
-			engine = settings.X264
+			pipelineCodec = config.X264
 		}
 		if hasFx {
 			pipelineStr = h264FxPipeline
@@ -84,14 +83,14 @@ func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, code
 			pipelineStr = h264RawPipeline
 		}
 	default:
-		panic("Unhandled codec " + codec)
+		panic("Unhandled format " + format)
 	}
 	// set encoding and decoding
-	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferLatency}", settings.Common.JitterBufferLatency, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferRetransmission}", settings.Common.JitterBufferRetransmission, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", engine.Encode.Fast, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${encode}", engine.Encode.Relaxed, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${decode}", engine.Decode, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferLatency}", config.RTPJitterBuffer.Latency, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferRetransmission}", config.RTPJitterBuffer.Retransmission, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", pipelineCodec.Encode.Fast, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${encode}", pipelineCodec.Encode.Relaxed, -1)
+	pipelineStr = strings.Replace(pipelineStr, "${decode}", pipelineCodec.Decode, -1)
 	// set file
 	pipelineStr = strings.Replace(pipelineStr, "${namespace}", join.Namespace, -1)
 	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
@@ -102,7 +101,7 @@ func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, code
 		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
 	}
 	// enforce size and framerate, VP8 muxer (webmux/matroskamux) does not handle well size changes, so we enforce them
-	if forceEncodingSize || codec == "VP8" {
+	if config.ForceEncodingSize || format == "VP8" {
 		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(join.Width), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(join.Height), -1)
 		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(join.FrameRate)+"/1", -1)
@@ -188,9 +187,9 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, kind string, codec string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
+func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, kind string, format string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
 
-	pipelineStr := newPipelineStr(join, filePrefix, kind, codec, fx)
+	pipelineStr := newPipelineStr(join, filePrefix, kind, format, fx)
 	id := track.ID()
 	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", join.RoomId, join.UserId, id, kind)
 	log.Println(pipelineStr)
@@ -207,7 +206,7 @@ func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, k
 		gstPipeline:        C.gstreamer_parse_pipeline(cPipelineStr, cId),
 		track:              track,
 		filePrefix:         filePrefix,
-		codec:              codec,
+		format:             format,
 		pliRequestCallback: pliRequestCallback,
 	}
 
@@ -276,10 +275,10 @@ func (p *Pipeline) SetEncodingRate(value64 uint64) {
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/opus/opusenc.html?gi-language=c#opusenc:bitrate
 	prop := "bitrate"
-	if p.codec == "VP8" {
+	if p.format == "VP8" {
 		// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
 		prop = "target-bitrate"
-	} else if p.codec == "H264" {
+	} else if p.format == "H264" {
 		// in kbit/s for x264enc and nvh264enc
 		value = value / 1000
 		if p.join.GPU {
