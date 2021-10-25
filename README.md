@@ -7,6 +7,9 @@ From a technical standpoint, DuckSoup is:
 - a videoconference server acting as a relay for peers in the same room (more precisely, a SFU made with Go and [pion](https://github.com/pion/webrtc))
 - with the possibility to record and optionnally transform video and audio streams thanks to [GStreamer](https://gstreamer.freedesktop.org/)
 
+
+*The companion repository [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup) documents a possible DuckSoup deployment workflow relying on Docker Compose.*
+
 ## DuckSoup server overview
 
 A DuckSoup server exposes the following:
@@ -187,7 +190,6 @@ DuckSoup SFU-related settings are defined in `config/sfu.yml`:
 - `audio` defines min/max/default values of target bitrates for output (reencoded) audio tracks
 - `video` defines min/max/default values of target bitrates for output (reencoded) video tracks
 
-
 ### Run DuckSoup server
 
 Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted WebSocket origin is declared):
@@ -340,6 +342,8 @@ In this project, we use `creamlab/bullseye-gstreamer` as a base for:
 - `docker/Dockerfile.code` defines the image used to run a container within vscode (Go is installed, but DuckSoup remains to be compiled by the developer when needed)
 - `docker/Dockerfile.build.single` defines an image with Go installed and DuckSoup compiled
 - `docker/Dockerfile.build.multi` defines a multi-stage build image: in the first stage Go is installed and DuckSoup is compiled, in the final stage we only keep DuckSoup binary
+
+Please note that the official [DuckSoup image](https://hub.docker.com/r/creamlab/ducksoup) is built from `docker/Dockerfile.build.multi`. This image is used in particular by [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup), a project that showcases a possible DuckSoup deployment workflow relying on Docker Compose.
 
 ### DuckSoup "single" Docker image
 
