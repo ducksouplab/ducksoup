@@ -8,7 +8,7 @@ import (
 )
 
 type gstreamerConfig struct {
-	ForceEncodingSize bool
+	ForceEncodingSize bool `yaml:"forceEncodingSize"`
 	RTPJitterBuffer   struct {
 		Latency        string
 		Retransmission string
@@ -56,4 +56,8 @@ func init() {
 	if err != nil {
 		log.Fatal("[fatal] ", err)
 	}
+
+	// log
+	log.SetFlags(log.Lmicroseconds)
+	log.Printf("[info] [init] gstreamer config: %+v\n", config)
 }

@@ -15,13 +15,16 @@ var (
 )
 
 func init() {
+
 	if os.Getenv("DS_ENV") == "BUILD_FRONT" {
 		cmdBuildMode = true
 	}
-}
 
-func init() {
 	helpers.EnsureDir("./data")
+
+	// init logging
+	log.SetFlags(log.Lmicroseconds)
+	log.SetOutput(os.Stdout)
 }
 
 func main() {

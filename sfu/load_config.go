@@ -13,15 +13,14 @@ type sfuConfig struct {
 }
 
 type sfuStream struct {
-	DefaultBitrate uint64
-	MinBitrate     uint64
-	MaxBitrate     uint64
+	DefaultBitrate uint64 `yaml:"defaultBitrate"`
+	MinBitrate     uint64 `yaml:"minBitrate"`
+	MaxBitrate     uint64 `yaml:"maxBitrate"`
 }
 
 var config sfuConfig
 
 func init() {
-
 	f, err := helpers.Open("config/sfu.yml")
 	if err != nil {
 		log.Fatal("[fatal] ", err)
@@ -33,4 +32,8 @@ func init() {
 	if err != nil {
 		log.Fatal("[fatal] ", err)
 	}
+
+	// log
+	log.SetFlags(log.Lmicroseconds)
+	log.Printf("[info] [init] sfu config: %+v\n", config)
 }

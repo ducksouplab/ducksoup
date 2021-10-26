@@ -34,9 +34,6 @@ var (
 )
 
 func init() {
-	// init logging
-	log.SetFlags(log.Lmicroseconds)
-	log.SetOutput(os.Stdout)
 	// environment variables use
 	envOrigins := os.Getenv("DS_ORIGINS")
 	if len(envOrigins) > 0 {
@@ -45,12 +42,16 @@ func init() {
 	if os.Getenv("DS_ENV") == "DEV" {
 		allowedOrigins = append(allowedOrigins, "https://localhost:8080", "https://localhost:8000", "http://localhost:8000")
 	}
-	log.Printf("[info] [server] allowed ws origins: %v\n", allowedOrigins)
+
 	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
 	webPrefix = helpers.Getenv("DS_WEB_PREFIX", "")
 	// basict Auth
 	testLogin = helpers.Getenv("DS_TEST_LOGIN", "ducksoup")
 	testPassword = helpers.Getenv("DS_TEST_PASSWORD", "ducksoup")
+
+	// log
+	log.SetFlags(log.Lmicroseconds)
+	log.Printf("[info] [server] allowed ws origins: %v\n", allowedOrigins)
 }
 
 // handle incoming websockets
