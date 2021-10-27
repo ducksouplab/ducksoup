@@ -159,7 +159,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 
 	i := &interceptor.Registry{}
 	// other option is to customize what interceptors to enable, by using engine/interceptor.go#RegisterInterceptors
-	if err := RegisterInterceptors(m, i); err != nil {
+	if err := registerInterceptors(m, i); err != nil {
 		log.Println("[error] [engine] could not register default interceptors")
 	}
 

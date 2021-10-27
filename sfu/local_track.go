@@ -11,12 +11,14 @@ import (
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 )
 
 const (
 	defaultInterpolatorStep = 30
 	maxInterpolatorDuration = 5000
+	statsPeriod             = 3000
 )
 
 type localTrack struct {
@@ -27,6 +29,9 @@ type localTrack struct {
 	pipeline          *gst.Pipeline
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
 	remoteTrack       *webrtc.TrackRemote
+	// stats
+	lastStats time.Time
+	bits      int64
 }
 
 func filePrefixWithCount(join types.JoinPayload, room *trialRoom) string {
@@ -65,7 +70,24 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 		track:             rtpTrack,
 		remoteTrack:       remoteTrack,
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
+		lastStats:         time.Now(),
 	}
+	return
+}
+
+func (l *localTrack) ID() string {
+	return l.track.ID()
+}
+
+func (l *localTrack) Write(buf []byte) (err error) {
+	packet := &rtp.Packet{}
+	packet.Unmarshal(buf)
+	err = l.track.WriteRTP(packet)
+
+	bits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
+	l.Lock()
+	l.bits += int64(bits)
+	l.Unlock()
 	return
 }
 
@@ -96,14 +118,31 @@ func (l *localTrack) loop() {
 		pliRequestCallback := func() {
 			pc.throttledPLIRequest()
 		}
-		pipeline := gst.CreatePipeline(join, l.track, kind, format, fx, filePrefix, pliRequestCallback)
+		pipeline := gst.CreatePipeline(join, l, kind, format, fx, filePrefix, pliRequestCallback)
 		l.pipeline = pipeline
 
 		pipeline.Start()
 		room.addFiles(userId, pipeline.Files)
+		// stats
+		statsTicker := time.NewTicker(statsPeriod * time.Millisecond)
+		if l.track.Kind().String() == "video" {
+			go func() {
+				for t := range statsTicker.C {
+					l.Lock()
+					milliseconds := t.Sub(l.lastStats).Milliseconds()
+					display := fmt.Sprintf("%v kbit/s", l.bits/milliseconds)
+					log.Printf("[info] [room#%s] [user#%s] [mixer] video encoded bitrate: %s\n", room.shortId, pc.userId, display)
+					l.bits = 0
+					l.lastStats = t
+					l.Unlock()
+				}
+			}()
+		}
+
 		defer func() {
 			log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", room.shortId, userId, kind)
 			pipeline.Stop()
+			statsTicker.Stop()
 			if r := recover(); r != nil {
 				log.Printf("[recov] [room#%s] [user#%s] [%s track] recover\n", room.shortId, userId, kind)
 			}

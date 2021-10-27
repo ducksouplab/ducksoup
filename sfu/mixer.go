@@ -146,7 +146,7 @@ func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPRe
 		go func() {
 			for range logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", ms.optimalBitrate/1000)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] new video broadcasted bitrate: %s\n", room.shortId, pc.userId, display)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] new target bitrate: %s\n", room.shortId, pc.userId, display)
 			}
 		}()
 	}
@@ -161,31 +161,30 @@ func (ms *mixerSlice) stop() {
 }
 
 func (ms *mixerSlice) runSenderListener(sc *senderController, ssrc webrtc.SSRC, shortId string) {
-	buf := make([]byte, defaultMTU)
-
 	for {
 		select {
 		case <-ms.endCh:
 			return
 		default:
-			n, _, err := sc.sender.Read(buf)
+			packets, _, err := sc.sender.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] read RTCP: %v\n", shortId, sc.fromUserId, sc.toUserId, err)
+					log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] reading RTCP: %v\n", shortId, sc.fromUserId, sc.toUserId, err)
+					continue
+				} else {
+					return
 				}
-				return
-			}
-			packets, err := rtcp.Unmarshal(buf[:n])
-			if err != nil {
-				log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] sender unmarshal RTCP: %v\n", shortId, sc.fromUserId, sc.toUserId, err)
-				continue
 			}
 
 			for _, packet := range packets {
+				// log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T\n%v\n", shortId, sc.fromUserId, sc.toUserId, packet, packet)
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
 					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] PLI received\n", shortId, sc.fromUserId, sc.toUserId)
 					ms.receivingPC.throttledPLIRequest()
+				case *rtcp.ReceiverEstimatedMaximumBitrate:
+					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
+					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] REMB packet %T:\n%v\n", shortId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(ssrc) {
@@ -430,38 +429,3 @@ func (m *mixer) dispatchKeyFrame() {
 		ps.pc.forcedPLIRequest()
 	}
 }
-
-// func (ms *mixerSlice) runReceiverListener(shortId string) {
-// 	buf := make([]byte, receiveMTU)
-
-// 	for {
-// 		select {
-// 		case <-ms.endCh:
-// 			return
-// 		default:
-// 			n, _, err := ms.receiver.Read(buf)
-// 			if err != nil {
-// 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					log.Printf("[error] [mixer room#%s] receiver read RTCP: %v\n", shortId, err)
-// 				}
-// 				return
-// 			}
-// 			packets, err := rtcp.Unmarshal(buf[:n])
-// 			if err != nil {
-// 				log.Printf("[error] [mixer room#%s] receiver unmarshal RTCP: %v\n", shortId, err)
-// 				continue
-// 			}
-
-// 			for _, packet := range packets {
-// 				switch rtcpPacket := packet.(type) {
-// 				case *rtcp.ReceiverEstimatedMaximumBitrate:
-// 					log.Println(rtcpPacket)
-// 				case *rtcp.SenderReport:
-// 					log.Println(rtcpPacket)
-// 					// default:
-// 					// 	log.Printf("-- RTCP packet on receiver: %T\n", rtcpPacket)
-// 				}
-// 			}
-// 		}
-// 	}
-// }

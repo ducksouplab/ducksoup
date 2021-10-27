@@ -88,7 +88,7 @@ GstFlowReturn gstreamer_new_sample_handler(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goNewSampleCallback(id, copy, copy_size, GST_BUFFER_DURATION(buffer));
+            goNewSampleCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
         }
         gst_sample_unref(sample);
     }

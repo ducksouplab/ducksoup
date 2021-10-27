@@ -17,3 +17,8 @@ type JoinPayload struct {
 	// Not from JSON
 	Origin string
 }
+
+type TrackWriter interface {
+	ID() string
+	Write(buf []byte) error
+}

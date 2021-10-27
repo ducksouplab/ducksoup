@@ -86,8 +86,23 @@ const forceMozillaMono = (sdp) => {
         .join("\r\n");
 };
 
+const addTWCC = (sdp) => {
+    // TODO improved parsing/placing/indexing of additional extmap
+    return sdp
+        .split("\r\n")
+        .map((line) => {
+            if (line.startsWith("a=extmap:2 ")) {
+                return line + "\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+            } else {
+                return line;
+            }
+        })
+        .join("\r\n");
+};
+
 const processSDP = (sdp) => {
-    const output = forceMozillaMono(sdp);
+    let output = forceMozillaMono(sdp);
+    // output = addTWCC(output);
     return output;
 };
 

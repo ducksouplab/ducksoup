@@ -10,7 +10,7 @@ import (
 )
 
 // adapted from https://github.com/pion/webrtc/blob/v3.1.2/interceptor.go
-func RegisterInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
+func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
 	if err := configureNack(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
@@ -19,11 +19,15 @@ func RegisterInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		return err
 	}
 
+	if err := configureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
+		return err
+	}
+
 	if err := configureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
-	if err := configureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
+	if err := configureAbsSendTime(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
@@ -104,5 +108,15 @@ func configureTWCCSender(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 	}
 
 	interceptorRegistry.Add(generator)
+	return nil
+}
+
+// For more accurante REMB reports
+func configureAbsSendTime(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
+
+	if err := mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.ABSSendTimeURI}, webrtc.RTPCodecTypeVideo); err != nil {
+		return err
+	}
+
 	return nil
 }

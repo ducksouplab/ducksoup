@@ -15,7 +15,6 @@ import (
 	"unsafe"
 
 	"github.com/creamlab/ducksoup/types"
-	"github.com/pion/webrtc/v3"
 )
 
 // global state
@@ -40,7 +39,7 @@ type Pipeline struct {
 	id                 string // same as local/output track id
 	join               types.JoinPayload
 	gstPipeline        *C.GstElement
-	track              *webrtc.TrackLocalStaticRTP
+	outputTrack        types.TrackWriter
 	filePrefix         string
 	format             string
 	pliRequestCallback func()
@@ -146,7 +145,7 @@ func goStopCallback(cId *C.char) {
 }
 
 //export goNewSampleCallback
-func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
 	id := C.GoString(cId)
 
 	mu.Lock()
@@ -154,10 +153,11 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, du
 	mu.Unlock()
 
 	if ok {
-		if _, err := pipeline.track.Write(C.GoBytes(buffer, bufferLen)); err != nil {
+		buf := C.GoBytes(buffer, bufferLen)
+		if err := pipeline.outputTrack.Write(buf); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
 			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
-			log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline]  can't Write: %v\n", pipeline.join.RoomId, pipeline.join.UserId, id, err)
+			log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline] can't Write: %v\n", pipeline.join.RoomId, pipeline.join.UserId, id, err)
 		}
 	} else {
 		// TODO return error to gst.c and stop processing?
@@ -187,10 +187,10 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, kind string, format string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
+func CreatePipeline(join types.JoinPayload, outputTrack types.TrackWriter, kind string, format string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
 
 	pipelineStr := newPipelineStr(join, filePrefix, kind, format, fx)
-	id := track.ID()
+	id := outputTrack.ID()
 	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", join.RoomId, join.UserId, id, kind)
 	log.Println(pipelineStr)
 
@@ -204,7 +204,7 @@ func CreatePipeline(join types.JoinPayload, track *webrtc.TrackLocalStaticRTP, k
 		id:                 id,
 		join:               join,
 		gstPipeline:        C.gstreamer_parse_pipeline(cPipelineStr, cId),
-		track:              track,
+		outputTrack:        outputTrack,
 		filePrefix:         filePrefix,
 		format:             format,
 		pliRequestCallback: pliRequestCallback,
