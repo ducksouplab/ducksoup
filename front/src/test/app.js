@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.1.0")
+    console.log("[DuckSoup test] v1.1.1")
 });
 
 let state;
@@ -232,7 +232,7 @@ const ducksoupListener = (message) => {
     if(kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
-    if(kind.startsWith("error") || kind === "end" || kind === "disconnection") {
+    if(kind.startsWith("error") || kind === "end") {
         reinitUX();
     }
     
@@ -291,8 +291,8 @@ const ducksoupListener = (message) => {
         }
     } else if (kind === "error-duplicate") {
         replaceMessage("Connection denied (already connected)");
-    } else if (kind === "disconnection") {
-        appendMessage("Disconnected");
+    } else if (kind === "error-disconnection") {
+        appendMessage("Error: disconnected");
     } else if (kind === "error") {
         replaceMessage("Error");
     } else if (kind === "stats") {

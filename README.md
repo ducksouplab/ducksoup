@@ -50,7 +50,8 @@ Where:
     - `"start"` (no payload) when videoconferencing starts
     - `"ending"` (no payload) when videoconferencing is soon ending
     - `"end"` (no payload) when videoconferencing has ended
-    - `"disconnection"` (no payload) when communication with server has stopped
+    - `"closed"` (no payload) when websocket is closed (after `end`)
+    - `"error-disconnection"` (no payload) when websocket communication has abnormally stopped
     - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect
     - `"error-duplicate"` (no payload) when a user with same `userId` (see `peerOptions` below) is already connected
     - `"error-full"` (no payload) when the videoconference room is full

@@ -32,7 +32,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.3.0");
+    console.log("[DuckSoup] v1.3.2");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -252,8 +252,11 @@ class DuckSoup {
         };
 
         ws.onclose = (event) => {
-            //console.log("[DuckSoup] ws.onclose ", event);
-            this._sendStop("disconnection");
+            if(event.code === 1000) {
+                this._sendStop("closed");
+            } else {
+                this._sendStop("error-disconnection");
+            }
             this._stopRTC();
         };
 
@@ -295,7 +298,6 @@ class DuckSoup {
                         encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
                     }
                     await sender.setParameters(params);
-                    console.log(params);
                 }
                 // unmute
                 stream.getTracks().forEach((track) => {
