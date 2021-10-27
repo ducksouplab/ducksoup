@@ -1,4 +1,4 @@
-forceEncodingSize: false
+forceEncodingSize: true
 rtpJitterBuffer: 
   latency: "140"
   retransmission: "false"
