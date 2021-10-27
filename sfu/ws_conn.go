@@ -42,7 +42,7 @@ type controlPayload struct {
 
 // remove special characters like / . *
 func parseString(str string) string {
-	reg, _ := regexp.Compile("[^a-zA-Z0-9-]+")
+	reg, _ := regexp.Compile("[^a-zA-Z0-9-_]+")
 	clean := reg.ReplaceAllString(str, "")
 	if len(clean) == 0 {
 		return "default"
