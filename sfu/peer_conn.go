@@ -129,9 +129,6 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		log.Printf("[info] [room#%s] [user#%s] [pc] new incoming %s track, id: %s\n", roomId, userId, remoteTrack.Codec().RTPCodecCapability.MimeType, remoteTrack.ID())
-		ps.room.incInTracksReadyCount(ps)
-		<-ps.room.waitForAllCh
-
 		ps.room.runLocalTrackFromRemote(ps, remoteTrack, receiver)
 	})
 

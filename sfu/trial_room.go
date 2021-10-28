@@ -300,11 +300,34 @@ func (r *trialRoom) endingDelay() (delay int) {
 	return
 }
 
+func (r *trialRoom) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
+	buf := make([]byte, defaultMTU)
+	for {
+		select {
+		case <-r.waitForAllCh:
+			// trial is over, no need to trigger signaling on every closing track
+			return
+		default:
+			_, _, err := remoteTrack.Read(buf)
+			if err != nil {
+				log.Printf("[error] [room#%s] readRemoteWhileWaiting: %v\n", r.shortId, err)
+				return
+			}
+		}
+	}
+}
+
 func (r *trialRoom) runLocalTrackFromRemote(
 	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
 ) {
+	// signal new peer and tracks
+	r.incInTracksReadyCount(ps)
+
+	// wait for all peers to connect
+	r.readRemoteWhileWaiting(remoteTrack)
+
 	outputTrack, err := r.mixer.newLocalTrackFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
