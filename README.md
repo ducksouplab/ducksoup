@@ -133,12 +133,16 @@ The following methods are available on a DuckSoup player:
 - `videoControl(effectName, property, value, transitionDuration)` is the same as above fort the effect named in `peerOptions#videoFx`
 - `stop()` to stop media streams and close communication with server. Note that players are running for a limited duration (set by `peerOptions#duration` which is capped server-side) and most of the time you don't need to use this method
 
-### Front-end examples
+### Front-ends
 
 If DuckSoup is running and accessible for instance at http://localhost:8000, there are a few available test front-ends:
 
 - http://localhost:8000/test/mirror/ one user reflection with a form to set peerOptions
 - http://localhost:8000/test/room/ choose a user name, room name and size and open in multiple tabs (same number as room size)
+
+A stats page displaying raw information about current rooms and bandwidth stats is accessible at (currently under work):
+
+- http://localhost:8000/stats/
 
 ## DuckSoup server
 
@@ -177,6 +181,8 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
+- DS_STATS_PASSWORD (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
+- DS_STATS_PASSWORD (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - DS_NVIDIA (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 

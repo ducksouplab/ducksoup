@@ -23,6 +23,17 @@ const (
 	logPeriod               = 7300
 )
 
+func (s *mixerSlice) inspect() interface{} {
+	// capitalize for JSON export
+	return struct {
+		IntputBitrate float64
+		OutputBitrate float64
+	}{
+		s.inputBitrate,
+		s.outputBitrate,
+	}
+}
+
 type mixerSlice struct {
 	sync.Mutex
 	fromPs *peerServer

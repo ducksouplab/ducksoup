@@ -31,6 +31,10 @@ func init() {
 	roomIndex = make(map[string]*trialRoom)
 }
 
+func (r *trialRoom) inspect() interface{} {
+	return r.mixer.inspect()
+}
+
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type trialRoom struct {
 	sync.RWMutex
@@ -61,8 +65,8 @@ func (r *trialRoom) delete() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	log.Printf("[info] [room#%s] deleting\n", r.shortId)
 	delete(roomIndex, r.qualifiedId)
+	log.Printf("[info] [room#%s] deleted\n", r.shortId)
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods

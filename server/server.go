@@ -12,6 +12,7 @@ import (
 
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/sfu"
+	"github.com/creamlab/ducksoup/stats"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -22,6 +23,8 @@ var (
 	webPrefix      string
 	testLogin      string
 	testPassword   string
+	statsLogin     string
+	statsPassword  string
 	cert           = flag.String("cert", "", "cert file")
 	key            = flag.String("key", "", "key file")
 	upgrader       = websocket.Upgrader{
@@ -48,6 +51,8 @@ func init() {
 	// basict Auth
 	testLogin = helpers.Getenv("DS_TEST_LOGIN", "ducksoup")
 	testPassword = helpers.Getenv("DS_TEST_PASSWORD", "ducksoup")
+	statsLogin = helpers.Getenv("DS_STATS_LOGIN", "ducksoup")
+	statsPassword = helpers.Getenv("DS_STATS_PASSWORD", "ducksoup")
 
 	// log
 	log.SetFlags(log.Lmicroseconds)
@@ -63,32 +68,40 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sfu.RunPeerServer(r.Header.Get("Origin"), unsafeConn) // blocking
+	if r.FormValue("type") == "stats" {
+		// special path: ws for stats
+		stats.RunStatsServer(unsafeConn) // blocking
+	} else {
+		// main path: ws for peer signaling
+		sfu.RunPeerServer(r.Header.Get("Origin"), unsafeConn) // blocking
+	}
 }
 
-// source https://www.alexedwards.net/blog/basic-authentication-in-go
-func basicAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if ok {
-			// Calculate SHA-256 hashes for the provided and expected usernames and passwords.
-			usernameHash := sha256.Sum256([]byte(username))
-			passwordHash := sha256.Sum256([]byte(password))
-			expectedUsernameHash := sha256.Sum256([]byte(testLogin))
-			expectedPasswordHash := sha256.Sum256([]byte(testPassword))
+func basicAuthWith(refLogin, refPassword string) mux.MiddlewareFunc {
+	// source https://www.alexedwards.net/blog/basic-authentication-in-go
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			login, password, ok := r.BasicAuth()
+			if ok {
+				// Calculate SHA-256 hashes for the provided and expected usernames and passwords.
+				loginHash := sha256.Sum256([]byte(login))
+				passwordHash := sha256.Sum256([]byte(password))
+				expectedLoginHash := sha256.Sum256([]byte(refLogin))
+				expectedPasswordHash := sha256.Sum256([]byte(refPassword))
 
-			usernameMatch := (subtle.ConstantTimeCompare(usernameHash[:], expectedUsernameHash[:]) == 1)
-			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
+				loginMatch := (subtle.ConstantTimeCompare(loginHash[:], expectedLoginHash[:]) == 1)
+				passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
 
-			if usernameMatch && passwordMatch {
-				next.ServeHTTP(w, r)
-				return
+				if loginMatch && passwordMatch {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
-		}
 
-		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	})
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		})
+	}
 }
 
 // API
@@ -98,18 +111,23 @@ func ListenAndServe() {
 	flag.Parse()
 
 	router := mux.NewRouter()
+	// websocket handler
+	router.HandleFunc(webPrefix+"/ws", websocketHandler)
 
-	// js & css and html without basic auth
+	// assets (js & css) without basic auth
 	router.PathPrefix(webPrefix + "/scripts/").Handler(http.StripPrefix(webPrefix+"/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
 	router.PathPrefix(webPrefix + "/styles/").Handler(http.StripPrefix(webPrefix+"/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
-	// html with basic auth
+
+	// test pages with basic auth
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
-	testRouter.Use(basicAuth)
+	testRouter.Use(basicAuthWith(testLogin, testPassword))
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/room/").Handler(http.StripPrefix(webPrefix+"/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
 
-	// websocket handler
-	router.HandleFunc(webPrefix+"/ws", websocketHandler)
+	// stats pages with basic auth
+	statsRouter := router.PathPrefix(webPrefix + "/stats").Subrouter()
+	statsRouter.Use(basicAuthWith(statsLogin, statsPassword))
+	statsRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/stats/", http.FileServer(http.Dir("./front/static/pages/stats/"))))
 
 	// port
 	port = os.Getenv("DS_PORT")
