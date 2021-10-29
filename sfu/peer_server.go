@@ -16,13 +16,13 @@ import (
 type peerServer struct {
 	sync.Mutex
 	userId     string
-	streamId   string // one stream Id shared by mixerTracks on a given pc
+	streamId   string // one stream Id shared by mixerSlices on a given pc
 	room       *trialRoom
 	join       types.JoinPayload
 	pc         *peerConn
 	ws         *wsConn
-	audioTrack *mixerTrack
-	videoTrack *mixerTrack
+	audioSlice *mixerSlice
+	videoSlice *mixerSlice
 	closed     bool
 	closedCh   chan struct{}
 }
@@ -50,11 +50,11 @@ func newPeerServer(
 	return ps
 }
 
-func (ps *peerServer) setMixerTrack(kind string, outputTrack *mixerTrack) {
+func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
 	if kind == "audio" {
-		ps.audioTrack = outputTrack
+		ps.audioSlice = slice
 	} else if kind == "video" {
-		ps.videoTrack = outputTrack
+		ps.videoSlice = slice
 	}
 }
 
@@ -67,7 +67,7 @@ func (ps *peerServer) close(reason string) {
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
-		// listened by mixerTracks
+		// listened by mixerSlices
 		close(ps.closedCh)
 		// clean up bound components
 		ps.pc.Close()
@@ -136,10 +136,10 @@ func (ps *peerServer) loop() {
 					log.Printf("[error] [room#%s] [user#%s] [ps] can't unmarshal control: %v\n", roomId, userId, err)
 				} else {
 					go func() {
-						if payload.Kind == "audio" && ps.audioTrack != nil {
-							ps.audioTrack.controlFx(payload)
-						} else if ps.videoTrack != nil {
-							ps.videoTrack.controlFx(payload)
+						if payload.Kind == "audio" && ps.audioSlice != nil {
+							ps.audioSlice.controlFx(payload)
+						} else if ps.videoSlice != nil {
+							ps.videoSlice.controlFx(payload)
 						}
 					}()
 				}

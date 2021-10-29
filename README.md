@@ -268,11 +268,10 @@ Here is an overview of what is happening from connecting to videoconferencing:
 - in particular `peerServer` creates a `peerConn` initiliazed with 2 transceivers for P1 audio and video tracks
 - a first signaling round (S0) occurs to negotiate these tracks
 - the `trialRoom` (in charge of users/peers) initializes a `mixer` (~ the SFU, in charge of peer connections, tracks, processing and signaling)
-- at some point following S0, an incoming/remote track for P1 is received (see `OnTrack` in `peer_conn.go` ), then a resulting (processed) `mixerTrack` is created
-- the `mixerTrack` struct contains a GStreamer pipeline and a few methods to control the processing of the pipeline
-- the `mixerTrack` is then embedded within a `mixerSlice` which implements the network-aware behavior for this track, estimating its optimal encoding bitrate depending on network conditions
+- at some point following S0, an incoming/remote track for P1 is received (see `OnTrack` in `peer_conn.go` ), then a resulting (processed) `mixerSlice` is created
+- the `mixerSlice` struct contains a GStreamer pipeline and a few methods to control the processing of the pipeline
 - the `mixerSlice` is added to the `mixer` of the `trialRoom` containing other peers. Each peer is represented by two `mixerSlice`s (one for audio, one for video), the `mixer` contains the `mixerSlice`s of all peers
-- once all mixerTracks expected for all peers are ready (2 tracks * number of peers) , the `trialRoom` asks the `mixer` to update signaling:
+- once all mixerSlices expected for all peers are ready (2 tracks * number of peers) , the `trialRoom` asks the `mixer` to update signaling:
   1. P1 output tracks are added to the other peers connections (and vice versa)
 	2. new offers are created and sent to update remote peer connections (in the browser)
 - a by-product of this signaling step is the initialization of `senderControllers` needed by `mixerSlices` to inspect network conditions and estimate optimal bitrates

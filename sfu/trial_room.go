@@ -223,6 +223,8 @@ func (r *trialRoom) incOutTracksReadyCount() {
 	r.outTracksReadyCount++
 
 	if r.outTracksReadyCount == r.neededTracks {
+		// TOFIX without this timeout, some tracks are not sent to peers,
+		<-time.After(600 * time.Millisecond)
 		go r.mixer.managedUpdateSignaling("all processed tracks are ready")
 	}
 }
@@ -301,25 +303,22 @@ func (r *trialRoom) endingDelay() (delay int) {
 }
 
 func (r *trialRoom) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
-	buf := make([]byte, defaultMTU)
-waitLoop:
 	for {
 		select {
 		case <-r.waitForAllCh:
 			// trial is over, no need to trigger signaling on every closing track
-			break waitLoop
+			return
 		default:
-			_, _, err := remoteTrack.Read(buf)
+			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
 				log.Printf("[error] [room#%s] readRemoteWhileWaiting: %v\n", r.shortId, err)
+				return
 			}
 		}
 	}
-	// TOFIX without this timeout, some tracks are not sent to peers (related to incOutTracksReadyCount?)
-	<-time.After(250 * time.Millisecond)
 }
 
-func (r *trialRoom) runMixerTrackFromRemote(
+func (r *trialRoom) runMixerSliceFromRemote(
 	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
@@ -330,22 +329,21 @@ func (r *trialRoom) runMixerTrackFromRemote(
 	// wait for all peers to connect
 	r.readRemoteWhileWaiting(remoteTrack)
 
-	outputTrack, err := r.mixer.newMixerTrackFromRemote(ps, remoteTrack, receiver)
+	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[error] [room#%s] runMixerTrackFromRemote: %v\n", r.shortId, err)
+		log.Printf("[error] [room#%s] runMixerSliceFromRemote: %v\n", r.shortId, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
-		ps := r.peerServerIndex[ps.userId]
-		ps.setMixerTrack(remoteTrack.Kind().String(), outputTrack)
+		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 		// will trigger signaling if needed
 		r.incOutTracksReadyCount()
 
-		outputTrack.loop() // blocking
+		slice.loop() // blocking
 
-		// outputTrack has ended
-		r.mixer.removeMixerTrack(outputTrack.id)
+		// track has ended
+		r.mixer.removeMixerSlice(slice)
 		r.decOutTracksReadyCount()
 	}
 }
