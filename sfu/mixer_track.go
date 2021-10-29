@@ -21,7 +21,7 @@ const (
 	statsPeriod             = 3000
 )
 
-type localTrack struct {
+type mixerTrack struct {
 	sync.Mutex
 	id                string
 	ps                *peerServer
@@ -52,8 +52,8 @@ func parseFx(kind string, join types.JoinPayload) (fx string) {
 	return
 }
 
-func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *localTrack, err error) {
-	// create a new localTrack with:
+func newMixerTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *mixerTrack, err error) {
+	// create a new mixerTrack with:
 	// - the same codec format as the incoming/remote one
 	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
 	// - a streamId shared among peerServer tracks (audio/video)
@@ -64,7 +64,7 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 		return
 	}
 
-	track = &localTrack{
+	track = &mixerTrack{
 		id:                remoteTrack.ID(), // reuse of remoteTrack ID
 		ps:                ps,
 		track:             rtpTrack,
@@ -75,66 +75,66 @@ func newLocalTrack(ps *peerServer, remoteTrack *webrtc.TrackRemote) (track *loca
 	return
 }
 
-func (l *localTrack) ID() string {
-	return l.track.ID()
+func (t *mixerTrack) ID() string {
+	return t.track.ID()
 }
 
-func (l *localTrack) Write(buf []byte) (err error) {
+func (t *mixerTrack) Write(buf []byte) (err error) {
 	packet := &rtp.Packet{}
 	packet.Unmarshal(buf)
-	err = l.track.WriteRTP(packet)
+	err = t.track.WriteRTP(packet)
 
 	bits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
-	l.Lock()
-	l.bits += int64(bits)
-	l.Unlock()
+	t.Lock()
+	t.bits += int64(bits)
+	t.Unlock()
 	return
 }
 
-func (l *localTrack) loop() {
-	join, userId, room, pc := l.ps.join, l.ps.userId, l.ps.room, l.ps.pc
+func (t *mixerTrack) loop() {
+	join, userId, room, pc := t.ps.join, t.ps.userId, t.ps.room, t.ps.pc
 
-	kind := l.remoteTrack.Kind().String()
+	kind := t.remoteTrack.Kind().String()
 	fx := parseFx(kind, join)
 
 	if fx == "forward" {
-		// special case for testing: write directly to localTrack
+		// special case for testing: write directly to mixerTrack
 		for {
 			// Read RTP packets being sent to Pion
-			rtp, _, err := l.remoteTrack.ReadRTP()
+			rtp, _, err := t.remoteTrack.ReadRTP()
 			if err != nil {
 				return
 			}
-			if err := l.track.WriteRTP(rtp); err != nil {
+			if err := t.track.WriteRTP(rtp); err != nil {
 				return
 			}
 		}
 	} else {
-		// main case (with GStreamer): write/push to pipeline which in turn outputs to localTrack
+		// main case (with GStreamer): write/push to pipeline which in turn outputs to mixerTrack
 		filePrefix := filePrefixWithCount(join, room)
-		format := strings.Split(l.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
+		format := strings.Split(t.remoteTrack.Codec().RTPCodecCapability.MimeType, "/")[1]
 
 		// create and start pipeline
 		pliRequestCallback := func() {
 			pc.throttledPLIRequest()
 		}
-		pipeline := gst.CreatePipeline(join, l, kind, format, fx, filePrefix, pliRequestCallback)
-		l.pipeline = pipeline
+		pipeline := gst.CreatePipeline(join, t, kind, format, fx, filePrefix, pliRequestCallback)
+		t.pipeline = pipeline
 
 		pipeline.Start()
 		room.addFiles(userId, pipeline.Files)
 		// stats
 		statsTicker := time.NewTicker(statsPeriod * time.Millisecond)
-		if l.track.Kind().String() == "video" {
+		if t.track.Kind().String() == "video" {
 			go func() {
-				for t := range statsTicker.C {
-					l.Lock()
-					milliseconds := t.Sub(l.lastStats).Milliseconds()
-					display := fmt.Sprintf("%v kbit/s", l.bits/milliseconds)
+				for tickTime := range statsTicker.C {
+					t.Lock()
+					milliseconds := tickTime.Sub(t.lastStats).Milliseconds()
+					display := fmt.Sprintf("%v kbit/s", t.bits/milliseconds)
 					log.Printf("[info] [room#%s] [user#%s] [mixer] video encoded bitrate: %s\n", room.shortId, pc.userId, display)
-					l.bits = 0
-					l.lastStats = t
-					l.Unlock()
+					t.bits = 0
+					t.lastStats = tickTime
+					t.Unlock()
 				}
 			}()
 		}
@@ -154,11 +154,11 @@ func (l *localTrack) loop() {
 			case <-room.endCh:
 				// trial is over, no need to trigger signaling on every closing track
 				return
-			case <-l.ps.closedCh:
+			case <-t.ps.closedCh:
 				// peer may quit early (for instance page refresh), other peers need to be updated
 				return
 			default:
-				i, _, readErr := l.remoteTrack.Read(buf)
+				i, _, readErr := t.remoteTrack.Read(buf)
 				if readErr != nil {
 					return
 				}
@@ -168,9 +168,9 @@ func (l *localTrack) loop() {
 	}
 }
 
-func (l *localTrack) controlFx(payload controlPayload) {
+func (t *mixerTrack) controlFx(payload controlPayload) {
 	interpolatorId := payload.Kind + payload.Name + payload.Property
-	interpolator := l.interpolatorIndex[interpolatorId]
+	interpolator := t.interpolatorIndex[interpolatorId]
 
 	if interpolator != nil {
 		// an interpolation is already running for this pipeline, effect and property
@@ -179,33 +179,33 @@ func (l *localTrack) controlFx(payload controlPayload) {
 
 	duration := payload.Duration
 	if duration == 0 {
-		l.pipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
+		t.pipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
 	} else {
 		if duration > maxInterpolatorDuration {
 			duration = maxInterpolatorDuration
 		}
-		oldValue := l.pipeline.GetFxProperty(payload.Name, payload.Property)
+		oldValue := t.pipeline.GetFxProperty(payload.Name, payload.Property)
 		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
 
-		l.Lock()
-		l.interpolatorIndex[interpolatorId] = newInterpolator
-		l.Unlock()
+		t.Lock()
+		t.interpolatorIndex[interpolatorId] = newInterpolator
+		t.Unlock()
 
 		defer func() {
-			l.Lock()
-			delete(l.interpolatorIndex, interpolatorId)
-			l.Unlock()
+			t.Lock()
+			delete(t.interpolatorIndex, interpolatorId)
+			t.Unlock()
 		}()
 
 		for {
 			select {
-			case <-l.ps.room.endCh:
+			case <-t.ps.room.endCh:
 				return
-			case <-l.ps.closedCh:
+			case <-t.ps.closedCh:
 				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
-					l.pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
+					t.pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
 				} else {
 					return
 				}

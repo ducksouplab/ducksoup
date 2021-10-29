@@ -16,13 +16,13 @@ import (
 type peerServer struct {
 	sync.Mutex
 	userId     string
-	streamId   string // one stream Id shared by localTracks on a given pc
+	streamId   string // one stream Id shared by mixerTracks on a given pc
 	room       *trialRoom
 	join       types.JoinPayload
 	pc         *peerConn
 	ws         *wsConn
-	audioTrack *localTrack
-	videoTrack *localTrack
+	audioTrack *mixerTrack
+	videoTrack *mixerTrack
 	closed     bool
 	closedCh   chan struct{}
 }
@@ -50,7 +50,7 @@ func newPeerServer(
 	return ps
 }
 
-func (ps *peerServer) setLocalTrack(kind string, outputTrack *localTrack) {
+func (ps *peerServer) setMixerTrack(kind string, outputTrack *mixerTrack) {
 	if kind == "audio" {
 		ps.audioTrack = outputTrack
 	} else if kind == "video" {
@@ -67,7 +67,7 @@ func (ps *peerServer) close(reason string) {
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
-		// listened by localTracks
+		// listened by mixerTracks
 		close(ps.closedCh)
 		// clean up bound components
 		ps.pc.Close()

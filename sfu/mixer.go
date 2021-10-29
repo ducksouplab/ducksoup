@@ -20,7 +20,7 @@ type mixer struct {
 
 type mixerSlice struct {
 	sync.Mutex
-	outputTrack           *localTrack
+	outputTrack           *mixerTrack
 	receivingPC           *peerConn // peer connection holding the incoming/remote track
 	receiver              *webrtc.RTPReceiver
 	senderControllerIndex map[string]*senderController // per user id
@@ -108,7 +108,7 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func newMixerSlice(pc *peerConn, outputTrack *localTrack, receiver *webrtc.RTPReceiver, room *trialRoom) *mixerSlice {
+func newMixerSlice(pc *peerConn, outputTrack *mixerTrack, receiver *webrtc.RTPReceiver, room *trialRoom) *mixerSlice {
 	updateTicker := time.NewTicker(1 * time.Second)
 	logTicker := time.NewTicker(7300 * time.Millisecond)
 
@@ -209,8 +209,8 @@ func newMixer(room *trialRoom) *mixer {
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (outputTrack *localTrack, err error) {
-	outputTrack, err = newLocalTrack(ps, remoteTrack)
+func (m *mixer) newMixerTrackFromRemote(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (outputTrack *mixerTrack, err error) {
+	outputTrack, err = newMixerTrack(ps, remoteTrack)
 
 	if err == nil {
 		m.Lock()
@@ -221,7 +221,7 @@ func (m *mixer) newLocalTrackFromRemote(ps *peerServer, remoteTrack *webrtc.Trac
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeLocalTrack(id string) {
+func (m *mixer) removeMixerTrack(id string) {
 	m.Lock()
 	defer func() {
 		m.Unlock()

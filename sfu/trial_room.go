@@ -141,7 +141,7 @@ func (r *trialRoom) countdown() {
 	r.running = false
 	r.Unlock()
 
-	// listened by peerServers, mixer, localTracks
+	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
 	// actual deleting is done when all users have disconnected, see disconnectUser
 }
@@ -319,7 +319,7 @@ waitLoop:
 	<-time.After(250 * time.Millisecond)
 }
 
-func (r *trialRoom) runLocalTrackFromRemote(
+func (r *trialRoom) runMixerTrackFromRemote(
 	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
@@ -330,14 +330,14 @@ func (r *trialRoom) runLocalTrackFromRemote(
 	// wait for all peers to connect
 	r.readRemoteWhileWaiting(remoteTrack)
 
-	outputTrack, err := r.mixer.newLocalTrackFromRemote(ps, remoteTrack, receiver)
+	outputTrack, err := r.mixer.newMixerTrackFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[error] [room#%s] runLocalTrackFromRemote: %v\n", r.shortId, err)
+		log.Printf("[error] [room#%s] runMixerTrackFromRemote: %v\n", r.shortId, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps := r.peerServerIndex[ps.userId]
-		ps.setLocalTrack(remoteTrack.Kind().String(), outputTrack)
+		ps.setMixerTrack(remoteTrack.Kind().String(), outputTrack)
 
 		// will trigger signaling if needed
 		r.incOutTracksReadyCount()
@@ -345,7 +345,7 @@ func (r *trialRoom) runLocalTrackFromRemote(
 		outputTrack.loop() // blocking
 
 		// outputTrack has ended
-		r.mixer.removeLocalTrack(outputTrack.id)
+		r.mixer.removeMixerTrack(outputTrack.id)
 		r.decOutTracksReadyCount()
 	}
 }
