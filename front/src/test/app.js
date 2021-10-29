@@ -154,6 +154,8 @@ document.addEventListener("DOMContentLoaded", async() => {
       .addEventListener("click", () => {
         if(state.ducksoup) state.ducksoup.stop();
         clearMount();
+        show(".show-when-not-running");
+        hide(".show-when-running");
       });
 
     document.getElementById("audio-control").addEventListener("click", () => {
