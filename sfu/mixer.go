@@ -11,8 +11,10 @@ import (
 
 type mixer struct {
 	sync.RWMutex
-	room       *trialRoom
 	sliceIndex map[string]*mixerSlice // per remote track id
+	// room
+	r      *room
+	roomId string
 }
 
 type signalingState int
@@ -33,10 +35,11 @@ func (m *mixer) inspect() interface{} {
 
 // mixer
 
-func newMixer(room *trialRoom) *mixer {
+func newMixer(r *room) *mixer {
 	return &mixer{
-		room:       room,
 		sliceIndex: map[string]*mixerSlice{},
+		r:          r,
+		roomId:     r.id,
 	}
 }
 
@@ -60,12 +63,12 @@ func (m *mixer) removeMixerSlice(s *mixerSlice) {
 }
 
 func (m *mixer) updateTracks() signalingState {
-	for userId, ps := range m.room.peerServerIndex {
+	for userId, ps := range m.r.peerServerIndex {
 		// iterate to update peer connections of each PeerServer
 		pc := ps.pc
 
 		if pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
-			delete(m.room.peerServerIndex, userId)
+			m.r.disconnectUser(userId)
 			break
 		}
 
@@ -84,9 +87,9 @@ func (m *mixer) updateTracks() signalingState {
 			_, ok := m.sliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [mixer] can't RemoveTrack#%s:\n%v\n", m.room.shortId, userId, sentTrackId, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] can't RemoveTrack#%s:\n%v\n", m.roomId, userId, sentTrackId, err)
 				} else {
-					log.Printf("[info] [room#%s] [user#%s] [mixer] RemoveTrack#%s\n", m.room.shortId, userId, sentTrackId)
+					log.Printf("[info] [room#%s] [user#%s] [mixer] RemoveTrack#%s\n", m.roomId, userId, sentTrackId)
 				}
 			}
 		}
@@ -98,17 +101,17 @@ func (m *mixer) updateTracks() signalingState {
 			trackId := s.ID()
 			if alreadySent {
 				// don't double send
-				log.Printf("[info] [room#%s] [user#%s] [mixer] [already] skip AddTrack: %s\n", m.room.shortId, userId, trackId)
-			} else if m.room.size != 1 && s.fromPs.userId == userId {
+				log.Printf("[info] [room#%s] [user#%s] [mixer] [already] skip AddTrack: %s\n", m.roomId, userId, trackId)
+			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] [own] skip AddTrack: %s\n", m.room.shortId, userId, trackId)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] [own] skip AddTrack: %s\n", m.roomId, userId, trackId)
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack#%s: %v\n", m.room.shortId, userId, id, err)
+					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack#%s: %v\n", m.roomId, userId, id, err)
 					return signalingRetryNow
 				} else {
-					log.Printf("[info] [room#%s] [user#%s] [mixer] AddTrack#%s\n", m.room.shortId, userId, trackId)
+					log.Printf("[info] [room#%s] [user#%s] [mixer] AddTrack#%s\n", m.roomId, userId, trackId)
 				}
 
 				s.addSender(sender, userId)
@@ -119,30 +122,31 @@ func (m *mixer) updateTracks() signalingState {
 }
 
 func (m *mixer) updateOffers() signalingState {
-	for _, ps := range m.room.peerServerIndex {
+	for _, ps := range m.r.peerServerIndex {
+		userId := ps.userId
 		pc := ps.pc
 
-		log.Printf("[info] [room#%s] [user#%s] [mixer] signaling state: %v\n", m.room.shortId, ps.userId, pc.SignalingState())
+		log.Printf("[info] [room#%s] [user#%s] [mixer] signaling state: %v\n", m.roomId, userId, pc.SignalingState())
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't CreateOffer: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't CreateOffer: %v\n", m.roomId, userId, err)
 			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] pending local description\n", m.room.shortId, ps.userId)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] pending local description\n", m.roomId, userId)
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't SetLocalDescription: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't SetLocalDescription: %v\n", m.roomId, userId, err)
 			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
 			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't marshal offer: %v\n", m.room.shortId, ps.userId, err)
+			log.Printf("[error] [room#%s] [user#%s] [mixer] can't marshal offer: %v\n", m.roomId, userId, err)
 			return signalingRetryNow
 		}
 
@@ -171,11 +175,11 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 		go m.dispatchKeyFrame()
 	}()
 
-	log.Printf("[info] [room#%s] [mixer] signaling update, reason: %s\n", m.room.shortId, reason)
+	log.Printf("[info] [room#%s] [mixer] signaling update, reason: %s\n", m.roomId, reason)
 
 	for {
 		select {
-		case <-m.room.endCh:
+		case <-m.r.endCh:
 			return
 		default:
 			for tries := 0; ; tries++ {
@@ -215,7 +219,7 @@ func (m *mixer) dispatchKeyFrame() {
 	m.RLock()
 	defer m.RUnlock()
 
-	for _, ps := range m.room.peerServerIndex {
+	for _, ps := range m.r.peerServerIndex {
 		ps.pc.forcedPLIRequest()
 	}
 }

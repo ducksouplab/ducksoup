@@ -269,15 +269,15 @@ Each peerConn has several tracks:
 
 Here is an overview of what is happening from connecting to videoconferencing:
 
-- peer P1 connects to the signaling endpoint of DuckSoup, specifying a `trialRoom` ID
-- the `trialRoom` is created (or joined) and a `peerServer` is launched to deal with further communication between the server and P1
+- peer P1 connects to the signaling endpoint of DuckSoup, specifying a `room` ID
+- the `room` is created (or joined) and a `peerServer` is launched to deal with further communication between the server and P1
 - in particular `peerServer` creates a `peerConn` initiliazed with 2 transceivers for P1 audio and video tracks
 - a first signaling round (S0) occurs to negotiate these tracks
-- the `trialRoom` (in charge of users/peers) initializes a `mixer` (~ the SFU, in charge of peer connections, tracks, processing and signaling)
+- the `room` (in charge of users/peers) initializes a `mixer` (~ the SFU, in charge of peer connections, tracks, processing and signaling)
 - at some point following S0, an incoming/remote track for P1 is received (see `OnTrack` in `peer_conn.go` ), then a resulting (processed) `mixerSlice` is created
 - the `mixerSlice` struct contains a GStreamer pipeline and a few methods to control the processing of the pipeline
-- the `mixerSlice` is added to the `mixer` of the `trialRoom` containing other peers. Each peer is represented by two `mixerSlice`s (one for audio, one for video), the `mixer` contains the `mixerSlice`s of all peers
-- once all mixerSlices expected for all peers are ready (2 tracks * number of peers) , the `trialRoom` asks the `mixer` to update signaling:
+- the `mixerSlice` is added to the `mixer` of the `room` containing other peers. Each peer is represented by two `mixerSlice`s (one for audio, one for video), the `mixer` contains the `mixerSlice`s of all peers
+- once all mixerSlices expected for all peers are ready (2 tracks * number of peers) , the `room` asks the `mixer` to update signaling:
   1. P1 output tracks are added to the other peers connections (and vice versa)
 	2. new offers are created and sent to update remote peer connections (in the browser)
 - a by-product of this signaling step is the initialization of `senderControllers` needed by `mixerSlices` to inspect network conditions and estimate optimal bitrates

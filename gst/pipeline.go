@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"unsafe"
 
 	"github.com/creamlab/ducksoup/types"
@@ -19,15 +18,11 @@ import (
 
 // global state
 var (
-	mu                sync.Mutex
-	pipelineIndex     map[string]*Pipeline
 	nvidia            bool
 	forceEncodingSize bool
 )
 
 func init() {
-	mu = sync.Mutex{}
-	pipelineIndex = make(map[string]*Pipeline)
 	nvidia = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
 }
 
@@ -130,27 +125,14 @@ func allFiles(namespace string, prefix string, kind string, hasFx bool) []string
 
 //export goStopCallback
 func goStopCallback(cId *C.char) {
-	mu.Lock()
-	defer mu.Unlock()
-
 	id := C.GoString(cId)
-	pipeline, ok := pipelineIndex[id]
-	if ok {
-		log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] stop done\n", pipeline.join.RoomId, pipeline.join.UserId, id)
-
-	}
-
-	delete(pipelineIndex, id)
-
+	pipelines.delete(id)
 }
 
 //export goNewSampleCallback
 func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
 	id := C.GoString(cId)
-
-	mu.Lock()
-	pipeline, ok := pipelineIndex[id]
-	mu.Unlock()
+	pipeline, ok := pipelines.find(id)
 
 	if ok {
 		buf := C.GoBytes(buffer, bufferLen)
@@ -169,10 +151,7 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pt
 //export goForceKeyUnitCallback
 func goForceKeyUnitCallback(cId *C.char) {
 	id := C.GoString(cId)
-
-	mu.Lock()
-	pipeline, ok := pipelineIndex[id]
-	mu.Unlock()
+	pipeline, ok := pipelines.find(id)
 
 	if ok {
 		log.Printf("[info] [room#%s] [user#%s] [pipeline] PLI requested from GStreamer\n", pipeline.join.RoomId, pipeline.join.UserId)
@@ -199,7 +178,7 @@ func CreatePipeline(join types.JoinPayload, outputTrack types.TrackWriter, kind 
 	defer C.free(unsafe.Pointer(cPipelineStr))
 	defer C.free(unsafe.Pointer(cId))
 
-	pipeline := &Pipeline{
+	p := &Pipeline{
 		Files:              allFiles(join.Namespace, filePrefix, kind, len(fx) > 0),
 		id:                 id,
 		join:               join,
@@ -210,10 +189,8 @@ func CreatePipeline(join types.JoinPayload, outputTrack types.TrackWriter, kind 
 		pliRequestCallback: pliRequestCallback,
 	}
 
-	mu.Lock()
-	pipelineIndex[pipeline.id] = pipeline
-	mu.Unlock()
-	return pipeline
+	pipelines.add(p)
+	return p
 }
 
 // start the GStreamer pipeline

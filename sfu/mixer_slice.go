@@ -74,8 +74,8 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func filePrefixWithCount(join types.JoinPayload, room *trialRoom) string {
-	connectionCount := room.joinedCountForUser(join.UserId)
+func filePrefixWithCount(join types.JoinPayload, r *room) string {
+	connectionCount := r.joinedCountForUser(join.UserId)
 	// time room user count
 	return time.Now().Format("20060102-150405.000") +
 		"-r-" + join.RoomId +
@@ -132,7 +132,7 @@ func (s *mixerSlice) ID() string {
 }
 
 func (s *mixerSlice) startTickers() {
-	userId, room := s.fromPs.userId, s.fromPs.room
+	roomId, userId := s.fromPs.r.id, s.fromPs.userId
 
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
@@ -168,8 +168,8 @@ func (s *mixerSlice) startTickers() {
 			// log
 			displayInputBitrateKbs := math.Round(s.inputBitrate / 1000)
 			displayOutputBitrateKbs := math.Round(s.outputBitrate / 1000)
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s input bitrate: %v kbit/s\n", room.shortId, userId, s.output.Kind().String(), displayInputBitrateKbs)
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s output bitrate: %v kbit/s\n", room.shortId, userId, s.output.Kind().String(), displayOutputBitrateKbs)
+			log.Printf("[info] [room#%s] [user#%s] [mixer] %s input bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayInputBitrateKbs)
+			log.Printf("[info] [room#%s] [user#%s] [mixer] %s output bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 
@@ -178,7 +178,7 @@ func (s *mixerSlice) startTickers() {
 		go func() {
 			for range s.logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", s.optimalBitrate/1000)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] new target bitrate: %s\n", room.shortId, userId, display)
+				log.Printf("[info] [room#%s] [user#%s] [mixer] new target bitrate: %s\n", roomId, userId, display)
 			}
 		}()
 	}
@@ -194,7 +194,7 @@ func (s *mixerSlice) stop() {
 }
 
 func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
-	shortId := s.fromPs.room.shortId
+	roomId := s.fromPs.r.id
 	params := sender.GetParameters()
 
 	if len(params.Encodings) == 1 {
@@ -204,7 +204,7 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 		s.Unlock()
 		go sc.runListener()
 	} else {
-		log.Printf("[error] [room#%s] [user#%s] [mixer] addSender: wrong number of encoding parameters\n", shortId, toUserId)
+		log.Printf("[error] [room#%s] [user#%s] [mixer] addSender: wrong number of encoding parameters\n", roomId, toUserId)
 	}
 }
 
@@ -231,7 +231,7 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 }
 
 func (s *mixerSlice) loop() {
-	join, userId, room, pc := s.fromPs.join, s.fromPs.userId, s.fromPs.room, s.fromPs.pc
+	join, room, pc, roomId, userId := s.fromPs.join, s.fromPs.r, s.fromPs.pc, s.fromPs.r.id, s.fromPs.userId
 	kind := s.input.Kind().String()
 	fx := parseFx(kind, join)
 
@@ -264,10 +264,10 @@ func (s *mixerSlice) loop() {
 		s.startTickers()
 
 		defer func() {
-			log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", room.shortId, userId, kind)
+			log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", roomId, userId, kind)
 			s.stop()
 			if r := recover(); r != nil {
-				log.Printf("[recov] [room#%s] [user#%s] [%s track] recover\n", room.shortId, userId, kind)
+				log.Printf("[recov] [room#%s] [user#%s] [%s track] recover\n", roomId, userId, kind)
 			}
 		}()
 
@@ -324,7 +324,7 @@ func (s *mixerSlice) controlFx(payload controlPayload) {
 
 		for {
 			select {
-			case <-s.fromPs.room.endCh:
+			case <-s.fromPs.r.endCh:
 				return
 			case <-s.fromPs.closedCh:
 				return

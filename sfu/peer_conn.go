@@ -72,7 +72,7 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 	return
 }
 
-func newPeerConn(join types.JoinPayload, room *trialRoom, ws *wsConn) (pc *peerConn, err error) {
+func newPeerConn(join types.JoinPayload, ws *wsConn) (pc *peerConn, err error) {
 	roomId, userId, videoFormat := join.RoomId, join.UserId, join.VideoFormat
 
 	ppc, err := newPionPeerConn(roomId, userId, videoFormat)
@@ -88,7 +88,7 @@ func newPeerConn(join types.JoinPayload, room *trialRoom, ws *wsConn) (pc *peerC
 }
 
 func (pc *peerConn) connectPeerServer(ps *peerServer) {
-	userId, roomId := pc.userId, pc.roomId
+	roomId, userId := pc.roomId, pc.userId
 
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -129,7 +129,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		log.Printf("[info] [room#%s] [user#%s] [pc] new incoming %s track, id: %s\n", roomId, userId, remoteTrack.Codec().RTPCodecCapability.MimeType, remoteTrack.ID())
-		ps.room.runMixerSliceFromRemote(ps, remoteTrack, receiver)
+		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
 	// Debug: send periodic PLIs

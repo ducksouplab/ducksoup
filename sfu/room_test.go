@@ -24,19 +24,19 @@ func TestJoinRoom(t *testing.T) {
 		joinPayload2 := newJoinPayload("https://origin", "room-max-2", "user-2", "mirror", 2)
 		joinPayload3 := newJoinPayload("https://origin", "room-max-2", "user-3", "mirror", 2)
 
-		_, err := joinRoom(joinPayload1)
+		_, err := rooms.join(joinPayload1)
 
 		if err != nil {
 			t.Error("user #1 joined failed")
 		}
 
-		_, err = joinRoom(joinPayload2)
+		_, err = rooms.join(joinPayload2)
 
 		if err != nil {
 			t.Error("user #2 joined failed")
 		}
 
-		_, err = joinRoom(joinPayload3)
+		_, err = rooms.join(joinPayload3)
 		if err.Error() != "full" {
 			t.Error("room should be full for user #3")
 		}
@@ -46,13 +46,13 @@ func TestJoinRoom(t *testing.T) {
 		joinPayload1 := newJoinPayload("https://origin", "room-dup", "user-1", "mirror", 2)
 		joinPayloadDuplicate := newJoinPayload("https://origin", "room-dup", "user-1", "mirror", 2)
 
-		_, err := joinRoom(joinPayload1)
+		_, err := rooms.join(joinPayload1)
 
 		if err != nil {
 			t.Error("user #1 joined failed")
 		}
 
-		_, err = joinRoom(joinPayloadDuplicate)
+		_, err = rooms.join(joinPayloadDuplicate)
 
 		if err.Error() != "duplicate" {
 			t.Error("user #1 duplicate not banned")
@@ -64,11 +64,11 @@ func TestJoinRoom(t *testing.T) {
 		joinPayload2 := newJoinPayload("https://origin", "room-re", "user-2", "mirror", 2)
 		joinPayload2bis := newJoinPayload("https://origin", "room-re", "user-2", "mirror", 2)
 
-		room, _ := joinRoom(joinPayload1)
-		joinRoom(joinPayload2)
+		room, _ := rooms.join(joinPayload1)
+		rooms.join(joinPayload2)
 		room.disconnectUser(joinPayload2.UserId)
 
-		_, err := joinRoom(joinPayload2bis)
+		_, err := rooms.join(joinPayload2bis)
 
 		if err != nil {
 			t.Error("room reconnection failed")
@@ -80,11 +80,11 @@ func TestJoinRoom(t *testing.T) {
 		joinPayload2 := newJoinPayload("https://origin", "room", "user-2", "mirror", 2)
 		joinPayloadReuse := newJoinPayload("https://origin", "room", "user-3", "mirror", 2)
 
-		room, _ := joinRoom(joinPayload1)
-		joinRoom(joinPayload2)
-		room.delete()
+		room, _ := rooms.join(joinPayload1)
+		rooms.join(joinPayload2)
+		rooms.delete(room)
 
-		_, err := joinRoom(joinPayloadReuse)
+		_, err := rooms.join(joinPayloadReuse)
 		if err != nil {
 			t.Error("room id reuse failed")
 		}
@@ -94,8 +94,8 @@ func TestJoinRoom(t *testing.T) {
 		joinPayload1 := newJoinPayload("https://origin1", "room", "user-1", "mirror", 2)
 		joinPayload2 := newJoinPayload("https://origin2", "room", "user-2", "mirror", 2)
 
-		origin1Room, _ := joinRoom(joinPayload1)
-		origin2Room, _ := joinRoom(joinPayload2)
+		origin1Room, _ := rooms.join(joinPayload1)
+		origin2Room, _ := rooms.join(joinPayload2)
 
 		origin1RoomCount := origin1Room.userCount()
 		origin2RoomCount := origin2Room.userCount()

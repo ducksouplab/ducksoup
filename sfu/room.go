@@ -1,7 +1,6 @@
 package sfu
 
 import (
-	"errors"
 	"log"
 	"sync"
 	"time"
@@ -20,23 +19,12 @@ const (
 	Ending          = 10
 )
 
-// global state
-var (
-	mu        sync.Mutex
-	roomIndex map[string]*trialRoom
-)
-
-func init() {
-	mu = sync.Mutex{}
-	roomIndex = make(map[string]*trialRoom)
-}
-
-func (r *trialRoom) inspect() interface{} {
+func (r *room) inspect() interface{} {
 	return r.mixer.inspect()
 }
 
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
-type trialRoom struct {
+type room struct {
 	sync.RWMutex
 	// guarded by mutex
 	mixer               *mixer
@@ -52,21 +40,12 @@ type trialRoom struct {
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	qualifiedId  string
-	shortId      string
+	id           string
+	qualifiedId  string // prefixed by origin, used for indexing in roomStore
 	namespace    string
 	size         int
 	duration     int
 	neededTracks int
-}
-
-func (r *trialRoom) delete() {
-	// guard `roomIndex`
-	mu.Lock()
-	defer mu.Unlock()
-
-	delete(roomIndex, r.qualifiedId)
-	log.Printf("[info] [room#%s] deleted\n", r.shortId)
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -75,7 +54,7 @@ func qualifiedId(join types.JoinPayload) string {
 	return join.Origin + "#" + join.RoomId
 }
 
-func newRoom(qualifiedId string, join types.JoinPayload) *trialRoom {
+func newRoom(qualifiedId string, join types.JoinPayload) *room {
 	// process duration
 	duration := join.Duration
 	if duration < 1 {
@@ -102,9 +81,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *trialRoom {
 	helpers.EnsureDir("./data/" + join.Namespace)
 	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
 
-	shortId := join.RoomId
-
-	room := &trialRoom{
+	r := &room{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
 		connectedIndex:      connectedIndex,
@@ -114,25 +91,25 @@ func newRoom(qualifiedId string, join types.JoinPayload) *trialRoom {
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
 		qualifiedId:         qualifiedId,
-		shortId:             shortId,
+		id:                  join.RoomId,
 		namespace:           join.Namespace,
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
 	}
-	room.mixer = newMixer(room)
-	return room
+	r.mixer = newMixer(r)
+	return r
 }
 
-func (r *trialRoom) userCount() int {
+func (r *room) userCount() int {
 	return len(r.connectedIndex)
 }
 
-func (r *trialRoom) connectedUserCount() (count int) {
+func (r *room) connectedUserCount() (count int) {
 	return len(r.peerServerIndex)
 }
 
-func (r *trialRoom) countdown() {
+func (r *room) countdown() {
 	// blocking "end" event and delete
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-endTimer.C
@@ -152,48 +129,7 @@ func (r *trialRoom) countdown() {
 
 // API read-write
 
-func joinRoom(join types.JoinPayload) (*trialRoom, error) {
-	// guard `roomIndex`
-	mu.Lock()
-	defer mu.Unlock()
-
-	qualifiedId := qualifiedId(join)
-	userId := join.UserId
-
-	if r, ok := roomIndex[qualifiedId]; ok {
-		r.Lock()
-		defer r.Unlock()
-		connected, ok := r.connectedIndex[userId]
-		if ok {
-			// ok -> same user has previously connected
-			if connected {
-				// user is currently connected (second browser tab or device) -> forbidden
-				return nil, errors.New("duplicate")
-			} else {
-				// reconnects (for instance: page reload)
-				r.connectedIndex[userId] = true
-				r.joinedCountIndex[userId]++
-				return r, nil
-			}
-		} else if r.userCount() == r.size {
-			// room limit reached
-			return nil, errors.New("full")
-		} else {
-			// new user joined existing room
-			r.connectedIndex[userId] = true
-			r.joinedCountIndex[userId] = 1
-			log.Printf("[info] [room#%s] [user#%s] joined\n", join.RoomId, userId)
-			return r, nil
-		}
-	} else {
-		log.Printf("[info] [room#%s] [user#%s] created for origin: %s\n", join.RoomId, userId, join.Origin)
-		newRoom := newRoom(qualifiedId, join)
-		roomIndex[qualifiedId] = newRoom
-		return newRoom, nil
-	}
-}
-
-func (r *trialRoom) incInTracksReadyCount(fromPs *peerServer) {
+func (r *room) incInTracksReadyCount(fromPs *peerServer) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -204,10 +140,10 @@ func (r *trialRoom) incInTracksReadyCount(fromPs *peerServer) {
 	}
 
 	r.inTracksReadyCount++
-	log.Printf("[info] [room#%s] track updated count: %d\n", r.shortId, r.inTracksReadyCount)
+	log.Printf("[info] [room#%s] track updated count: %d\n", r.id, r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		log.Printf("[info] [room#%s] users are ready\n", r.shortId)
+		log.Printf("[info] [room#%s] users are ready\n", r.id)
 		close(r.waitForAllCh)
 		r.running = true
 		r.startedAt = time.Now()
@@ -220,7 +156,7 @@ func (r *trialRoom) incInTracksReadyCount(fromPs *peerServer) {
 	}
 }
 
-func (r *trialRoom) incOutTracksReadyCount() {
+func (r *room) incOutTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
 
@@ -233,14 +169,14 @@ func (r *trialRoom) incOutTracksReadyCount() {
 	}
 }
 
-func (r *trialRoom) decOutTracksReadyCount() {
+func (r *room) decOutTracksReadyCount() {
 	r.Lock()
 	defer r.Unlock()
 
 	r.outTracksReadyCount--
 }
 
-func (r *trialRoom) connectPeerServer(ps *peerServer) {
+func (r *room) connectPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
@@ -250,7 +186,7 @@ func (r *trialRoom) connectPeerServer(ps *peerServer) {
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *trialRoom) disconnectUser(userId string) {
+func (r *room) disconnectUser(userId string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -264,12 +200,12 @@ func (r *trialRoom) disconnectUser(userId string) {
 
 		if r.connectedUserCount() == 0 && !r.running {
 			// don't keep this room
-			r.delete()
+			rooms.delete(r)
 		}
 	}
 }
 
-func (r *trialRoom) addFiles(userId string, files []string) {
+func (r *room) addFiles(userId string, files []string) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -278,21 +214,21 @@ func (r *trialRoom) addFiles(userId string, files []string) {
 
 // API read
 
-func (r *trialRoom) joinedCountForUser(userId string) int {
+func (r *room) joinedCountForUser(userId string) int {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.joinedCountIndex[userId]
 }
 
-func (r *trialRoom) files() map[string][]string {
+func (r *room) files() map[string][]string {
 	r.RLock()
 	defer r.RUnlock()
 
 	return r.filesIndex
 }
 
-func (r *trialRoom) endingDelay() (delay int) {
+func (r *room) endingDelay() (delay int) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -306,7 +242,7 @@ func (r *trialRoom) endingDelay() (delay int) {
 	return
 }
 
-func (r *trialRoom) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
+func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 	for {
 		select {
 		case <-r.waitForAllCh:
@@ -315,14 +251,14 @@ func (r *trialRoom) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				log.Printf("[error] [room#%s] readRemoteWhileWaiting: %v\n", r.shortId, err)
+				log.Printf("[error] [room#%s] readRemoteWhileWaiting: %v\n", r.id, err)
 				return
 			}
 		}
 	}
 }
 
-func (r *trialRoom) runMixerSliceFromRemote(
+func (r *room) runMixerSliceFromRemote(
 	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
@@ -336,7 +272,7 @@ func (r *trialRoom) runMixerSliceFromRemote(
 	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[error] [room#%s] runMixerSliceFromRemote: %v\n", r.shortId, err)
+		log.Printf("[error] [room#%s] runMixerSliceFromRemote: %v\n", r.id, err)
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
