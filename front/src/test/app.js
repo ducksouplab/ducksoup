@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.1.1")
+    console.log("[DuckSoup test] v1.1.2")
 });
 
 let state;
@@ -37,6 +37,7 @@ const parseIntWithFallback = (raw, fallback) => {
 };
 
 const start = async ({
+    signalingUrl,
     isMirror: im,
     userId: uid,
     roomId: rid,
@@ -92,7 +93,7 @@ const start = async ({
     
     // full peerOptions
     const peerOptions = {
-        signalingUrl: `${wsProtocol}://${window.location.host}${pathPrefix}ws`,
+        signalingUrl,
         roomId,
         userId,
         duration,
@@ -137,6 +138,13 @@ const start = async ({
 
 document.addEventListener("DOMContentLoaded", async() => {
     reinitUX();
+
+    // Init signalingURL with default value
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
+    // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
+    const pathPrefix = pathPrefixhMatch[1];
+    document.getElementById("input-signaling-url").value = `${wsProtocol}://${window.location.host}${pathPrefix}ws`;
 
     const formSettings = document.getElementById("settings");
     formSettings.addEventListener("submit", (e) => {
