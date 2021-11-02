@@ -181,7 +181,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
-- DS_STATS_PASSWORD (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
+- DS_STATS_LOGIN (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - DS_STATS_PASSWORD (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - DS_NVIDIA (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
 - GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
