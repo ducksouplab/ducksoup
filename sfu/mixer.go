@@ -25,14 +25,6 @@ const (
 	signalingRetryWithDelay
 )
 
-func (m *mixer) inspect() interface{} {
-	output := make(map[string]interface{})
-	for _, slice := range m.sliceIndex {
-		output[slice.ID()] = slice.inspect()
-	}
-	return output
-}
-
 // mixer
 
 func newMixer(r *room) *mixer {

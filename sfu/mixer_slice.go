@@ -3,7 +3,6 @@ package sfu
 import (
 	"fmt"
 	"log"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -22,17 +21,6 @@ const (
 	statsPeriod             = 3000
 	logPeriod               = 7300
 )
-
-func (s *mixerSlice) inspect() interface{} {
-	// capitalize for JSON export
-	return struct {
-		IntputBitrate float64
-		OutputBitrate float64
-	}{
-		s.inputBitrate,
-		s.outputBitrate,
-	}
-}
 
 type mixerSlice struct {
 	sync.Mutex
@@ -54,8 +42,8 @@ type mixerSlice struct {
 	lastStats     time.Time
 	inputBits     int64
 	outputBits    int64
-	inputBitrate  float64
-	outputBitrate float64
+	inputBitrate  int64
+	outputBitrate int64
 	// status
 	endCh chan struct{} // stop processing when track is removed
 }
@@ -156,18 +144,18 @@ func (s *mixerSlice) startTickers() {
 	go func() {
 		for tickTime := range s.statsTicker.C {
 			s.Lock()
-			elpased := tickTime.Sub(s.lastStats).Seconds()
+			elapsed := tickTime.Sub(s.lastStats).Seconds()
 			// update bitrates
-			s.inputBitrate = float64(s.inputBits) / elpased
-			s.outputBitrate = float64(s.outputBits) / elpased
+			s.inputBitrate = s.inputBits / int64(elapsed)
+			s.outputBitrate = s.outputBits / int64(elapsed)
 			// reset cumulative bits and lastStats
 			s.inputBits = 0
 			s.outputBits = 0
 			s.lastStats = tickTime
 			s.Unlock()
 			// log
-			displayInputBitrateKbs := math.Round(s.inputBitrate / 1000)
-			displayOutputBitrateKbs := math.Round(s.outputBitrate / 1000)
+			displayInputBitrateKbs := s.inputBitrate / 1000
+			displayOutputBitrateKbs := s.outputBitrate / 1000
 			log.Printf("[info] [room#%s] [user#%s] [mixer] %s input bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayInputBitrateKbs)
 			log.Printf("[info] [room#%s] [user#%s] [mixer] %s output bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayOutputBitrateKbs)
 		}
@@ -208,13 +196,14 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 	}
 }
 
-func (l *mixerSlice) scanInput(buf []byte) {
+func (l *mixerSlice) scanInput(buf []byte, n int) {
 	packet := &rtp.Packet{}
 	packet.Unmarshal(buf)
 
-	inputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
 	l.Lock()
-	l.inputBits += int64(inputBits)
+	// estimation (x8 for bytes) not taking int account headers
+	// it seems using MarshalSize (like for outputBits below) does not give the right numbers due to packet 0-padding
+	l.inputBits += int64(n) * 8
 	l.Unlock()
 }
 
@@ -223,10 +212,15 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 	packet.Unmarshal(buf)
 	err = s.output.WriteRTP(packet)
 
-	outputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
-	s.Lock()
-	s.outputBits += int64(outputBits)
-	s.Unlock()
+	if err == nil {
+		go func() {
+			outputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
+			s.Lock()
+			s.outputBits += int64(outputBits)
+			s.Unlock()
+		}()
+	}
+
 	return
 }
 
@@ -287,7 +281,7 @@ func (s *mixerSlice) loop() {
 				}
 				pipeline.Push(buf[:i])
 				// for stats
-				s.scanInput(buf)
+				go s.scanInput(buf, i)
 			}
 		}
 	}

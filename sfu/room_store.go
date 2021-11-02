@@ -73,19 +73,3 @@ func (rs *roomStore) delete(r *room) {
 	delete(rs.index, r.qualifiedId)
 	log.Printf("[info] [room#%s] deleted\n", r.id)
 }
-
-// API
-
-func (rs *roomStore) Inspect() interface{} {
-	rs.Lock()
-	defer rs.Unlock()
-
-	output := make(map[string]interface{})
-	for _, room := range rs.index {
-		output[room.qualifiedId] = room.inspect()
-	}
-	if len(output) > 0 {
-		return output
-	}
-	return nil
-}

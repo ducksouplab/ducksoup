@@ -19,10 +19,6 @@ const (
 	Ending          = 10
 )
 
-func (r *room) inspect() interface{} {
-	return r.mixer.inspect()
-}
-
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees
 type room struct {
 	sync.RWMutex
