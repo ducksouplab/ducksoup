@@ -192,7 +192,11 @@ GStreamer settings are defined in `config/gst.yml`:
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
 
-DuckSoup SFU-related settings are defined in `config/sfu.yml`:
+DuckSoup server settings are defined in `config/server.yml`:
+
+- `generateStats` set to true to generate and expose server stats (see [Front-ends](#front-ends))
+
+DuckSoup SFU settings are defined in `config/sfu.yml`:
 
 - `audio` defines min/max/default values of target bitrates for output (reencoded) audio tracks
 - `video` defines min/max/default values of target bitrates for output (reencoded) video tracks

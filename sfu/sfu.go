@@ -10,7 +10,10 @@ func (rs *roomStore) inspect() interface{} {
 
 	report := make(map[string]interface{})
 	for _, room := range rs.index {
-		report[room.qualifiedId] = room.mixer.inspect()
+		mixerReport := room.mixer.inspect()
+		if mixerReport != nil {
+			report[room.qualifiedId] = mixerReport
+		}
 	}
 	if len(report) > 0 {
 		return report

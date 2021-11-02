@@ -70,7 +70,9 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("type") == "stats" {
 		// special path: ws for stats
-		stats.RunStatsServer(unsafeConn) // blocking
+		if config.GenerateStats { // protect endpoint according to server setting
+			stats.RunStatsServer(unsafeConn) // blocking
+		}
 	} else {
 		// main path: ws for peer signaling
 		sfu.RunPeerServer(r.Header.Get("Origin"), unsafeConn) // blocking
@@ -124,10 +126,12 @@ func ListenAndServe() {
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/room/").Handler(http.StripPrefix(webPrefix+"/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
 
-	// stats pages with basic auth
-	statsRouter := router.PathPrefix(webPrefix + "/stats").Subrouter()
-	statsRouter.Use(basicAuthWith(statsLogin, statsPassword))
-	statsRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/stats/", http.FileServer(http.Dir("./front/static/pages/stats/"))))
+	if config.GenerateStats {
+		// stats pages with basic auth
+		statsRouter := router.PathPrefix(webPrefix + "/stats").Subrouter()
+		statsRouter.Use(basicAuthWith(statsLogin, statsPassword))
+		statsRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/stats/", http.FileServer(http.Dir("./front/static/pages/stats/"))))
+	}
 
 	// port
 	port = os.Getenv("DS_PORT")
