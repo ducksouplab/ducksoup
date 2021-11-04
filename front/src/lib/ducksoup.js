@@ -32,7 +32,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.3.2");
+    console.log("[DuckSoup] v1.3.3");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -78,7 +78,11 @@ const forceMozillaMono = (sdp) => {
         .split("\r\n")
         .map((line) => {
             if (line.startsWith("a=fmtp:111")) {
-                return line.replace("stereo=1", "stereo=0");
+                if(line.includes("stereo=")) {
+                    return line.replace("stereo=1", "stereo=0");
+                } else {
+                    return `${line};stereo=0`;
+                }
             } else {
                 return line;
             }
