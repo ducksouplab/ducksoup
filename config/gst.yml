@@ -49,7 +49,9 @@ nv264:
   rtp:
     caps: application/x-rtp,encoding-name=H264 
     pay: rtph264pay config-interval=-1
-    depay: rtph264depay
+    depay: >-
+      rtph264depay !
+      h264parse 
   decode: nvh264dec
   encode:
     raw: >-
