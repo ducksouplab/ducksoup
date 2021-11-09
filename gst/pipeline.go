@@ -1,4 +1,4 @@
-// Package gst provides an easy API to create an appsink pipeline
+// Package gst provides an easy API to create a GStreamer pipeline
 package gst
 
 /*
@@ -9,17 +9,16 @@ import "C"
 import (
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"unsafe"
 
 	"github.com/creamlab/ducksoup/types"
+	"github.com/google/uuid"
 )
 
 // global state
 var (
-	nvidia            bool
-	forceEncodingSize bool
+	nvidia bool
 )
 
 func init() {
@@ -28,99 +27,17 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
-	// public
-	Files []string
-	// private
-	id                 string // same as local/output track id
-	join               types.JoinPayload
-	gstPipeline        *C.GstElement
-	outputTrack        types.TrackWriter
-	filePrefix         string
-	format             string
-	pliRequestCallback func()
+	id          string // same as local/output track id
+	join        types.JoinPayload
+	cPipeline   *C.GstElement
+	audioOutput types.TrackWriter
+	videoOutput types.TrackWriter
+	filePrefix  string
+	pliCallback func()
 }
 
-func newPipelineStr(join types.JoinPayload, filePrefix string, kind string, format string, fx string) (pipelineStr string) {
-	// special case for testing
-	if fx == "passthrough" {
-		pipelineStr = passthroughPipeline
-		return
-	}
-
-	var pipelineCodec codec
-	hasFx := len(fx) > 0
-
-	switch format {
-	case "opus":
-		pipelineCodec = config.Opus
-		if hasFx {
-			pipelineStr = opusFxPipeline
-		} else {
-			pipelineStr = opusRawPipeline
-		}
-	case "VP8":
-		pipelineCodec = config.VP8
-		if hasFx {
-			pipelineStr = vp8FxPipeline
-		} else {
-			pipelineStr = vp8RawPipeline
-		}
-	case "H264":
-		if nvidia && join.GPU {
-			pipelineCodec = config.NV264
-		} else {
-			pipelineCodec = config.X264
-		}
-		if hasFx {
-			pipelineStr = h264FxPipeline
-		} else {
-			pipelineStr = h264RawPipeline
-		}
-	default:
-		panic("Unhandled format " + format)
-	}
-	// set encoding and decoding
-	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferLatency}", config.RTPJitterBuffer.Latency, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${jitterBufferRetransmission}", config.RTPJitterBuffer.Retransmission, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${encodeFast}", pipelineCodec.Encode.Fast, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${encode}", pipelineCodec.Encode.Relaxed, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${decode}", pipelineCodec.Decode, -1)
-	// set file
-	pipelineStr = strings.Replace(pipelineStr, "${namespace}", join.Namespace, -1)
-	pipelineStr = strings.Replace(pipelineStr, "${prefix}", filePrefix, -1)
-	// set fx
-	if hasFx {
-		// add "fx" prefix to avoid name clashes (for instance if a user gives the name "src")
-		prefixedFx := strings.Replace(fx, "name=", "name=fx", 1)
-		pipelineStr = strings.Replace(pipelineStr, "${fx}", prefixedFx, -1)
-	}
-	// enforce size and framerate, VP8 muxer (webmux/matroskamux) does not handle well size changes, so we enforce them
-	if config.ForceEncodingSize || format == "VP8" {
-		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", ", width="+strconv.Itoa(join.Width), -1)
-		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", ", height="+strconv.Itoa(join.Height), -1)
-		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", ", framerate="+strconv.Itoa(join.FrameRate)+"/1", -1)
-	} else {
-		pipelineStr = strings.Replace(pipelineStr, "${widthCap}", "", -1)
-		pipelineStr = strings.Replace(pipelineStr, "${heightCap}", "", -1)
-		pipelineStr = strings.Replace(pipelineStr, "${framerateCap}", "", -1)
-	}
-	return
-}
-
-func fileName(namespace string, prefix string, kind string, suffix string) string {
-	ext := ".mkv"
-	if kind == "audio" {
-		ext = ".ogg"
-	}
-	return namespace + "/" + prefix + "-" + kind + "-" + suffix + ext
-}
-
-func allFiles(namespace string, prefix string, kind string, hasFx bool) []string {
-	if hasFx {
-		return []string{fileName(namespace, prefix, kind, "in"), fileName(namespace, prefix, kind, "fx")}
-	} else {
-		return []string{fileName(namespace, prefix, kind, "in")}
-	}
+func fileName(namespace string, prefix string, suffix string) string {
+	return namespace + "/" + prefix + "-" + suffix + ".mkv"
 }
 
 //export goStopCallback
@@ -129,14 +46,20 @@ func goStopCallback(cId *C.char) {
 	pipelines.delete(id)
 }
 
-//export goNewSampleCallback
-func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
+func writeNewSample(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 	id := C.GoString(cId)
 	pipeline, ok := pipelines.find(id)
 
 	if ok {
+		var output types.TrackWriter
+		if kind == "audio" {
+			output = pipeline.audioOutput
+		} else {
+			output = pipeline.videoOutput
+		}
+
 		buf := C.GoBytes(buffer, bufferLen)
-		if err := pipeline.outputTrack.Write(buf); err != nil {
+		if err := output.Write(buf); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
 			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
 			log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline] can't Write: %v\n", pipeline.join.RoomId, pipeline.join.UserId, id, err)
@@ -148,14 +71,24 @@ func goNewSampleCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pt
 	C.free(buffer)
 }
 
-//export goForceKeyUnitCallback
-func goForceKeyUnitCallback(cId *C.char) {
+//export goAudioCallback
+func goAudioCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
+	writeNewSample("audio", cId, buffer, bufferLen)
+}
+
+//export goVideoCallback
+func goVideoCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
+	writeNewSample("video", cId, buffer, bufferLen)
+}
+
+//export goPLICallback
+func goPLICallback(cId *C.char) {
 	id := C.GoString(cId)
 	pipeline, ok := pipelines.find(id)
 
 	if ok {
 		log.Printf("[info] [room#%s] [user#%s] [pipeline] PLI requested from GStreamer\n", pipeline.join.RoomId, pipeline.join.UserId)
-		pipeline.pliRequestCallback()
+		pipeline.pliCallback()
 	}
 }
 
@@ -166,11 +99,12 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(join types.JoinPayload, outputTrack types.TrackWriter, kind string, format string, fx string, filePrefix string, pliRequestCallback func()) *Pipeline {
+func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 
-	pipelineStr := newPipelineStr(join, filePrefix, kind, format, fx)
-	id := outputTrack.ID()
-	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] %v pipeline initialized\n", join.RoomId, join.UserId, id, kind)
+	pipelineStr := newPipelineDef(join, filePrefix)
+	id := uuid.New().String()
+
+	log.Printf("[info] [room#%s] [user#%s] [pipeline] pipeline initialized\n", join.RoomId, join.UserId)
 	log.Println(pipelineStr)
 
 	cPipelineStr := C.CString(pipelineStr)
@@ -179,37 +113,68 @@ func CreatePipeline(join types.JoinPayload, outputTrack types.TrackWriter, kind 
 	defer C.free(unsafe.Pointer(cId))
 
 	p := &Pipeline{
-		Files:              allFiles(join.Namespace, filePrefix, kind, len(fx) > 0),
-		id:                 id,
-		join:               join,
-		gstPipeline:        C.gstreamer_parse_pipeline(cPipelineStr, cId),
-		outputTrack:        outputTrack,
-		filePrefix:         filePrefix,
-		format:             format,
-		pliRequestCallback: pliRequestCallback,
+		id:         id,
+		join:       join,
+		cPipeline:  C.gstreamer_parse_pipeline(cPipelineStr, cId),
+		filePrefix: filePrefix,
 	}
 
 	pipelines.add(p)
 	return p
 }
 
+func (p *Pipeline) outputFiles() []string {
+	if p.join.AudioFx == "passthrough" && p.join.VideoFx == "passthrough" {
+		return nil
+	}
+	namespace := p.join.Namespace
+	hasFx := (len(p.join.AudioFx) > 0 && p.join.AudioFx != "passthrough") || (len(p.join.VideoFx) > 0 && p.join.VideoFx != "passthrough")
+	if hasFx {
+		return []string{fileName(namespace, p.filePrefix, "raw"), fileName(namespace, p.filePrefix, "fx")}
+	} else {
+		return []string{fileName(namespace, p.filePrefix, "raw")}
+	}
+}
+
+func (p *Pipeline) pushSample(src string, buffer []byte) {
+	s := C.CString(src)
+	defer C.free(unsafe.Pointer(s))
+
+	b := C.CBytes(buffer)
+	defer C.free(b)
+	C.gstreamer_push_buffer(s, p.cPipeline, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (f types.PushFunc, files []string) {
+	if kind == "audio" {
+		p.audioOutput = t
+	} else {
+		p.videoOutput = t
+	}
+	if p.audioOutput != nil && p.videoOutput != nil {
+		p.start()
+		files = p.outputFiles()
+	}
+	f = func(b []byte) {
+		p.pushSample(kind+"_src", b)
+	}
+	return
+}
+
+func (p *Pipeline) BindPLICallback(c func()) {
+	p.pliCallback = c
+}
+
 // start the GStreamer pipeline
-func (p *Pipeline) Start() {
-	C.gstreamer_start_pipeline(p.gstPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] started with recording prefix: %s/%s\n", p.join.RoomId, p.join.UserId, p.id, p.join.Namespace, p.filePrefix)
+func (p *Pipeline) start() {
+	C.gstreamer_start_pipeline(p.cPipeline)
+	log.Printf("[info] [room#%s] [user#%s] [pipeline] started with recording prefix: %s/%s\n", p.join.RoomId, p.join.UserId, p.join.Namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
-	C.gstreamer_stop_pipeline(p.gstPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] stop requested\n", p.join.RoomId, p.join.UserId, p.id)
-}
-
-// push a buffer on the appsrc of the GStreamer Pipeline
-func (p *Pipeline) Push(buffer []byte) {
-	b := C.CBytes(buffer)
-	defer C.free(b)
-	C.gstreamer_push_buffer(p.gstPipeline, b, C.int(len(buffer)))
+	C.gstreamer_stop_pipeline(p.cPipeline)
+	log.Printf("[info] [room#%s] [user#%s] [pipeline] stop requested\n", p.join.RoomId, p.join.UserId)
 }
 
 func (p *Pipeline) getPropertyInt(name string, prop string) int {
@@ -219,7 +184,7 @@ func (p *Pipeline) getPropertyInt(name string, prop string) int {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	return int(C.gstreamer_get_property_int(p.gstPipeline, cName, cProp))
+	return int(C.gstreamer_get_property_int(p.cPipeline, cName, cProp))
 }
 
 func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
@@ -231,7 +196,7 @@ func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	C.gstreamer_set_property_int(p.gstPipeline, cName, cProp, cValue)
+	C.gstreamer_set_property_int(p.cPipeline, cName, cProp, cValue)
 }
 
 func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
@@ -243,41 +208,50 @@ func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	C.gstreamer_set_property_float(p.gstPipeline, cName, cProp, cValue)
+	C.gstreamer_set_property_float(p.cPipeline, cName, cProp, cValue)
 }
 
-func (p *Pipeline) SetEncodingRate(value64 uint64) {
-	value := int(value64)
+func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/opus/opusenc.html?gi-language=c#opusenc:bitrate
+	value := int(value64)
 	prop := "bitrate"
-	if p.format == "VP8" {
-		// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
-		prop = "target-bitrate"
-	} else if p.format == "H264" {
-		// in kbit/s for x264enc and nvh264enc
-		value = value / 1000
-		if p.join.GPU {
-			// acts both on bitrate and max-bitrate for nvh264enc
-			p.setPropertyInt("encoder", "max-bitrate", value*320/256)
+	if kind == "audio" {
+		p.setPropertyInt("audio_encoder_fx", prop, value)
+	} else {
+		names := []string{"video_encoder_raw", "video_encoder_fx"}
+		if p.join.VideoFormat == "VP8" {
+			// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
+			prop = "target-bitrate"
+		} else if p.join.VideoFormat == "H264" {
+			// in kbit/s for x264enc and nvh264enc
+			value = value / 1000
+			if p.join.GPU {
+				// acts both on bitrate and max-bitrate for nvh264enc
+				for _, n := range names {
+					p.setPropertyInt(n, "max-bitrate", value*320/256)
+				}
+			}
+		}
+		for _, n := range names {
+			p.setPropertyInt(n, prop, value)
 		}
 	}
-	p.setPropertyInt("encoder", prop, value)
 }
 
-func (p *Pipeline) SetFxProperty(name string, prop string, value float32) {
+func (p *Pipeline) SetFxProperty(kind string, name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
-	p.setPropertyFloat("fx"+name, prop, value)
+	p.setPropertyFloat(kind+"_fx_"+name, prop, value)
 }
 
-func (p *Pipeline) GetFxProperty(name string, prop string) float32 {
+func (p *Pipeline) GetFxProperty(kind string, name string, prop string) float32 {
 	// fx prefix needed (added during pipeline initialization)
-	cName := C.CString("fx" + name)
+	cName := C.CString(kind + "_fx_" + name)
 	cProp := C.CString(prop)
 
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
-	return float32(C.gstreamer_get_property_float(p.gstPipeline, cName, cProp))
+	return float32(C.gstreamer_get_property_float(p.cPipeline, cName, cProp))
 }

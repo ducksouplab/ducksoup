@@ -110,14 +110,13 @@ In this example, `proprety1` has an initial value of `1.0` and is updated to `1.
 
 For the time being only float values are allowed when controlling properties.
 
-### Fake effects
+### Fake effect
 
-You may use one of these two reserved effect names (either for `audioFx` or `videoFx`):
+You may use this reserved effect name (either for `audioFx` or `videoFx`):
 
-- `forward` tells DuckSoup to forward RTP packets directly from the incoming track to the outcoming one, without even involving GStreamer
-- `passthrough` instantiates a minimal GStreamer that copies source to sink (input to output) without any depaying/decoding nor processing
+- `passthrough` instantiates a minimal GStreamer that copies source to sink (input to output) without any depaying/decoding, processing nor file recording
 
-They may be useful for debugging streaming quality issues, but won't even trigger file recording.
+It may be useful for debugging streaming quality issues, but won't even trigger file recording.
 
 ### Player API
 
@@ -188,7 +187,6 @@ Security related settings and settings defining how DuckSoup is run on host are 
 
 GStreamer settings are defined in `config/gst.yml`:
 
-- `forceEncodingSize` set to true to force width/height/framerate of the encoded video streams. If false, width/height/framerate of output streams are identical to input (browser sent) streams.
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
 

@@ -70,7 +70,7 @@ GstElement *gstreamer_parse_pipeline(char *pipelineStr, char *id)
 }
 
 
-GstFlowReturn gstreamer_new_sample_handler(GstElement *object, gpointer data)
+GstFlowReturn gstreamer_new_audio_sample(GstElement *object, gpointer data)
 {
     GstSample *sample = NULL;
     GstBuffer *buffer = NULL;
@@ -88,13 +88,40 @@ GstFlowReturn gstreamer_new_sample_handler(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goNewSampleCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+            goAudioCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
         }
         gst_sample_unref(sample);
     }
 
     return GST_FLOW_OK;
 }
+
+GstFlowReturn gstreamer_new_video_sample(GstElement *object, gpointer data)
+{
+    GstSample *sample = NULL;
+    GstBuffer *buffer = NULL;
+    gpointer copy = NULL;
+    gsize copy_size = 0;
+    GstElement *pipeline = (GstElement*) data;
+
+    // use previously set name as id
+    char *id = gst_element_get_name(pipeline);
+
+    g_signal_emit_by_name(object, "pull-sample", &sample);
+    if (sample)
+    {
+        buffer = gst_sample_get_buffer(sample);
+        if (buffer)
+        {
+            gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
+            goVideoCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+        }
+        gst_sample_unref(sample);
+    }
+
+    return GST_FLOW_OK;
+}
+
 
 // TODO use <gst/video/video.h> implementation
 gboolean gst_event_is (GstEvent * event, const gchar * name)
@@ -126,7 +153,7 @@ static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, 
 
     if (gst_event_is (event, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME)) {
         g_print ("[info] [gst.c] pad_probe got upstream forceKeyUnit\n");
-        goForceKeyUnitCallback(id);
+        goPLICallback(id);
     }
     // else if (gst_event_is (event, GST_RTP_EVENT_RETRANSMISSION_REQUEST)) {
     //     // TODO handle as a nack and possibly disable pion nack interceptor
@@ -138,21 +165,23 @@ static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, 
 void gstreamer_start_pipeline(GstElement *pipeline)
 {
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
-
     gst_bus_add_watch(bus, gstreamer_bus_call, pipeline);
     gst_object_unref(bus);
-
-    GstElement *appsrc = gst_bin_get_by_name(GST_BIN(pipeline), "src");
-    GstPad *srcpad = gst_element_get_static_pad(appsrc, "src");
-    GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");
     // src
-    gst_pad_add_probe (srcpad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, gstreamer_input_track_event_pad_probe_cb, pipeline, NULL);
-    gst_object_unref(appsrc);
-    gst_object_unref(srcpad);
-    // sink
-    g_object_set(appsink, "emit-signals", TRUE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(gstreamer_new_sample_handler), pipeline);
-    gst_object_unref(appsink);
+    GstElement *video_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_src");
+    GstPad *video_src_pad = gst_element_get_static_pad(video_src, "src");
+    gst_pad_add_probe (video_src_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, gstreamer_input_track_event_pad_probe_cb, pipeline, NULL);
+    gst_object_unref(video_src);
+    gst_object_unref(video_src_pad);
+    // sinks
+    GstElement *audio_sink = gst_bin_get_by_name(GST_BIN(pipeline), "audio_sink");
+    GstElement *video_sink = gst_bin_get_by_name(GST_BIN(pipeline), "video_sink");
+    g_object_set(audio_sink, "emit-signals", TRUE, NULL);
+    g_signal_connect(audio_sink, "new-sample", G_CALLBACK(gstreamer_new_audio_sample), pipeline);
+    gst_object_unref(audio_sink);
+    g_object_set(video_sink, "emit-signals", TRUE, NULL);
+    g_signal_connect(video_sink, "new-sample", G_CALLBACK(gstreamer_new_video_sample), pipeline);
+    gst_object_unref(video_sink);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
@@ -174,9 +203,9 @@ void gstreamer_stop_pipeline(GstElement *pipeline)
     }
 }
 
-void gstreamer_push_buffer(GstElement *pipeline, void *buffer, int len)
+void gstreamer_push_buffer(char *srcname, GstElement *pipeline, void *buffer, int len)
 {
-    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), "src");
+    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
     if (src != NULL)
     {
         gpointer p = g_memdup(buffer, len);

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -24,6 +25,7 @@ type peerServer struct {
 	ws         *wsConn
 	audioSlice *mixerSlice
 	videoSlice *mixerSlice
+	pipeline   *gst.Pipeline
 	closed     bool
 	closedCh   chan struct{}
 }
@@ -33,6 +35,9 @@ func newPeerServer(
 	r *room,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
+
+	pipeline := gst.CreatePipeline(join, r.filePrefixWithCount(join))
+
 	ps := &peerServer{
 		userId:   join.UserId,
 		roomId:   r.id,
@@ -41,6 +46,7 @@ func newPeerServer(
 		r:        r,
 		pc:       pc,
 		ws:       ws,
+		pipeline: pipeline,
 		closed:   false,
 		closedCh: make(chan struct{}),
 	}

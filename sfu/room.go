@@ -1,6 +1,7 @@
 package sfu
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -105,6 +106,15 @@ func (r *room) connectedUserCount() (count int) {
 	return len(r.peerServerIndex)
 }
 
+func (r *room) filePrefixWithCount(join types.JoinPayload) string {
+	connectionCount := r.joinedCountForUser(join.UserId)
+	// time room user count
+	return time.Now().Format("20060102-150405.000") +
+		"-r-" + join.RoomId +
+		"-u-" + join.UserId +
+		"-c-" + fmt.Sprint(connectionCount)
+}
+
 func (r *room) countdown() {
 	// blocking "end" event and delete
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
@@ -160,7 +170,7 @@ func (r *room) incOutTracksReadyCount() {
 
 	if r.outTracksReadyCount == r.neededTracks {
 		// TOFIX without this timeout, some tracks are not sent to peers,
-		<-time.After(600 * time.Millisecond)
+		<-time.After(1000 * time.Millisecond)
 		go r.mixer.managedUpdateSignaling("all processed tracks are ready")
 	}
 }

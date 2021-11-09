@@ -2,48 +2,48 @@ package gst
 
 import (
 	"log"
+	"text/template"
 
 	"github.com/creamlab/ducksoup/helpers"
 	"gopkg.in/yaml.v2"
 )
 
 type gstreamerConfig struct {
-	ForceEncodingSize bool `yaml:"forceEncodingSize"`
-	RTPJitterBuffer   struct {
-		Latency        string
-		Retransmission string
-	} `yaml:"rtpJitterBuffer"`
-	VP8   codec `yaml:"vp8"`
-	X264  codec
-	NV264 codec `yaml:"nv264"`
-	Opus  codec
+	RTPJitterBuffer rtpJitterBuffer `yaml:"rtpJitterBuffer"`
+	VP8             codec           `yaml:"vp8"`
+	X264            codec
+	NV264           codec `yaml:"nv264"`
+	Opus            codec
+}
+
+type rtpJitterBuffer struct {
+	Latency        string
+	Retransmission string
 }
 
 type codec struct {
 	Decode string
 	Encode struct {
-		Fast    string
-		Relaxed string
+		Raw string
+		Fx  string
+	}
+	Rtp struct {
+		Caps  string
+		Pay   string
+		Depay string
 	}
 }
 
-var opusFxPipeline string
-var opusRawPipeline string
-var vp8FxPipeline string
-var vp8RawPipeline string
-var h264FxPipeline string
-var h264RawPipeline string
-var passthroughPipeline string
+var pipelineTemplater *template.Template
 var config gstreamerConfig
 
 func init() {
-	opusFxPipeline = helpers.ReadFile("config/pipelines/opus-fx-rec.txt")
-	opusRawPipeline = helpers.ReadFile("config/pipelines/opus-nofx-rec.txt")
-	vp8FxPipeline = helpers.ReadFile("config/pipelines/vp8-fx-rec.txt")
-	vp8RawPipeline = helpers.ReadFile("config/pipelines/vp8-nofx-rec.txt")
-	h264FxPipeline = helpers.ReadFile("config/pipelines/h264-fx-rec.txt")
-	h264RawPipeline = helpers.ReadFile("config/pipelines/h264-nofx-rec.txt")
-	passthroughPipeline = helpers.ReadFile("config/pipelines/passthrough.txt")
+	var err error
+	pipelineTemplateString := helpers.ReadFile("config/pipeline.gtpl")
+	pipelineTemplater, err = template.New("pipelineTemplate").Parse(pipelineTemplateString)
+	if err != nil {
+		panic(err)
+	}
 
 	f, err := helpers.Open("config/gst.yml")
 	if err != nil {

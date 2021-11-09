@@ -1,38 +1,62 @@
-forceEncodingSize: true
 rtpJitterBuffer: 
   latency: "140"
   retransmission: "false"
-vp8:
-  decode: "vp8dec"
-  encode:
-    fast: >-
-      vp8enc name=encoder deadline=1 cpu-used=4 end-usage=1 target-bitrate=500000 
-      undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
-    relaxed: >-
-      vp8enc deadline=1 cpu-used=4 end-usage=1 target-bitrate=800000 
-      undershoot=95 keyframe-max-dist=999999 max-quantizer=56
-x264:
-  decode: "avdec_h264"
-  encode:
-    fast: >-
-      x264enc name=encoder pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.log 
-      speed-preset=ultrafast tune=zerolatency qos=true !
-      video/x-h264, profile=high
-    relaxed: >-
-      x264enc pass=17 multipass-cache-file=data/${namespace}/logs/${prefix}.x264_pass.relaxed.log 
-      speed-preset=ultrafast !
-      video/x-h264, profile=high
-nv264:
-  decode: "nvh264dec"
-  encode:
-    fast: >-
-      nvh264enc name=encoder rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
-      video/x-h264, profile=high
-    relaxed: >-
-      nvh264enc rc-mode=3 preset=4 gop-size=15 !
-      video/x-h264, profile=high
 opus:
+  rtp:
+    caps: application/x-rtp,payload=111,encoding-name=OPUS 
+    pay: rtpopuspay
+    depay: >-
+      rtpopusdepay !
+      opusparse 
   decode: "decodebin"
   encode:
-    fast: "opusenc name=encoder audio-type=2048 bitrate-type=1 perfect-timestamp=true"
-    relaxed: "opusenc audio-type=2048 bitrate-type=1"
+    fx: >-
+      opusenc name=audio_encoder_fx audio-type=2048 bitrate-type=1 perfect-timestamp=true !
+      opusparse
+vp8:
+  rtp:
+    caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
+    pay: rtpvp8pay
+    depay: rtpvp8depay
+  decode: "vp8dec"
+  encode:
+    raw: >-
+      vp8enc name=video_encoder_in deadline=1 cpu-used=4 end-usage=1
+      undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
+    fx: >-
+      vp8enc name=video_encoder_fx deadline=1 cpu-used=4 end-usage=1
+      undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
+x264:
+  rtp:
+    caps: application/x-rtp,encoding-name=H264 
+    pay: rtph264pay config-interval=-1
+    depay: >-
+      rtph264depay !
+      h264parse 
+  decode: avdec_h264
+  encode:
+    raw: >-
+      x264enc name=video_encoder_raw pass=17 multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.raw.log 
+      speed-preset=ultrafast tune=zerolatency qos=true !
+      h264parse !
+      video/x-h264, profile=high
+    fx: >-
+      x264enc name=video_encoder_fx pass=17 multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.fx.log 
+      speed-preset=ultrafast tune=zerolatency qos=true !
+      video/x-h264, profile=high !
+      h264parse 
+nv264:
+  rtp:
+    caps: application/x-rtp,encoding-name=H264 
+    pay: rtph264pay config-interval=-1
+    depay: rtph264depay
+  decode: nvh264dec
+  encode:
+    raw: >-
+      nvh264enc name=video_encoder_raw rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
+      h264parse !
+      video/x-h264, profile=high
+    fx: >-
+      nvh264enc name=video_encoder_fx rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
+      h264parse !
+      video/x-h264, profile=high

@@ -1,15 +1,14 @@
 package sfu
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/sequencing"
-	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 )
@@ -25,6 +24,7 @@ const (
 type mixerSlice struct {
 	sync.Mutex
 	fromPs *peerServer
+	kind   string
 	// webrtc
 	input    *webrtc.TrackRemote
 	output   *webrtc.TrackLocalStaticRTP
@@ -62,30 +62,17 @@ func minUint64Slice(v []uint64) (min uint64) {
 	return
 }
 
-func filePrefixWithCount(join types.JoinPayload, r *room) string {
-	connectionCount := r.joinedCountForUser(join.UserId)
-	// time room user count
-	return time.Now().Format("20060102-150405.000") +
-		"-r-" + join.RoomId +
-		"-u-" + join.UserId +
-		"-c-" + fmt.Sprint(connectionCount)
-}
-
-func parseFx(kind string, join types.JoinPayload) (fx string) {
-	if kind == "video" {
-		fx = join.VideoFx
-	} else {
-		fx = join.AudioFx
-	}
-	return
-}
-
 func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (slice *mixerSlice, err error) {
 	// create a new mixerSlice with:
 	// - the same codec format as the incoming/remote one
 	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
 	// - a streamId shared among peerServer tracks (audio/video)
 	// newId := uuid.New().String()
+	kind := remoteTrack.Kind().String()
+	if kind != "audio" && kind != "video" {
+		return nil, errors.New("invalid kind")
+	}
+
 	newId := remoteTrack.ID()
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, newId, ps.streamId)
 
@@ -95,11 +82,13 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 
 	slice = &mixerSlice{
 		fromPs: ps,
+		kind:   kind,
 		// webrtc
 		input:    remoteTrack,
 		output:   localTrack,
 		receiver: receiver, // TODO read RTCP?
 		// processing
+		pipeline:          ps.pipeline,
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 		// controller
 		senderControllerIndex: map[string]*senderController{},
@@ -135,7 +124,7 @@ func (s *mixerSlice) startTickers() {
 					s.Lock()
 					s.optimalBitrate = sliceRate
 					s.Unlock()
-					s.pipeline.SetEncodingRate(sliceRate)
+					s.pipeline.SetEncodingRate(s.kind, sliceRate)
 				}
 			}
 		}
@@ -225,64 +214,42 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 }
 
 func (s *mixerSlice) loop() {
-	join, room, pc, roomId, userId := s.fromPs.join, s.fromPs.r, s.fromPs.pc, s.fromPs.r.id, s.fromPs.userId
-	kind := s.input.Kind().String()
-	fx := parseFx(kind, join)
+	pipeline, room, pc, roomId, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.pc, s.fromPs.r.id, s.fromPs.userId
 
-	if fx == "forward" {
-		// special case for testing: write directly to mixerSlice
-		for {
-			// Read RTP packets being sent to Pion
-			rtp, _, err := s.input.ReadRTP()
-			if err != nil {
-				return
-			}
-			if err := s.output.WriteRTP(rtp); err != nil {
-				return
-			}
-		}
-	} else {
-		// main case (with GStreamer): write/push to pipeline which in turn outputs to mixerSlice
-		filePrefix := filePrefixWithCount(join, room)
-		format := strings.Split(s.input.Codec().RTPCodecCapability.MimeType, "/")[1]
-
-		// create and start pipeline
-		pliRequestCallback := func() {
+	// returns a callback to push buffer to
+	pushToPipeline, outputFiles := pipeline.BindTrack(s.kind, s)
+	if s.kind == "video" {
+		pipeline.BindPLICallback(func() {
 			pc.throttledPLIRequest()
-		}
-		pipeline := gst.CreatePipeline(join, s, kind, format, fx, filePrefix, pliRequestCallback)
-		s.pipeline = pipeline
+		})
+	}
+	if outputFiles != nil {
+		room.addFiles(userId, outputFiles)
+	}
+	s.startTickers()
 
-		pipeline.Start()
-		room.addFiles(userId, pipeline.Files)
-		s.startTickers()
+	defer func() {
+		log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", roomId, userId, s.kind)
+		s.stop()
+	}()
 
-		defer func() {
-			log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", roomId, userId, kind)
-			s.stop()
-			if r := recover(); r != nil {
-				log.Printf("[recov] [room#%s] [user#%s] [%s track] recover\n", roomId, userId, kind)
-			}
-		}()
-
-		buf := make([]byte, defaultMTU)
-		for {
-			select {
-			case <-room.endCh:
-				// trial is over, no need to trigger signaling on every closing track
+	buf := make([]byte, defaultMTU)
+	for {
+		select {
+		case <-room.endCh:
+			// trial is over, no need to trigger signaling on every closing track
+			return
+		case <-s.fromPs.closedCh:
+			// peer may quit early (for instance page refresh), other peers need to be updated
+			return
+		default:
+			i, _, readErr := s.input.Read(buf)
+			if readErr != nil {
 				return
-			case <-s.fromPs.closedCh:
-				// peer may quit early (for instance page refresh), other peers need to be updated
-				return
-			default:
-				i, _, readErr := s.input.Read(buf)
-				if readErr != nil {
-					return
-				}
-				pipeline.Push(buf[:i])
-				// for stats
-				go s.scanInput(buf, i)
 			}
+			pushToPipeline(buf[:i])
+			// for stats
+			go s.scanInput(buf, i)
 		}
 	}
 }
@@ -298,12 +265,12 @@ func (s *mixerSlice) controlFx(payload controlPayload) {
 
 	duration := payload.Duration
 	if duration == 0 {
-		s.pipeline.SetFxProperty(payload.Name, payload.Property, payload.Value)
+		s.pipeline.SetFxProperty(s.kind, payload.Name, payload.Property, payload.Value)
 	} else {
 		if duration > maxInterpolatorDuration {
 			duration = maxInterpolatorDuration
 		}
-		oldValue := s.pipeline.GetFxProperty(payload.Name, payload.Property)
+		oldValue := s.pipeline.GetFxProperty(s.kind, payload.Name, payload.Property)
 		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
 
 		s.Lock()
@@ -324,7 +291,7 @@ func (s *mixerSlice) controlFx(payload controlPayload) {
 				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
-					s.pipeline.SetFxProperty(payload.Name, payload.Property, currentValue)
+					s.pipeline.SetFxProperty(s.kind, payload.Name, payload.Property, currentValue)
 				} else {
 					return
 				}

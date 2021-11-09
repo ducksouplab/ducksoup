@@ -22,3 +22,5 @@ type TrackWriter interface {
 	ID() string
 	Write(buf []byte) error
 }
+
+type PushFunc func([]byte)
