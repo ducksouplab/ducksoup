@@ -130,7 +130,8 @@ func (r *room) countdown() {
 
 	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
-	// actual deleting is done when all users have disconnected, see disconnectUser
+	// actual deleting is done when all users have disconnected, see disconnectUser, except when room is already empty
+	r.deleteIfEmpty()
 }
 
 // API read-write
@@ -190,6 +191,16 @@ func (r *room) connectPeerServer(ps *peerServer) {
 	}()
 
 	r.peerServerIndex[ps.userId] = ps
+}
+
+func (r *room) deleteIfEmpty() {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.connectedUserCount() == 0 && !r.running {
+		// don't keep this room
+		rooms.delete(r)
+	}
 }
 
 func (r *room) disconnectUser(userId string) {
