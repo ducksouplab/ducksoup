@@ -85,6 +85,7 @@ video_src. !
         videoconvert ! 
         {{.VideoFx}} ! 
         videoconvert ! 
+        video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg ! 
         {{.Video.Encode.Fx}} !
 
         tee name=tee_video_fx ! 
