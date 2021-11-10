@@ -52,7 +52,7 @@ nv264:
     depay: >-
       rtph264depay !
       h264parse 
-  decode: nvh264dec
+  decode: avdec_h264
   encode:
     raw: >-
       nvh264enc name=video_encoder_raw rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
