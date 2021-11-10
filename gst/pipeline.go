@@ -136,8 +136,8 @@ func (p *Pipeline) outputFiles() []string {
 	}
 }
 
-func (p *Pipeline) pushSample(src string, buffer []byte) {
-	s := C.CString(src)
+func (p *Pipeline) PushRTP(kind string, buffer []byte) {
+	s := C.CString(kind + "_src")
 	defer C.free(unsafe.Pointer(s))
 
 	b := C.CBytes(buffer)
@@ -145,7 +145,16 @@ func (p *Pipeline) pushSample(src string, buffer []byte) {
 	C.gstreamer_push_buffer(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
-func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (f types.PushFunc, files []string) {
+func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
+	s := C.CString(kind + "_buffer")
+	defer C.free(unsafe.Pointer(s))
+
+	b := C.CBytes(buffer)
+	defer C.free(b)
+	C.gstreamer_push_rtcp_buffer(s, p.cPipeline, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (files []string) {
 	if kind == "audio" {
 		p.audioOutput = t
 	} else {
@@ -154,9 +163,6 @@ func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (f types.PushFunc
 	if p.audioOutput != nil && p.videoOutput != nil {
 		p.start()
 		files = p.outputFiles()
-	}
-	f = func(b []byte) {
-		p.pushSample(kind+"_src", b)
 	}
 	return
 }

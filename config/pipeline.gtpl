@@ -17,7 +17,7 @@ audio_src. !
 {{ else }}
     {{.Audio.Rtp.Caps}} ! 
     {{if .AudioFx}}
-        rtpjitterbuffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
+        rtpjitterbuffer name=audio_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
         {{.Audio.Rtp.Depay}} !
         tee name=tee_opus_raw ! 
         queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -41,7 +41,7 @@ audio_src. !
     {{else}}
         tee name=tee_opus_raw ! 
         queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-        rtpjitterbuffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
+        rtpjitterbuffer name=audio_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
         {{.Audio.Rtp.Depay}} !
         {{/* audio stream has to be written to two files if there is a video fx*/}}
         {{if and .VideoFx (ne .VideoFx "passthrough")}}
@@ -67,7 +67,7 @@ video_src. !
 {{ else }}
     {{.Video.Rtp.Caps}} ! 
     {{if .VideoFx}}
-        rtpjitterbuffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
+        rtpjitterbuffer name=video_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
         {{.Video.Rtp.Depay}} ! 
         {{.Video.Decode}} !
         videoconvert ! 
@@ -99,7 +99,7 @@ video_src. !
     {{else}}
         tee name=tee_video_raw ! 
         queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
-        rtpjitterbuffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
+        rtpjitterbuffer name=video_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
         {{.Video.Rtp.Depay}} ! 
         {{.Video.Decode}} !
         videoconvert ! 

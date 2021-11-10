@@ -12,6 +12,8 @@ A few notes about GStreamer
 
 - use codec without B-frames (since they rely on future keyframes)
 
+- `nvh264dec` VS `avdec_h264`, to be investigated: when enabling TWCC in engine.go, `nvh264dec` crashes GStreamer (`failed to decode picture`). That's for the time being you use CPU H264 decoding even if GPU acceleration is requested (will be used only for encoding)
+
 To try later:
 
 - do-timestamp=true on appsrc

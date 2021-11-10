@@ -7,7 +7,6 @@ import (
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
-	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -148,17 +147,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 		}
 	}
 
-	m.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
-		webrtc.RTPCodecTypeVideo,
-	)
-	m.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESRTPStreamIDURI},
-		webrtc.RTPCodecTypeVideo,
-	)
-
 	i := &interceptor.Registry{}
-	// other option is to customize what interceptors to enable, by using engine/interceptor.go#RegisterInterceptors
 	if err := registerInterceptors(m, i); err != nil {
 		log.Println("[error] [engine] could not register default interceptors")
 	}

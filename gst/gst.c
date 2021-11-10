@@ -182,6 +182,22 @@ void gstreamer_start_pipeline(GstElement *pipeline)
     g_object_set(video_sink, "emit-signals", TRUE, NULL);
     g_signal_connect(video_sink, "new-sample", G_CALLBACK(gstreamer_new_video_sample), pipeline);
     gst_object_unref(video_sink);
+    // buffer request pad
+    GstElement *audio_buffer = gst_bin_get_by_name(GST_BIN(pipeline), "audio_buffer");
+    GstElement *video_buffer = gst_bin_get_by_name(GST_BIN(pipeline), "video_buffer");
+
+    // TODO push_rtcp does not work
+    // TODO deprecated gst_element_get_request_pad https://gitlab.freedesktop.org/gstreamer/gst-docs/-/merge_requests/152
+    // update when GStreamer 1.20 is out
+    // GstPad *audio_rtcp_pad = gst_element_get_request_pad (audio_buffer, "sink_rtcp");
+    // GstPad *video_rtcp_pad = gst_element_get_request_pad (video_buffer, "sink_rtcp");
+    // gst_pad_activate_mode (audio_rtcp_pad, GST_PAD_MODE_PULL, TRUE);
+    // gst_pad_activate_mode (video_rtcp_pad, GST_PAD_MODE_PULL, TRUE);
+    // gst_object_unref(audio_buffer);
+    // gst_object_unref(video_buffer);
+    // gst_object_unref(audio_rtcp_pad);
+    // gst_object_unref(video_rtcp_pad);
+
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
@@ -203,9 +219,10 @@ void gstreamer_stop_pipeline(GstElement *pipeline)
     }
 }
 
-void gstreamer_push_buffer(char *srcname, GstElement *pipeline, void *buffer, int len)
+void gstreamer_push_buffer(char *name, GstElement *pipeline, void *buffer, int len)
 {
-    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
+    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
     if (src != NULL)
     {
         gpointer p = g_memdup(buffer, len);
@@ -213,6 +230,25 @@ void gstreamer_push_buffer(char *srcname, GstElement *pipeline, void *buffer, in
         gst_app_src_push_buffer(GST_APP_SRC(src), buffer);
         gst_object_unref(src);
     }
+}
+
+void gstreamer_push_rtcp_buffer(char *name, GstElement *pipeline, void *buffer, int len)
+{
+    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    GstPad *rtcp_sink_pad = gst_element_get_static_pad(src, "sink_rtcp");
+    gst_object_unref(src);
+
+    g_print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+    
+    if (rtcp_sink_pad != NULL)
+    {
+        g_print("<<<<<<<<<<<<<<<\n");
+        gpointer p = g_memdup(buffer, len);
+        GstBuffer *buffer = gst_buffer_new_wrapped(p, len);
+        gst_pad_pull_range (rtcp_sink_pad, 0, len, &buffer);
+        gst_object_unref(rtcp_sink_pad);
+    }
+
 }
 
 float gstreamer_get_property_float(GstElement *pipeline, char *name, char *prop) {
