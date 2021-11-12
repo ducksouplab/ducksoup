@@ -3,7 +3,6 @@ package sfu
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -11,6 +10,8 @@ import (
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -46,6 +47,8 @@ type mixerSlice struct {
 	outputBitrate int64
 	// status
 	endCh chan struct{} // stop processing when track is removed
+	// log
+	logger zerolog.Logger
 }
 
 // helpers
@@ -80,6 +83,11 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		return
 	}
 
+	logger := log.With().
+		Str("room", ps.roomId).
+		Str("fromUser", ps.userId).
+		Logger()
+
 	slice = &mixerSlice{
 		fromPs: ps,
 		kind:   kind,
@@ -98,7 +106,8 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		logTicker:   time.NewTicker(logPeriod * time.Millisecond),
 		lastStats:   time.Now(),
 		// status
-		endCh: make(chan struct{}),
+		endCh:  make(chan struct{}),
+		logger: logger,
 	}
 	return
 }
@@ -109,8 +118,6 @@ func (s *mixerSlice) ID() string {
 }
 
 func (s *mixerSlice) startTickers() {
-	roomId, userId := s.fromPs.r.id, s.fromPs.userId
-
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
 		for range s.encoderTicker.C {
@@ -145,8 +152,8 @@ func (s *mixerSlice) startTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s input bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayInputBitrateKbs)
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s output bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logger.Info().Msgf("[ms] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logger.Info().Msgf("[ms] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 
@@ -155,7 +162,7 @@ func (s *mixerSlice) startTickers() {
 		go func() {
 			for range s.logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", s.optimalBitrate/1000)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] new target bitrate: %s\n", roomId, userId, display)
+				s.logger.Info().Msgf("[ms] new target bitrate: %s", display)
 			}
 		}()
 	}
@@ -171,7 +178,6 @@ func (s *mixerSlice) stop() {
 }
 
 func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
-	roomId := s.fromPs.r.id
 	params := sender.GetParameters()
 
 	if len(params.Encodings) == 1 {
@@ -181,7 +187,7 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 		s.Unlock()
 		go sc.runListener()
 	} else {
-		log.Printf("[error] [room#%s] [user#%s] [mixer] addSender: wrong number of encoding parameters\n", roomId, toUserId)
+		s.logger.Error().Str("toUser", toUserId).Msgf("[ms] addSender: wrong number of encoding parameters")
 	}
 }
 
@@ -214,7 +220,7 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 }
 
 func (s *mixerSlice) loop() {
-	pipeline, room, pc, roomId, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.pc, s.fromPs.r.id, s.fromPs.userId
+	pipeline, room, pc, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.pc, s.fromPs.userId
 
 	// returns a callback to push buffer to
 	pushToPipeline, outputFiles := pipeline.BindTrack(s.kind, s)
@@ -229,7 +235,7 @@ func (s *mixerSlice) loop() {
 	s.startTickers()
 
 	defer func() {
-		log.Printf("[info] [room#%s] [user#%s] [%s track] stopping\n", roomId, userId, s.kind)
+		s.logger.Info().Msgf("[ms] stopping %s track %s", s.kind, s.ID())
 		s.stop()
 	}()
 
