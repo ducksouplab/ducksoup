@@ -121,6 +121,8 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	// add property
 	join.Origin = origin
 
+	log.Printf("[info] [room#%s] [user#%s] [join] %+v\n", ws.roomId, ws.userId, join)
+
 	return
 }
 

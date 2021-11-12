@@ -2,13 +2,14 @@ package sfu
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -43,6 +44,8 @@ type room struct {
 	size         int
 	duration     int
 	neededTracks int
+	// log
+	logger zerolog.Logger
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -78,6 +81,10 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 	helpers.EnsureDir("./data/" + join.Namespace)
 	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
 
+	logger := log.With().
+		Str("room", join.RoomId).
+		Logger()
+
 	r := &room{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
@@ -93,6 +100,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
+		logger:              logger,
 	}
 	r.mixer = newMixer(r)
 	return r
@@ -147,10 +155,10 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer) {
 	}
 
 	r.inTracksReadyCount++
-	log.Printf("[info] [room#%s] track updated count: %d\n", r.id, r.inTracksReadyCount)
+	r.logger.Info().Msgf("[room] track count: %d", r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		log.Printf("[info] [room#%s] users are ready\n", r.id)
+		r.logger.Info().Msg("[room] ready to start")
 		close(r.waitForAllCh)
 		r.running = true
 		r.startedAt = time.Now()
@@ -268,7 +276,7 @@ func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				log.Printf("[error] [room#%s] readRemoteWhileWaiting: %v\n", r.id, err)
+				r.logger.Error().Err(err).Msg("[room] readRemoteWhileWaiting")
 				return
 			}
 		}
@@ -289,7 +297,7 @@ func (r *room) runMixerSliceFromRemote(
 	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		log.Printf("[error] [room#%s] runMixerSliceFromRemote: %v\n", r.id, err)
+		r.logger.Error().Err(err).Msg("[room] runMixerSliceFromRemote")
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)

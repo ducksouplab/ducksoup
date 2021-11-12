@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -15,6 +14,8 @@ import (
 	"github.com/creamlab/ducksoup/stats"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Println("[info] [server] [ws] upgrade from origin: ", origin)
+			log.Info().Msgf("[server] ws upgrade from origin: ", origin)
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
@@ -55,8 +56,10 @@ func init() {
 	statsPassword = helpers.Getenv("DS_STATS_PASSWORD", "ducksoup")
 
 	// log
-	log.SetFlags(log.Lmicroseconds)
-	log.Printf("[info] [server] allowed ws origins: %v\n", allowedOrigins)
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "20060102-150405.000"})
+	log.Logger = log.With().Caller().Logger()
+	log.Info().Msgf("[server] allowed ws origins: %v", allowedOrigins)
 }
 
 // handle incoming websockets
@@ -148,10 +151,10 @@ func ListenAndServe() {
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Println("[info] [server] https listening on port " + port)
-		log.Fatal(server.ListenAndServeTLS(*cert, *key)) // blocking
+		log.Info().Msgf("[server] https listening on port " + port)
+		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Println("[info] [server] http listening on port " + port)
-		log.Fatal(server.ListenAndServe()) // blocking
+		log.Info().Msgf("[server] http listening on port " + port)
+		log.Fatal().Err(server.ListenAndServe()) // blocking
 	}
 }

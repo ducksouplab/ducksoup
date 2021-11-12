@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/creamlab/ducksoup/front"
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/server"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -23,8 +24,9 @@ func init() {
 	helpers.EnsureDir("./data")
 
 	// init logging
-	log.SetFlags(log.Lmicroseconds)
-	log.SetOutput(os.Stdout)
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "20060102-150405.000"})
+	log.Logger = log.With().Caller().Logger()
 }
 
 func main() {
@@ -34,9 +36,9 @@ func main() {
 	// run ducksoup only if not in BUILD_FRONT DS_ENV
 	if !cmdBuildMode {
 		defer func() {
-			log.Println("[main] stopped")
+			log.Info().Msg("[main] stopped")
 			if r := recover(); r != nil {
-				log.Println("[recov] main has recovered: ", r)
+				log.Info().Msgf("[recov] main has recovered: %v", r)
 			}
 		}()
 
