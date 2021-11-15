@@ -7,13 +7,7 @@
 #define GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME "GstForceKeyUnit"
 #define GST_RTP_EVENT_RETRANSMISSION_REQUEST "GstRTPRetransmissionRequest"
 
-GMainLoop *gstreamer_main_loop = NULL;
-void gstreamer_start_mainloop(void)
-{
-    gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
-
-    g_main_loop_run(gstreamer_main_loop);
-}
+// Internals (snake_case)
 
 void stop_pipeline(GstElement* pipeline) {
     // use previously set name as id
@@ -22,12 +16,15 @@ void stop_pipeline(GstElement* pipeline) {
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(pipeline);
 
-    goStopCallback(id);
+    goDeletePipeline(id);
 }
 
-static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
+
+static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
     GstElement* pipeline = (GstElement*) data;
+    char *id = gst_element_get_name(pipeline);
+
     switch (GST_MESSAGE_TYPE(msg))
     {
     case GST_MESSAGE_EOS: {
@@ -36,14 +33,12 @@ static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
     }
     case GST_MESSAGE_ERROR:
     {
-        gchar *debug;
         GError *error;
 
-        g_printerr ("ERR [gst.c] from element %s: %s\n",
-            GST_OBJECT_NAME (msg->src), error->message);
-        g_printerr ("ERR [gst.c] debugging information: %s\n", debug ? debug : "none");
+        char msgBuf[100];
+        sprintf(msgBuf, "ERR [gst.c] from element %d: %s\n",GST_OBJECT_NAME (msg->src), error->message);
+        goLog(id, msgBuf, 1);
 
-        g_free(debug);
         g_error_free(error);
 
         stop_pipeline(pipeline);
@@ -57,20 +52,7 @@ static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
     return TRUE;
 }
 
-GstElement *gstreamer_parse_pipeline(char *pipelineStr, char *id)
-{
-    gst_init(NULL, NULL);
-    GError *error = NULL;
-    GstElement *pipeline = gst_parse_launch(pipelineStr, &error);
-
-    // use element name to store id (used when C calls go on new samples to reference what pipeline is involved)
-    gst_element_set_name(pipeline, id);
-
-    return pipeline;
-}
-
-
-GstFlowReturn gstreamer_new_audio_sample(GstElement *object, gpointer data)
+GstFlowReturn new_audio_sample_callback(GstElement *object, gpointer data)
 {
     GstSample *sample = NULL;
     GstBuffer *buffer = NULL;
@@ -88,7 +70,7 @@ GstFlowReturn gstreamer_new_audio_sample(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goAudioCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+            goWriteAudio(id, copy, copy_size, GST_BUFFER_PTS(buffer));
         }
         gst_sample_unref(sample);
     }
@@ -96,7 +78,7 @@ GstFlowReturn gstreamer_new_audio_sample(GstElement *object, gpointer data)
     return GST_FLOW_OK;
 }
 
-GstFlowReturn gstreamer_new_video_sample(GstElement *object, gpointer data)
+GstFlowReturn new_video_sample_callback(GstElement *object, gpointer data)
 {
     GstSample *sample = NULL;
     GstBuffer *buffer = NULL;
@@ -114,14 +96,13 @@ GstFlowReturn gstreamer_new_video_sample(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goVideoCallback(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+            goWriteVideo(id, copy, copy_size, GST_BUFFER_PTS(buffer));
         }
         gst_sample_unref(sample);
     }
 
     return GST_FLOW_OK;
 }
-
 
 // TODO use <gst/video/video.h> implementation
 gboolean gst_event_is (GstEvent * event, const gchar * name)
@@ -140,10 +121,11 @@ gboolean gst_event_is (GstEvent * event, const gchar * name)
   return TRUE;
 }
 
+
 // credits to https://github.com/cryptagon/ion-cluster
 // This pad probe will get triggered when UPSTREAM events get fired on the appsrc.  
 // We use this to listen for GstEventForceKeyUnit, and forward that to the go binding to request a PLI
-static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, GstPadProbeInfo * info, gpointer data)
+static GstPadProbeReturn input_track_event_pad_probe_callback(GstPad * pad, GstPadProbeInfo * info, gpointer data)
 {
     GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
     GstElement *pipeline = (GstElement*) data;
@@ -151,9 +133,8 @@ static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
 
-    if (gst_event_is (event, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME)) {
-        g_print ("[info] [gst.c] pad_probe got upstream forceKeyUnit\n");
-        goPLICallback(id);
+    if (gst_event_is (event, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME)) {        
+        goPLIRequest(id);
     }
     // else if (gst_event_is (event, GST_RTP_EVENT_RETRANSMISSION_REQUEST)) {
     //     // TODO handle as a nack and possibly disable pion nack interceptor
@@ -162,31 +143,53 @@ static GstPadProbeReturn gstreamer_input_track_event_pad_probe_cb(GstPad * pad, 
     return GST_PAD_PROBE_OK;
 }
 
-void gstreamer_start_pipeline(GstElement *pipeline)
+// API: functions called from Go (camelCased)
+
+GMainLoop *gstreamer_main_loop = NULL;
+
+void gstStartMainLoop(void)
+{
+    gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
+    g_main_loop_run(gstreamer_main_loop);
+}
+
+GstElement *gstParsePipeline(char *pipelineStr, char *id)
+{
+    gst_init(NULL, NULL);
+    GError *error = NULL;
+    GstElement *pipeline = gst_parse_launch(pipelineStr, &error);
+
+    // use element name to store id (used when C calls go on new samples to reference what pipeline is involved)
+    gst_element_set_name(pipeline, id);
+
+    return pipeline;
+}
+
+void gstStartPipeline(GstElement *pipeline)
 {
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
-    gst_bus_add_watch(bus, gstreamer_bus_call, pipeline);
+    gst_bus_add_watch(bus, bus_callback, pipeline);
     gst_object_unref(bus);
     // src
     GstElement *video_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_src");
     GstPad *video_src_pad = gst_element_get_static_pad(video_src, "src");
-    gst_pad_add_probe (video_src_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, gstreamer_input_track_event_pad_probe_cb, pipeline, NULL);
+    gst_pad_add_probe (video_src_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, input_track_event_pad_probe_callback, pipeline, NULL);
     gst_object_unref(video_src);
     gst_object_unref(video_src_pad);
     // sinks
     GstElement *audio_sink = gst_bin_get_by_name(GST_BIN(pipeline), "audio_sink");
     GstElement *video_sink = gst_bin_get_by_name(GST_BIN(pipeline), "video_sink");
     g_object_set(audio_sink, "emit-signals", TRUE, NULL);
-    g_signal_connect(audio_sink, "new-sample", G_CALLBACK(gstreamer_new_audio_sample), pipeline);
+    g_signal_connect(audio_sink, "new-sample", G_CALLBACK(new_audio_sample_callback), pipeline);
     gst_object_unref(audio_sink);
     g_object_set(video_sink, "emit-signals", TRUE, NULL);
-    g_signal_connect(video_sink, "new-sample", G_CALLBACK(gstreamer_new_video_sample), pipeline);
+    g_signal_connect(video_sink, "new-sample", G_CALLBACK(new_video_sample_callback), pipeline);
     gst_object_unref(video_sink);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
 
-void gstreamer_stop_pipeline(GstElement *pipeline)
+void gstStopPipeline(GstElement *pipeline)
 {
     // query GstStateChangeReturn within 0.1s, if GST_STATE_CHANGE_ASYNC, sending an EOS will fail main loop
     GstStateChangeReturn changeReturn = gst_element_get_state(pipeline, NULL, NULL, 100000000);
@@ -203,7 +206,7 @@ void gstreamer_stop_pipeline(GstElement *pipeline)
     }
 }
 
-void gstreamer_push_buffer(char *srcname, GstElement *pipeline, void *buffer, int len)
+void gstPushBuffer(char *srcname, GstElement *pipeline, void *buffer, int len)
 {
     GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
     if (src != NULL)
@@ -215,7 +218,7 @@ void gstreamer_push_buffer(char *srcname, GstElement *pipeline, void *buffer, in
     }
 }
 
-float gstreamer_get_property_float(GstElement *pipeline, char *name, char *prop) {
+float gstGetPropFloat(GstElement *pipeline, char *name, char *prop) {
     GstElement* el;
     gfloat value;
  
@@ -229,7 +232,7 @@ float gstreamer_get_property_float(GstElement *pipeline, char *name, char *prop)
     return value;
 }
 
-void gstreamer_set_property_float(GstElement *pipeline, char *name, char *prop, float value)
+void gstSetPropFloat(GstElement *pipeline, char *name, char *prop, float value)
 {
     GstElement* el;
 
@@ -241,7 +244,7 @@ void gstreamer_set_property_float(GstElement *pipeline, char *name, char *prop, 
     }
 }
 
-gint gstreamer_get_property_int(GstElement *pipeline, char *name, char *prop) {
+gint gstGetPropInt(GstElement *pipeline, char *name, char *prop) {
     GstElement* el;
     gint value;
  
@@ -255,7 +258,7 @@ gint gstreamer_get_property_int(GstElement *pipeline, char *name, char *prop) {
     return value;
 }
 
-void gstreamer_set_property_int(GstElement *pipeline, char *name, char *prop, gint value)
+void gstSetPropInt(GstElement *pipeline, char *name, char *prop, gint value)
 {
     GstElement* el;
 
