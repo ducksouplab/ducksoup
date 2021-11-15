@@ -178,7 +178,7 @@ func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
 
 	b := C.CBytes(buffer)
 	defer C.free(b)
-	C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
+	//C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
 func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (files []string) {

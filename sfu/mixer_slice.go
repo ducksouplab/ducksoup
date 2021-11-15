@@ -211,8 +211,6 @@ func (s *mixerSlice) loop() {
 }
 
 func (s *mixerSlice) runTickers() {
-	roomId, userId := s.fromPs.r.id, s.fromPs.userId
-
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
 		for range s.encoderTicker.C {
@@ -247,8 +245,8 @@ func (s *mixerSlice) runTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s input bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayInputBitrateKbs)
-			log.Printf("[info] [room#%s] [user#%s] [mixer] %s output bitrate: %v kbit/s\n", roomId, userId, s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logger.Info().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logger.Info().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 
@@ -257,7 +255,7 @@ func (s *mixerSlice) runTickers() {
 		go func() {
 			for range s.logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", s.optimalBitrate/1000)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] new target bitrate: %s\n", roomId, userId, display)
+				s.logger.Info().Msgf("[slice] target encoded video bitrate: %s", display)
 			}
 		}()
 	}

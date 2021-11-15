@@ -224,7 +224,7 @@ void gstStopPipeline(GstElement *pipeline)
 
 void gstPushBuffer(char *srcname, GstElement *pipeline, void *buffer, int len)
 {
-    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
     
     if (src != NULL)
     {

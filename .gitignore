@@ -1,7 +1,8 @@
 certs
 ducksoup
-.DS_Store
 core
+.DS_Store
+.vscode
 
 # logs and recorded data
 data
