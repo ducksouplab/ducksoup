@@ -163,8 +163,8 @@ func (p *Pipeline) outputFiles() []string {
 	}
 }
 
-func (p *Pipeline) pushSample(src string, buffer []byte) {
-	s := C.CString(src)
+func (p *Pipeline) PushRTP(kind string, buffer []byte) {
+	s := C.CString(kind + "_src")
 	defer C.free(unsafe.Pointer(s))
 
 	b := C.CBytes(buffer)
@@ -172,7 +172,16 @@ func (p *Pipeline) pushSample(src string, buffer []byte) {
 	C.gstPushBuffer(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
-func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (f types.PushFunc, files []string) {
+func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
+	s := C.CString(kind + "_buffer")
+	defer C.free(unsafe.Pointer(s))
+
+	b := C.CBytes(buffer)
+	defer C.free(b)
+	C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (files []string) {
 	if kind == "audio" {
 		p.audioOutput = t
 	} else {
@@ -181,9 +190,6 @@ func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (f types.PushFunc
 	if p.audioOutput != nil && p.videoOutput != nil {
 		p.start()
 		files = p.outputFiles()
-	}
-	f = func(b []byte) {
-		p.pushSample(kind+"_src", b)
 	}
 	return
 }
@@ -204,7 +210,7 @@ func (p *Pipeline) Stop() {
 	p.logger.Info().Msg("pipeline stop requested")
 }
 
-func (p *Pipeline) getPropertyInt(name string, prop string) int {
+func (p *Pipeline) getPropInt(name string, prop string) int {
 	cName := C.CString(name)
 	cProp := C.CString(prop)
 
@@ -214,7 +220,7 @@ func (p *Pipeline) getPropertyInt(name string, prop string) int {
 	return int(C.gstGetPropInt(p.cPipeline, cName, cProp))
 }
 
-func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
+func (p *Pipeline) setPropInt(name string, prop string, value int) {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString(name)
 	cProp := C.CString(prop)
@@ -226,7 +232,7 @@ func (p *Pipeline) setPropertyInt(name string, prop string, value int) {
 	C.gstSetPropInt(p.cPipeline, cName, cProp, cValue)
 }
 
-func (p *Pipeline) setPropertyFloat(name string, prop string, value float32) {
+func (p *Pipeline) setPropFloat(name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString(name)
 	cProp := C.CString(prop)
@@ -245,7 +251,7 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	value := int(value64)
 	prop := "bitrate"
 	if kind == "audio" {
-		p.setPropertyInt("audio_encoder_fx", prop, value)
+		p.setPropInt("audio_encoder_fx", prop, value)
 	} else {
 		names := []string{"video_encoder_raw", "video_encoder_fx"}
 		if p.join.VideoFormat == "VP8" {
@@ -257,22 +263,22 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 			if p.join.GPU {
 				// acts both on bitrate and max-bitrate for nvh264enc
 				for _, n := range names {
-					p.setPropertyInt(n, "max-bitrate", value*320/256)
+					p.setPropInt(n, "max-bitrate", value*320/256)
 				}
 			}
 		}
 		for _, n := range names {
-			p.setPropertyInt(n, prop, value)
+			p.setPropInt(n, prop, value)
 		}
 	}
 }
 
-func (p *Pipeline) SetFxProperty(kind string, name string, prop string, value float32) {
+func (p *Pipeline) SetFxProp(kind string, name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
-	p.setPropertyFloat(kind+"_fx_"+name, prop, value)
+	p.setPropFloat(kind+"_fx_"+name, prop, value)
 }
 
-func (p *Pipeline) GetFxProperty(kind string, name string, prop string) float32 {
+func (p *Pipeline) GetFxProp(kind string, name string, prop string) float32 {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString(kind + "_fx_" + name)
 	cProp := C.CString(prop)

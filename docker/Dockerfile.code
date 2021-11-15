@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential git
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.17.1.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="dab7d9c34361dc21ec237d584590d72500652e7c909bf082758fb63064fca0ef"
+ENV GO_ARCHIVE=go1.17.3.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="550f9845451c0c94be679faf116291e7807a8d78b43149f9506c1b15eb89008c"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi

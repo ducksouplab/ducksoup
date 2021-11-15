@@ -209,6 +209,12 @@ DS_ENV=DEV ./ducksoup
 DS_ORIGINS=https://ducksoup-caller-host.com ./ducksoup
 ```
 
+An example to build and run with a few settings:
+
+```
+go build && GST_DEBUG=2,videodecoder:1 DS_NVIDIA=true DS_ENV=DEV ./ducksoup
+```
+
 To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:
 
 ```
