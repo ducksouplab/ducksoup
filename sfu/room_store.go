@@ -2,10 +2,11 @@ package sfu
 
 import (
 	"errors"
-	"log"
 	"sync"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -55,11 +56,11 @@ func (rs *roomStore) join(join types.JoinPayload) (*room, error) {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Printf("[info] [room#%s] [user#%s] joined\n", join.RoomId, userId)
+			log.Info().Str("room", join.RoomId).Str("user", userId).Msg("user joined room")
 			return r, nil
 		}
 	} else {
-		log.Printf("[info] [room#%s] [user#%s] created for origin: %s\n", join.RoomId, userId, join.Origin)
+		log.Info().Str("room", join.RoomId).Str("user", userId).Str("origin", join.Origin).Msg("room created for given origin")
 		newRoom := newRoom(qualifiedId, join)
 		rooms.index[qualifiedId] = newRoom
 		return newRoom, nil
@@ -71,5 +72,5 @@ func (rs *roomStore) delete(r *room) {
 	defer rs.Unlock()
 
 	delete(rs.index, r.qualifiedId)
-	log.Printf("[info] [room#%s] deleted\n", r.id)
+	log.Info().Str("room", r.id).Msg("room deleted")
 }

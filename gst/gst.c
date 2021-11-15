@@ -39,9 +39,9 @@ static gboolean gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data)
         gchar *debug;
         GError *error;
 
-        g_printerr ("[error] [gst.c] from element %s: %s\n",
+        g_printerr ("ERR [gst.c] from element %s: %s\n",
             GST_OBJECT_NAME (msg->src), error->message);
-        g_printerr ("[error] [gst.c] debugging information: %s\n", debug ? debug : "none");
+        g_printerr ("ERR [gst.c] debugging information: %s\n", debug ? debug : "none");
 
         g_free(debug);
         g_error_free(error);

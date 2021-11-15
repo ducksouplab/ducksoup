@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
@@ -152,8 +153,8 @@ func (s *mixerSlice) startTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			s.logger.Info().Msgf("[ms] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
-			s.logger.Info().Msgf("[ms] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logger.Info().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logger.Info().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 
@@ -162,7 +163,7 @@ func (s *mixerSlice) startTickers() {
 		go func() {
 			for range s.logTicker.C {
 				display := fmt.Sprintf("%v kbit/s", s.optimalBitrate/1000)
-				s.logger.Info().Msgf("[ms] new target bitrate: %s", display)
+				s.logger.Info().Msgf("[slice] new target bitrate: %s", display)
 			}
 		}()
 	}
@@ -187,7 +188,7 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 		s.Unlock()
 		go sc.runListener()
 	} else {
-		s.logger.Error().Str("toUser", toUserId).Msgf("[ms] addSender: wrong number of encoding parameters")
+		s.logger.Error().Str("toUser", toUserId).Msg("[slice] can't add sender: wrong number of encoding parameters")
 	}
 }
 
@@ -235,7 +236,7 @@ func (s *mixerSlice) loop() {
 	s.startTickers()
 
 	defer func() {
-		s.logger.Info().Msgf("[ms] stopping %s track %s", s.kind, s.ID())
+		s.logger.Info().Msgf("[slice] stopping %s track %s", s.kind, s.ID())
 		s.stop()
 	}()
 

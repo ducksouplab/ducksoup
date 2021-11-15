@@ -2,19 +2,22 @@ package sfu
 
 import (
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type mixer struct {
 	sync.RWMutex
 	sliceIndex map[string]*mixerSlice // per remote track id
 	// room
-	r      *room
-	roomId string
+	r *room
+	// log
+	logger zerolog.Logger
 }
 
 type signalingState int
@@ -28,10 +31,14 @@ const (
 // mixer
 
 func newMixer(r *room) *mixer {
+	logger := log.With().
+		Str("room", r.id).
+		Logger()
+
 	return &mixer{
 		sliceIndex: map[string]*mixerSlice{},
 		r:          r,
-		roomId:     r.id,
+		logger:     logger,
 	}
 }
 
@@ -79,9 +86,9 @@ func (m *mixer) updateTracks() signalingState {
 			_, ok := m.sliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [mixer] can't RemoveTrack#%s:\n%v\n", m.roomId, userId, sentTrackId, err)
+					m.logger.Error().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("[mixer] can't remove sent track")
 				} else {
-					log.Printf("[info] [room#%s] [user#%s] [mixer] RemoveTrack#%s\n", m.roomId, userId, sentTrackId)
+					m.logger.Info().Str("user", userId).Str("track", sentTrackId).Msg("[mixer] removed sent track")
 				}
 			}
 		}
@@ -93,17 +100,17 @@ func (m *mixer) updateTracks() signalingState {
 			trackId := s.ID()
 			if alreadySent {
 				// don't double send
-				log.Printf("[info] [room#%s] [user#%s] [mixer] [already] skip AddTrack: %s\n", m.roomId, userId, trackId)
+				m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding already sent track")
 			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				log.Printf("[info] [room#%s] [user#%s] [mixer] [own] skip AddTrack: %s\n", m.roomId, userId, trackId)
+				m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding own track")
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [mixer] can't AddTrack#%s: %v\n", m.roomId, userId, id, err)
+					m.logger.Error().Err(err).Str("user", userId).Str("track", trackId).Msg("[mixer] can't add track")
 					return signalingRetryNow
 				} else {
-					log.Printf("[info] [room#%s] [user#%s] [mixer] AddTrack#%s\n", m.roomId, userId, trackId)
+					m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] track added")
 				}
 
 				s.addSender(sender, userId)
@@ -118,27 +125,26 @@ func (m *mixer) updateOffers() signalingState {
 		userId := ps.userId
 		pc := ps.pc
 
-		log.Printf("[info] [room#%s] [user#%s] [mixer] signaling state: %v\n", m.roomId, userId, pc.SignalingState())
+		m.logger.Info().Str("user", userId).Msgf("[mixer] signaling state: %v", pc.SignalingState())
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't CreateOffer: %v\n", m.roomId, userId, err)
+			m.logger.Error().Str("user", userId).Msg("[mixer] can't create offer")
 			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] pending local description\n", m.roomId, userId)
+			m.logger.Error().Str("user", userId).Msg("[mixer] pending local description")
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't SetLocalDescription: %v\n", m.roomId, userId, err)
-			//log.Printf("\n\n\n---- failing local descripting:\n%v\n\n\n", offer)
+			m.logger.Error().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("[mixer] can't set local description")
 			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [mixer] can't marshal offer: %v\n", m.roomId, userId, err)
+			m.logger.Error().Str("user", userId).Err(err).Msg("[mixer] can't marshal offer")
 			return signalingRetryNow
 		}
 
@@ -167,7 +173,7 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 		go m.dispatchKeyFrame()
 	}()
 
-	log.Printf("[info] [room#%s] [mixer] signaling update, reason: %s\n", m.roomId, reason)
+	m.logger.Info().Str("reason", reason).Msg("[mixer] signaling update")
 
 	for {
 		select {

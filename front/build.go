@@ -1,10 +1,11 @@
 package front
 
 import (
-	"log"
 	"os"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -45,14 +46,17 @@ func Build() {
 			buildOptions.Watch = &api.WatchMode{
 				OnRebuild: func(result api.BuildResult) {
 					if len(result.Errors) > 0 {
-						log.Printf("[error] [build] %d errors\n", len(result.Errors))
-						log.Println(result.Errors)
+						for _, msg := range result.Errors {
+							log.Error().Msgf("[JS build] error: %v", msg.Text)
+						}
 					} else {
 						if len(result.Warnings) > 0 {
-							log.Printf("[info] [build] success with %d warnings\n", len(result.Warnings))
-							log.Println(result.Warnings)
+							log.Info().Msgf("[JS build] success with %d warnings", len(result.Warnings))
+							for _, msg := range result.Warnings {
+								log.Info().Msgf("[JS build] warning: %v", msg.Text)
+							}
 						} else {
-							log.Println("[info] [build] success")
+							log.Info().Msg("[JS build] success")
 						}
 					}
 				},
@@ -61,7 +65,7 @@ func Build() {
 		build := api.Build(buildOptions)
 
 		if len(build.Errors) > 0 {
-			log.Fatal("[fatal] ", build.Errors)
+			log.Fatal().Msgf("JS build fatal error: %v", build.Errors[0].Text)
 		}
 	}
 }

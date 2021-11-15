@@ -1,11 +1,9 @@
 package gst
 
 import (
-	"os"
 	"text/template"
 
 	"github.com/creamlab/ducksoup/helpers"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 )
@@ -60,8 +58,5 @@ func init() {
 	}
 
 	// log
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "20060102-150405.000"})
-	log.Logger = log.With().Caller().Logger()
-	log.Info().Msgf("[init] gstreamer config: %+v", config)
+	log.Info().Msgf("[init] GStreamer config loaded: %+v", config)
 }

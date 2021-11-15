@@ -5,7 +5,7 @@ core
 
 # logs and recorded data
 data
-logs
+log
 *.mkv
 *.ogg
 

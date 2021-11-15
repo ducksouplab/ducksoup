@@ -14,7 +14,6 @@ import (
 	"github.com/creamlab/ducksoup/stats"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,7 +30,7 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Info().Msgf("[server] ws upgrade from origin: ", origin)
+			log.Info().Msgf("[server] ws upgrade from origin: %v", origin)
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
@@ -56,9 +55,6 @@ func init() {
 	statsPassword = helpers.Getenv("DS_STATS_PASSWORD", "ducksoup")
 
 	// log
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "20060102-150405.000"})
-	log.Logger = log.With().Caller().Logger()
 	log.Info().Msgf("[server] allowed ws origins: %v", allowedOrigins)
 }
 
@@ -67,7 +63,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// upgrade HTTP request to Websocket
 	unsafeConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("[error] [server] [ws] can't upgrade:", err)
+		log.Error().Err(err).Msg("[server] can't upgrade ws")
 		return
 	}
 
@@ -151,10 +147,10 @@ func ListenAndServe() {
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Info().Msgf("[server] https listening on port " + port)
+		log.Info().Msgf("[server] https listening on port %v", port)
 		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Info().Msgf("[server] http listening on port " + port)
+		log.Info().Msgf("[server] http listening on port %v", port)
 		log.Fatal().Err(server.ListenAndServe()) // blocking
 	}
 }

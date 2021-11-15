@@ -2,14 +2,16 @@ package sfu
 
 import (
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/creamlab/ducksoup/engine"
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const delayBetweenPLIs = 300 * time.Millisecond
@@ -18,18 +20,18 @@ const delayBetweenPLIs = 300 * time.Millisecond
 type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
-	roomId  string
-	userId  string
 	lastPLI time.Time
+	// log
+	logger zerolog.Logger
 }
 
 // API
 
-func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *webrtc.PeerConnection, err error) {
+func newPionPeerConn(roomId string, userId string, videoFormat string, logger zerolog.Logger) (ppc *webrtc.PeerConnection, err error) {
 	// create RTC API
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		log.Printf("[error] [room#%s] [user#%s] [pc] NewWebRTCAPI: %v\n", roomId, userId, err)
+		logger.Error().Err(err).Msg("can't create new WebRTC API")
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -42,6 +44,7 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 	}
 	ppc, err = api.NewPeerConnection(config)
 	if err != nil {
+		logger.Error().Err(err).Msg("can't create new pion peer connection")
 		return
 	}
 
@@ -50,6 +53,7 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
+		logger.Error().Err(err).Msg("can't add audio transceiver")
 		return
 	}
 
@@ -58,6 +62,7 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
+		logger.Error().Err(err).Msg("can't add video transceiver")
 		return
 	}
 
@@ -65,6 +70,7 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 	if videoFormat == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
+			logger.Error().Err(err).Msg("can't set codec preferences")
 			return
 		}
 	}
@@ -75,7 +81,12 @@ func newPionPeerConn(roomId string, userId string, videoFormat string) (ppc *web
 func newPeerConn(join types.JoinPayload, ws *wsConn) (pc *peerConn, err error) {
 	roomId, userId, videoFormat := join.RoomId, join.UserId, join.VideoFormat
 
-	ppc, err := newPionPeerConn(roomId, userId, videoFormat)
+	logger := log.With().
+		Str("room", join.RoomId).
+		Str("user", join.UserId).
+		Logger()
+
+	ppc, err := newPionPeerConn(roomId, userId, videoFormat, logger)
 	if err != nil {
 		return
 	}
@@ -83,13 +94,11 @@ func newPeerConn(join types.JoinPayload, ws *wsConn) (pc *peerConn, err error) {
 	// initial lastPLI far enough the past
 	lastPLI := time.Now().Add(-2 * delayBetweenPLIs)
 
-	pc = &peerConn{sync.Mutex{}, ppc, roomId, userId, lastPLI}
+	pc = &peerConn{sync.Mutex{}, ppc, lastPLI, logger}
 	return
 }
 
 func (pc *peerConn) connectPeerServer(ps *peerServer) {
-	roomId, userId := pc.roomId, pc.userId
-
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
@@ -99,7 +108,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			log.Printf("[error] [room#%s] [user#%s] [pc] can't marshal candidate: %v\n", roomId, userId, err)
+			pc.logger.Error().Err(err).Msg("[pc] can't marshal candidate")
 			return
 		}
 
@@ -108,11 +117,11 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		log.Printf("[info] [room#%s] [user#%s] [pc] OnConnectionStateChange: %s\n", roomId, userId, p.String())
+		pc.logger.Info().Msgf("[pc] connection state: %v", p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				log.Printf("[error] [room#%s] [user#%s] [pc] peer connection failed: %v\n", roomId, userId, err)
+				pc.logger.Error().Err(err).Msg("[pc] peer connection state failed")
 			}
 		case webrtc.PeerConnectionStateClosed:
 			ps.close("pc closed")
@@ -120,15 +129,15 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		log.Printf("[info] [room#%s] [user#%s] [pc] OnNegotiationNeeded\n", roomId, userId)
+		pc.logger.Info().Msg("[pc] negotiation needed")
 	})
 
 	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		log.Printf("[info] [room#%s] [user#%s] [pc] OnSignalingStateChange: %v\n", roomId, userId, state)
+		pc.logger.Info().Msgf("[pc] signaling state: %v", state)
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		log.Printf("[info] [room#%s] [user#%s] [pc] new incoming %s track, id: %s\n", roomId, userId, remoteTrack.Codec().RTPCodecCapability.MimeType, remoteTrack.ID())
+		pc.logger.Info().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
@@ -148,9 +157,9 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 		},
 	})
 	if err != nil {
-		log.Printf("[error] [room#%s] [user#%s] [pc] can't send PLI: %v\n", pc.roomId, pc.userId, err)
+		pc.logger.Error().Err(err).Msg("[pc] can't send PLI")
 	} else {
-		log.Printf("[info] [room#%s] [user#%s] [pc] PLI sent\n", pc.roomId, pc.userId)
+		pc.logger.Info().Msg("[pc] PLI sent")
 	}
 	return
 }
@@ -177,7 +186,7 @@ func (pc *peerConn) throttledPLIRequest() {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < delayBetweenPLIs {
 				// throttle: don't send too many PLIs
-				log.Printf("[info] [room#%s] [user#%s] [pc] PLI skipped (throttle)\n", pc.roomId, pc.userId)
+				pc.logger.Info().Msg("[pc] PLI skipped (throttle)")
 			} else {
 				err := pc.writePLI(track)
 				if err == nil {

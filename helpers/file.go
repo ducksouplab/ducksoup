@@ -3,8 +3,9 @@ package helpers
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
+
+	"github.com/rs/zerolog/log"
 )
 
 var root string
@@ -25,7 +26,7 @@ func ReadFile(name string) string {
 	f, err := os.Open(path)
 
 	if err != nil {
-		log.Fatal("[fatal] ", err)
+		log.Fatal().Err(err)
 	}
 
 	defer f.Close()
@@ -37,7 +38,7 @@ func ReadFile(name string) string {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal("[fatal] ", err)
+		log.Fatal().Err(err)
 	}
 
 	return output

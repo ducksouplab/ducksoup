@@ -7,13 +7,15 @@ package gst
 */
 import "C"
 import (
-	"log"
 	"os"
 	"strings"
 	"unsafe"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // global state
@@ -34,6 +36,8 @@ type Pipeline struct {
 	videoOutput types.TrackWriter
 	filePrefix  string
 	pliCallback func()
+	// log
+	logger zerolog.Logger
 }
 
 func fileName(namespace string, prefix string, suffix string) string {
@@ -48,25 +52,25 @@ func goStopCallback(cId *C.char) {
 
 func writeNewSample(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 	id := C.GoString(cId)
-	pipeline, ok := pipelines.find(id)
+	p, ok := pipelines.find(id)
 
 	if ok {
 		var output types.TrackWriter
 		if kind == "audio" {
-			output = pipeline.audioOutput
+			output = p.audioOutput
 		} else {
-			output = pipeline.videoOutput
+			output = p.videoOutput
 		}
 
 		buf := C.GoBytes(buffer, bufferLen)
 		if err := output.Write(buf); err != nil {
 			// TODO err contains the ID of the failing PeerConnections
 			// we may store a callback on the Pipeline struct (the callback would remove those peers and update signaling)
-			log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline] can't Write: %v\n", pipeline.join.RoomId, pipeline.join.UserId, id, err)
+			p.logger.Error().Err(err).Msg("can't write to track")
 		}
 	} else {
 		// TODO return error to gst.c and stop processing?
-		log.Printf("[error] [room#%s] [user#%s] [output_track#%s] [pipeline] pipeline not found, discarding buffer\n", pipeline.join.RoomId, pipeline.join.UserId, id)
+		p.logger.Error().Msg("pipeline not found, discarding buffer")
 	}
 	C.free(buffer)
 }
@@ -84,11 +88,11 @@ func goVideoCallback(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.
 //export goPLICallback
 func goPLICallback(cId *C.char) {
 	id := C.GoString(cId)
-	pipeline, ok := pipelines.find(id)
+	p, ok := pipelines.find(id)
 
 	if ok {
-		log.Printf("[info] [room#%s] [user#%s] [pipeline] PLI requested from GStreamer\n", pipeline.join.RoomId, pipeline.join.UserId)
-		pipeline.pliCallback()
+		p.logger.Info().Msg("PLI requested from GStreamer")
+		p.pliCallback()
 	}
 }
 
@@ -104,20 +108,26 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 	pipelineStr := newPipelineDef(join, filePrefix)
 	id := uuid.New().String()
 
-	log.Printf("[info] [room#%s] [user#%s] [pipeline] pipeline initialized\n", join.RoomId, join.UserId)
-	log.Println(pipelineStr)
-
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
 	defer C.free(unsafe.Pointer(cPipelineStr))
 	defer C.free(unsafe.Pointer(cId))
+
+	logger := log.With().
+		Str("room", join.RoomId).
+		Str("user", join.UserId).
+		Str("pipeline", id).
+		Logger()
 
 	p := &Pipeline{
 		id:         id,
 		join:       join,
 		cPipeline:  C.gstreamer_parse_pipeline(cPipelineStr, cId),
 		filePrefix: filePrefix,
+		logger:     logger,
 	}
+
+	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline initialized")
 
 	pipelines.add(p)
 	return p
@@ -168,13 +178,13 @@ func (p *Pipeline) BindPLICallback(c func()) {
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
 	C.gstreamer_start_pipeline(p.cPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [pipeline] started with recording prefix: %s/%s\n", p.join.RoomId, p.join.UserId, p.join.Namespace, p.filePrefix)
+	p.logger.Info().Msgf("pipeline started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	C.gstreamer_stop_pipeline(p.cPipeline)
-	log.Printf("[info] [room#%s] [user#%s] [pipeline] stop requested\n", p.join.RoomId, p.join.UserId)
+	p.logger.Info().Msg("pipeline stop requested")
 }
 
 func (p *Pipeline) getPropertyInt(name string, prop string) int {

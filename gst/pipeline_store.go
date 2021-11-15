@@ -1,8 +1,10 @@
 package gst
 
 import (
-	"log"
 	"sync"
+
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -42,10 +44,9 @@ func (ps *pipelineStore) delete(id string) {
 	ps.Lock()
 	defer ps.Unlock()
 
-	pipeline, ok := ps.index[id]
+	p, ok := ps.index[id]
 	if ok {
-		log.Printf("[info] [room#%s] [user#%s] [output_track#%s] [pipeline] stop done\n", pipeline.join.RoomId, pipeline.join.UserId, id)
-
+		log.Info().Str("room", p.join.RoomId).Str("user", p.join.UserId).Str("pipeline", id).Msg("pipeline deleted")
 	}
 
 	delete(ps.index, id)

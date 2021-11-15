@@ -3,15 +3,17 @@ package sfu
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type peerServer struct {
@@ -28,6 +30,8 @@ type peerServer struct {
 	pipeline   *gst.Pipeline
 	closed     bool
 	closedCh   chan struct{}
+	// log
+	logger zerolog.Logger
 }
 
 func newPeerServer(
@@ -37,6 +41,11 @@ func newPeerServer(
 	ws *wsConn) *peerServer {
 
 	pipeline := gst.CreatePipeline(join, r.filePrefixWithCount(join))
+
+	logger := log.With().
+		Str("room", join.RoomId).
+		Str("user", join.UserId).
+		Logger()
 
 	ps := &peerServer{
 		userId:   join.UserId,
@@ -49,6 +58,7 @@ func newPeerServer(
 		pipeline: pipeline,
 		closed:   false,
 		closedCh: make(chan struct{}),
+		logger:   logger,
 	}
 
 	// connect components for further communication
@@ -71,7 +81,7 @@ func (ps *peerServer) close(reason string) {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		log.Printf("[info] [room#%s] [user#%s] [ps] closing for reason: %s\n", ps.roomId, ps.userId, reason)
+		ps.logger.Info().Msgf("[ps] closing for reason: %s", reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -93,7 +103,7 @@ func (ps *peerServer) loop() {
 		select {
 		case <-time.After(time.Duration(ps.r.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
-			log.Printf("[info] [room#%s] [user#%s] [ps] ending message sent\n", ps.roomId, ps.userId)
+			ps.logger.Info().Msg("[ps] ending message sent")
 			ps.ws.send("ending")
 		case <-ps.closedCh:
 			// user might have disconnected
@@ -118,29 +128,29 @@ func (ps *peerServer) loop() {
 			case "candidate":
 				candidate := webrtc.ICECandidateInit{}
 				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-					log.Printf("[error] [room#%s] [user#%s]] [ps] can't unmarshal candidate: %v\n", ps.roomId, ps.userId, err)
+					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal candidate")
 					return
 				}
 
 				if err := ps.pc.AddICECandidate(candidate); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [ps] can't add candidate: %v\n", ps.roomId, ps.userId, err)
+					ps.logger.Error().Err(err).Msg("[ps] can't add candidate")
 					return
 				}
 			case "answer":
 				answer := webrtc.SessionDescription{}
 				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [ps] can't unmarshal answer: %v\n", ps.roomId, ps.userId, err)
+					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal answer")
 					return
 				}
 
 				if err := ps.pc.SetRemoteDescription(answer); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [ps] can't SetRemoteDescription: %v\n", ps.roomId, ps.userId, err)
+					ps.logger.Error().Err(err).Msg("[ps] can't set remote description")
 					return
 				}
 			case "control":
 				payload := controlPayload{}
 				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-					log.Printf("[error] [room#%s] [user#%s] [ps] can't unmarshal control: %v\n", ps.roomId, ps.userId, err)
+					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal control")
 				} else {
 					go func() {
 						if payload.Kind == "audio" && ps.audioSlice != nil {
@@ -167,27 +177,26 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
 		ws.send("error-join")
-		log.Printf("[error] [user unknown] [ps] join payload corrupted: %v\n", err)
+		log.Error().Err(err).Msg("[ps] join payload corrupted")
 		return
 	}
+
 	userId := joinPayload.UserId
 	roomId := joinPayload.RoomId
-
-	// used to log info with room and user id
-	ws.setIds(roomId, userId)
+	log.Info().Str("room", roomId).Str("user", userId).Msgf("joined with payload: %+v", joinPayload)
 
 	room, err := rooms.join(joinPayload)
 	if err != nil {
 		// joinRoom err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
-		log.Printf("[error] [room#%s] [user#%s] [ps] join failed: %s\n", roomId, userId, err)
+		log.Error().Err(err).Str("room", roomId).Str("user", userId).Msg("[ps] join failed")
 		return
 	}
 
 	pc, err := newPeerConn(joinPayload, ws)
 	if err != nil {
 		ws.send("error-peer-connection")
-		log.Printf("[error] [room#%s] [user#%s] [ps] can't create pc: %s\n", roomId, userId, err)
+		log.Error().Err(err).Str("room", roomId).Str("user", userId).Msg("[ps] can't create pc")
 		return
 	}
 

@@ -2,11 +2,13 @@ package sfu
 
 import (
 	"io"
-	"log"
 	"sync"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type senderController struct {
@@ -18,10 +20,8 @@ type senderController struct {
 	sender         *webrtc.RTPSender
 	optimalBitrate uint64
 	maxBitrate     uint64
-	// for logging
-	roomId     string
-	fromUserId string
-	toUserId   string
+	// log
+	logger zerolog.Logger
 }
 
 func newSenderController(sender *webrtc.RTPSender, slice *mixerSlice, toUserId string) *senderController {
@@ -33,6 +33,12 @@ func newSenderController(sender *webrtc.RTPSender, slice *mixerSlice, toUserId s
 		streamConfig = config.Audio
 	}
 
+	logger := log.With().
+		Str("room", slice.fromPs.roomId).
+		Str("fromUser", slice.fromPs.userId).
+		Str("toUser", toUserId).
+		Logger()
+
 	return &senderController{
 		slice:          slice,
 		fromPs:         slice.fromPs,
@@ -41,9 +47,7 @@ func newSenderController(sender *webrtc.RTPSender, slice *mixerSlice, toUserId s
 		sender:         sender,
 		optimalBitrate: streamConfig.DefaultBitrate,
 		maxBitrate:     streamConfig.MaxBitrate,
-		roomId:         slice.fromPs.roomId,
-		fromUserId:     slice.fromPs.userId,
-		toUserId:       toUserId,
+		logger:         logger,
 	}
 }
 
@@ -76,8 +80,8 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 			newOptimalBitrate = streamConfig.MinBitrate
 		}
 
-		log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] %d packets lost, previous bitrate %d, new bitrate %d\n",
-			sc.roomId, sc.fromUserId, sc.toUserId, loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
+		sc.logger.Info().Msgf("[sender] %d packets lost, previous bitrate %d, new bitrate %d",
+			loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
 	} else {
 		newOptimalBitrate = prevOptimalBitrate
 	}
@@ -98,7 +102,7 @@ func (sc *senderController) runListener() {
 			packets, _, err := sc.sender.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					log.Printf("[error] [room#%s] [mixer] [from user#%s to user#%s] reading RTCP: %v\n", sc.roomId, sc.fromUserId, sc.toUserId, err)
+					sc.logger.Error().Err(err).Msg("[sender] can't read RTCP")
 					continue
 				} else {
 					return
@@ -106,14 +110,13 @@ func (sc *senderController) runListener() {
 			}
 
 			for _, packet := range packets {
-				// log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T\n%v\n", sc.roomId, sc.fromUserId, sc.toUserId, packet, packet)
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] PLI received\n", sc.roomId, sc.fromUserId, sc.toUserId)
+					sc.logger.Info().Msg("[sender] PLI received")
 					sc.slice.fromPs.pc.throttledPLIRequest()
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
 					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
-					log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] REMB packet %T:\n%v\n", sc.roomId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
+					sc.logger.Info().Msgf("REMB packet %T: %v", rtcpPacket, rtcpPacket)
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(sc.ssrc) {
@@ -121,7 +124,7 @@ func (sc *senderController) runListener() {
 						}
 					}
 					// default:
-					// 	log.Printf("[info] [room#%s] [mixer] [from user#%s to user#%s] RTCP packet %T:\n%v\n", sc.roomId, sc.fromUserId, sc.toUserId, rtcpPacket, rtcpPacket)
+					// sc.logger.Info().Msgf("RTCP packet %T: %v", rtcpPacket, rtcpPacket)
 				}
 			}
 		}

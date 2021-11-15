@@ -176,8 +176,9 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - DS_PORT=9000 (defaults to 8000) to set port listen by server
 - DS_WEB_PREFIX=/path (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
 - DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
-- DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections
+- DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller)
 - DS_ENV=BUILD_FRONT builds front-end assets but do not start server
+- DS_LOG_FILE (defaults to none, outputting logs to Stdout) to declare a file to write logs to (if file can't be opened, fallback to none)
 - DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - DS_STATS_LOGIN (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
@@ -283,16 +284,6 @@ Here is an overview of what is happening from connecting to videoconferencing:
   1. P1 output tracks are added to the other peers connections (and vice versa)
 	2. new offers are created and sent to update remote peer connections (in the browser)
 - a by-product of this signaling step is the initialization of `senderControllers` needed by `mixerSlices` to inspect network conditions and estimate optimal bitrates
-
-### Logs
-
-Logs are prefixed by:
-
-- `[fatal]`: can't launch server
-- `[error]`: server error
-- `[info]`: information about the trial events (initialization of resources, signaling, closing...)
-- `[wrong]`: client side error (for instance wrong `peerOptions`)
-- `[recov]`: recover from panic
 
 ### Websocket messages
 

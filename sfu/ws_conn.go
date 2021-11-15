@@ -2,12 +2,14 @@ package sfu
 
 import (
 	"encoding/json"
-	"log"
 	"regexp"
 	"sync"
 
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -18,8 +20,8 @@ const (
 type wsConn struct {
 	sync.Mutex
 	*websocket.Conn
-	roomId string
-	userId string
+	// log
+	logger zerolog.Logger
 }
 
 type messageOut struct {
@@ -88,14 +90,14 @@ func parseFrameRate(join types.JoinPayload) (frameRate int) {
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
-	return &wsConn{sync.Mutex{}, unsafeConn, "", ""}
+	return &wsConn{sync.Mutex{}, unsafeConn, zerolog.Nop()}
 }
 
 func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		log.Printf("[error] [room#%s] [user#%s] [ws] can't read: %v\n", ws.roomId, ws.userId, err)
+		ws.logger.Error().Err(err).Msg("[ws] can't read JSON")
 	}
 	return
 }
@@ -121,17 +123,20 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	// add property
 	join.Origin = origin
 
-	log.Printf("[info] [room#%s] [user#%s] [join] %+v\n", ws.roomId, ws.userId, join)
+	// bind fields
+	ws.setLogger(join.RoomId, join.UserId)
 
 	return
 }
 
-func (ws *wsConn) setIds(roomId string, userId string) {
+func (ws *wsConn) setLogger(roomId string, userId string) {
 	ws.Lock()
 	defer ws.Unlock()
 
-	ws.roomId = roomId
-	ws.userId = userId
+	ws.logger = log.With().
+		Str("room", roomId).
+		Str("user", userId).
+		Logger()
 }
 
 func (ws *wsConn) send(text string) (err error) {
@@ -140,7 +145,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[error] [room#%s] [user#%s] [ws] can't send: %v\n", ws.roomId, ws.userId, err)
+		ws.logger.Error().Err(err).Msg("[ws] can't write JSON")
 	}
 	return
 }
@@ -154,7 +159,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		log.Printf("[error] [room#%s] [user#%s] [ws] can't send with payload: %v\n", ws.roomId, ws.userId, err)
+		ws.logger.Error().Err(err).Msg("[ws] can't write JSON with payload")
 	}
 	return
 }

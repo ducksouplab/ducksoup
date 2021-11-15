@@ -3,12 +3,12 @@ package engine
 // inspired by https://github.com/jech/galene group package
 
 import (
-	"log"
-
+	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -160,7 +160,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	i := &interceptor.Registry{}
 	// other option is to customize what interceptors to enable, by using engine/interceptor.go#RegisterInterceptors
 	if err := registerInterceptors(m, i); err != nil {
-		log.Println("[error] [engine] could not register default interceptors")
+		log.Error().Err(err).Msg("[engine] can't register interceptors")
 	}
 
 	return webrtc.NewAPI(

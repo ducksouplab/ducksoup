@@ -7,7 +7,6 @@ import (
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/server"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,11 +21,6 @@ func init() {
 	}
 
 	helpers.EnsureDir("./data")
-
-	// init logging
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "20060102-150405.000"})
-	log.Logger = log.With().Caller().Logger()
 }
 
 func main() {
@@ -36,9 +30,9 @@ func main() {
 	// run ducksoup only if not in BUILD_FRONT DS_ENV
 	if !cmdBuildMode {
 		defer func() {
-			log.Info().Msg("[main] stopped")
+			log.Info().Msg("[main] app stopped")
 			if r := recover(); r != nil {
-				log.Info().Msgf("[recov] main has recovered: %v", r)
+				log.Info().Msgf("[main] app has recovered: %v", r)
 			}
 		}()
 
