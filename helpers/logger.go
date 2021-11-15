@@ -28,5 +28,5 @@ func init() {
 			log.Logger = log.Output(output)
 		}
 	}
-	log.Info().Msg("logger configured")
+	log.Info().Msg("[init] logger configured")
 }

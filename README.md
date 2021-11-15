@@ -173,20 +173,25 @@ When changing settings (either as environment variables or defined in `config/*.
 
 Security related settings and settings defining how DuckSoup is run on host are controlled by environment variables:
 
-- DS_PORT=9000 (defaults to 8000) to set port listen by server
-- DS_WEB_PREFIX=/path (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
-- DS_ORIGINS=https://origin1,https://origin2:8080 (defaults to none) declares comma separated allowed origins for WebSocket connections
-- DS_ENV=DEV enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller)
-- DS_ENV=BUILD_FRONT builds front-end assets but do not start server
-- DS_LOG_FILE (defaults to none, outputting logs to Stdout) to declare a file to write logs to (if file can't be opened, fallback to none)
-- DS_TEST_LOGIN (defaults to "ducksoup") to protect test pages with HTTP authentitcation
-- DS_TEST_PASSWORD (defaults to "ducksoup") to protect test pages with HTTP authentitcation
-- DS_STATS_LOGIN (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
-- DS_STATS_PASSWORD (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
-- DS_NVIDIA (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
-- GST_PLUGIN_PATH to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
+- `DS_PORT=9000` (defaults to 8000) to set port listen by server
+- `DS_WEB_PREFIX=/path` (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
+- `DS_ORIGINS=https://origin1,https://origin2:8080` (defaults to none) declares comma separated allowed origins for WebSocket connections
+- `DS_ENV=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller)
+- `DS_ENV=BUILD_FRONT` builds front-end assets but do not start server
+- `DS_LOG_FILE` (defaults to none, outputting logs to Stdout) to declare a file to write logs to (if file can't be opened, fallback to none)
+- `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
+- `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
+- `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
+- `DS_STATS_PASSWORD` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
+- `DS_NVIDIA` (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
 
-GStreamer settings are defined in `config/gst.yml`:
+Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
+
+- `GST_PLUGIN_PATH` to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
+- `GST_DEBUG` to control debug output format
+- `GST_DEBUG_FILE` to control debug destination file
+
+Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
