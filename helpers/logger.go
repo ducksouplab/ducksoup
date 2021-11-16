@@ -24,7 +24,6 @@ func init() {
 	// stdout writer
 	if os.Getenv("DS_ENV") == "DEV" || os.Getenv("DS_LOG_STDOUT") == "true" {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
-		log.Logger = log.With().Caller().Logger()
 	}
 	// file writer
 	logFile := os.Getenv("DS_LOG_FILE")
