@@ -176,9 +176,10 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_PORT=9000` (defaults to 8000) to set port listen by server
 - `DS_WEB_PREFIX=/path` (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
 - `DS_ORIGINS=https://origin1,https://origin2:8080` (defaults to none) declares comma separated allowed origins for WebSocket connections
-- `DS_ENV=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller)
+- `DS_ENV=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller) + print logs to Stdout
 - `DS_ENV=BUILD_FRONT` builds front-end assets but do not start server
-- `DS_LOG_FILE` (defaults to none, outputting logs to Stdout) to declare a file to write logs to (if file can't be opened, fallback to none)
+- `DS_LOG_STDOUT=true` (defaults to false) to print logs to Stdout (if `DS_LOG_FILE` is also set, logs are written to both)
+- `DS_LOG_FILE=log/ducksoup.log` (defaults to none) to declare a file to write logs to (fails silently if file can't be opened)
 - `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation

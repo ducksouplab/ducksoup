@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"io"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -14,19 +15,33 @@ const (
 func init() {
 	// zerolog defaults
 	zerolog.TimeFieldFormat = timeFormat
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
 	if os.Getenv("DS_ENV") == "DEV" {
 		log.Logger = log.With().Caller().Logger()
 	}
-	// change logger output if a log file is provided
+
+	// manage multi log output
+	var writers []io.Writer
+	// stdout writer
+	if os.Getenv("DS_ENV") == "DEV" || os.Getenv("DS_LOG_STDOUT") == "true" {
+		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
+		log.Logger = log.With().Caller().Logger()
+	}
+	// file writer
 	logFile := os.Getenv("DS_LOG_FILE")
 	if logFile != "" {
-		output, fileErr := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		fileWriter, fileErr := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if fileErr != nil {
-			log.Error().Msg("error opening log file -> choosing Stdout as log output")
+			log.Error().Msg("error opening log file")
 		} else {
-			log.Logger = log.Output(output)
+			writers = append(writers, fileWriter)
 		}
+	}
+	// set writers
+	if len(writers) == 1 {
+		log.Logger = log.Output(writers[0])
+	} else if len(writers) > 1 {
+		multi := zerolog.MultiLevelWriter(writers...)
+		log.Logger = log.Output(multi)
 	}
 	log.Info().Msg("[init] logger configured")
 }
