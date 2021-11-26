@@ -110,14 +110,6 @@ In this example, `proprety1` has an initial value of `1.0` and is updated to `1.
 
 For the time being only float values are allowed when controlling properties.
 
-### Fake effect
-
-You may use this reserved effect name (either for `audioFx` or `videoFx`):
-
-- `passthrough` instantiates a minimal GStreamer that copies source to sink (input to output) without any depaying/decoding, processing nor file recording
-
-It may be useful for debugging streaming quality issues, but won't even trigger file recording.
-
 ### Player API
 
 Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mountEl, peerOptions, embedOptions);`
@@ -190,16 +182,17 @@ Since DuckSoup relies on GStreamer, GStreamer environment variables may be usefu
 
 - `GST_PLUGIN_PATH` to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
 - `GST_DEBUG` to control debug output format
-- `GST_DEBUG_FILE` to control debug destination file
+- `GST_DEBUG_FILE` to control debug destination file (if set, logs won't be printed to Stderr)
 
 Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
+- `muxRecords` set to `true` to record audio and video in the same file, `false` to record audio and video in separate files
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
 
 DuckSoup server settings are defined in `config/server.yml`:
 
-- `generateStats` set to true to generate and expose server stats (see [Front-ends](#front-ends))
+- `generateStats` set to `true` to generate and expose server stats (see [Front-ends](#front-ends))
 
 DuckSoup SFU settings are defined in `config/sfu.yml`:
 

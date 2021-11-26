@@ -1,3 +1,4 @@
+muxRecords: true
 rtpJitterBuffer: 
   latency: "140"
   retransmission: "false"

@@ -151,11 +151,8 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 }
 
 func (p *Pipeline) outputFiles() []string {
-	if p.join.AudioFx == "passthrough" && p.join.VideoFx == "passthrough" {
-		return nil
-	}
 	namespace := p.join.Namespace
-	hasFx := (len(p.join.AudioFx) > 0 && p.join.AudioFx != "passthrough") || (len(p.join.VideoFx) > 0 && p.join.VideoFx != "passthrough")
+	hasFx := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
 	if hasFx {
 		return []string{fileName(namespace, p.filePrefix, "raw"), fileName(namespace, p.filePrefix, "fx")}
 	} else {

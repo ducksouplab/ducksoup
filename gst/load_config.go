@@ -9,6 +9,7 @@ import (
 )
 
 type gstreamerConfig struct {
+	MuxRecords      bool            `yaml:"muxRecords"`
 	RTPJitterBuffer rtpJitterBuffer `yaml:"rtpJitterBuffer"`
 	VP8             codec           `yaml:"vp8"`
 	X264            codec
@@ -38,13 +39,6 @@ var pipelineTemplater *template.Template
 var config gstreamerConfig
 
 func init() {
-	var err error
-	pipelineTemplateString := helpers.ReadFile("config/pipeline.gtpl")
-	pipelineTemplater, err = template.New("pipelineTemplate").Parse(pipelineTemplateString)
-	if err != nil {
-		panic(err)
-	}
-
 	f, err := helpers.Open("config/gst.yml")
 	if err != nil {
 		log.Fatal().Err(err)
@@ -55,6 +49,17 @@ func init() {
 	err = decoder.Decode(&config)
 	if err != nil {
 		log.Fatal().Err(err)
+	}
+
+	// rely on decoded config
+	pipelineTemplateFile := "config/pipeline_muxed.gtpl"
+	if !config.MuxRecords {
+		pipelineTemplateFile = "config/pipeline_split.gtpl"
+	}
+	pipelineTemplateString := helpers.ReadFile(pipelineTemplateFile)
+	pipelineTemplater, err = template.New("pipelineTemplate").Parse(pipelineTemplateString)
+	if err != nil {
+		panic(err)
 	}
 
 	// log

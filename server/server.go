@@ -48,7 +48,7 @@ func init() {
 
 	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
 	webPrefix = helpers.Getenv("DS_WEB_PREFIX", "")
-	// basict Auth
+	// basic Auth
 	testLogin = helpers.Getenv("DS_TEST_LOGIN", "ducksoup")
 	testPassword = helpers.Getenv("DS_TEST_PASSWORD", "ducksoup")
 	statsLogin = helpers.Getenv("DS_STATS_LOGIN", "ducksoup")

@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.1.2")
+    console.log("[DuckSoup test] v1.1.3")
 });
 
 let state;
@@ -70,9 +70,9 @@ const start = async ({
     // add name if fx is not empty
     let audioFx = afx;
     let videoFx = vfx;
-    // add name if not empty and not "passthrough" (special case)
-    if(!!afx && afx.length > 0 && !["passthrough"].includes(afx)) audioFx += " name=fx";
-    if(!!vfx && vfx.length > 0 && !["passthrough"].includes(vfx)) videoFx += " name=fx";
+    // add name if not empty
+    if(!!afx && afx.length > 0) audioFx += " name=fx";
+    if(!!vfx && vfx.length > 0) videoFx += " name=fx";
     videoFx = processMozza(videoFx);
     // signaling
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
