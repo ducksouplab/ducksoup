@@ -30,10 +30,10 @@ func main() {
 	// run ducksoup only if not in BUILD_FRONT DS_ENV
 	if !cmdBuildMode {
 		defer func() {
-			log.Info().Msg("[main] app stopped")
 			if r := recover(); r != nil {
-				log.Info().Msgf("[main] app has recovered: %v", r)
+				log.Error().Msgf("[main] app panic caught: %v", r)
 			}
+			log.Info().Msg("[main] app stopped")
 		}()
 
 		// launch http (with websockets) server

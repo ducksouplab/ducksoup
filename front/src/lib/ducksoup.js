@@ -13,7 +13,7 @@ const DEFAULT_CONSTRAINTS = {
         channelCount: 1,
         autoGainControl: false,
         latency: { ideal: 0.003 },
-        echoCancellation: false,
+        echoCancellation: true,
         noiseSuppression: false,
     },
 };
@@ -237,7 +237,7 @@ class DuckSoup {
         stream.getTracks().forEach((track) => {
             // implement a mute-like behavior (with `enabled`) until the room does start
             // see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/enabled
-            track.enabled = false;
+            //track.enabled = false;//disabled for now
             pc.addTrack(track, stream);
         });
         this._stream = stream;

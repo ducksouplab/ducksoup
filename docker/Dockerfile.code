@@ -1,6 +1,6 @@
 FROM creamlab/bullseye-gstreamer:latest
 
-RUN apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y
 
 # build-essential needed for CGO (gcc) (git needed for vscode extension)
 RUN apt-get update && apt-get install -y curl build-essential git

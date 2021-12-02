@@ -110,21 +110,18 @@ func (sc *senderController) runListener() {
 			}
 
 			for _, packet := range packets {
+				// TODO could implement GCC from TWCC
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.logger.Info().Msg("[sender] PLI received")
 					sc.slice.fromPs.pc.throttledPLIRequest()
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
 					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
-					sc.logger.Info().Msgf("REMB packet %T: %v", rtcpPacket, rtcpPacket)
 				case *rtcp.ReceiverReport:
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(sc.ssrc) {
 							sc.updateRateFromLoss(r.FractionLost)
 						}
 					}
-					// default:
-					// sc.logger.Info().Msgf("RTCP packet %T: %v", rtcpPacket, rtcpPacket)
 				}
 			}
 		}

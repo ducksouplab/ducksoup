@@ -3,14 +3,22 @@ package engine
 // inspired by https://github.com/jech/galene group package
 
 import (
+	"fmt"
+	"os"
+
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/packetdump"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var (
+	// mode
+	debugMode         bool = false
 	videoRTCPFeedback []webrtc.RTCPFeedback
 	// exported
 	OpusCodecs []webrtc.RTPCodecParameters
@@ -21,6 +29,9 @@ var (
 )
 
 func init() {
+	if os.Getenv("DS_DEBUG_LOG") == "true" {
+		debugMode = true
+	}
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
 		{Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},
@@ -119,6 +130,48 @@ func init() {
 	}
 }
 
+// func formatReceivedRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
+// 	for _, pkt := range pkts {
+// 		res += fmt.Sprintf("[receiver] %T RTCP packet: %v\n", pkt, pkt)
+// 	}
+// 	return res
+// }
+
+func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
+	for _, pkt := range pkts {
+		switch rtcpPacket := pkt.(type) {
+		case *rtcp.TransportLayerCC:
+			res += fmt.Sprintf("[TWCC sent] packet#%v chunks: ", rtcpPacket.FbPktCount)
+			for _, chunk := range rtcpPacket.PacketChunks {
+				res += fmt.Sprintf("%+v ", chunk)
+			}
+		case *rtcp.ReceiverReport:
+			res += fmt.Sprintf("[RR sent] reports: ")
+			for _, report := range rtcpPacket.Reports {
+				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
+			}
+			// default:
+			// 	res += fmt.Sprintf("[%T sent]", rtcpPacket)
+		}
+	}
+	return res
+}
+
+// used by RTCP log interceptors
+type logWriteCloser struct{}
+
+func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
+	n = len(p)
+	if n > 0 {
+		log.Logger.Debug().Msg(string(p))
+	}
+	return
+}
+
+func (wc *logWriteCloser) Close() (err error) {
+	return
+}
+
 // APIs are used to create peer connections, possible codecs are set once for all (at API level)
 // but preferred codecs for a given track are set at transceiver level
 // currently NewWebRTCAPI (rather than pion default one) prevents a freeze/lag observed after ~20 seconds
@@ -148,6 +201,22 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	}
 
 	i := &interceptor.Registry{}
+
+	if debugMode {
+		// logReceivedRTCP, _ := packetdump.NewReceiverInterceptor(
+		// 	packetdump.RTCPFormatter(formatReceivedRTCP),
+		// 	packetdump.RTCPWriter(&logWriteCloser{}),
+		// 	packetdump.RTPWriter(zerolog.Nop()),
+		// )
+
+		logSentRTCP, _ := packetdump.NewSenderInterceptor(
+			packetdump.RTCPFormatter(formatSentRTCP),
+			packetdump.RTCPWriter(&logWriteCloser{}),
+			packetdump.RTPWriter(zerolog.Nop()),
+		)
+		// i.Add(logReceivedRTCP)
+		i.Add(logSentRTCP)
+	}
 	if err := registerInterceptors(m, i); err != nil {
 		log.Error().Err(err).Msg("[engine] can't register interceptors")
 	}

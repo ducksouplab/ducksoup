@@ -56,10 +56,10 @@ nv264:
   decode: avdec_h264
   encode:
     raw: >-
-      nvh264enc name=video_encoder_raw rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
-      h264parse !
-      video/x-h264, profile=high
+      nvh264enc name=video_encoder_raw rc-mode=3 preset=3 gop-size=15 bframes=4 rc-lookahead=20 zerolatency=true qos=true !
+      video/x-h264, profile=high !
+      h264parse
     fx: >-
-      nvh264enc name=video_encoder_fx rc-mode=3 preset=4 gop-size=15 zerolatency=true qos=true !
-      h264parse !
-      video/x-h264, profile=high
+      nvh264enc name=video_encoder_fx rc-mode=3 preset=3 gop-size=15 bframes=4 rc-lookahead=20 zerolatency=true qos=true !
+      video/x-h264, profile=high !
+      h264parse

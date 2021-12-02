@@ -181,8 +181,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 
 - `GST_PLUGIN_PATH` to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
-- `GST_DEBUG` to control debug output format
-- `GST_DEBUG_FILE` to control debug destination file (if set, logs won't be printed to Stderr)
+- `GST_DEBUG` (default to GST_LEVEL_WARNING) to control debug output format
 
 Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 

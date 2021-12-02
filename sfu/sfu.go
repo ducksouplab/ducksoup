@@ -37,12 +37,14 @@ func (s *mixerSlice) inspect() interface{} {
 	return struct {
 		From      string
 		Kind      string
-		IntputKbs int64
-		OutputKbs int64
+		IntputKbs uint64
+		OutputKbs uint64
+		TargetKbs uint64
 	}{
 		s.fromPs.userId,
 		s.input.Kind().String(),
 		s.inputBitrate / 1000,
 		s.outputBitrate / 1000,
+		s.optimalBitrate / 1000,
 	}
 }

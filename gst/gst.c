@@ -9,6 +9,21 @@
 
 // Internals (snake_case)
 
+void go_debug_log(
+    GstDebugCategory * category,
+    GstDebugLevel level,
+    const gchar * file,
+    const gchar * function,
+    gint line,
+    GObject * object,
+    GstDebugMessage * message,
+    gpointer data
+) {
+    // printf("MyLogFunc: [Level:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
+    goDebugLog(level, (char*)file, (char*)function, line, (char*)gst_debug_message_get(message));
+
+}
+
 void stop_pipeline(GstElement* pipeline) {
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
@@ -37,7 +52,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 
         char msgBuf[100];
         sprintf(msgBuf, "ERR [gst.c] from element %d: %s\n",GST_OBJECT_NAME (msg->src), error->message);
-        goLog(id, msgBuf, 1);
+        goPipelineLog(id, msgBuf, 1);
 
         g_error_free(error);
 
@@ -133,6 +148,7 @@ static GstPadProbeReturn input_track_event_pad_probe_callback(GstPad * pad, GstP
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
 
+    // for the time being gst_event_is is a custom implementation
     if (gst_event_is (event, GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME)) {        
         goPLIRequest(id);
     }
@@ -149,13 +165,19 @@ GMainLoop *gstreamer_main_loop = NULL;
 
 void gstStartMainLoop(void)
 {
+    // use custom log
+    gst_debug_add_log_function(go_debug_log, NULL, NULL);
+    // run loop
     gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(gstreamer_main_loop);
 }
 
 GstElement *gstParsePipeline(char *pipelineStr, char *id)
-{
+{    
     gst_init(NULL, NULL);
+    gst_debug_remove_log_function(gst_debug_log_default);
+    gst_debug_set_active(TRUE);
+
     GError *error = NULL;
     GstElement *pipeline = gst_parse_launch(pipelineStr, &error);
 

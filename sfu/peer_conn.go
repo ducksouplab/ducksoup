@@ -91,7 +91,7 @@ func newPeerConn(join types.JoinPayload, ws *wsConn) (pc *peerConn, err error) {
 		return
 	}
 
-	// initial lastPLI far enough the past
+	// initial lastPLI far enough in the past
 	lastPLI := time.Now().Add(-2 * delayBetweenPLIs)
 
 	pc = &peerConn{sync.Mutex{}, ppc, lastPLI, logger}

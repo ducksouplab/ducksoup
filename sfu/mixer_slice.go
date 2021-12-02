@@ -42,10 +42,10 @@ type mixerSlice struct {
 	statsTicker   *time.Ticker
 	logTicker     *time.Ticker
 	lastStats     time.Time
-	inputBits     int64
-	outputBits    int64
-	inputBitrate  int64
-	outputBitrate int64
+	inputBits     uint64
+	outputBits    uint64
+	inputBitrate  uint64
+	outputBitrate uint64
 	// status
 	endCh chan struct{} // stop processing when track is removed
 	// log
@@ -147,7 +147,7 @@ func (l *mixerSlice) scanInput(buf []byte, n int) {
 	l.Lock()
 	// estimation (x8 for bytes) not taking int account headers
 	// it seems using MarshalSize (like for outputBits below) does not give the right numbers due to packet 0-padding
-	l.inputBits += int64(n) * 8
+	l.inputBits += uint64(n) * 8
 	l.Unlock()
 }
 
@@ -160,7 +160,7 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 		go func() {
 			outputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
 			s.Lock()
-			s.outputBits += int64(outputBits)
+			s.outputBits += uint64(outputBits)
 			s.Unlock()
 		}()
 	}
@@ -235,8 +235,8 @@ func (s *mixerSlice) runTickers() {
 			s.Lock()
 			elapsed := tickTime.Sub(s.lastStats).Seconds()
 			// update bitrates
-			s.inputBitrate = s.inputBits / int64(elapsed)
-			s.outputBitrate = s.outputBits / int64(elapsed)
+			s.inputBitrate = s.inputBits / uint64(elapsed)
+			s.outputBitrate = s.outputBits / uint64(elapsed)
 			// reset cumulative bits and lastStats
 			s.inputBits = 0
 			s.outputBits = 0
@@ -262,7 +262,6 @@ func (s *mixerSlice) runTickers() {
 }
 
 // func (s *mixerSlice) runReceiverListener() {
-// 	roomId, userId := s.fromPs.r.id, s.fromPs.userId
 // 	buf := make([]byte, defaultMTU)
 
 // 	for {
@@ -273,29 +272,30 @@ func (s *mixerSlice) runTickers() {
 // 			i, _, err := s.receiver.Read(buf)
 // 			if err != nil {
 // 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					log.Printf("[info] [room#%s] [user#%s] receiver read RTCP: %v\n", roomId, userId, err)
+// 					s.logger.Error().Err(err).Msg("can't read RTCP packet")
 // 				}
 // 				return
 // 			}
-// 			// TODO: send to rtpjitterbugger sink_rtcp
+// 			// TODO: send to rtpjitterbuffer sink_rtcp
 // 			//s.pipeline.PushRTCP(s.kind, buf[:i])
 
-// 			// packets, err := rtcp.Unmarshal(buf[:i])
-// 			// if err != nil {
-// 			// 	log.Printf("[info] [room#%s] [user#%s] receiver unmarshal RTCP: %v\n", roomId, userId, err)
-// 			// 	continue
-// 			// }
+// 			packets, err := rtcp.Unmarshal(buf[:i])
+// 			if err != nil {
+// 				s.logger.Error().Err(err).Msg("can't unmarshal RTCP packet")
+// 				continue
+// 			}
 
-// 			// for _, packet := range packets {
-// 			// 	switch rtcpPacket := packet.(type) {
-// 			// 	case *rtcp.SenderReport:
-// 			// 		log.Println(rtcpPacket)
-// 			// 	case *rtcp.ReceiverEstimatedMaximumBitrate:
-// 			// 		log.Println(rtcpPacket)
-// 			// 	default:
-// 			// 		log.Printf("-- RTCP packet on receiver: %T", rtcpPacket)
-// 			// 	}
-// 			// }
+// 			for _, packet := range packets {
+// 				switch rtcpPacket := packet.(type) {
+// 				case *rtcp.SourceDescription:
+// 				// case *rtcp.SenderReport:
+// 				// 	log.Println(rtcpPacket)
+// 				// case *rtcp.ReceiverEstimatedMaximumBitrate:
+// 				// 	log.Println(rtcpPacket)
+// 				default:
+// 					//s.logger.Info().Msgf("%T %+v", rtcpPacket, rtcpPacket)
+// 				}
+// 			}
 // 		}
 // 	}
 // }
