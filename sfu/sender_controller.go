@@ -93,7 +93,6 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 }
 
 func (sc *senderController) runListener() {
-
 	for {
 		select {
 		case <-sc.slice.endCh:

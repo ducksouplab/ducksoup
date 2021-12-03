@@ -189,10 +189,7 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
 			if p.join.GPU {
-				// acts both on bitrate and max-bitrate for nvh264enc
-				for _, n := range names {
-					p.setPropInt(n, "max-bitrate", value*320/256)
-				}
+				prop = "target-bitrate"
 			}
 		}
 		for _, n := range names {

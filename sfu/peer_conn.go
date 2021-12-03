@@ -164,17 +164,17 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 	return
 }
 
-func (pc *peerConn) forcedPLIRequest() {
-	pc.Lock()
-	defer pc.Unlock()
+// func (pc *peerConn) forcedPLIRequest() {
+// 	pc.Lock()
+// 	defer pc.Unlock()
 
-	for _, receiver := range pc.GetReceivers() {
-		track := receiver.Track()
-		if track != nil && track.Kind().String() == "video" {
-			pc.writePLI(track)
-		}
-	}
-}
+// 	for _, receiver := range pc.GetReceivers() {
+// 		track := receiver.Track()
+// 		if track != nil && track.Kind().String() == "video" {
+// 			pc.writePLI(track)
+// 		}
+// 	}
+// }
 
 func (pc *peerConn) throttledPLIRequest() {
 	pc.Lock()

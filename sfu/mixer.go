@@ -218,6 +218,6 @@ func (m *mixer) dispatchKeyFrame() {
 	defer m.RUnlock()
 
 	for _, ps := range m.r.peerServerIndex {
-		ps.pc.forcedPLIRequest()
+		ps.pc.throttledPLIRequest()
 	}
 }

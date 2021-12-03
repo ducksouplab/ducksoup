@@ -25,6 +25,7 @@ audio_src. !
     queue max-size-buffers=0 max-size-bytes=0 ! 
     {{.Audio.Decode}} !
     audioconvert ! 
+    audio/x-raw,channels=1 ! 
     {{.AudioFx}} ! 
     audioconvert ! 
     {{.Audio.Encode.Fx}} ! 
@@ -54,10 +55,7 @@ video_src. !
     rtpjitterbuffer name=video_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    videoconvert ! 
-    videorate ! 
-    videoscale ! 
-    video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1 ! 
+    {{.VideoFormat}} !
 
     tee name=tee_video_raw ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -86,10 +84,7 @@ video_src. !
     rtpjitterbuffer name=video_buffer latency={{.RTPJitterBuffer.Latency}} do-retransmission={{.RTPJitterBuffer.Retransmission}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    videoconvert ! 
-    videorate ! 
-    videoscale ! 
-    video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1 ! 
+    {{.VideoFormat}} !
     {{.Video.Encode.Raw}} !
     raw_video_recorder.
 

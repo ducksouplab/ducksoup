@@ -13,7 +13,6 @@ const DEFAULT_CONSTRAINTS = {
         channelCount: 1,
         autoGainControl: false,
         latency: { ideal: 0.003 },
-        echoCancellation: true,
         noiseSuppression: false,
     },
 };
@@ -32,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.3.3");
+    console.log("[DuckSoup] v1.3.4");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -72,8 +71,8 @@ const parseJoinPayload = (peerOptions) => {
     return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, gpu });
 };
 
-const forceMozillaMono = (sdp) => {
-    if (!window.navigator.userAgent.includes("Mozilla")) return sdp;
+const preferMono = (sdp) => {
+    // https://datatracker.ietf.org/doc/html/rfc7587#section-6.1
     return sdp
         .split("\r\n")
         .map((line) => {
@@ -105,7 +104,7 @@ const addTWCC = (sdp) => {
 };
 
 const processSDP = (sdp) => {
-    let output = forceMozillaMono(sdp);
+    let output = preferMono(sdp);
     // output = addTWCC(output);
     return output;
 };
@@ -144,8 +143,10 @@ class DuckSoup {
         this._signalingUrl = peerOptions.signalingUrl;
         this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
         this._joinPayload = parseJoinPayload(peerOptions);
+        // by default we cancel echo except in mirror mode (room size=1) (mirror mode is for test purposes)
+        const echoCancellation = this._joinPayload.size !== 1;
         this._constraints = {
-            audio: { ...DEFAULT_CONSTRAINTS.audio, ...peerOptions.audio },
+            audio: { ...DEFAULT_CONSTRAINTS.audio, echoCancellation, ...peerOptions.audio },
             video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
         };
         this._debug = embedOptions && embedOptions.debug;

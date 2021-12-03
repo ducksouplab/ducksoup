@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
+	"github.com/creamlab/ducksoup/helpers"
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtp"
@@ -21,6 +22,7 @@ const (
 	encoderPeriod           = 1000
 	statsPeriod             = 3000
 	logPeriod               = 7300
+	diffThreshold           = 10
 )
 
 type mixerSlice struct {
@@ -54,7 +56,7 @@ type mixerSlice struct {
 
 // helpers
 
-func minUint64Slice(v []uint64) (min uint64) {
+func minUint64(v []uint64) (min uint64) {
 	if len(v) > 0 {
 		min = v[0]
 	}
@@ -219,12 +221,19 @@ func (s *mixerSlice) runTickers() {
 				for _, sc := range s.senderControllerIndex {
 					rates = append(rates, sc.optimalBitrate)
 				}
-				sliceRate := minUint64Slice(rates)
-				if s.pipeline != nil && sliceRate > 0 {
-					s.Lock()
-					s.optimalBitrate = sliceRate
-					s.Unlock()
-					s.pipeline.SetEncodingRate(s.kind, sliceRate)
+				newPotentialRate := minUint64(rates)
+				if s.pipeline != nil && newPotentialRate > 0 {
+					// skip updating previous value and encoding rate too often
+					diff := helpers.AbsPercentageDiff(s.optimalBitrate, newPotentialRate)
+					if diff > diffThreshold { // works also for diff being Inf+ (when updating from 0, diff is Inf+)
+						s.Lock()
+						s.optimalBitrate = newPotentialRate
+						s.Unlock()
+						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
+						// format and log
+						display := fmt.Sprintf("%v kbit/s", newPotentialRate/1000)
+						s.logger.Info().Msgf("[slice] %s target bitrate: %s", s.kind, display)
+					}
 				}
 			}
 		}
@@ -249,16 +258,6 @@ func (s *mixerSlice) runTickers() {
 			s.logger.Info().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
-
-	// periodical log for video
-	if s.output.Kind().String() == "video" {
-		go func() {
-			for range s.logTicker.C {
-				display := fmt.Sprintf("%v kbit/s", s.optimalBitrate/1000)
-				s.logger.Info().Msgf("[slice] target encoded video bitrate: %s", display)
-			}
-		}()
-	}
 }
 
 // func (s *mixerSlice) runReceiverListener() {

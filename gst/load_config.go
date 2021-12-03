@@ -11,6 +11,7 @@ import (
 type gstreamerConfig struct {
 	MuxRecords      bool            `yaml:"muxRecords"`
 	RTPJitterBuffer rtpJitterBuffer `yaml:"rtpJitterBuffer"`
+	VideoFormat     string          `yaml:"videoFormat"`
 	VP8             codec           `yaml:"vp8"`
 	X264            codec
 	NV264           codec `yaml:"nv264"`

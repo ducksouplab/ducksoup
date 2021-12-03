@@ -45,7 +45,7 @@ func init() {
 				MimeType:     "audio/opus",
 				ClockRate:    48000,
 				Channels:     2,
-				SDPFmtpLine:  "minptime=10;useinbandfec=1;stereo=1;sprop-stereo=1",
+				SDPFmtpLine:  "minptime=10;useinbandfec=1;stereo=0",
 				RTCPFeedback: nil},
 			PayloadType: 111,
 		},

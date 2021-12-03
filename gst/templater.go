@@ -36,10 +36,10 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	videoCodec.Encode.Raw = strings.Replace(videoCodec.Encode.Raw, "{{.FilePrefix}}", filePrefix, -1)
 	videoCodec.Encode.Fx = strings.Replace(videoCodec.Encode.Fx, "{{.Namespace}}", join.Namespace, -1)
 	videoCodec.Encode.Fx = strings.Replace(videoCodec.Encode.Fx, "{{.FilePrefix}}", filePrefix, -1)
-	// prepare width, height, framerate
-	width := ", width=" + strconv.Itoa(join.Width)
-	height := ", height=" + strconv.Itoa(join.Height)
-	frameRate := ", framerate=" + strconv.Itoa(join.FrameRate) + "/1"
+	// same for VideoFormat
+	config.VideoFormat = strings.Replace(config.VideoFormat, "{{.Width}}", ", width="+strconv.Itoa(join.Width), -1)
+	config.VideoFormat = strings.Replace(config.VideoFormat, "{{.Height}}", ", height="+strconv.Itoa(join.Height), -1)
+	config.VideoFormat = strings.Replace(config.VideoFormat, "{{.FrameRate}}", ", framerate="+strconv.Itoa(join.FrameRate)+"/1", -1)
 
 	// shape template data
 	data := struct {
@@ -48,22 +48,18 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 		Namespace       string
 		FilePrefix      string
 		RTPJitterBuffer rtpJitterBuffer
+		VideoFormat     string
 		AudioFx         string
 		VideoFx         string
-		Width           string
-		Height          string
-		FrameRate       string
 	}{
 		videoCodec,
 		config.Opus,
 		join.Namespace,
 		filePrefix,
 		config.RTPJitterBuffer,
+		config.VideoFormat,
 		strings.Replace(join.AudioFx, "name=", "name=audio_fx_", 1), // add prefix to avoid clash with other named elements
 		strings.Replace(join.VideoFx, "name=", "name=video_fx_", 1),
-		width,
-		height,
-		frameRate,
 	}
 
 	// render pipeline from template
