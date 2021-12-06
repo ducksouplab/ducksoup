@@ -63,6 +63,14 @@ func parseVideoFormat(join types.JoinPayload) (videoFormat string) {
 	return
 }
 
+func parseRecordingMode(join types.JoinPayload) (recordingMode string) {
+	recordingMode = join.RecordingMode
+	if recordingMode != "muxed" && recordingMode != "split" && recordingMode != "none" {
+		recordingMode = defaultRecordingMode
+	}
+	return
+}
+
 func parseWidth(join types.JoinPayload) (width int) {
 	width = join.Width
 	if width == 0 {
@@ -117,6 +125,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	join.UserId = parseString(join.UserId)
 	join.Namespace = parseString(join.Namespace)
 	join.VideoFormat = parseVideoFormat(join)
+	join.RecordingMode = parseRecordingMode(join)
 	join.Width = parseWidth(join)
 	join.Height = parseHeight(join)
 	join.FrameRate = parseFrameRate(join)

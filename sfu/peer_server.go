@@ -3,6 +3,7 @@ package sfu
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -136,6 +137,7 @@ func (ps *peerServer) loop() {
 					ps.logger.Error().Err(err).Msg("[ps] can't add candidate")
 					return
 				}
+				ps.logger.Info().Msgf("[ps] added remote candidate: %+v", candidate)
 			case "answer":
 				answer := webrtc.SessionDescription{}
 				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
@@ -159,6 +161,10 @@ func (ps *peerServer) loop() {
 							ps.videoSlice.controlFx(payload)
 						}
 					}()
+				}
+			default:
+				if strings.HasPrefix(m.Kind, "info-") {
+					ps.logger.Debug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "info-"), m.Payload)
 				}
 			}
 		}

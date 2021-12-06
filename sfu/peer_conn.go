@@ -115,6 +115,11 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 		ps.ws.sendWithPayload("candidate", string(candidateString))
 	})
 
+	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		pc.logger.Info().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
+		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
+	})
+
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
 		pc.logger.Info().Msgf("[pc] connection state: %v", p.String())
@@ -128,17 +133,22 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 		}
 	})
 
+	// for logging
+
+	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+		pc.logger.Info().Msgf("[pc] ice state change: %v", state)
+	})
+
+	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
+		pc.logger.Info().Msgf("[pc] ice gathering state change: %v", state)
+	})
+
 	pc.OnNegotiationNeeded(func() {
 		pc.logger.Info().Msg("[pc] negotiation needed")
 	})
 
 	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		pc.logger.Info().Msgf("[pc] signaling state: %v", state)
-	})
-
-	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		pc.logger.Info().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
-		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
+		pc.logger.Info().Msgf("[pc] signaling state change: %v", state)
 	})
 
 	// Debug: send periodic PLIs

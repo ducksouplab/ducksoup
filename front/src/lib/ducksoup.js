@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.3.4");
+    console.log("[DuckSoup] v1.4.0");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -60,7 +60,7 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, gpu } = peerOptions;
+    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu } = peerOptions;
     if (!["VP8", "H264"].includes(videoFormat)) videoFormat = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
@@ -68,7 +68,7 @@ const parseJoinPayload = (peerOptions) => {
     if (isNaN(frameRate)) frameRate = null;
     if (!gpu) gpu = null;
 
-    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, gpu });
+    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu });
 };
 
 const preferMono = (sdp) => {
@@ -157,7 +157,9 @@ class DuckSoup {
                 audioBytesSent: 0,
                 audioBytesReceived: 0,
                 videoBytesSent: 0,
-                videoBytesReceived: 0
+                videoBytesReceived: 0,
+                encodedWith: 0,
+                encodedHeight: 0,
             };
         }
     };
@@ -247,15 +249,6 @@ class DuckSoup {
         const ws = new WebSocket(this._signalingUrl);
         this._ws = ws;
 
-        ws.onopen = () => {
-            ws.send(
-                JSON.stringify({
-                    kind: "join",
-                    payload: JSON.stringify(this._joinPayload),
-                })
-            );
-        };
-
         ws.onclose = (event) => {
             if(event.code === 1000) {
                 this._sendStop("closed");
@@ -317,45 +310,100 @@ class DuckSoup {
             }
         };
 
-        pc.onicecandidate = (e) => {
-            if (!e.candidate) return;
+        ws.onopen = () => {
             ws.send(
                 JSON.stringify({
-                    kind: "candidate",
-                    payload: JSON.stringify(e.candidate),
+                    kind: "join",
+                    payload: JSON.stringify(this._joinPayload),
                 })
             );
-        };
 
-        pc.ontrack = (event) => {
-            if(this._mountEl) {
-                let el = document.createElement(event.track.kind);
-                el.id = event.track.id;
-                el.srcObject = event.streams[0];
-                el.autoplay = true;
-                if(event.track.kind === "video") {
-                    if(this._joinPayload.width) {
-                        el.style.width = this._joinPayload.width + "px";
-                    } else {
-                        el.style.width = "100%";
+            pc.onicecandidate = (e) => {
+                if (!e.candidate) return;
+                ws.send(
+                    JSON.stringify({
+                        kind: "candidate",
+                        payload: JSON.stringify(e.candidate),
+                    })
+                );
+            };
+    
+            pc.ontrack = (event) => {
+                if(this._mountEl) {
+                    let el = document.createElement(event.track.kind);
+                    el.id = event.track.id;
+                    el.srcObject = event.streams[0];
+                    el.autoplay = true;
+                    if(event.track.kind === "video") {
+                        if(this._joinPayload.width) {
+                            el.style.width = this._joinPayload.width + "px";
+                        } else {
+                            el.style.width = "100%";
+                        }
+                        if(this._joinPayload.height) {
+                            el.style.height = this._joinPayload.height + "px";
+                        } 
                     }
-                    if(this._joinPayload.height) {
-                        el.style.height = this._joinPayload.height + "px";
-                    } 
+                    this._mountEl.appendChild(el);
+                    // on remove
+                    event.streams[0].onremovetrack = ({ track }) => {
+                        const el = document.getElementById(track.id);
+                        if (el) el.parentNode.removeChild(el);
+                    };
+                } else {
+                    this._sendEvent({
+                        kind: "track",
+                        payload: event
+                    });
                 }
-                this._mountEl.appendChild(el);
-                // on remove
-                event.streams[0].onremovetrack = ({ track }) => {
-                    const el = document.getElementById(track.id);
-                    if (el) el.parentNode.removeChild(el);
-                };
-            } else {
-                this._sendEvent({
-                    kind: "track",
-                    payload: event
-                });
-            }
-        };
+            };
+    
+            // for server logging
+            pc.onnegotiationneeded = (e) => {
+                ws.send(
+                    JSON.stringify({
+                        kind: "info-negotiation needed",
+                        payload: "",
+                    })
+                );
+            };
+    
+            pc.onsignalingstatechange = (e) => {
+                ws.send(
+                    JSON.stringify({
+                        kind: "info-signaling state change",
+                        payload: pc.signalingState.toString(),
+                    })
+                );
+            };
+    
+            pc.oniceconnectionstatechange = (e) => {
+                ws.send(
+                    JSON.stringify({
+                        kind: "info-ice connection state change",
+                        payload: pc.iceConnectionState.toString(),
+                    })
+                );
+            };
+    
+            pc.onicegatheringstatechange = (e) => {
+                ws.send(
+                    JSON.stringify({
+                        kind: "info-ice gathering state change",
+                        payload: pc.iceGatheringState.toString(),
+                    })
+                );
+            };
+    
+            pc.onicecandidateerror = (e) => {
+                ws.send(
+                    JSON.stringify({
+                        kind: "info-ice candidat eerror",
+                        payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
+                    })
+                );
+            };
+        }
 
         // Stats
         if (this._debug) {
@@ -384,6 +432,19 @@ class DuckSoup {
             } else if (report.type === "outbound-rtp" && report.kind === "video") {
                 newVideoBytesSent += report.bytesSent;
                 outboundRTPVideo = report;
+                let newEncodedWidth = report.frameWidth;
+                let newEncodedHeight = report.frameHeight;
+                if(newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
+                    this._ws.send(
+                        JSON.stringify({
+                            kind: "info-new outbound encoded size",
+                            payload: `${newEncodedWidth}x${newEncodedHeight}`,
+                        })
+                    );
+                    this._debugInfo.encodedWith = newEncodedWidth;
+                    this._debugInfo.encodedHeight = newEncodedHeight;
+                }
+
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
                 inboundRTPVideo = report;
@@ -434,6 +495,7 @@ class DuckSoup {
         });
 
         this._debugInfo = {
+            ...this._debugInfo,
             now: newNow,
             audioBytesSent: newAudioBytesSent,
             audioBytesReceived: newAudioBytesReceived,

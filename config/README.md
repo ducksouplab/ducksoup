@@ -1,6 +1,14 @@
-A few notes about GStreamer
+Currently different recording modes are offered:
 
-- input media streams are stored with a `-raw.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-fx.extension`
+- "muxed" (default) -> audio/video muxed in the same file
+
+- "split" -> audio video recorded in separate files (currently introduces delay on audio stream)
+
+- "none" -> no recording
+
+A few notes about GStreamer settings:
+
+- input media streams are stored with a `-dry.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-wet.extension`
 
 - when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more CPU resources. It's the currently chosen solution (note that decoding/reencoding is only needed for video, not for audio)
 
@@ -10,7 +18,7 @@ A few notes about GStreamer
 
 - rtpjitterbuffer proves to be necessary for h264, more tests needed (including on its latency value) for other formats (it indeed seems necessary when using the smile effect even with vp8)
 
-- use codec without B-frames (since they rely on future keyframes)
+- shoould we use codec without B-frames (since they rely on future keyframes)?
 
 - `nvh264dec` VS `avdec_h264`, to be investigated: when enabling TWCC in engine.go, `nvh264dec` crashes GStreamer (`failed to decode picture`). That's for the time being you use CPU H264 decoding even if GPU acceleration is requested (will be used only for encoding)
 

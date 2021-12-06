@@ -77,6 +77,7 @@ Where:
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
   - `videoFormat` (string) possible values: "H264" (default if none) or "VP8"
+  - `recordingMode` (string) possible values: "muxed" (default if none, records audio/video in the same muxed file), "split" (records separate files for audio and video) or "none" (no recording).
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
   - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding, if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVIDIA=true` environment variable (see [Environment variables](#environment-variables))
@@ -186,7 +187,6 @@ Since DuckSoup relies on GStreamer, GStreamer environment variables may be usefu
 
 Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
-- `muxRecords` set to `true` to record audio and video in the same file, `false` to record audio and video in separate files
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
 

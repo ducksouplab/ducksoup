@@ -20,11 +20,11 @@ import (
 
 // global state
 var (
-	nvidia bool
+	nvidiaEnabled bool
 )
 
 func init() {
-	nvidia = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
+	nvidiaEnabled = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -85,9 +85,9 @@ func (p *Pipeline) outputFiles() []string {
 	namespace := p.join.Namespace
 	hasFx := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
 	if hasFx {
-		return []string{fileName(namespace, p.filePrefix, "raw"), fileName(namespace, p.filePrefix, "fx")}
+		return []string{fileName(namespace, p.filePrefix, "dry"), fileName(namespace, p.filePrefix, "wet")}
 	} else {
-		return []string{fileName(namespace, p.filePrefix, "raw")}
+		return []string{fileName(namespace, p.filePrefix, "dry")}
 	}
 }
 
@@ -179,16 +179,16 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	value := int(value64)
 	prop := "bitrate"
 	if kind == "audio" {
-		p.setPropInt("audio_encoder_fx", prop, value)
+		p.setPropInt("audio_encoder_wet", prop, value)
 	} else {
-		names := []string{"video_encoder_raw", "video_encoder_fx"}
+		names := []string{"video_encoder_dry", "video_encoder_wet"}
 		if p.join.VideoFormat == "VP8" {
 			// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
 			prop = "target-bitrate"
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
-			if p.join.GPU {
+			if nvidiaEnabled && p.join.GPU {
 				prop = "target-bitrate"
 			}
 		}

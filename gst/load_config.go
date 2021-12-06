@@ -1,6 +1,8 @@
 package gst
 
 import (
+	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/creamlab/ducksoup/helpers"
@@ -9,34 +11,46 @@ import (
 )
 
 type gstreamerConfig struct {
-	MuxRecords      bool            `yaml:"muxRecords"`
-	RTPJitterBuffer rtpJitterBuffer `yaml:"rtpJitterBuffer"`
-	VideoFormat     string          `yaml:"videoFormat"`
-	VP8             codec           `yaml:"vp8"`
-	X264            codec
-	NV264           codec `yaml:"nv264"`
-	Opus            codec
-}
-
-type rtpJitterBuffer struct {
-	Latency        string
-	Retransmission string
+	CommonAudioRTPJitterBuffer string `yaml:"commonAudioRTPJitterBuffer"`
+	CommonVideoRTPJitterBuffer string `yaml:"commonVideoRTPJitterBuffer"`
+	CommonAudioRawCaps         string `yaml:"commonAudioRawCaps"`
+	CommonVideoRawCaps         string `yaml:"commonVideoRawCaps"`
+	CommonVideoRawCapsLight    string `yaml:"commonVideoRawCapsLight"`
+	Opus                       codec
+	VP8                        codec `yaml:"vp8"`
+	X264                       codec
+	NV264                      codec `yaml:"nv264"`
 }
 
 type codec struct {
-	Decode string
-	Encode struct {
-		Raw string
-		Fx  string
-	}
-	Rtp struct {
-		Caps  string
-		Pay   string
-		Depay string
+	Fx           string
+	RawCaps      string // constraint width/height/framerate and more to ensure stability before muxer
+	RawCapsLight string // don't constraint width/height/framerate, but only properties that a plugin might have changed
+	Decode       string
+	Encode       string
+	Rtp          struct {
+		Caps         string
+		Pay          string
+		Depay        string
+		JitterBuffer string
 	}
 }
 
-var pipelineTemplater *template.Template
+func (c codec) EncodeWith(name, nameSpace, filePrefix string) (output string) {
+	output = strings.Replace(c.Encode, "{{.Name}}", name, -1)
+	output = strings.Replace(output, "{{.Namespace}}", nameSpace, -1)
+	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
+	return
+}
+
+func (c codec) RawCapsWith(width, height, frameRate int) (output string) {
+	output = strings.Replace(c.RawCaps, "{{.Width}}", ", width="+strconv.Itoa(width), -1)
+	output = strings.Replace(output, "{{.Height}}", ", height="+strconv.Itoa(height), -1)
+	output = strings.Replace(output, "{{.FrameRate}}", ", framerate="+strconv.Itoa(frameRate)+"/1", -1)
+	return
+}
+
+var muxedRecordingTemplater, splitRecordingTemplater, noRecordingTemplater *template.Template
 var config gstreamerConfig
 
 func init() {
@@ -51,14 +65,29 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err)
 	}
+	// complete codec with common properties
+	config.Opus.Rtp.JitterBuffer = config.CommonAudioRTPJitterBuffer
+	config.Opus.RawCaps = config.CommonAudioRawCaps
+	config.VP8.Rtp.JitterBuffer = config.CommonVideoRTPJitterBuffer
+	config.X264.Rtp.JitterBuffer = config.CommonVideoRTPJitterBuffer
+	config.NV264.Rtp.JitterBuffer = config.CommonVideoRTPJitterBuffer
+	config.VP8.RawCaps = config.CommonVideoRawCaps
+	config.X264.RawCaps = config.CommonVideoRawCaps
+	config.NV264.RawCaps = config.CommonVideoRawCaps
+	config.VP8.RawCapsLight = config.CommonVideoRawCapsLight
+	config.X264.RawCapsLight = config.CommonVideoRawCapsLight
+	config.NV264.RawCapsLight = config.CommonVideoRawCapsLight
 
-	// rely on decoded config
-	pipelineTemplateFile := "config/pipeline_muxed.gtpl"
-	if !config.MuxRecords {
-		pipelineTemplateFile = "config/pipeline_split.gtpl"
+	// templates
+	muxedRecordingTemplater, err = template.New("muxedRecording").Parse(helpers.ReadFile("config/pipelines/muxed_recording.gtpl"))
+	if err != nil {
+		panic(err)
 	}
-	pipelineTemplateString := helpers.ReadFile(pipelineTemplateFile)
-	pipelineTemplater, err = template.New("pipelineTemplate").Parse(pipelineTemplateString)
+	splitRecordingTemplater, err = template.New("splitRecording").Parse(helpers.ReadFile("config/pipelines/split_recording.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	noRecordingTemplater, err = template.New("noRecording").Parse(helpers.ReadFile("config/pipelines/no_recording.gtpl"))
 	if err != nil {
 		panic(err)
 	}
