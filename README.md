@@ -171,9 +171,9 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_ORIGINS=https://origin1,https://origin2:8080` (defaults to none) declares comma separated allowed origins for WebSocket connections
 - `DS_ENV=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller) + print logs to Stdout
 - `DS_ENV=BUILD_FRONT` builds front-end assets but do not start server
-- `DS_LOG_STDOUT=true` (defaults to false) to print logs to Stdout (if `DS_LOG_FILE` is also set, logs are written to both)
+- `DS_LOG_STDOUT=true` (defaults to false, except when `DS_ENV=DEV`) to print logs to Stdout (if `DS_LOG_FILE` is also set, logs are written to both)
 - `DS_LOG_FILE=log/ducksoup.log` (defaults to none) to declare a file to write logs to (fails silently if file can't be opened)
-- `DS_DEBUG_LOG=true` (defaults to false) to write additional logs (RTCP packets for instance)
+- `DS_DEBUG_LOG=true` (defaults to false) to generate additional logs (see next section)
 - `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
@@ -183,7 +183,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 
 - `GST_PLUGIN_PATH` to declare additional GStreamer plugin paths (prefer appending to the existing GST_PLUGIN_PATH: GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/additional/plugins/path")
-- `GST_DEBUG` (default to GST_LEVEL_WARNING) to control debug output format
+- `GST_DEBUG` to control GStreamer debug output
 
 Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
@@ -198,6 +198,22 @@ DuckSoup SFU settings are defined in `config/sfu.yml`:
 
 - `audio` defines min/max/default values of target bitrates for output (reencoded) audio tracks
 - `video` defines min/max/default values of target bitrates for output (reencoded) video tracks
+
+### Logs
+
+Logs are managed with [zerolog](https://github.com/rs/zerolog):
+
+- they are pretty-printed to stdout if `DS_LOG_STDOUT=true` or `DS_ENV=DEV`
+- if you define a log file (`DS_LOG_FILE=log/ducksoup.log` for instance) they are appended to this file as JSON entries
+
+If you set `DS_DEBUG_LOG=true`, additional entries will be logged:
+
+- RTCP packets like TWCC and Receiver reports
+- debug info sent by client (ducksoup.js)
+
+Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is labeled as started (or running) when all input tracks have been registered.
+
+Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_DEBUG_LOG`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1` 
 
 ### Run DuckSoup server
 

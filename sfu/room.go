@@ -31,6 +31,7 @@ type room struct {
 	joinedCountIndex    map[string]int         // per user id
 	filesIndex          map[string][]string    // per user id, contains media file names
 	running             bool
+	createdAt           time.Time
 	startedAt           time.Time
 	inTracksReadyCount  int
 	outTracksReadyCount int
@@ -44,8 +45,6 @@ type room struct {
 	size         int
 	duration     int
 	neededTracks int
-	// log
-	logger zerolog.Logger
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -81,10 +80,6 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 	helpers.EnsureDir("./data/" + join.Namespace)
 	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
 
-	logger := log.With().
-		Str("room", join.RoomId).
-		Logger()
-
 	r := &room{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
@@ -92,6 +87,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		joinedCountIndex:    joinedCountIndex,
 		waitForAllCh:        make(chan struct{}),
 		endCh:               make(chan struct{}),
+		createdAt:           time.Now(),
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
 		qualifiedId:         qualifiedId,
@@ -100,10 +96,24 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
-		logger:              logger,
 	}
 	r.mixer = newMixer(r)
 	return r
+}
+
+func (r *room) logError() *zerolog.Event {
+	elapsed := time.Since(r.createdAt)
+	return log.Error().Str("elapsed", elapsed.Round(time.Millisecond).String())
+}
+
+func (r *room) logInfo() *zerolog.Event {
+	elapsed := time.Since(r.createdAt)
+	return log.Info().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
+}
+
+func (r *room) logDebug() *zerolog.Event {
+	elapsed := time.Since(r.createdAt)
+	return log.Debug().Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) userCount() int {
@@ -155,13 +165,14 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer) {
 	}
 
 	r.inTracksReadyCount++
-	r.logger.Info().Msgf("[room] track count: %d", r.inTracksReadyCount)
+	r.logInfo().Msgf("[room] track count: %d", r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
-		r.logger.Info().Msg("[room] ready to start")
+		r.startedAt = time.Now()
+		r.logInfo().Msg("[room] ready to start")
+		// do start
 		close(r.waitForAllCh)
 		r.running = true
-		r.startedAt = time.Now()
 		// send start to all peers
 		for _, ps := range r.peerServerIndex {
 			go ps.ws.send("start")
@@ -205,10 +216,14 @@ func (r *room) deleteIfEmpty() {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.connectedUserCount() == 0 && !r.running {
-		// don't keep this room
-		rooms.delete(r)
+	if r.connectedUserCount() == 0 && !r.running { // don't keep this room
+		r.delete()
 	}
+}
+
+func (r *room) delete() {
+	rooms.delete(r)
+	r.logInfo().Msg("[room] deleted")
 }
 
 func (r *room) disconnectUser(userId string) {
@@ -223,9 +238,8 @@ func (r *room) disconnectUser(userId string) {
 		r.connectedIndex[userId] = false
 		go r.mixer.managedUpdateSignaling("disconnected")
 
-		if r.connectedUserCount() == 0 && !r.running {
-			// don't keep this room
-			rooms.delete(r)
+		if r.connectedUserCount() == 0 && !r.running { // don't keep this room
+			r.delete()
 		}
 	}
 }
@@ -276,7 +290,7 @@ func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				r.logger.Error().Err(err).Msg("[room] readRemoteWhileWaiting")
+				r.logError().Err(err).Msg("[room] readRemoteWhileWaiting")
 				return
 			}
 		}
@@ -297,7 +311,7 @@ func (r *room) runMixerSliceFromRemote(
 	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		r.logger.Error().Err(err).Msg("[room] runMixerSliceFromRemote")
+		r.logError().Err(err).Msg("[room] runMixerSliceFromRemote")
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)

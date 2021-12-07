@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/engine"
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const delayBetweenPLIs = 300 * time.Millisecond
@@ -20,18 +18,17 @@ const delayBetweenPLIs = 300 * time.Millisecond
 type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
+	userId  string
+	r       *room
 	lastPLI time.Time
-	// log
-	logger zerolog.Logger
 }
 
 // API
 
-func newPionPeerConn(roomId string, userId string, videoFormat string, logger zerolog.Logger) (ppc *webrtc.PeerConnection, err error) {
+func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnection, err error) {
 	// create RTC API
 	api, err := engine.NewWebRTCAPI()
 	if err != nil {
-		logger.Error().Err(err).Msg("can't create new WebRTC API")
 		return
 	}
 	// configure and create a new RTCPeerConnection
@@ -43,59 +40,57 @@ func newPionPeerConn(roomId string, userId string, videoFormat string, logger ze
 		},
 	}
 	ppc, err = api.NewPeerConnection(config)
-	if err != nil {
-		logger.Error().Err(err).Msg("can't create new pion peer connection")
-		return
-	}
-
-	// accept one audio}
-	_, err = ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
-		Direction: webrtc.RTPTransceiverDirectionRecvonly,
-	})
-	if err != nil {
-		logger.Error().Err(err).Msg("can't add audio transceiver")
-		return
-	}
-
-	// accept one video
-	videoTransceiver, err := ppc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
-		Direction: webrtc.RTPTransceiverDirectionRecvonly,
-	})
-	if err != nil {
-		logger.Error().Err(err).Msg("can't add video transceiver")
-		return
-	}
-
-	// force codec preference if H264 (so VP8 won't prevail)
-	if videoFormat == "H264" {
-		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
-		if err != nil {
-			logger.Error().Err(err).Msg("can't set codec preferences")
-			return
-		}
-	}
-
 	return
 }
 
-func newPeerConn(join types.JoinPayload, ws *wsConn) (pc *peerConn, err error) {
-	roomId, userId, videoFormat := join.RoomId, join.UserId, join.VideoFormat
-
-	logger := log.With().
-		Str("room", join.RoomId).
-		Str("user", join.UserId).
-		Logger()
-
-	ppc, err := newPionPeerConn(roomId, userId, videoFormat, logger)
+func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
+	ppc, err := newPionPeerConn(join, r)
 	if err != nil {
+		// pc is not created for now so we use the room logger
+		r.logError().Err(err).Str("user", join.UserId)
 		return
 	}
 
 	// initial lastPLI far enough in the past
 	lastPLI := time.Now().Add(-2 * delayBetweenPLIs)
 
-	pc = &peerConn{sync.Mutex{}, ppc, lastPLI, logger}
+	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI}
+
+	// accept one audio
+	_, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+	if err != nil {
+		pc.logError().Err(err).Msg("can't add audio transceiver")
+		return
+	}
+
+	// accept one video
+	videoTransceiver, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+	if err != nil {
+		pc.logError().Err(err).Msg("can't add video transceiver")
+		return
+	}
+
+	// force codec preference if H264 (so VP8 won't prevail)
+	if join.VideoFormat == "H264" {
+		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
+		if err != nil {
+			pc.logError().Err(err).Msg("can't set codec preferences")
+			return
+		}
+	}
 	return
+}
+
+func (pc *peerConn) logError() *zerolog.Event {
+	return pc.r.logError().Str("user", pc.userId)
+}
+
+func (pc *peerConn) logInfo() *zerolog.Event {
+	return pc.r.logInfo().Str("user", pc.userId)
 }
 
 func (pc *peerConn) connectPeerServer(ps *peerServer) {
@@ -108,7 +103,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			pc.logger.Error().Err(err).Msg("[pc] can't marshal candidate")
+			pc.logError().Err(err).Msg("[pc] can't marshal candidate")
 			return
 		}
 
@@ -116,17 +111,17 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		pc.logger.Info().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
+		pc.logInfo().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		pc.logger.Info().Msgf("[pc] connection state: %v", p.String())
+		pc.logInfo().Msgf("[pc] connection state: %v", p.String())
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				pc.logger.Error().Err(err).Msg("[pc] peer connection state failed")
+				pc.logError().Err(err).Msg("[pc] peer connection state failed")
 			}
 		case webrtc.PeerConnectionStateClosed:
 			ps.close("pc closed")
@@ -136,19 +131,19 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	// for logging
 
 	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
-		pc.logger.Info().Msgf("[pc] ice state change: %v", state)
+		pc.logInfo().Msgf("[pc] ice state change: %v", state)
 	})
 
 	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-		pc.logger.Info().Msgf("[pc] ice gathering state change: %v", state)
+		pc.logInfo().Msgf("[pc] ice gathering state change: %v", state)
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		pc.logger.Info().Msg("[pc] negotiation needed")
+		pc.logInfo().Msg("[pc] negotiation needed")
 	})
 
 	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		pc.logger.Info().Msgf("[pc] signaling state change: %v", state)
+		pc.logInfo().Msgf("[pc] signaling state change: %v", state)
 	})
 
 	// Debug: send periodic PLIs
@@ -167,9 +162,9 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 		},
 	})
 	if err != nil {
-		pc.logger.Error().Err(err).Msg("[pc] can't send PLI")
+		pc.logError().Err(err).Msg("[pc] can't send PLI")
 	} else {
-		pc.logger.Info().Msg("[pc] PLI sent")
+		pc.logInfo().Msg("[pc] PLI sent")
 	}
 	return
 }
@@ -196,7 +191,7 @@ func (pc *peerConn) throttledPLIRequest() {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < delayBetweenPLIs {
 				// throttle: don't send too many PLIs
-				pc.logger.Info().Msg("[pc] PLI skipped (throttle)")
+				pc.logInfo().Msg("[pc] PLI skipped (throttle)")
 			} else {
 				err := pc.writePLI(track)
 				if err == nil {

@@ -362,7 +362,7 @@ class DuckSoup {
             pc.onnegotiationneeded = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "info-negotiation needed",
+                        kind: "debug-negotiation needed",
                         payload: "",
                     })
                 );
@@ -371,7 +371,7 @@ class DuckSoup {
             pc.onsignalingstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "info-signaling state change",
+                        kind: "debug-signaling state change",
                         payload: pc.signalingState.toString(),
                     })
                 );
@@ -380,7 +380,7 @@ class DuckSoup {
             pc.oniceconnectionstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "info-ice connection state change",
+                        kind: "debug-ice connection state change",
                         payload: pc.iceConnectionState.toString(),
                     })
                 );
@@ -389,7 +389,7 @@ class DuckSoup {
             pc.onicegatheringstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "info-ice gathering state change",
+                        kind: "debug-ice gathering state change",
                         payload: pc.iceGatheringState.toString(),
                     })
                 );
@@ -398,7 +398,7 @@ class DuckSoup {
             pc.onicecandidateerror = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "info-ice candidat eerror",
+                        kind: "debug-ice candidat eerror",
                         payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
                     })
                 );
@@ -437,7 +437,7 @@ class DuckSoup {
                 if(newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
                     this._ws.send(
                         JSON.stringify({
-                            kind: "info-new outbound encoded size",
+                            kind: "debug-new outbound encoded size",
                             payload: `${newEncodedWidth}x${newEncodedHeight}`,
                         })
                     );

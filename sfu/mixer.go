@@ -5,10 +5,8 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type mixer struct {
@@ -16,8 +14,6 @@ type mixer struct {
 	sliceIndex map[string]*mixerSlice // per remote track id
 	// room
 	r *room
-	// log
-	logger zerolog.Logger
 }
 
 type signalingState int
@@ -31,15 +27,18 @@ const (
 // mixer
 
 func newMixer(r *room) *mixer {
-	logger := log.With().
-		Str("room", r.id).
-		Logger()
-
 	return &mixer{
 		sliceIndex: map[string]*mixerSlice{},
 		r:          r,
-		logger:     logger,
 	}
+}
+
+func (m *mixer) logError() *zerolog.Event {
+	return m.r.logError()
+}
+
+func (m *mixer) logInfo() *zerolog.Event {
+	return m.r.logInfo()
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
@@ -86,9 +85,9 @@ func (m *mixer) updateTracks() signalingState {
 			_, ok := m.sliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					m.logger.Error().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("[mixer] can't remove sent track")
+					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("[mixer] can't remove sent track")
 				} else {
-					m.logger.Info().Str("user", userId).Str("track", sentTrackId).Msg("[mixer] removed sent track")
+					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("[mixer] removed sent track")
 				}
 			}
 		}
@@ -100,17 +99,17 @@ func (m *mixer) updateTracks() signalingState {
 			trackId := s.ID()
 			if alreadySent {
 				// don't double send
-				m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding already sent track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding already sent track")
 			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding own track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding own track")
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
-					m.logger.Error().Err(err).Str("user", userId).Str("track", trackId).Msg("[mixer] can't add track")
+					m.logError().Err(err).Str("user", userId).Str("track", trackId).Msg("[mixer] can't add track")
 					return signalingRetryNow
 				} else {
-					m.logger.Info().Str("user", userId).Str("track", trackId).Msg("[mixer] track added")
+					m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] track added")
 				}
 
 				s.addSender(sender, userId)
@@ -125,26 +124,26 @@ func (m *mixer) updateOffers() signalingState {
 		userId := ps.userId
 		pc := ps.pc
 
-		m.logger.Info().Str("user", userId).Msgf("[mixer] signaling state: %v", pc.SignalingState())
+		m.logInfo().Str("user", userId).Msgf("[mixer] signaling state: %v", pc.SignalingState())
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			m.logger.Error().Str("user", userId).Msg("[mixer] can't create offer")
+			m.logError().Str("user", userId).Msg("[mixer] can't create offer")
 			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
-			m.logger.Error().Str("user", userId).Msg("[mixer] pending local description")
+			m.logError().Str("user", userId).Msg("[mixer] pending local description")
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			m.logger.Error().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("[mixer] can't set local description")
+			m.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("[mixer] can't set local description")
 			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			m.logger.Error().Str("user", userId).Err(err).Msg("[mixer] can't marshal offer")
+			m.logError().Str("user", userId).Err(err).Msg("[mixer] can't marshal offer")
 			return signalingRetryNow
 		}
 
@@ -173,7 +172,7 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 		go m.dispatchKeyFrame()
 	}()
 
-	m.logger.Info().Str("reason", reason).Msg("[mixer] signaling update")
+	m.logInfo().Str("reason", reason).Msg("[mixer] signaling update")
 
 	for {
 		select {

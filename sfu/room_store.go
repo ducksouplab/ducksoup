@@ -4,7 +4,6 @@ import (
 	"errors"
 	"sync"
 
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
@@ -72,5 +71,4 @@ func (rs *roomStore) delete(r *room) {
 	defer rs.Unlock()
 
 	delete(rs.index, r.qualifiedId)
-	log.Info().Str("room", r.id).Msg("room deleted")
 }

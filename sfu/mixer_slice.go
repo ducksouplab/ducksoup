@@ -8,12 +8,10 @@ import (
 
 	"github.com/creamlab/ducksoup/gst"
 	"github.com/creamlab/ducksoup/helpers"
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -28,6 +26,7 @@ const (
 type mixerSlice struct {
 	sync.Mutex
 	fromPs *peerServer
+	r      *room
 	kind   string
 	// webrtc
 	input    *webrtc.TrackRemote
@@ -50,8 +49,6 @@ type mixerSlice struct {
 	outputBitrate uint64
 	// status
 	endCh chan struct{} // stop processing when track is removed
-	// log
-	logger zerolog.Logger
 }
 
 // helpers
@@ -86,13 +83,9 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		return
 	}
 
-	logger := log.With().
-		Str("room", ps.roomId).
-		Str("fromUser", ps.userId).
-		Logger()
-
 	slice = &mixerSlice{
 		fromPs: ps,
+		r:      ps.r,
 		kind:   kind,
 		// webrtc
 		input:    remoteTrack,
@@ -109,10 +102,17 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		logTicker:   time.NewTicker(logPeriod * time.Millisecond),
 		lastStats:   time.Now(),
 		// status
-		endCh:  make(chan struct{}),
-		logger: logger,
+		endCh: make(chan struct{}),
 	}
 	return
+}
+
+func (s *mixerSlice) logError() *zerolog.Event {
+	return s.r.logError().Str("fromUser", s.fromPs.userId)
+}
+
+func (s *mixerSlice) logInfo() *zerolog.Event {
+	return s.r.logInfo().Str("fromUser", s.fromPs.userId)
 }
 
 // Same ID as output track
@@ -138,7 +138,7 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 		s.Unlock()
 		go sc.runListener()
 	} else {
-		s.logger.Error().Str("toUser", toUserId).Msg("[slice] can't add sender: wrong number of encoding parameters")
+		s.logError().Str("toUser", toUserId).Msg("[slice] can't add sender: wrong number of encoding parameters")
 	}
 }
 
@@ -187,7 +187,7 @@ func (s *mixerSlice) loop() {
 	// go s.runReceiverListener()
 
 	defer func() {
-		s.logger.Info().Msgf("[slice] stopping %s track %s", s.kind, s.ID())
+		s.logInfo().Msgf("[slice] stopping %s track %s", s.kind, s.ID())
 		s.stop()
 	}()
 
@@ -232,7 +232,7 @@ func (s *mixerSlice) runTickers() {
 						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 						// format and log
 						display := fmt.Sprintf("%v kbit/s", newPotentialRate/1000)
-						s.logger.Info().Msgf("[slice] %s target bitrate: %s", s.kind, display)
+						s.logInfo().Msgf("[slice] %s target bitrate: %s", s.kind, display)
 					}
 				}
 			}
@@ -254,8 +254,8 @@ func (s *mixerSlice) runTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			s.logger.Info().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
-			s.logger.Info().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logInfo().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logInfo().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 }
@@ -271,7 +271,7 @@ func (s *mixerSlice) runTickers() {
 // 			i, _, err := s.receiver.Read(buf)
 // 			if err != nil {
 // 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					s.logger.Error().Err(err).Msg("can't read RTCP packet")
+// 					s.logError().Err(err).Msg("can't read RTCP packet")
 // 				}
 // 				return
 // 			}
@@ -280,7 +280,7 @@ func (s *mixerSlice) runTickers() {
 
 // 			packets, err := rtcp.Unmarshal(buf[:i])
 // 			if err != nil {
-// 				s.logger.Error().Err(err).Msg("can't unmarshal RTCP packet")
+// 				s.logError().Err(err).Msg("can't unmarshal RTCP packet")
 // 				continue
 // 			}
 
@@ -292,7 +292,7 @@ func (s *mixerSlice) runTickers() {
 // 				// case *rtcp.ReceiverEstimatedMaximumBitrate:
 // 				// 	log.Println(rtcpPacket)
 // 				default:
-// 					//s.logger.Info().Msgf("%T %+v", rtcpPacket, rtcpPacket)
+// 					//s.logInfo().Msgf("%T %+v", rtcpPacket, rtcpPacket)
 // 				}
 // 			}
 // 		}

@@ -17,8 +17,6 @@ import (
 )
 
 var (
-	// mode
-	debugMode         bool = false
 	videoRTCPFeedback []webrtc.RTCPFeedback
 	// exported
 	OpusCodecs []webrtc.RTPCodecParameters
@@ -29,9 +27,6 @@ var (
 )
 
 func init() {
-	if os.Getenv("DS_DEBUG_LOG") == "true" {
-		debugMode = true
-	}
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
 		{Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},
@@ -202,7 +197,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 
 	i := &interceptor.Registry{}
 
-	if debugMode {
+	if os.Getenv("DS_DEBUG_LOG") == "true" {
 		// logReceivedRTCP, _ := packetdump.NewReceiverInterceptor(
 		// 	packetdump.RTCPFormatter(formatReceivedRTCP),
 		// 	packetdump.RTCPWriter(&logWriteCloser{}),

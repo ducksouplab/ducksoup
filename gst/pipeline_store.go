@@ -3,7 +3,6 @@ package gst
 import (
 	"sync"
 
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/rs/zerolog/log"
 )
 

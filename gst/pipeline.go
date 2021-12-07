@@ -11,7 +11,6 @@ import (
 	"strings"
 	"unsafe"
 
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -75,7 +74,7 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		logger:     logger,
 	}
 
-	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline initialized")
+	p.logger.Info().Str("pipeline", pipelineStr).Msg("[pipeline] initialized")
 
 	pipelines.add(p)
 	return p
@@ -129,13 +128,13 @@ func (p *Pipeline) BindPLICallback(c func()) {
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
 	C.gstStartPipeline(p.cPipeline)
-	p.logger.Info().Msgf("pipeline started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
+	p.logger.Info().Msgf("[pipeline] started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
 	C.gstStopPipeline(p.cPipeline)
-	p.logger.Info().Msg("pipeline stop requested")
+	p.logger.Info().Msg("[pipeline] stop requested")
 }
 
 func (p *Pipeline) getPropInt(name string, prop string) int {

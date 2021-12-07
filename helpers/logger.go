@@ -42,5 +42,10 @@ func init() {
 		multi := zerolog.MultiLevelWriter(writers...)
 		log.Logger = log.Output(multi)
 	}
+	// set level
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if os.Getenv("DS_DEBUG_LOG") == "true" {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 	log.Info().Msg("[init] logger configured")
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -31,8 +30,6 @@ type peerServer struct {
 	pipeline   *gst.Pipeline
 	closed     bool
 	closedCh   chan struct{}
-	// log
-	logger zerolog.Logger
 }
 
 func newPeerServer(
@@ -42,11 +39,6 @@ func newPeerServer(
 	ws *wsConn) *peerServer {
 
 	pipeline := gst.CreatePipeline(join, r.filePrefixWithCount(join))
-
-	logger := log.With().
-		Str("room", join.RoomId).
-		Str("user", join.UserId).
-		Logger()
 
 	ps := &peerServer{
 		userId:   join.UserId,
@@ -59,7 +51,6 @@ func newPeerServer(
 		pipeline: pipeline,
 		closed:   false,
 		closedCh: make(chan struct{}),
-		logger:   logger,
 	}
 
 	// connect components for further communication
@@ -67,6 +58,18 @@ func newPeerServer(
 	pc.connectPeerServer(ps)
 
 	return ps
+}
+
+func (ps *peerServer) logError() *zerolog.Event {
+	return ps.r.logError().Str("user", ps.userId)
+}
+
+func (ps *peerServer) logInfo() *zerolog.Event {
+	return ps.r.logInfo().Str("user", ps.userId)
+}
+
+func (ps *peerServer) logDebug() *zerolog.Event {
+	return ps.r.logDebug().Str("user", ps.userId)
 }
 
 func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
@@ -82,7 +85,7 @@ func (ps *peerServer) close(reason string) {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		ps.logger.Info().Msgf("[ps] closing for reason: %s", reason)
+		ps.logInfo().Msgf("[ps] closing for reason: %s", reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -104,7 +107,7 @@ func (ps *peerServer) loop() {
 		select {
 		case <-time.After(time.Duration(ps.r.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
-			ps.logger.Info().Msg("[ps] ending message sent")
+			ps.logInfo().Msg("[ps] ending message sent")
 			ps.ws.send("ending")
 		case <-ps.closedCh:
 			// user might have disconnected
@@ -129,30 +132,30 @@ func (ps *peerServer) loop() {
 			case "candidate":
 				candidate := webrtc.ICECandidateInit{}
 				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal candidate")
+					ps.logError().Err(err).Msg("[ps] can't unmarshal candidate")
 					return
 				}
 
 				if err := ps.pc.AddICECandidate(candidate); err != nil {
-					ps.logger.Error().Err(err).Msg("[ps] can't add candidate")
+					ps.logError().Err(err).Msg("[ps] can't add candidate")
 					return
 				}
-				ps.logger.Info().Msgf("[ps] added remote candidate: %+v", candidate)
+				ps.logInfo().Msgf("[ps] added remote candidate: %+v", candidate)
 			case "answer":
 				answer := webrtc.SessionDescription{}
 				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal answer")
+					ps.logError().Err(err).Msg("[ps] can't unmarshal answer")
 					return
 				}
 
 				if err := ps.pc.SetRemoteDescription(answer); err != nil {
-					ps.logger.Error().Err(err).Msg("[ps] can't set remote description")
+					ps.logError().Err(err).Msg("[ps] can't set remote description")
 					return
 				}
 			case "control":
 				payload := controlPayload{}
 				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-					ps.logger.Error().Err(err).Msg("[ps] can't unmarshal control")
+					ps.logError().Err(err).Msg("[ps] can't unmarshal control")
 				} else {
 					go func() {
 						if payload.Kind == "audio" && ps.audioSlice != nil {
@@ -163,8 +166,8 @@ func (ps *peerServer) loop() {
 					}()
 				}
 			default:
-				if strings.HasPrefix(m.Kind, "info-") {
-					ps.logger.Debug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "info-"), m.Payload)
+				if strings.HasPrefix(m.Kind, "debug-") {
+					ps.logDebug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
 				}
 			}
 		}
@@ -191,7 +194,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	roomId := joinPayload.RoomId
 	log.Info().Str("room", roomId).Str("user", userId).Msgf("joined with payload: %+v", joinPayload)
 
-	room, err := rooms.join(joinPayload)
+	r, err := rooms.join(joinPayload)
 	if err != nil {
 		// joinRoom err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
@@ -199,14 +202,14 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 		return
 	}
 
-	pc, err := newPeerConn(joinPayload, ws)
+	pc, err := newPeerConn(joinPayload, r)
 	if err != nil {
 		ws.send("error-peer-connection")
 		log.Error().Err(err).Str("room", roomId).Str("user", userId).Msg("[ps] can't create pc")
 		return
 	}
 
-	ps := newPeerServer(joinPayload, room, pc, ws)
+	ps := newPeerServer(joinPayload, r, pc, ws)
 
 	ps.loop() // blocking
 }
