@@ -211,7 +211,7 @@ If you set `DS_DEBUG_LOG=true`, additional entries will be logged:
 - RTCP packets like TWCC and Receiver reports
 - debug info sent by client (ducksoup.js)
 
-Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is labeled as started (or running) when all input tracks have been registered.
+Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.
 
 Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_DEBUG_LOG`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1` 
 
