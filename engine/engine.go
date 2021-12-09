@@ -11,6 +11,7 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/packetdump"
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -136,12 +137,12 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerCC:
-			res += fmt.Sprintf("[TWCC sent] packet#%v chunks: ", rtcpPacket.FbPktCount)
+			res += fmt.Sprintf("[TWCC#%v] ssrc:%v, base:%v count:%v chunks: ", rtcpPacket.FbPktCount, rtcpPacket.MediaSSRC, rtcpPacket.BaseSequenceNumber, rtcpPacket.PacketStatusCount)
 			for _, chunk := range rtcpPacket.PacketChunks {
 				res += fmt.Sprintf("%+v ", chunk)
 			}
 		case *rtcp.ReceiverReport:
-			res += fmt.Sprintf("[RR sent] reports: ")
+			res += "[RR sent] reports: "
 			for _, report := range rtcpPacket.Reports {
 				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
 			}
@@ -150,6 +151,24 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 		}
 	}
 	return res
+}
+
+func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
+	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
+	// implemented in interceptors
+
+	var twcc rtp.TransportCCExtension
+	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
+	twcc.Unmarshal(ext)
+
+	return fmt.Sprintf("[RTP#%v] ssrc:%v payload:%v seqnum:%v tstamp:%v marker:%v msize:%v",
+		twcc.TransportSequence,
+		pkt.SSRC,
+		pkt.PayloadType,
+		pkt.SequenceNumber,
+		pkt.Timestamp,
+		pkt.Marker,
+		pkt.MarshalSize())
 }
 
 // used by RTCP log interceptors
@@ -197,20 +216,20 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 
 	i := &interceptor.Registry{}
 
-	if os.Getenv("DS_DEBUG_LOG") == "true" {
-		// logReceivedRTCP, _ := packetdump.NewReceiverInterceptor(
-		// 	packetdump.RTCPFormatter(formatReceivedRTCP),
-		// 	packetdump.RTCPWriter(&logWriteCloser{}),
-		// 	packetdump.RTPWriter(zerolog.Nop()),
-		// )
+	if os.Getenv("DS_LOG_DEBUG") == "true" {
+		logReceived, _ := packetdump.NewReceiverInterceptor(
+			packetdump.RTCPWriter(zerolog.Nop()),
+			packetdump.RTPFormatter(formatReceivedRTP),
+			packetdump.RTPWriter(&logWriteCloser{}),
+		)
 
-		logSentRTCP, _ := packetdump.NewSenderInterceptor(
+		logSent, _ := packetdump.NewSenderInterceptor(
 			packetdump.RTCPFormatter(formatSentRTCP),
 			packetdump.RTCPWriter(&logWriteCloser{}),
 			packetdump.RTPWriter(zerolog.Nop()),
 		)
-		// i.Add(logReceivedRTCP)
-		i.Add(logSentRTCP)
+		i.Add(logReceived)
+		i.Add(logSent)
 	}
 	if err := registerInterceptors(m, i); err != nil {
 		log.Error().Err(err).Msg("[engine] can't register interceptors")

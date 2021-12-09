@@ -49,8 +49,8 @@ Where:
     - `"track"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a new track sent by the server is available. This event is used to render the track to the DOM, It won't be triggered if you defined `mountEl`
     - `"start"` (no payload) when videoconferencing starts
     - `"ending"` (no payload) when videoconferencing is soon ending
-    - `"end"` (no payload) when videoconferencing has ended
-    - `"closed"` (no payload) when websocket is closed (after `end`)
+    - `"files"` with a list of recording files for this peer. This event is emitted when recording is over, meaning `"closed"` will be received soon after.
+    - `"closed"` (no payload) when websocket is closed
     - `"error-disconnection"` (no payload) when websocket communication has abnormally stopped
     - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect
     - `"error-duplicate"` (no payload) when a user with same `userId` (see `peerOptions` below) is already connected
@@ -173,7 +173,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_ENV=BUILD_FRONT` builds front-end assets but do not start server
 - `DS_LOG_STDOUT=true` (defaults to false, except when `DS_ENV=DEV`) to print logs to Stdout (if `DS_LOG_FILE` is also set, logs are written to both)
 - `DS_LOG_FILE=log/ducksoup.log` (defaults to none) to declare a file to write logs to (fails silently if file can't be opened)
-- `DS_DEBUG_LOG=true` (defaults to false) to generate additional logs (see next section)
+- `DS_LOG_DEBUG=true` (defaults to false) to generate additional debug logs (see next section)
 - `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
@@ -206,14 +206,14 @@ Logs are managed with [zerolog](https://github.com/rs/zerolog):
 - they are pretty-printed to stdout if `DS_LOG_STDOUT=true` or `DS_ENV=DEV`
 - if you define a log file (`DS_LOG_FILE=log/ducksoup.log` for instance) they are appended to this file as JSON entries
 
-If you set `DS_DEBUG_LOG=true`, additional entries will be logged:
+If you set `DS_LOG_DEBUG=true`, additional entries will be logged:
 
 - RTCP packets like TWCC and Receiver reports
 - debug info sent by client (ducksoup.js)
 
 Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.
 
-Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_DEBUG_LOG`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1` 
+Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_DEBUG`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1` 
 
 ### Run DuckSoup server
 

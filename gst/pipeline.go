@@ -9,6 +9,7 @@ import "C"
 import (
 	"os"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/creamlab/ducksoup/types"
@@ -28,6 +29,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
+	mu          sync.Mutex
 	id          string // same as local/output track id
 	join        types.JoinPayload
 	cPipeline   *C.GstElement
@@ -35,6 +37,8 @@ type Pipeline struct {
 	videoOutput types.TrackWriter
 	filePrefix  string
 	pliCallback func()
+	// stoppedCount=2 if audio and video have been stopped
+	stoppedCount int
 	// log
 	logger zerolog.Logger
 }
@@ -67,11 +71,13 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		Logger()
 
 	p := &Pipeline{
-		id:         id,
-		join:       join,
-		cPipeline:  C.gstParsePipeline(cPipelineStr, cId),
-		filePrefix: filePrefix,
-		logger:     logger,
+		mu:           sync.Mutex{},
+		id:           id,
+		join:         join,
+		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
+		filePrefix:   filePrefix,
+		stoppedCount: 0,
+		logger:       logger,
 	}
 
 	p.logger.Info().Str("pipeline", pipelineStr).Msg("[pipeline] initialized")
@@ -133,8 +139,14 @@ func (p *Pipeline) start() {
 
 // stop the GStreamer pipeline
 func (p *Pipeline) Stop() {
-	C.gstStopPipeline(p.cPipeline)
-	p.logger.Info().Msg("[pipeline] stop requested")
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.stoppedCount += 1
+	if p.stoppedCount == 2 { // audio and video buffers from mixerSlice have been stopped
+		C.gstStopPipeline(p.cPipeline)
+		p.logger.Info().Msg("[pipeline] stop requested")
+	}
 }
 
 func (p *Pipeline) getPropInt(name string, prop string) int {

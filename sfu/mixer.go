@@ -12,8 +12,7 @@ import (
 type mixer struct {
 	sync.RWMutex
 	sliceIndex map[string]*mixerSlice // per remote track id
-	// room
-	r *room
+	r          *room
 }
 
 type signalingState int

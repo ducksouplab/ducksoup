@@ -11,10 +11,6 @@ import (
 
 // adapted from https://github.com/pion/webrtc/blob/v3.1.2/interceptor.go
 func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
-	if err := configureSDES(mediaEngine, interceptorRegistry); err != nil {
-		return err
-	}
-
 	if err := configureNack(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
@@ -23,7 +19,7 @@ func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		return err
 	}
 
-	if err := configureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
+	if err := configureTWCCHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
@@ -31,42 +27,14 @@ func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		return err
 	}
 
-	if err := configureAbsSendTime(mediaEngine, interceptorRegistry); err != nil {
-		return err
-	}
+	// Right now causes issues with TWCC header extension, and was mainly used for REMB which are not received anymore
+	// if err := configureAbsSendTimeHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	// 	return err
+	// }
 
-	return nil
-}
-
-func configureSDES(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
-
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
-		webrtc.RTPCodecTypeVideo,
-	); err != nil {
-		return err
-	}
-
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESRTPStreamIDURI},
-		webrtc.RTPCodecTypeVideo,
-	); err != nil {
-		return err
-	}
-
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
-		webrtc.RTPCodecTypeAudio,
-	); err != nil {
-		return err
-	}
-
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESRTPStreamIDURI},
-		webrtc.RTPCodecTypeAudio,
-	); err != nil {
-		return err
-	}
+	// if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -109,7 +77,7 @@ func configureNack(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interce
 
 // ConfigureTWCCHeaderExtensionSender will setup everything necessary for adding
 // a TWCC header extension to outgoing RTP packets. This will allow the remote peer to generate TWCC reports.
-func configureTWCCHeaderExtensionSender(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
+func configureTWCCHeaderExtension(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
 	if err := mediaEngine.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
 	); err != nil {
@@ -134,18 +102,7 @@ func configureTWCCHeaderExtensionSender(mediaEngine *webrtc.MediaEngine, interce
 // ConfigureTWCCSender will setup everything necessary for generating TWCC reports.
 func configureTWCCSender(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
-	); err != nil {
-		return err
-	}
-
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
-	if err := mediaEngine.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio,
-	); err != nil {
-		return err
-	}
 
 	generator, err := twcc.NewSenderInterceptor()
 	if err != nil {
@@ -157,7 +114,7 @@ func configureTWCCSender(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 }
 
 // For more accurante REMB reports
-func configureAbsSendTime(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
+func configureAbsSendTimeHeaderExtension(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
 
 	if err := mediaEngine.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.ABSSendTimeURI}, webrtc.RTPCodecTypeVideo,
@@ -167,6 +124,39 @@ func configureAbsSendTime(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 
 	if err := mediaEngine.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.ABSSendTimeURI}, webrtc.RTPCodecTypeAudio,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func configureSDESHeaderExtension(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry) error {
+
+	if err := mediaEngine.RegisterHeaderExtension(
+		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
+		webrtc.RTPCodecTypeVideo,
+	); err != nil {
+		return err
+	}
+
+	if err := mediaEngine.RegisterHeaderExtension(
+		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESRTPStreamIDURI},
+		webrtc.RTPCodecTypeVideo,
+	); err != nil {
+		return err
+	}
+
+	if err := mediaEngine.RegisterHeaderExtension(
+		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
+		webrtc.RTPCodecTypeAudio,
+	); err != nil {
+		return err
+	}
+
+	if err := mediaEngine.RegisterHeaderExtension(
+		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESRTPStreamIDURI},
+		webrtc.RTPCodecTypeAudio,
 	); err != nil {
 		return err
 	}

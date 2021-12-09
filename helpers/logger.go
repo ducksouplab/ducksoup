@@ -44,7 +44,7 @@ func init() {
 	}
 	// set level
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if os.Getenv("DS_DEBUG_LOG") == "true" {
+	if os.Getenv("DS_LOG_DEBUG") == "true" {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 	log.Info().Msg("[init] logger configured")

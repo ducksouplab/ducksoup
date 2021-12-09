@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.4.0");
+    console.log("[DuckSoup] v1.4.1");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -172,12 +172,6 @@ class DuckSoup {
         this._control("video", effectName, property, value, transitionDuration);
     }
 
-    // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
-    stop(wsStatusCode = 1000) {
-        this._stopRTC()
-        this._ws.close(wsStatusCode);
-    }
-
     get stream() {
         return this._stream;
     }
@@ -210,18 +204,14 @@ class DuckSoup {
     }
 
 
-    _sendEvent(message, force) {
-        if (this._callback && (this._running || force)) this._callback(message);
-    }
-
-    _sendStop(reason) {
-        const message = typeof reason === "string" ? { kind: reason } : reason;
-        this._sendEvent(message);
-        if (this._debugIntervalId) clearInterval(this._debugIntervalId);
+    _sendEvent(event, force) {
+        if (this._callback && (this._running || force)) {
+            const message = typeof event === "string" ? { kind: event } : event;
+            this._callback(message);
+        }
     }
 
     _stopRTC() {
-        //console.log("[DuckSoup] _stopRTC");
         if(this._stream) {
             this._stream.getTracks().forEach((track) => track.stop());
         }
@@ -250,17 +240,14 @@ class DuckSoup {
         this._ws = ws;
 
         ws.onclose = (event) => {
-            if(event.code === 1000) {
-                this._sendStop("closed");
-            } else {
-                this._sendStop("error-disconnection");
-            }
+            this._sendEvent("closed");
             this._stopRTC();
+            if (this._debugIntervalId) clearInterval(this._debugIntervalId);
         };
 
         ws.onerror = (event) => {
             //console.log("[DuckSoup] ws.onerror ", event);
-            this._sendStop({ kind: "error", payload: event.data });
+            this._sendEvent({ kind: "error", payload: event.data });
             this.stop(4000); // used as error
         };
 
@@ -270,7 +257,9 @@ class DuckSoup {
 
             if (message.kind === "offer") {
                 const offer = looseJSONParse(message.payload);
+                
                 pc.setRemoteDescription(offer);
+                // console.log("[DuckSoup] offer: ", offer);
                 const answer = await pc.createAnswer();
                 answer.sdp = processSDP(answer.sdp);
                 pc.setLocalDescription(answer);
@@ -304,9 +293,10 @@ class DuckSoup {
                 this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
             } else if (message.kind === "ending") {
                 this._sendEvent({ kind: "ending" });
-            } else if (message.kind.startsWith("error") || message.kind === "end") {
-                this._sendStop(message);
-                this.stop(1000); // Normal Closure
+            } else if (message.kind === "files") {
+                this._sendEvent(message);
+            } else if (message.kind.startsWith("error")) {
+                this._sendEvent(message);
             }
         };
 
@@ -444,7 +434,6 @@ class DuckSoup {
                     this._debugInfo.encodedWith = newEncodedWidth;
                     this._debugInfo.encodedHeight = newEncodedHeight;
                 }
-
             } else if (report.type === "inbound-rtp" && report.kind === "video") {
                 newVideoBytesReceived += report.bytesReceived;
                 inboundRTPVideo = report;

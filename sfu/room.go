@@ -138,17 +138,15 @@ func (r *room) countdown() {
 	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
 	<-endTimer.C
 
-	for _, ps := range r.peerServerIndex {
-		ps.ws.sendWithPayload("end", r.files())
-	}
-
 	r.Lock()
 	r.running = false
+	r.logInfo().Msg("[room] ended")
 	r.Unlock()
 
 	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
-	// actual deleting is done when all users have disconnected, see disconnectUser, except when room is already empty
+	// actual deleting is done when all users have disconnected, see disconnectUser
+	// except when room was already empty (started but peers left)
 	r.deleteIfEmpty()
 }
 

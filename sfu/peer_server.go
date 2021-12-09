@@ -103,7 +103,6 @@ func (ps *peerServer) loop() {
 	// sends "ending" message before rooms does end
 	go func() {
 		<-ps.r.waitForAllCh
-
 		select {
 		case <-time.After(time.Duration(ps.r.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
@@ -115,60 +114,60 @@ func (ps *peerServer) loop() {
 		}
 	}()
 
-	for {
-		select {
-		case <-ps.r.endCh:
-			ps.close("room ended")
-			return
-		default:
-			m, err := ps.ws.read()
+	// wait for room end
+	go func() {
+		<-ps.r.endCh
+		ps.ws.sendWithPayload("files", ps.r.files())
+		ps.close("room ended")
+	}()
 
-			if err != nil {
-				ps.close(err.Error())
+	for {
+		m, err := ps.ws.read()
+		if err != nil {
+			ps.close(err.Error())
+			return
+		}
+
+		switch m.Kind {
+		case "candidate":
+			candidate := webrtc.ICECandidateInit{}
+			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't unmarshal candidate")
 				return
 			}
 
-			switch m.Kind {
-			case "candidate":
-				candidate := webrtc.ICECandidateInit{}
-				if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-					ps.logError().Err(err).Msg("[ps] can't unmarshal candidate")
-					return
-				}
+			if err := ps.pc.AddICECandidate(candidate); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't add candidate")
+				return
+			}
+			ps.logInfo().Msgf("[ps] added remote candidate: %+v", candidate)
+		case "answer":
+			answer := webrtc.SessionDescription{}
+			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't unmarshal answer")
+				return
+			}
 
-				if err := ps.pc.AddICECandidate(candidate); err != nil {
-					ps.logError().Err(err).Msg("[ps] can't add candidate")
-					return
-				}
-				ps.logInfo().Msgf("[ps] added remote candidate: %+v", candidate)
-			case "answer":
-				answer := webrtc.SessionDescription{}
-				if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-					ps.logError().Err(err).Msg("[ps] can't unmarshal answer")
-					return
-				}
-
-				if err := ps.pc.SetRemoteDescription(answer); err != nil {
-					ps.logError().Err(err).Msg("[ps] can't set remote description")
-					return
-				}
-			case "control":
-				payload := controlPayload{}
-				if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-					ps.logError().Err(err).Msg("[ps] can't unmarshal control")
-				} else {
-					go func() {
-						if payload.Kind == "audio" && ps.audioSlice != nil {
-							ps.audioSlice.controlFx(payload)
-						} else if ps.videoSlice != nil {
-							ps.videoSlice.controlFx(payload)
-						}
-					}()
-				}
-			default:
-				if strings.HasPrefix(m.Kind, "debug-") {
-					ps.logDebug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
-				}
+			if err := ps.pc.SetRemoteDescription(answer); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't set remote description")
+				return
+			}
+		case "control":
+			payload := controlPayload{}
+			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't unmarshal control")
+			} else {
+				go func() {
+					if payload.Kind == "audio" && ps.audioSlice != nil {
+						ps.audioSlice.controlFx(payload)
+					} else if ps.videoSlice != nil {
+						ps.videoSlice.controlFx(payload)
+					}
+				}()
+			}
+		default:
+			if strings.HasPrefix(m.Kind, "debug-") {
+				ps.logDebug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
 			}
 		}
 	}

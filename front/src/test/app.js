@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.4.0")
+    console.log("[DuckSoup test] v1.4.1")
 });
 
 let state;
@@ -244,7 +244,7 @@ const ducksoupListener = (message) => {
     if(kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
-    if(kind.startsWith("error") || kind === "end") {
+    if(kind.startsWith("error") || kind === "closed") {
         reinitUX();
     }
     
@@ -293,7 +293,7 @@ const ducksoupListener = (message) => {
         };
     } else if (kind === "ending") {
         show(".show-when-ending");
-    } else if (kind === "end") {
+    } else if (kind === "files") {
         if(payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";
