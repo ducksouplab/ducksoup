@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.4.1");
+    console.log("[DuckSoup] v1.4.2");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -172,6 +172,12 @@ class DuckSoup {
         this._control("video", effectName, property, value, transitionDuration);
     }
 
+    // called by client app
+    stop() {
+        this._stopRTC();
+        this._ws.close(1000); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    }
+
     get stream() {
         return this._stream;
     }
@@ -184,7 +190,7 @@ class DuckSoup {
             await this._startRTC();
             this._running = true;
         } catch (err) {
-            this._sendStop({ kind: "error", payload: err });
+            this._sendEvent({ kind: "error", payload: err });
         }
     }
 
@@ -217,6 +223,17 @@ class DuckSoup {
         }
         if(this._pc) {
             this._pc.close();
+        }
+    }
+
+    _debugCandidatePair(pair) {
+        if(this._debug) {
+            this._ws.send(
+                JSON.stringify({
+                    kind: "debug-selected candidate pair",
+                    payload: `client=${pair.local.candidate} server=${pair.remote.candidate}`,
+                })
+            );
         }
     }
 
@@ -279,17 +296,30 @@ class DuckSoup {
             } else if (message.kind === "start") {
                 // set encoding parameters
                 for(const sender of pc.getSenders()) {
+                    // set bitrate
                     const params = sender.getParameters();
                     if(!params.encodings) params.encodings = [{}];// needed for FF
                     for(const encoding of params.encodings) {
                         encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
                     }
                     await sender.setParameters(params);
+                    
+                }
+                // add listeners on first sender (likely the same info to be shared for audio and video)
+                const firstSender = pc.getSenders()[0];
+                if (firstSender) {
+                    const iceTransport = firstSender.transport.iceTransport;
+                    // initial pair
+                    this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
+                    // change
+                    iceTransport.addEventListener("selectedcandidatepairchange", () => {
+                        this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
+                    });
                 }
                 // unmute
-                stream.getTracks().forEach((track) => {
-                    track.enabled = true;
-                });
+                // stream.getTracks().forEach((track) => {
+                //     track.enabled = true;
+                // });
                 this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
             } else if (message.kind === "ending") {
                 this._sendEvent({ kind: "ending" });

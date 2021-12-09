@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"os"
+
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/interceptor/pkg/report"
@@ -19,22 +21,23 @@ func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		return err
 	}
 
-	if err := configureTWCCHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	if os.Getenv("DS_GEN_TWCC") == "true" {
+		if err := configureTWCCHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+			return err
+		}
+
+		if err := configureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+			return err
+		}
+	}
+
+	if err := configureAbsSendTimeHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
-	if err := configureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+	if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
-
-	// Right now causes issues with TWCC header extension, and was mainly used for REMB which are not received anymore
-	// if err := configureAbsSendTimeHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
-	// 	return err
-	// }
-
-	// if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
-	// 	return err
-	// }
 
 	return nil
 }

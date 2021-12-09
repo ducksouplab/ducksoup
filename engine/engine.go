@@ -177,7 +177,8 @@ type logWriteCloser struct{}
 func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if n > 0 {
-		log.Logger.Debug().Msg(string(p))
+		// trace level to respect DS_LOG_LEVEL setting
+		log.Logger.Trace().Msg(string(p))
 	}
 	return
 }
@@ -216,19 +217,19 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 
 	i := &interceptor.Registry{}
 
-	if os.Getenv("DS_LOG_DEBUG") == "true" {
-		logReceived, _ := packetdump.NewReceiverInterceptor(
-			packetdump.RTCPWriter(zerolog.Nop()),
-			packetdump.RTPFormatter(formatReceivedRTP),
-			packetdump.RTPWriter(&logWriteCloser{}),
-		)
+	if os.Getenv("DS_LOG_LEVEL") == "4" {
+		// logReceived, _ := packetdump.NewReceiverInterceptor(
+		// 	packetdump.RTCPWriter(zerolog.Nop()),
+		// 	packetdump.RTPFormatter(formatReceivedRTP),
+		// 	packetdump.RTPWriter(&logWriteCloser{}),
+		// )
+		// i.Add(logReceived)
 
 		logSent, _ := packetdump.NewSenderInterceptor(
 			packetdump.RTCPFormatter(formatSentRTCP),
 			packetdump.RTCPWriter(&logWriteCloser{}),
 			packetdump.RTPWriter(zerolog.Nop()),
 		)
-		i.Add(logReceived)
 		i.Add(logSent)
 	}
 	if err := registerInterceptors(m, i); err != nil {

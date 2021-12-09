@@ -1,10 +1,12 @@
 Currently different recording modes are offered:
 
-- "muxed" (default) -> audio/video muxed in the same file
+- `muxed` (default) -> audio/video muxed in the same file
 
-- "split" -> audio video recorded in separate files (currently introduces delay on audio stream)
+- `split` -> audio video recorded in separate files (currently introduces delay on audio stream)
 
-- "none" -> no recording
+- `passthrough` -> records input streams and sends them back, without applying any fx or reencoding
+
+- `none` -> no recording
 
 A few notes about GStreamer settings:
 

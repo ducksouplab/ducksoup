@@ -50,7 +50,7 @@ func (c codec) RawCapsWith(width, height, frameRate int) (output string) {
 	return
 }
 
-var muxedRecordingTemplater, splitRecordingTemplater, noRecordingTemplater *template.Template
+var muxedRecordingTemplater, splitRecordingTemplater, passthroughTemplater, noRecordingTemplater *template.Template
 var config gstreamerConfig
 
 func init() {
@@ -84,6 +84,10 @@ func init() {
 		panic(err)
 	}
 	splitRecordingTemplater, err = template.New("splitRecording").Parse(helpers.ReadFile("config/pipelines/split_recording.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	passthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/split_recording_passthrough.gtpl"))
 	if err != nil {
 		panic(err)
 	}

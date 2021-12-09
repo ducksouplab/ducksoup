@@ -66,7 +66,7 @@ func parseVideoFormat(join types.JoinPayload) (videoFormat string) {
 
 func parseRecordingMode(join types.JoinPayload) (recordingMode string) {
 	recordingMode = join.RecordingMode
-	if recordingMode != "muxed" && recordingMode != "split" && recordingMode != "none" {
+	if recordingMode != "muxed" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
 		recordingMode = defaultRecordingMode
 	}
 	return
@@ -150,7 +150,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msg("[ws] can't write JSON")
+		ws.logError().Err(err).Msgf("[ws] can't write JSON: %+v", m)
 	}
 	return
 }
@@ -164,7 +164,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msg("[ws] can't write JSON with payload")
+		ws.logError().Err(err).Msgf("[ws] can't write JSON with payload: %+v", m)
 	}
 	return
 }

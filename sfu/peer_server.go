@@ -81,10 +81,10 @@ func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
 }
 
 func (ps *peerServer) close(reason string) {
-	ps.Lock()
-	defer ps.Unlock()
-
 	if !ps.closed {
+		ps.Lock()
+		defer ps.Unlock()
+
 		ps.logInfo().Msgf("[ps] closing for reason: %s", reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
@@ -117,7 +117,7 @@ func (ps *peerServer) loop() {
 	// wait for room end
 	go func() {
 		<-ps.r.endCh
-		ps.ws.sendWithPayload("files", ps.r.files())
+		ps.ws.sendWithPayload("files", ps.r.files()) // peer could have left (ws closed) but room is still running
 		ps.close("room ended")
 	}()
 

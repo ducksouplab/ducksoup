@@ -7,17 +7,17 @@ commonVideoRawCaps: >-
     videoconvert ! 
     videorate ! 
     videoscale ! 
-    video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1 
+    video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 commonVideoRawCapsLight: >-
     videoconvert ! 
     video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg
 opus:
   rtp:
-    caps: application/x-rtp,payload=111,encoding-name=OPUS 
+    caps: application/x-rtp,payload=111,encoding-name=OPUS
     pay: rtpopuspay
     depay: >-
       rtpopusdepay !
-      opusparse 
+      opusparse
   decode: decodebin
   encode: >-
     opusenc name={{.Name}} audio-type=2048 bitrate-type=1 perfect-timestamp=true !
@@ -33,11 +33,11 @@ vp8:
     undershoot=95 keyframe-max-dist=999999 max-quantizer=56 qos=true
 x264:
   rtp:
-    caps: application/x-rtp,encoding-name=H264 
+    caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay !
-      h264parse 
+      h264parse
   decode: avdec_h264
   encode: >-
     x264enc name={{.Name}} pass=17 multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
@@ -46,11 +46,11 @@ x264:
     h264parse
 nv264:
   rtp:
-    caps: application/x-rtp,encoding-name=H264 
+    caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay !
-      h264parse 
+      h264parse
   decode: avdec_h264
   encode: >-
     nvh264enc name={{.Name}} rc-mode=3 preset=3 gop-size=15 bframes=4 rc-lookahead=10 i-adapt=true zerolatency=true qos=true !

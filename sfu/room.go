@@ -116,6 +116,11 @@ func (r *room) logDebug() *zerolog.Event {
 	return log.Debug().Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
+func (r *room) logTrace() *zerolog.Event {
+	elapsed := time.Since(r.createdAt)
+	return log.Trace().Str("elapsed", elapsed.Round(time.Millisecond).String())
+}
+
 func (r *room) userCount() int {
 	return len(r.connectedIndex)
 }

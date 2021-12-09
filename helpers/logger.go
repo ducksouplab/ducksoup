@@ -43,9 +43,23 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if os.Getenv("DS_LOG_DEBUG") == "true" {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+	zerolog.SetGlobalLevel(convertLevel(os.Getenv("DS_LOG_LEVEL")))
 	log.Info().Msg("[init] logger configured")
+}
+
+func convertLevel(dsLevel string) zerolog.Level {
+	switch dsLevel {
+	case "0":
+		return zerolog.Disabled
+	case "1":
+		return zerolog.ErrorLevel
+	case "2":
+		return zerolog.InfoLevel
+	case "3":
+		return zerolog.DebugLevel
+	case "4":
+		return zerolog.TraceLevel
+	default:
+		return zerolog.InfoLevel
+	}
 }

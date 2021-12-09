@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.4.1")
+    console.log("[DuckSoup test] v1.4.2")
 });
 
 let state;

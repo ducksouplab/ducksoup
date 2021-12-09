@@ -63,6 +63,8 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	templater := muxedRecordingTemplater
 	if join.RecordingMode == "split" {
 		templater = splitRecordingTemplater
+	} else if join.RecordingMode == "passthrough" {
+		templater = passthroughTemplater
 	} else if join.RecordingMode == "none" {
 		templater = noRecordingTemplater
 	}

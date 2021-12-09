@@ -115,8 +115,8 @@ func (s *mixerSlice) logInfo() *zerolog.Event {
 	return s.r.logInfo().Str("fromUser", s.fromPs.userId)
 }
 
-func (s *mixerSlice) logDebug() *zerolog.Event {
-	return s.r.logDebug().Str("fromUser", s.fromPs.userId)
+func (s *mixerSlice) logTrace() *zerolog.Event {
+	return s.r.logTrace().Str("fromUser", s.fromPs.userId)
 }
 
 // Same ID as output track
@@ -236,7 +236,7 @@ func (s *mixerSlice) runTickers() {
 						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 						// format and log
 						display := fmt.Sprintf("%v kbit/s", newPotentialRate/1000)
-						s.logDebug().Msgf("[slice] %s target bitrate: %s", s.kind, display)
+						s.logTrace().Msgf("[slice] %s target bitrate: %s", s.kind, display)
 					}
 				}
 			}
@@ -258,8 +258,8 @@ func (s *mixerSlice) runTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			s.logDebug().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
-			s.logDebug().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logTrace().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logTrace().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 }
