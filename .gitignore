@@ -24,3 +24,7 @@ docker/data
 # license and SDK
 *.uid
 *.key
+
+# yarn node
+node_modules
+yarn-error.log

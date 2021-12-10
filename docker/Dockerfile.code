@@ -25,3 +25,8 @@ ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/workspaces/ducksoup/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/workspaces/ducksoup/plugins"
 ENV GST_DEBUG=2
+
+# for js play app
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN apt-get update && apt-get install -y yarn
