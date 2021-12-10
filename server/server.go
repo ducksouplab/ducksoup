@@ -115,9 +115,8 @@ func ListenAndServe() {
 	// websocket handler
 	router.HandleFunc(webPrefix+"/ws", websocketHandler)
 
-	// assets (js & css) without basic auth
-	router.PathPrefix(webPrefix + "/scripts/").Handler(http.StripPrefix(webPrefix+"/scripts/", http.FileServer(http.Dir("./front/static/assets/scripts/"))))
-	router.PathPrefix(webPrefix + "/styles/").Handler(http.StripPrefix(webPrefix+"/styles/", http.FileServer(http.Dir("./front/static/assets/styles/"))))
+	// assets without basic auth
+	router.PathPrefix(webPrefix + "/assets/").Handler(http.StripPrefix(webPrefix+"/assets/", http.FileServer(http.Dir("./front/static/assets/"))))
 
 	// test pages with basic auth
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
@@ -125,8 +124,13 @@ func ListenAndServe() {
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/room/").Handler(http.StripPrefix(webPrefix+"/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
 
+	// play pages with basic auth
+	playRouter := router.PathPrefix(webPrefix + "/play").Subrouter()
+	playRouter.Use(basicAuthWith(testLogin, testPassword))
+	playRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/play/", http.FileServer(http.Dir("./front/static/pages/play/"))))
+
+	// stats pages with basic auth
 	if config.GenerateStats {
-		// stats pages with basic auth
 		statsRouter := router.PathPrefix(webPrefix + "/stats").Subrouter()
 		statsRouter.Use(basicAuthWith(statsLogin, statsPassword))
 		statsRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/stats/", http.FileServer(http.Dir("./front/static/pages/stats/"))))

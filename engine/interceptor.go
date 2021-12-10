@@ -31,13 +31,13 @@ func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		}
 	}
 
-	if err := configureAbsSendTimeHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
-		return err
-	}
+	// if err := configureAbsSendTimeHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	// 	return err
+	// }
 
-	if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
-		return err
-	}
+	// if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

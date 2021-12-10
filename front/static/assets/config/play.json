@@ -1,0 +1,278 @@
+{
+  "audio": [
+    {
+      "display": "3bands-eq",
+      "gst": "equalizer-3bands",
+      "category": "spectral",
+      "url": "https://gstreamer.freedesktop.org/documentation/equalizer/equalizer-3bands.html",
+      "controls": [
+        {
+          "display": "0.1 kHz",
+          "gst": "band0",
+          "type": "float",
+          "default": 0,
+          "min": -24,
+          "max": 12
+        },
+        {
+          "display": "1.1 kHz",
+          "gst": "band1",
+          "type": "float",
+          "default": 0,
+          "min": -24,
+          "max": 12
+        },
+        {
+          "display": "11 kHz",
+          "gst": "band2",
+          "type": "float",
+          "default": 0,
+          "min": -24,
+          "max": 12
+        }
+      ]
+    },
+    {
+      "display": "amplify",
+      "gst": "audioamplify",
+      "category": "dynamic",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioamplify.html",
+      "controls": [
+        {
+          "gst": "amplification",
+          "type": "float",
+          "default": 1,
+          "min": 0,
+          "max": 3
+        }
+      ]
+    },
+    {
+      "display": "band-pass",
+      "gst": "audiochebband",
+      "category": "filter",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
+      "fixed": [
+        {
+          "gst": "mode",
+          "value": 0
+        }
+      ],
+      "controls": [
+        {
+          "display": "low",
+          "gst": "lower-frequency",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        },
+        {
+          "display": "high",
+          "gst": "upper-frequency",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "display": "band-reject",
+      "gst": "audiochebband",
+      "category": "filter",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
+      "fixed": [
+        {
+          "gst": "mode",
+          "value": 1
+        }
+      ],
+      "controls": [
+        {
+          "display": "low",
+          "gst": "lower-frequency",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        },
+        {
+          "display": "high",
+          "gst": "upper-frequency",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "display": "compressor",
+      "gst": "audiodynamic",
+      "category": "dynamic",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiodynamic.html",
+      "fixed": [
+        {
+          "gst": "mode",
+          "value": 0
+        },
+        {
+          "gst": "characteristics",
+          "value": 1
+        }
+      ],
+      "controls": [
+        {
+          "gst": "amplification",
+          "type": "float",
+          "default": 1,
+          "min": 0,
+          "max": 3
+        }
+      ]
+    },
+    {
+      "display": "delay",
+      "gst": "audioecho",
+      "category": "time",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioecho.html",
+      "fixed": [
+        {
+          "gst": "max-delay",
+          "value": 2000000000
+        }
+      ],
+      "controls": [
+        {
+          "gst": "delay",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 2000000000
+        },
+        {
+          "gst": "feedback",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "gst": "intensity",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "display": "high-pass",
+      "gst": "audiocheblimit",
+      "category": "filter",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
+      "fixed": [
+        {
+          "gst": "mode",
+          "value": 1
+        }
+      ],
+      "controls": [
+        {
+          "gst": "cutoff",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        },
+        {
+          "gst": "poles",
+          "type": "int",
+          "default": 4,
+          "min": 2,
+          "max": 32
+        }
+      ]
+    },
+    {
+      "display": "low-pass",
+      "gst": "audiocheblimit",
+      "category": "filter",
+      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
+      "fixed": [
+        {
+          "gst": "mode",
+          "value": 0
+        }
+      ],
+      "controls": [
+        {
+          "gst": "cutoff",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        },
+        {
+          "gst": "poles",
+          "type": "int",
+          "default": 4,
+          "min": 2,
+          "max": 32
+        }
+      ]
+    },
+    {
+      "display": "reverb",
+      "gst": "freeverb",
+      "category": "time",
+      "url": "https://gstreamer.freedesktop.org/documentation/freeverb/index.html",
+      "controls": [
+        {
+          "gst": "level",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "gst": "room-size",
+          "type": "float",
+          "default": 0,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "display": "vocoder",
+      "gst": "avocoder",
+      "category": "spectral",
+      "controls": [
+        {
+          "gst": "pitch",
+          "type": "float",
+          "default": 1,
+          "min": 0.5,
+          "max": 2
+        },
+        {
+          "gst": "smile",
+          "type": "float",
+          "default": 1,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "display": "envelop scaling",
+          "gst": "env-freq-scaling",
+          "type": "float",
+          "default": 1,
+          "min": 0,
+          "max": 10
+        }
+      ]
+    }
+  ]
+}

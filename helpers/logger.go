@@ -43,8 +43,9 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	zerolog.SetGlobalLevel(convertLevel(os.Getenv("DS_LOG_LEVEL")))
-	log.Info().Msg("[init] logger configured")
+	level := convertLevel(os.Getenv("DS_LOG_LEVEL"))
+	zerolog.SetGlobalLevel(level)
+	log.Info().Msgf("[init] logger configured with level: %v", level)
 }
 
 func convertLevel(dsLevel string) zerolog.Level {

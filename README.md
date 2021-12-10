@@ -29,7 +29,7 @@ The embedding origin (`my-experiment-host.com`) has to be listed as an authorize
 Then, on the experiment web page, include the `ducksoup.js` library:
 
 ```
-<script src="https://ducksoup-host.com//scripts/lib/ducksoup.js"></script>
+<script src="https://ducksoup-host.com/assets/scripts/lib/ducksoup.js"></script>
 ```
 
 And render it (in JavaScript):
