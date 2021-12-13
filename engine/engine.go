@@ -137,7 +137,14 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerCC:
-			res += fmt.Sprintf("[TWCC#%v] ssrc:%v, base:%v count:%v chunks: ", rtcpPacket.FbPktCount, rtcpPacket.MediaSSRC, rtcpPacket.BaseSequenceNumber, rtcpPacket.PacketStatusCount)
+			res += fmt.Sprintf(
+				"[TWCC] #%v reftime:%v ssrc:%v base:%v count:%v chunks: ",
+				rtcpPacket.FbPktCount,
+				rtcpPacket.ReferenceTime,
+				rtcpPacket.MediaSSRC,
+				rtcpPacket.BaseSequenceNumber,
+				rtcpPacket.PacketStatusCount,
+			)
 			for _, chunk := range rtcpPacket.PacketChunks {
 				res += fmt.Sprintf("%+v ", chunk)
 			}
@@ -154,21 +161,16 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 }
 
 func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
-	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
-	// implemented in interceptors
-
 	var twcc rtp.TransportCCExtension
 	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
 	twcc.Unmarshal(ext)
 
-	return fmt.Sprintf("[RTP#%v] ssrc:%v payload:%v seqnum:%v tstamp:%v marker:%v msize:%v",
+	return fmt.Sprintf("[RTP] #%v timestamp:%v ssrc:%v size:%v",
 		twcc.TransportSequence,
-		pkt.SSRC,
-		pkt.PayloadType,
-		pkt.SequenceNumber,
 		pkt.Timestamp,
-		pkt.Marker,
-		pkt.MarshalSize())
+		pkt.SSRC,
+		pkt.MarshalSize(),
+	)
 }
 
 // used by RTCP log interceptors

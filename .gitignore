@@ -3,6 +3,7 @@ ducksoup
 core
 .DS_Store
 .vscode
+forks
 
 # logs and recorded data
 data
