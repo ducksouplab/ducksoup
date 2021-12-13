@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.4.2");
+    console.log("[DuckSoup] v1.5.0");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -178,10 +178,6 @@ class DuckSoup {
         this._ws.close(1000); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
     }
 
-    get stream() {
-        return this._stream;
-    }
-
     // Inner methods
 
     async _initialize() {
@@ -250,6 +246,10 @@ class DuckSoup {
             //track.enabled = false;//disabled for now
             pc.addTrack(track, stream);
         });
+        this._sendEvent({
+            kind: "local-stream",
+            payload: stream
+        }, true);
         this._stream = stream;
 
         // Signaling

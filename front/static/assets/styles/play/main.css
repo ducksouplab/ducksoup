@@ -1,0 +1,32 @@
+.media-container {
+    display: flex;
+    width: 100%;
+    justify-content: space-evenly;
+}
+
+.media {
+    position: relative;
+    box-sizing: border-box;
+    max-width: 50%;
+    border: 1px solid black;
+    width: 800px;
+    height: 600px;
+}
+
+.control {
+    position: absolute;
+    bottom: -45px;
+    right: 0;
+}
+
+.control .play {
+    display: flex;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    justify-content: center;
+    align-items: center;
+    background-color: forestgreen;
+    color: white;
+}

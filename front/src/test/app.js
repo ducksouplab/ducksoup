@@ -1,10 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.4.2")
+    console.log("[DuckSoup test] v1.5.0")
 });
 
 let state;
 
-const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 8);
+const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substring(0, 8);
 
 const processMozza = (videoFx) => {
     if(!videoFx.startsWith("mozza")) return videoFx;
@@ -75,11 +75,6 @@ const start = async ({
     if(!!afx && afx.length > 0) audioFx += " name=fx";
     if(!!vfx && vfx.length > 0) videoFx += " name=fx";
     videoFx = processMozza(videoFx);
-    // signaling
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
-    // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
-    const pathPrefix = pathPrefixhMatch[1];
 
     // optional
     const video = {
@@ -127,15 +122,11 @@ const start = async ({
     // stop if previous instance exists
     if(state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
+    const options = { isMirror };
     state.ducksoup = await DuckSoup.render({
-        callback: ducksoupListener,
+        callback: ducksoupListener(options),
         debug: true,
     }, peerOptions);
-    // display direct stream in mirror mode
-    if(isMirror) {
-        // insert local video
-        document.getElementById("local-video").srcObject = state.ducksoup.stream;
-    }
 };
 
 document.addEventListener("DOMContentLoaded", async() => {
@@ -236,7 +227,7 @@ const appendMessage = (message) => {
 };
 
 // communication with iframe
-const ducksoupListener = (message) => {
+const ducksoupListener = (options) => (message) => {
     const { kind, payload } = message;
     const mountEl = document.getElementById("ducksoup-root");
 
@@ -251,6 +242,11 @@ const ducksoupListener = (message) => {
     // specific cases
     if (kind === "start") {
         clearMessage();
+    } else if (kind === "local-stream") {    
+        if(options.isMirror) { // display direct stream in mirror mode
+            // insert local video
+            document.getElementById("local-video").srcObject = payload;
+        }
     } else if (kind === "track") {
         mountEl.classList.remove("d-none");
         const { track, streams } = payload;
