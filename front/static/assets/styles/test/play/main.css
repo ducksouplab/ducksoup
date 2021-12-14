@@ -30,3 +30,19 @@
     background-color: forestgreen;
     color: white;
 }
+
+.filter {
+    display: flex;
+    margin: 4px 0;
+}
+
+.filter-label {
+    padding-top: 30px;
+}
+
+.knob {
+    margin: 0 12px;
+}
+.knob-label {
+    text-align: center;
+}

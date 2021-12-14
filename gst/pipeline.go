@@ -210,6 +210,7 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 }
 
 func (p *Pipeline) SetFxProp(kind string, name string, prop string, value float32) {
+	log.Info().Msg(kind + "_fx_" + name)
 	// fx prefix needed (added during pipeline initialization)
 	p.setPropFloat(kind+"_fx_"+name, prop, value)
 }

@@ -1,20 +1,18 @@
 import React, { useRef } from 'react';
-
-const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substring(0, 8);
+import { randomId } from '../helpers';
 
 export default () => {
     const localVideo = useRef(null);
     const handleDuckSoup = (message) => {
         const { kind, payload } = message;
         if (kind === "local-stream") {
-            console.log(localVideo.current);
             localVideo.current.srcObject = payload;
         }
     }
     const handleStart = async () => {
         // Init signalingURL with default value
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const pathPrefixhMatch = /(.*)play/.exec(window.location.pathname);
+        const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
         // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
         const pathPrefix = pathPrefixhMatch[1];
         const signalingUrl = `${wsProtocol}://${window.location.host}${pathPrefix}ws`;

@@ -28,7 +28,7 @@ func Build() {
 	// only build in certain conditions (= not when launching ducksoup in production)
 	if developmentMode || cmdBuildMode {
 		buildOptions := api.BuildOptions{
-			EntryPoints:       []string{"front/src/lib/ducksoup.js", "front/src/play/app.jsx", "front/src/test/app.js", "front/src/stats/app.js"},
+			EntryPoints:       []string{"front/src/lib/ducksoup.js", "front/src/test/play/app.jsx", "front/src/test/mirror/app.js", "front/src/stats/app.js"},
 			Bundle:            true,
 			MinifyWhitespace:  !developmentMode,
 			MinifyIdentifiers: !developmentMode,

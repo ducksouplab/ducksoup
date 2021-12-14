@@ -129,7 +129,8 @@ The following methods are available on a DuckSoup player:
 
 If DuckSoup is running and accessible for instance at http://localhost:8000, there are a few available test front-ends:
 
-- http://localhost:8000/test/mirror/ one user reflection with a form to set peerOptions
+- http://localhost:8000/test/play/ one user reflection with live UX for effects
+- http://localhost:8000/test/mirror/ one user reflection with peerOptions control and debug information
 - http://localhost:8000/test/room/ choose a user name, room name and size and open in multiple tabs (same number as room size)
 
 A stats page displaying raw information about current rooms and bandwidth stats is accessible at (currently under work):
@@ -138,12 +139,21 @@ A stats page displaying raw information about current rooms and bandwidth stats 
 
 ## DuckSoup server
 
-### Build from source
+### Build
 
-Dependencies:
+If you are using one of the provided Docker images, you don't need to install binary dependencies (Go, GStreamer, yarn).
+
+To build DuckSoup:
+
+```
+go build
+```
+
+If you're not using Docker, you have to install those dependencies first:
 
 - [Go](https://golang.org/doc/install)
 - [GStreamer](https://gstreamer.freedesktop.org/documentation/index.html?gi-language=c)
+- [yarn](https://yarnpkg.com/)
 
 Regarding GStreamer on Debian you may:
 
@@ -152,13 +162,26 @@ apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
-Then build:
-
-```
-go build
-```
-
 Depending on the GStreamer plugins used, additional dependencies may be needed (opencv, dlib...).
+
+### Front-end dependencies
+
+If you launch DuckSoup server with one of these options (see more in next paragraph):
+
+```
+DS_ENV=DEV ./ducksoup
+DS_ENV=BUILD_FRONT ./ducksoup
+```
+
+Then DuckSoup will rebuild/bundle/minify JS assets (thanks to [esbuild](https://esbuild.github.io/)) needed by the different [Front-ends](#front-ends). The effect is to process js files from `front/src` to `front/static`.
+
+Since the `/test/play/` front-end requires additional JS modules (React for instance), it is required that you fetch them before launching DuckSoup. Fetch front-end dependencies with:
+
+```
+yarn
+```
+
+In particular, if DuckSoup instantaneously crashes with a `JS build fatal error: Could not resolve "..."` error message, it means front-end dependencies need to be installed with yarn.
 
 ### Settings
 
@@ -221,6 +244,8 @@ Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have th
 
 ### Run DuckSoup server
 
+Note: please read the [Front-end dependencies](#front-end-dependencies) section first. It explains why installing front-end dependencies with yarn is required depending on `DS_ENV`.
+
 Run (without DS_ENV=DEV nor DS_ORIGINS, signaling can't work since no accepted WebSocket origin is declared):
 
 ```
@@ -246,12 +271,6 @@ Run with TLS:
 DS_ENV=DEV ./ducksoup --cert certs/cert.pem --key certs/key.pem
 DS_ORIGINS=https://ducksoup-caller-host.com ./ducksoup --cert certs/cert.pem --key certs/key.pem
 ```
-
-### Front-ends build
-
-DuckSoup server comes with a few front-end examples. Building their js sources (useful at least for bundling and browser improved compatibility, also for minification) is done with esbuild and triggered from go.
-
-When `./ducksoup` is launched (see `front/build.go` to configure and build new front-ends), some js files are processed (from `front/src` to `front/static`) depending on the `DS_ENV` environment value (see [Environment variables](#environment-variables)).
 
 ### Custom GStreamer plugins
 

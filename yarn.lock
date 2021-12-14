@@ -19,6 +19,11 @@ object-assign@^4.1.1:
   resolved "https://registry.yarnpkg.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
   integrity sha1-IQmtx5ZYh8/AXLvUQsrIv7s2CGM=
 
+react-dial-knob@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/react-dial-knob/-/react-dial-knob-1.3.0.tgz#20351869a3c3ac8f442c2cf2730bb115b7aedc94"
+  integrity sha512-hmQy2Ifl9v3VjKmOAKfjG3TIa0o39IYOhZk9oV08kfaODN+gF9RGuEC3XX2TmSuTUs05wJsXezv67OqLQqPqBQ==
+
 react-dom@^17.0.2:
   version "17.0.2"
   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-17.0.2.tgz#ecffb6845e3ad8dbfcdc498f0d0a939736502c23"

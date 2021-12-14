@@ -36,8 +36,8 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 		panic("Unhandled format " + join.VideoFormat)
 	}
 	// complete with Fx
-	audioCodec.Fx = strings.Replace(join.AudioFx, "name=", "name=video_fx_", 1)
-	videoCodec.Fx = strings.Replace(join.VideoFx, "name=", "name=audio_fx_", 1)
+	audioCodec.Fx = strings.Replace(join.AudioFx, "name=", "name=audio_fx_", 1)
+	videoCodec.Fx = strings.Replace(join.VideoFx, "name=", "name=video_fx_", 1)
 
 	// shape template data
 	data := struct {
