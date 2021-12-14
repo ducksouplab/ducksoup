@@ -32,12 +32,19 @@
 }
 
 .filter {
-    display: flex;
+    display: inline-flex;
     margin: 4px 0;
+    padding: 6px;
+    border: 6px solid #ccc;
+    border-radius: 10px;;
 }
 
 .filter-label {
     padding-top: 30px;
+}
+
+.filter-knobs {
+    display: flex;
 }
 
 .knob {

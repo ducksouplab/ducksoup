@@ -31,13 +31,13 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.0");
+    console.log("[DuckSoup] v1.5.1");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
     const containsSafari = ua.indexOf("Safari") > -1;
     // needed for safari (getUserMedia before enumerateDevices), but could be a problem if constraints change for Chrome
-    if(containsSafari && !containsChrome) {
+    if (containsSafari && !containsChrome) {
         await navigator.mediaDevices.getUserMedia(DEFAULT_CONSTRAINTS);
     }
 });
@@ -77,7 +77,7 @@ const preferMono = (sdp) => {
         .split("\r\n")
         .map((line) => {
             if (line.startsWith("a=fmtp:111")) {
-                if(line.includes("stereo=")) {
+                if (line.includes("stereo=")) {
                     return line.replace("stereo=1", "stereo=0");
                 } else {
                     return `${line};stereo=0`;
@@ -121,6 +121,32 @@ const looseJSONParse = (str) => {
         console.error(error);
     }
 };
+
+const rampBitrate = (pc) => {
+    const RAMP_DURATION = 2000;
+    const STEPS = 6;
+    let step = 1;
+    const rampInterval = setInterval(async () => {
+        for (const sender of pc.getSenders()) {
+            // set bitrate
+            const params = sender.getParameters();
+            if (!params.encodings) params.encodings = [{}];// needed for FF
+            for (const encoding of params.encodings) {
+                if (sender.track.kind === "video") {
+                    encoding.maxBitrate = MAX_VIDEO_BITRATE * step / STEPS;
+                    console.log(encoding.maxBitrate);
+                } else if(step === 1) { // do once for audio
+                    encoding.maxBitrate = MAX_AUDIO_BITRATE;
+                }
+            }
+            await sender.setParameters(params);
+        }
+        step++;
+        if (step === STEPS) {
+            clearInterval(rampInterval);
+        }
+    }, RAMP_DURATION / STEPS);
+}
 
 // DuckSoup
 
@@ -196,7 +222,7 @@ class DuckSoup {
     }
 
     _control(kind, name, property, value, duration) {
-        if(!this._checkControl(name, property, value, duration)) return;
+        if (!this._checkControl(name, property, value, duration)) return;
         this._ws.send(
             JSON.stringify({
                 kind: "control",
@@ -214,16 +240,16 @@ class DuckSoup {
     }
 
     _stopRTC() {
-        if(this._stream) {
+        if (this._stream) {
             this._stream.getTracks().forEach((track) => track.stop());
         }
-        if(this._pc) {
+        if (this._pc) {
             this._pc.close();
         }
     }
 
     _debugCandidatePair(pair) {
-        if(this._debug) {
+        if (this._debug) {
             this._ws.send(
                 JSON.stringify({
                     kind: "debug-selected candidate pair",
@@ -274,7 +300,7 @@ class DuckSoup {
 
             if (message.kind === "offer") {
                 const offer = looseJSONParse(message.payload);
-                
+
                 pc.setRemoteDescription(offer);
                 // console.log("[DuckSoup] offer: ", offer);
                 const answer = await pc.createAnswer();
@@ -295,15 +321,14 @@ class DuckSoup {
                 }
             } else if (message.kind === "start") {
                 // set encoding parameters
-                for(const sender of pc.getSenders()) {
+                for (const sender of pc.getSenders()) {
                     // set bitrate
                     const params = sender.getParameters();
-                    if(!params.encodings) params.encodings = [{}];// needed for FF
-                    for(const encoding of params.encodings) {
+                    if (!params.encodings) params.encodings = [{}];// needed for FF
+                    for (const encoding of params.encodings) {
                         encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
                     }
                     await sender.setParameters(params);
-                    
                 }
                 // add listeners on first sender (likely the same info to be shared for audio and video)
                 const firstSender = pc.getSenders()[0];
@@ -347,22 +372,22 @@ class DuckSoup {
                     })
                 );
             };
-    
+
             pc.ontrack = (event) => {
-                if(this._mountEl) {
+                if (this._mountEl) {
                     let el = document.createElement(event.track.kind);
                     el.id = event.track.id;
                     el.srcObject = event.streams[0];
                     el.autoplay = true;
-                    if(event.track.kind === "video") {
-                        if(this._joinPayload.width) {
+                    if (event.track.kind === "video") {
+                        if (this._joinPayload.width) {
                             el.style.width = this._joinPayload.width + "px";
                         } else {
                             el.style.width = "100%";
                         }
-                        if(this._joinPayload.height) {
+                        if (this._joinPayload.height) {
                             el.style.height = this._joinPayload.height + "px";
-                        } 
+                        }
                     }
                     this._mountEl.appendChild(el);
                     // on remove
@@ -377,7 +402,7 @@ class DuckSoup {
                     });
                 }
             };
-    
+
             // for server logging
             pc.onnegotiationneeded = (e) => {
                 ws.send(
@@ -387,7 +412,7 @@ class DuckSoup {
                     })
                 );
             };
-    
+
             pc.onsignalingstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
@@ -396,7 +421,7 @@ class DuckSoup {
                     })
                 );
             };
-    
+
             pc.oniceconnectionstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
@@ -405,7 +430,7 @@ class DuckSoup {
                     })
                 );
             };
-    
+
             pc.onicegatheringstatechange = (e) => {
                 ws.send(
                     JSON.stringify({
@@ -414,7 +439,7 @@ class DuckSoup {
                     })
                 );
             };
-    
+
             pc.onicecandidateerror = (e) => {
                 ws.send(
                     JSON.stringify({
@@ -454,7 +479,7 @@ class DuckSoup {
                 outboundRTPVideo = report;
                 let newEncodedWidth = report.frameWidth;
                 let newEncodedHeight = report.frameHeight;
-                if(newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
+                if (newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
                     this._ws.send(
                         JSON.stringify({
                             kind: "debug-new outbound encoded size",

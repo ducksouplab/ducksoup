@@ -36,9 +36,11 @@ export default () => {
                 </div>
             </div>
             <div className="row">
-                {enabledFilters.map(f => (
-                    <Filter key={f.id} filter={f} />
-                ))}
+                <div className="col">
+                    {enabledFilters.map(f => (
+                        <Filter key={f.id} filter={f} />
+                    ))}
+                </div>
             </div>
         </>
     );

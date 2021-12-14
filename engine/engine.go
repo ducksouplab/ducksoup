@@ -5,6 +5,7 @@ package engine
 import (
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/ice/v2"
@@ -165,9 +166,9 @@ func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) strin
 	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
 	twcc.Unmarshal(ext)
 
-	return fmt.Sprintf("[RTP] #%v timestamp:%v ssrc:%v size:%v",
+	return fmt.Sprintf("[RTP] #%v now:%v ssrc:%v size:%v",
 		twcc.TransportSequence,
-		pkt.Timestamp,
+		time.Now().Format("15:04:05.99999999"),
 		pkt.SSRC,
 		pkt.MarshalSize(),
 	)
@@ -220,12 +221,12 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	i := &interceptor.Registry{}
 
 	if os.Getenv("DS_LOG_LEVEL") == "4" {
-		// logReceived, _ := packetdump.NewReceiverInterceptor(
-		// 	packetdump.RTCPWriter(zerolog.Nop()),
-		// 	packetdump.RTPFormatter(formatReceivedRTP),
-		// 	packetdump.RTPWriter(&logWriteCloser{}),
-		// )
-		// i.Add(logReceived)
+		logReceived, _ := packetdump.NewReceiverInterceptor(
+			packetdump.RTCPWriter(zerolog.Nop()),
+			packetdump.RTPFormatter(formatReceivedRTP),
+			packetdump.RTPWriter(&logWriteCloser{}),
+		)
+		i.Add(logReceived)
 
 		logSent, _ := packetdump.NewSenderInterceptor(
 			packetdump.RTCPFormatter(formatSentRTCP),
