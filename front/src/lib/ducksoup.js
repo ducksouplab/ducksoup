@@ -418,7 +418,7 @@ class DuckSoup {
             pc.onicecandidateerror = (e) => {
                 ws.send(
                     JSON.stringify({
-                        kind: "debug-ice candidat eerror",
+                        kind: "debug-ice candidate error",
                         payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
                     })
                 );
@@ -454,7 +454,7 @@ class DuckSoup {
                 outboundRTPVideo = report;
                 let newEncodedWidth = report.frameWidth;
                 let newEncodedHeight = report.frameHeight;
-                if(newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
+                if(newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
                     this._ws.send(
                         JSON.stringify({
                             kind: "debug-new outbound encoded size",

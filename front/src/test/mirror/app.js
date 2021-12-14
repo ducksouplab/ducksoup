@@ -159,23 +159,24 @@ document.addEventListener("DOMContentLoaded", async() => {
         hide(".show-when-running");
       });
 
-    document.getElementById("audio-control").addEventListener("click", () => {
-        if(state.ducksoup) {
-            const property = document.getElementById("audio-property").value;
-            const value = parseFloat(document.getElementById("audio-value").value);
-            const duration = parseInt(document.getElementById("audio-duration").value, 10);
-            state.ducksoup.audioControl("fx", property, value, duration);
-        }
-    });
+    const fxForms = document.querySelectorAll("form.fx");
 
-    document.getElementById("video-control").addEventListener("click", () => {
-        if(state.ducksoup) {
-            const property = document.getElementById("video-property").value;
-            const value = parseFloat(document.getElementById("video-value").value);
-            const duration = parseInt(document.getElementById("video-duration").value, 10);
-            state.ducksoup.videoControl("fx", property, value,duration);
-        }
-    });
+    for (let i = 0; i < fxForms.length; i++) {
+        fxForms[i].addEventListener("submit", (e) => {
+            e.preventDefault();
+            if(state.ducksoup) {
+                const type = e.target.querySelector("[name='type']").value;
+                const property = e.target.querySelector("[name='property']").value;
+                const value = parseFloat(e.target.querySelector("[name='value']").value);
+                const duration = parseInt(e.target.querySelector("[name='duration']").value, 10);
+                if(type === "audio") {
+                    state.ducksoup.audioControl("fx", property, value, duration);
+                } else {
+                    state.ducksoup.videoControl("fx", property, value, duration);
+                }
+            }
+        });
+    }
 
     // audio input selection
     const devices = await navigator.mediaDevices.enumerateDevices();
