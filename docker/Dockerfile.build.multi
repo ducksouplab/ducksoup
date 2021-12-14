@@ -39,6 +39,15 @@ RUN cp ./ducksoup /build
 RUN cp -r ./config /build
 RUN cp -r ./front /build
 
+# for js /test/play/ app
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN apt-get update && apt-get install -y yarn
+RUN yarn
+
+# Build front assets once
+RUN DS_ENV=BUILD_FRONT ./ducksoup
+
 # runner stage
 FROM creamlab/bullseye-gstreamer:latest AS final
 
@@ -47,9 +56,6 @@ RUN apt-get update && apt-get upgrade -y
 WORKDIR /app
 
 COPY --from=builder /build .
-
-# Build front assets once
-RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"

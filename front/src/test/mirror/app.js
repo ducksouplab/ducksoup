@@ -7,9 +7,9 @@ let state;
 const randomId = () => Math.random().toString(36).replace(/[^a-z]+/g, '').substring(0, 8);
 
 const processMozza = (videoFx) => {
-    if(!videoFx.startsWith("mozza")) return videoFx;
+    if (!videoFx.startsWith("mozza")) return videoFx;
     // already using file paths
-    if(videoFx.includes("/")) return videoFx;
+    if (videoFx.includes("/")) return videoFx;
     let output = videoFx.replace(/deform=([^\s]+)/, "deform=plugins/$1.dfm")
     output = output.replace(/shape-model=([^\s]+)/, "shape-model=plugins/$1.dat")
     return output;
@@ -59,7 +59,7 @@ const start = async ({
     const roomId = isMirror ? randomId() : rid;
     const userId = isMirror ? randomId() : uid;
     const size = isMirror ? 1 : parseInt(s, 10);
-    const namespace = isMirror ? "mirror" : "room";    
+    const namespace = isMirror ? "mirror" : "room";
     // parse
     const width = parseIntWithFallback(w, 800);
     const height = parseIntWithFallback(h, 600);
@@ -67,13 +67,13 @@ const start = async ({
     const duration = parseIntWithFallback(d, 30);
     const gpu = !!g;
     // initialize state
-    state = { userId, width, height, isMirror, peerCount: 0};
+    state = { userId, width, height, isMirror, peerCount: 0 };
     // add name if fx is not empty
     let audioFx = afx;
     let videoFx = vfx;
     // add name if not empty
-    if(!!afx && afx.length > 0) audioFx += " name=fx";
-    if(!!vfx && vfx.length > 0) videoFx += " name=fx";
+    if (!!afx && afx.length > 0) audioFx += " name=fx";
+    if (!!vfx && vfx.length > 0) videoFx += " name=fx";
     videoFx = processMozza(videoFx);
 
     // optional
@@ -81,12 +81,12 @@ const start = async ({
         ...(width && { width: { ideal: width } }),
         ...(height && { height: { ideal: height } }),
         ...(frameRate && { frameRate: { ideal: frameRate } }),
-        ...(vd && { deviceId: { ideal: vd }}),
+        ...(vd && { deviceId: { ideal: vd } }),
     }
     const audio = {
-        ...(ad && { deviceId: { ideal: ad }}),
+        ...(ad && { deviceId: { ideal: ad } }),
     }
-    
+
     // full peerOptions
     const peerOptions = {
         signalingUrl,
@@ -113,14 +113,14 @@ const start = async ({
     hide(".show-when-not-running");
     hide(".show-when-ended");
     show(".show-when-running");
-    if(isMirror) {
+    if (isMirror) {
         // save space for remote video before local video
         const mountEl = document.getElementById("ducksoup-root");
         mountEl.style.width = state.width + "px";
         mountEl.style.height = state.height + "px";
     }
     // stop if previous instance exists
-    if(state.ducksoup) state.ducksoup.stop()
+    if (state.ducksoup) state.ducksoup.stop()
     // start new DuckSoup
     const options = { isMirror };
     state.ducksoup = await DuckSoup.render({
@@ -129,7 +129,7 @@ const start = async ({
     }, peerOptions);
 };
 
-document.addEventListener("DOMContentLoaded", async() => {
+document.addEventListener("DOMContentLoaded", async () => {
     reinitUX();
 
     // Init signalingURL with default value
@@ -151,25 +151,25 @@ document.addEventListener("DOMContentLoaded", async() => {
     });
 
     document
-      .getElementById("stop")
-      .addEventListener("click", () => {
-        if(state.ducksoup) state.ducksoup.stop();
-        clearMount();
-        show(".show-when-not-running");
-        hide(".show-when-running");
-      });
+        .getElementById("stop")
+        .addEventListener("click", () => {
+            if (state.ducksoup) state.ducksoup.stop();
+            clearMount();
+            show(".show-when-not-running");
+            hide(".show-when-running");
+        });
 
     const fxForms = document.querySelectorAll("form.fx");
 
     for (let i = 0; i < fxForms.length; i++) {
         fxForms[i].addEventListener("submit", (e) => {
             e.preventDefault();
-            if(state.ducksoup) {
+            if (state.ducksoup) {
                 const type = e.target.querySelector("[name='type']").value;
                 const property = e.target.querySelector("[name='property']").value;
                 const value = parseFloat(e.target.querySelector("[name='value']").value);
                 const duration = parseInt(e.target.querySelector("[name='duration']").value, 10);
-                if(type === "audio") {
+                if (type === "audio") {
                     state.ducksoup.audioControl("fx", property, value, duration);
                 } else {
                     state.ducksoup.videoControl("fx", property, value, duration);
@@ -186,15 +186,15 @@ document.addEventListener("DOMContentLoaded", async() => {
         const device = devices[i];
         if (device.kind === "audioinput") {
             const option = document.createElement("option");
-            option.text =  device.label || `microphone ${audioInput.length + 1}`;
+            option.text = device.label || `microphone ${audioInput.length + 1}`;
             option.value = device.deviceId,
-            audioInput.appendChild(option);
+                audioInput.appendChild(option);
         } else if (device.kind === "videoinput") {
             const option = document.createElement("option");
-            option.text =  device.label || `camera ${videoInput.length + 1}`;
+            option.text = device.label || `camera ${videoInput.length + 1}`;
             option.value = device.deviceId,
-            videoInput.appendChild(option);
-        } 
+                videoInput.appendChild(option);
+        }
     }
 });
 
@@ -220,11 +220,11 @@ const clearMessage = () => {
 };
 
 const replaceMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML = message + '<br/>' ;
+    document.getElementById("stopped-message").innerHTML = message + '<br/>';
 };
 
 const appendMessage = (message) => {
-    document.getElementById("stopped-message").innerHTML += message + '<br/>' ;
+    document.getElementById("stopped-message").innerHTML += message + '<br/>';
 };
 
 // communication with iframe
@@ -233,25 +233,25 @@ const ducksoupListener = (options) => (message) => {
     const mountEl = document.getElementById("ducksoup-root");
 
     // grouped cases
-    if(kind !== "stats") {
+    if (kind !== "stats") {
         console.log("[DuckSoup]", kind);
     }
-    if(kind.startsWith("error") || kind === "closed") {
+    if (kind.startsWith("error") || kind === "closed") {
         reinitUX();
     }
-    
+
     // specific cases
     if (kind === "start") {
         clearMessage();
-    } else if (kind === "local-stream") {    
-        if(options.isMirror) { // display direct stream in mirror mode
+    } else if (kind === "local-stream") {
+        if (options.isMirror) { // display direct stream in mirror mode
             // insert local video
             document.getElementById("local-video").srcObject = payload;
         }
     } else if (kind === "track") {
         mountEl.classList.remove("d-none");
         const { track, streams } = payload;
-        if(track.kind === "video") {
+        if (track.kind === "video") {
             // append stream
             let container = document.createElement("div");
             container.id = track.id;
@@ -268,7 +268,7 @@ const ducksoupListener = (options) => (message) => {
             // append
             container.appendChild(el);
             container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-bottom show-when-ending'><div>Conversation soon ending</div></div>");
-            if(state.isMirror) {
+            if (state.isMirror) {
                 container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-top show-when-running'><div>Through server</div></div>");
             } else {
                 ++state.peerCount;
@@ -291,7 +291,7 @@ const ducksoupListener = (options) => (message) => {
     } else if (kind === "ending") {
         show(".show-when-ending");
     } else if (kind === "files") {
-        if(payload && payload[state.userId]) {
+        if (payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";
             html += payload[state.userId].join("<br/>") + "<br/>";
             replaceMessage(html);
@@ -314,12 +314,12 @@ const ducksoupListener = (options) => (message) => {
             // add processed props
             outboundRTPVideo.averageEncodeTime = Number(outboundRTPVideo.totalEncodeTime / outboundRTPVideo.framesEncoded).toFixed(3);
             // select displayed props
-            const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount","framesDiscardedOnSend", "averageEncodeTime", "packetsSent"];
+            const props = ["frameWidth", "frameHeight", "framesPerSecond", "qualityLimitationReason", "keyFramesEncoded", "firCount", "pliCount", "sliCount", "nackCount", "framesDiscardedOnSend", "averageEncodeTime", "packetsSent"];
             // render
             for (let p of props) {
                 document.getElementById(`video-out-${p}`).textContent = outboundRTPVideo[p];
             }
-        } 
+        }
         if (inboundRTPVideo) {
             // add processed props
             inboundRTPVideo.processedJitter = Number(inboundRTPVideo.jitterBufferDelay / inboundRTPVideo.jitterBufferEmittedCount).toFixed(3);
@@ -341,7 +341,7 @@ const ducksoupListener = (options) => (message) => {
         if (inboundRTPAudio) {
             // add processed props
             inboundRTPAudio.processedJitter = Number(inboundRTPAudio.jitterBufferDelay / inboundRTPAudio.jitterBufferEmittedCount).toFixed(3);
-            if(inboundRTPAudio.totalSamplesDuration) {
+            if (inboundRTPAudio.totalSamplesDuration) {
                 inboundRTPAudio.totalSamplesDuration = inboundRTPAudio.totalSamplesDuration.toFixed(2);
             }
             // select displayed props
@@ -368,7 +368,7 @@ const ducksoupListener = (options) => (message) => {
             }
         }
         if (remoteInboundRTPAudio) {
-            if(remoteInboundRTPAudio.jitter) {
+            if (remoteInboundRTPAudio.jitter) {
                 remoteInboundRTPAudio.jitter = remoteInboundRTPAudio.jitter.toFixed(3);
             }
             // select displayed props
@@ -379,7 +379,7 @@ const ducksoupListener = (options) => (message) => {
             }
         }
         if (remoteInboundRTPVideo) {
-            if(remoteInboundRTPVideo.jitter) {
+            if (remoteInboundRTPVideo.jitter) {
                 remoteInboundRTPVideo.jitter = remoteInboundRTPVideo.jitter.toFixed(3);
             }
             // select displayed props
