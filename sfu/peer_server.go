@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/gst"
+	"github.com/creamlab/ducksoup/sequencing"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -27,9 +28,11 @@ type peerServer struct {
 	ws         *wsConn
 	audioSlice *mixerSlice
 	videoSlice *mixerSlice
-	pipeline   *gst.Pipeline
 	closed     bool
 	closedCh   chan struct{}
+	// processing
+	pipeline          *gst.Pipeline
+	interpolatorIndex map[string]*sequencing.LinearInterpolator
 }
 
 func newPeerServer(
@@ -41,16 +44,17 @@ func newPeerServer(
 	pipeline := gst.CreatePipeline(join, r.filePrefixWithCount(join))
 
 	ps := &peerServer{
-		userId:   join.UserId,
-		roomId:   r.id,
-		streamId: uuid.New().String(),
-		join:     join,
-		r:        r,
-		pc:       pc,
-		ws:       ws,
-		pipeline: pipeline,
-		closed:   false,
-		closedCh: make(chan struct{}),
+		userId:            join.UserId,
+		roomId:            r.id,
+		streamId:          uuid.New().String(),
+		join:              join,
+		r:                 r,
+		pc:                pc,
+		ws:                ws,
+		closed:            false,
+		closedCh:          make(chan struct{}),
+		pipeline:          pipeline,
+		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 	}
 
 	// connect components for further communication
@@ -95,6 +99,52 @@ func (ps *peerServer) close(reason string) {
 		ps.pc.Close()
 		ps.ws.Close()
 		ps.r.disconnectUser(ps.userId)
+	}
+}
+
+func (ps *peerServer) controlFx(payload controlPayload) {
+	interpolatorId := payload.Name + payload.Property
+	interpolator := ps.interpolatorIndex[interpolatorId]
+
+	if interpolator != nil {
+		// an interpolation is already running for this pipeline, effect and property
+		interpolator.Stop()
+	}
+
+	duration := payload.Duration
+	if duration == 0 {
+		ps.pipeline.SetFxProp(payload.Name, payload.Property, payload.Value)
+	} else {
+		if duration > maxInterpolatorDuration {
+			duration = maxInterpolatorDuration
+		}
+		oldValue := ps.pipeline.GetFxProp(payload.Name, payload.Property)
+		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
+
+		ps.Lock()
+		ps.interpolatorIndex[interpolatorId] = newInterpolator
+		ps.Unlock()
+
+		defer func() {
+			ps.Lock()
+			delete(ps.interpolatorIndex, interpolatorId)
+			ps.Unlock()
+		}()
+
+		for {
+			select {
+			case <-ps.r.endCh:
+				return
+			case <-ps.closedCh:
+				return
+			case currentValue, more := <-newInterpolator.C:
+				if more {
+					ps.pipeline.SetFxProp(payload.Name, payload.Property, currentValue)
+				} else {
+					return
+				}
+			}
+		}
 	}
 }
 
@@ -158,11 +208,7 @@ func (ps *peerServer) loop() {
 				ps.logError().Err(err).Msg("[ps] can't unmarshal control")
 			} else {
 				go func() {
-					if payload.Kind == "audio" && ps.audioSlice != nil {
-						ps.audioSlice.controlFx(payload)
-					} else if ps.videoSlice != nil {
-						ps.videoSlice.controlFx(payload)
-					}
+					ps.controlFx(payload)
 				}()
 			}
 		default:

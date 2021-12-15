@@ -72,8 +72,8 @@ const start = async ({
     let audioFx = afx;
     let videoFx = vfx;
     // add name if not empty
-    if (!!afx && afx.length > 0) audioFx += " name=fx";
-    if (!!vfx && vfx.length > 0) videoFx += " name=fx";
+    if (!!afx && afx.length > 0) audioFx += " name=audio_fx";
+    if (!!vfx && vfx.length > 0) videoFx += " name=video_fx";
     videoFx = processMozza(videoFx);
 
     // optional
@@ -169,11 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const property = e.target.querySelector("[name='property']").value;
                 const value = parseFloat(e.target.querySelector("[name='value']").value);
                 const duration = parseInt(e.target.querySelector("[name='duration']").value, 10);
-                if (type === "audio") {
-                    state.ducksoup.audioControl("fx", property, value, duration);
-                } else {
-                    state.ducksoup.videoControl("fx", property, value, duration);
-                }
+                state.ducksoup.controlFx(type + "_fx", property, value, duration);
             }
         });
     }

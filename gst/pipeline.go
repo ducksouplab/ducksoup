@@ -209,14 +209,15 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	}
 }
 
-func (p *Pipeline) SetFxProp(kind string, name string, prop string, value float32) {
+func (p *Pipeline) SetFxProp(name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
-	p.setPropFloat(kind+"_fx_"+name, prop, value)
+	p.setPropFloat("client_"+name, prop, value)
 }
 
-func (p *Pipeline) GetFxProp(kind string, name string, prop string) float32 {
+func (p *Pipeline) GetFxProp(name string, prop string) float32 {
+	log.Debug().Msg(name + " " + prop)
 	// fx prefix needed (added during pipeline initialization)
-	cName := C.CString(kind + "_fx_" + name)
+	cName := C.CString("client_" + name)
 	cProp := C.CString(prop)
 
 	defer C.free(unsafe.Pointer(cName))

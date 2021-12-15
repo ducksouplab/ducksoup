@@ -36,7 +36,6 @@ type messageIn struct {
 }
 
 type controlPayload struct {
-	Kind     string  `json:"kind"`
 	Name     string  `json:"name"`
 	Property string  `json:"property"`
 	Value    float32 `json:"value"`

@@ -122,11 +122,16 @@ const looseJSONParse = (str) => {
     }
 };
 
+// Unpure functions
+
+const state = {};
+
 const rampBitrate = (pc) => {
-    const RAMP_DURATION = 2000;
-    const STEPS = 6;
-    let step = 1;
-    const rampInterval = setInterval(async () => {
+    const RAMP_DURATION = 3000;
+    const STEPS = 8;
+    let step = 0;
+    state.rampInterval = setInterval(async () => {
+        step++;
         for (const sender of pc.getSenders()) {
             // set bitrate
             const params = sender.getParameters();
@@ -134,16 +139,14 @@ const rampBitrate = (pc) => {
             for (const encoding of params.encodings) {
                 if (sender.track.kind === "video") {
                     encoding.maxBitrate = MAX_VIDEO_BITRATE * step / STEPS;
-                    console.log(encoding.maxBitrate);
                 } else if(step === 1) { // do once for audio
                     encoding.maxBitrate = MAX_AUDIO_BITRATE;
                 }
             }
             await sender.setParameters(params);
         }
-        step++;
         if (step === STEPS) {
-            clearInterval(rampInterval);
+            clearInterval(state.rampInterval);
         }
     }, RAMP_DURATION / STEPS);
 }
@@ -190,18 +193,21 @@ class DuckSoup {
         }
     };
 
-    audioControl(effectName, property, value, transitionDuration) {
-        this._control("audio", effectName, property, value, transitionDuration);
-    }
-
-    videoControl(effectName, property, value, transitionDuration) {
-        this._control("video", effectName, property, value, transitionDuration);
+    controlFx(name, property, value, duration) {
+        if (!this._checkControl(name, property, value, duration)) return;
+        this._ws.send(
+            JSON.stringify({
+                kind: "control",
+                payload: JSON.stringify({ name, property, value, ...(duration && { duration }) }),
+            })
+        );
     }
 
     // called by client app
     stop() {
         this._stopRTC();
         this._ws.close(1000); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+        clearInterval(state.rampInterval);
     }
 
     // Inner methods
@@ -220,17 +226,6 @@ class DuckSoup {
         const durationValid = typeof duration === "undefined" || typeof duration === "number";
         return typeof name === "string" && typeof property === "string" && typeof value === "number" && durationValid;
     }
-
-    _control(kind, name, property, value, duration) {
-        if (!this._checkControl(name, property, value, duration)) return;
-        this._ws.send(
-            JSON.stringify({
-                kind: "control",
-                payload: JSON.stringify({ kind, name, property, value, ...(duration && { duration }) }),
-            })
-        );
-    }
-
 
     _sendEvent(event, force) {
         if (this._callback && (this._running || force)) {
@@ -321,15 +316,16 @@ class DuckSoup {
                 }
             } else if (message.kind === "start") {
                 // set encoding parameters
-                for (const sender of pc.getSenders()) {
-                    // set bitrate
-                    const params = sender.getParameters();
-                    if (!params.encodings) params.encodings = [{}];// needed for FF
-                    for (const encoding of params.encodings) {
-                        encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
-                    }
-                    await sender.setParameters(params);
-                }
+                rampBitrate(pc);
+                // for (const sender of pc.getSenders()) {
+                //     // set bitrate
+                //     const params = sender.getParameters();
+                //     if (!params.encodings) params.encodings = [{}];// needed for FF
+                //     for (const encoding of params.encodings) {
+                //         encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
+                //     }
+                //     await sender.setParameters(params);
+                // }
                 // add listeners on first sender (likely the same info to be shared for audio and video)
                 const firstSender = pc.getSenders()[0];
                 if (firstSender) {

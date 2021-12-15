@@ -9,33 +9,36 @@
         {
           "display": "0.1 kHz",
           "gst": "band0",
-          "type": "float",
+          "type": "double",
           "default": 0,
           "min": -24,
-          "max": 12
+          "max": 12,
+          "step": 1
         },
         {
           "display": "1.1 kHz",
           "gst": "band1",
-          "type": "float",
+          "type": "double",
           "default": 0,
           "min": -24,
-          "max": 12
+          "max": 12,
+          "step": 1
         },
         {
           "display": "11 kHz",
           "gst": "band2",
-          "type": "float",
+          "type": "double",
           "default": 0,
           "min": -24,
-          "max": 12
+          "max": 12,
+          "step": 1
         }
       ]
     },
     {
       "display": "amplify",
       "gst": "audioamplify",
-      "category": "dynamic",
+      "category": "dynamics",
       "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioamplify.html",
       "controls": [
         {
@@ -43,7 +46,8 @@
           "type": "float",
           "default": 1,
           "min": 0,
-          "max": 3
+          "max": 3,
+          "step": 1
         }
       ]
     },
@@ -65,7 +69,8 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         },
         {
           "display": "high",
@@ -73,7 +78,8 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         }
       ]
     },
@@ -95,7 +101,8 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         },
         {
           "display": "high",
@@ -103,14 +110,15 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         }
       ]
     },
     {
       "display": "compressor",
       "gst": "audiodynamic",
-      "category": "dynamic",
+      "category": "dynamics",
       "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiodynamic.html",
       "fixed": [
         {
@@ -124,11 +132,20 @@
       ],
       "controls": [
         {
-          "gst": "amplification",
+          "gst": "ratio",
+          "type": "float",
+          "default": 1,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "gst": "threshold",
           "type": "float",
           "default": 1,
           "min": 0,
-          "max": 3
+          "max": 1,
+          "step": 0.01
         }
       ]
     },
@@ -146,24 +163,27 @@
       "controls": [
         {
           "gst": "delay",
-          "type": "float",
+          "type": "uint64",
           "default": 0,
           "min": 0,
-          "max": 2000000000
+          "max": 2000000000,
+          "step": 1000
         },
         {
           "gst": "feedback",
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 1
+          "max": 1,
+          "step": 0.01
         },
         {
           "gst": "intensity",
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 1
+          "max": 1,
+          "step": 0.01
         }
       ]
     },
@@ -184,14 +204,16 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         },
         {
           "gst": "poles",
           "type": "int",
           "default": 4,
           "min": 2,
-          "max": 32
+          "max": 32,
+          "step": 2
         }
       ]
     },
@@ -212,14 +234,16 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 10000
+          "max": 10000,
+          "step": 10
         },
         {
           "gst": "poles",
           "type": "int",
           "default": 4,
           "min": 2,
-          "max": 32
+          "max": 32,
+          "step": 2
         }
       ]
     },
@@ -234,14 +258,16 @@
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 1
+          "max": 1,
+          "step": 0.01
         },
         {
           "gst": "room-size",
           "type": "float",
           "default": 0,
           "min": 0,
-          "max": 1
+          "max": 1,
+          "step": 0.01
         }
       ]
     },
@@ -255,14 +281,16 @@
           "type": "float",
           "default": 1,
           "min": 0.5,
-          "max": 2
+          "max": 2,
+          "step": 0.05
         },
         {
           "gst": "smile",
           "type": "float",
           "default": 1,
           "min": 1,
-          "max": 2
+          "max": 2,
+          "step": 0.05
         },
         {
           "display": "envelop scaling",
@@ -270,7 +298,8 @@
           "type": "float",
           "default": 1,
           "min": 0,
-          "max": 10
+          "max": 10,
+          "step": 0.05
         }
       ]
     }

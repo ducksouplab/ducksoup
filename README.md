@@ -104,10 +104,10 @@ It is also possible to add custom GStreamer plugins to DuckSoup (check the secti
 
 If you want to control the properties of a GStreamer effect you need:
 
-- to name the effect described in `audioFx` or `videoFx` by adding a `name` property, for instance `"element property1=1.0 name=fx"`
-- call the player `audioControl` or `videoControl` method (depending on the stream the effect is enabled on), for instance `ds.audioControl("fx", "property1", 1.2)`
+- to name the effect described in `audioFx` or `videoFx` by adding a unique `name` property, for instance `"element property1=1.0 name=fx"`
+- call the player `controlFx` method, for instance `ds.controlFx("fx", "property1", 1.2, 500)`
 
-In this example, `proprety1` has an initial value of `1.0` and is updated to `1.2`.
+In this example, `proprety1` has an initial value of `1.0` and is updated to `1.2`, with a linear interpolation over 500 ms. If the last parameter is ommitted (transition duration), the update is instantaneous.
 
 For the time being only float values are allowed when controlling properties.
 
@@ -117,12 +117,11 @@ Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mo
 
 The following methods are available on a DuckSoup player:
 
-- `audioControl(effectName, property, value, transitionDuration)` to update the property of the effect named in `peerOptions#audioFx`. For instance with an `audioFx` of `"element property1=1.0 name=fx"`:
+- `controlFx(effectName, property, value, transitionDuration)` to update the property of the effect named in `peerOptions#audioFx`. For instance with an `audioFx` of `"element property1=1.0 name=fx"`:
   - `effectName` (string) is `fx`
   - `property` (string) is `property1`
   - `value` (float) sets a new value, for instance `1.1`
   - `transitionDuration` (integer counting ms, defaults to 0, expect better results for 200 and above) is the optional duration of the interpolation between the old and new values
-- `videoControl(effectName, property, value, transitionDuration)` is the same as above fort the effect named in `peerOptions#videoFx`
 - `stop()` to stop media streams and close communication with server. Note that players are running for a limited duration (set by `peerOptions#duration` which is capped server-side) and most of the time you don't need to use this method
 
 ### Front-ends
