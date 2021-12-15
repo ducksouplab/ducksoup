@@ -221,12 +221,12 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 	i := &interceptor.Registry{}
 
 	if os.Getenv("DS_LOG_LEVEL") == "4" {
-		logReceived, _ := packetdump.NewReceiverInterceptor(
-			packetdump.RTCPWriter(zerolog.Nop()),
-			packetdump.RTPFormatter(formatReceivedRTP),
-			packetdump.RTPWriter(&logWriteCloser{}),
-		)
-		i.Add(logReceived)
+		// logReceived, _ := packetdump.NewReceiverInterceptor(
+		// 	packetdump.RTCPWriter(zerolog.Nop()),
+		// 	packetdump.RTPFormatter(formatReceivedRTP),
+		// 	packetdump.RTPWriter(&logWriteCloser{}),
+		// )
+		// i.Add(logReceived)
 
 		logSent, _ := packetdump.NewSenderInterceptor(
 			packetdump.RTCPFormatter(formatSentRTCP),
