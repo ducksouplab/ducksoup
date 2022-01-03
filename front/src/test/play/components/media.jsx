@@ -61,6 +61,7 @@ export default () => {
             callback: handleDuckSoupEvents
         }, {
             signalingUrl: getSignalingUrl(),
+            debug: true,
             namespace: "playground",
             recordingMode: "none",
             size: 1,

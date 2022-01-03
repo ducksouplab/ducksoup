@@ -57,7 +57,8 @@ Where:
     - `"error-full"` (no payload) when the videoconference room is full
     - `"error` with more information in payload
     - `"stats"` (payload contains bandwidth usage information) periodically triggered (fired only when `debug` is set to true)
-  - `debug` (boolean, defaults to false) to enable `"stats"` messages to be received by callback
+  - `debug` (boolean, defaults to false) to enable `"debug"` messages sent to server
+  - `stats` (boolean, defaults to false) to enable `"stats"` messages sent to client callback
 
 - `peerOptions` (object) must contain the following properties:
 
@@ -234,7 +235,7 @@ Depending on `DS_LOG_LEVEL`, here are the generated logs (the default value is `
 - `0` no log
 - `1` errors
 - `2` server info and above
-- `3` client info and above
+- `3` client debug info and above
 - `4` debug logs (including RTCP reports and estimated bitrates) and above
 
 Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.

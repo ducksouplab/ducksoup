@@ -126,6 +126,7 @@ const start = async ({
     state.ducksoup = await DuckSoup.render({
         callback: ducksoupListener(options),
         debug: true,
+        stats: true,
     }, peerOptions);
 };
 

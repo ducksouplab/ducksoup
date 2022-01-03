@@ -179,18 +179,18 @@ class DuckSoup {
             video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
         };
         this._debug = embedOptions && embedOptions.debug;
+        this._stats = embedOptions && embedOptions.stats;
         this._callback = embedOptions && embedOptions.callback;
-        if (this._debug) {
-            this._debugInfo = {
-                now: Date.now(),
-                audioBytesSent: 0,
-                audioBytesReceived: 0,
-                videoBytesSent: 0,
-                videoBytesReceived: 0,
-                encodedWith: 0,
-                encodedHeight: 0,
-            };
-        }
+        // needed for debug and stats
+        this._info = {
+            now: Date.now(),
+            audioBytesSent: 0,
+            audioBytesReceived: 0,
+            videoBytesSent: 0,
+            videoBytesReceived: 0,
+            encodedWith: 0,
+            encodedHeight: 0,
+        };
     };
 
     controlFx(name, property, value, duration) {
@@ -244,14 +244,12 @@ class DuckSoup {
     }
 
     _debugCandidatePair(pair) {
-        if (this._debug) {
-            this._ws.send(
-                JSON.stringify({
-                    kind: "debug-selected candidate pair",
-                    payload: `client=${pair.local.candidate} server=${pair.remote.candidate}`,
-                })
-            );
-        }
+        this._ws.send(
+            JSON.stringify({
+                kind: "debug-selected candidate pair",
+                payload: `client=${pair.local.candidate} server=${pair.remote.candidate}`,
+            })
+        );
     }
 
     async _startRTC() {
@@ -280,7 +278,7 @@ class DuckSoup {
         ws.onclose = (event) => {
             this._sendEvent("closed");
             this._stopRTC();
-            if (this._debugIntervalId) clearInterval(this._debugIntervalId);
+            if (this._statsIntervalId) clearInterval(this._statsIntervalId);
         };
 
         ws.onerror = (event) => {
@@ -330,12 +328,14 @@ class DuckSoup {
                 const firstSender = pc.getSenders()[0];
                 if (firstSender) {
                     const iceTransport = firstSender.transport.iceTransport;
-                    // initial pair
-                    this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
-                    // change
-                    iceTransport.addEventListener("selectedcandidatepairchange", () => {
+                    if (this._debug) {
+                        // initial pair
                         this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
-                    });
+                        // change
+                        iceTransport.addEventListener("selectedcandidatepairchange", () => {
+                            this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
+                        });
+                    }
                 }
                 // unmute
                 // stream.getTracks().forEach((track) => {
@@ -400,148 +400,159 @@ class DuckSoup {
             };
 
             // for server logging
-            pc.onnegotiationneeded = (e) => {
-                ws.send(
-                    JSON.stringify({
-                        kind: "debug-negotiation needed",
-                        payload: "",
-                    })
-                );
-            };
-
-            pc.onsignalingstatechange = (e) => {
-                ws.send(
-                    JSON.stringify({
-                        kind: "debug-signaling state change",
-                        payload: pc.signalingState.toString(),
-                    })
-                );
-            };
-
-            pc.oniceconnectionstatechange = (e) => {
-                ws.send(
-                    JSON.stringify({
-                        kind: "debug-ice connection state change",
-                        payload: pc.iceConnectionState.toString(),
-                    })
-                );
-            };
-
-            pc.onicegatheringstatechange = (e) => {
-                ws.send(
-                    JSON.stringify({
-                        kind: "debug-ice gathering state change",
-                        payload: pc.iceGatheringState.toString(),
-                    })
-                );
-            };
-
-            pc.onicecandidateerror = (e) => {
-                ws.send(
-                    JSON.stringify({
-                        kind: "debug-ice candidate error",
-                        payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
-                    })
-                );
-            };
+            if (this._debug) {
+                pc.onnegotiationneeded = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "debug-negotiation needed",
+                            payload: "",
+                        })
+                    );
+                };
+    
+                pc.onsignalingstatechange = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "debug-signaling state change",
+                            payload: pc.signalingState.toString(),
+                        })
+                    );
+                };
+    
+                pc.oniceconnectionstatechange = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "debug-ice connection state change",
+                            payload: pc.iceConnectionState.toString(),
+                        })
+                    );
+                };
+    
+                pc.onicegatheringstatechange = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "debug-ice gathering state change",
+                            payload: pc.iceGatheringState.toString(),
+                        })
+                    );
+                };
+    
+                pc.onicecandidateerror = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "debug-ice candidate error",
+                            payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
+                        })
+                    );
+                };
+            }
         }
 
-        // Stats
-        if (this._debug) {
-            this._debugIntervalId = setInterval(() => this._updateStats(), 1000);
+        // Getting peerconnection stats is needed either for stats or debug option
+        if (this._stats || this._debug) {
+            this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
         }
     }
 
     async _updateStats() {
         const pc = this._pc;
         const pcStats = await pc.getStats();
-        const newNow = Date.now();
-        let newAudioBytesSent = 0;
-        let newAudioBytesReceived = 0;
-        let newVideoBytesSent = 0;
-        let newVideoBytesReceived = 0;
-        let outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio;
-        let remoteOutboundRTPVideo, remoteInboundRTPVideo, remoteOutboundRTPAudio, remoteInboundRTPAudio;
 
-        pcStats.forEach((report) => {
-            if (report.type === "outbound-rtp" && report.kind === "audio") {
-                newAudioBytesSent += report.bytesSent;
-                outboundRTPAudio = report;
-            } else if (report.type === "inbound-rtp" && report.kind === "audio") {
-                newAudioBytesReceived += report.bytesReceived;
-                inboundRTPAudio = report;
-            } else if (report.type === "outbound-rtp" && report.kind === "video") {
-                newVideoBytesSent += report.bytesSent;
-                outboundRTPVideo = report;
-                let newEncodedWidth = report.frameWidth;
-                let newEncodedHeight = report.frameHeight;
-                if (newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._debugInfo.encodedWith || newEncodedHeight !== this._debugInfo.encodedHeight) {
-                    this._ws.send(
-                        JSON.stringify({
-                            kind: "debug-new outbound encoded size",
-                            payload: `${newEncodedWidth}x${newEncodedHeight}`,
-                        })
-                    );
-                    this._debugInfo.encodedWith = newEncodedWidth;
-                    this._debugInfo.encodedHeight = newEncodedHeight;
+        if (this._debug) {
+            pcStats.forEach((report) => {
+                if (report.type === "outbound-rtp" && report.kind === "video") {
+                    let newEncodedWidth = report.frameWidth;
+                    let newEncodedHeight = report.frameHeight;
+                    if (newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._info.encodedWith || newEncodedHeight !== this._info.encodedHeight) {
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "debug-new outbound encoded size",
+                                payload: `${newEncodedWidth}x${newEncodedHeight}`,
+                            })
+                        );
+                        this._info.encodedWith = newEncodedWidth;
+                        this._info.encodedHeight = newEncodedHeight;
+                    }
                 }
-            } else if (report.type === "inbound-rtp" && report.kind === "video") {
-                newVideoBytesReceived += report.bytesReceived;
-                inboundRTPVideo = report;
-            } else if (report.type === "remote-outbound-rtp" && report.kind === "audio") {
-                remoteOutboundRTPAudio = report;
-            } else if (report.type === "remote-inbound-rtp" && report.kind === "audio") {
-                remoteInboundRTPAudio = report;
-            } else if (report.type === "remote-outbound-rtp" && report.kind === "video") {
-                remoteOutboundRTPVideo = report;
-            } else if (report.type === "remote-inbound-rtp" && report.kind === "video") {
-                remoteInboundRTPVideo = report;
-            }
-        });
+            });
+        }
 
-        const elapsed = (newNow - this._debugInfo.now) / 1000;
-        const audioUp = kbps(
-            newAudioBytesSent - this._debugInfo.audioBytesSent,
-            elapsed
-        );
-        const audioDown = kbps(
-            newAudioBytesReceived - this._debugInfo.audioBytesReceived,
-            elapsed
-        );
-        const videoUp = kbps(
-            newVideoBytesSent - this._debugInfo.videoBytesSent,
-            elapsed
-        );
-        const videoDown = kbps(
-            newVideoBytesReceived - this._debugInfo.videoBytesReceived,
-            elapsed
-        );
-        this._sendEvent({
-            kind: "stats",
-            payload: {
-                audioUp,
-                audioDown,
-                videoUp,
-                videoDown,
-                outboundRTPVideo,
-                inboundRTPVideo,
-                outboundRTPAudio,
-                inboundRTPAudio,
-                remoteOutboundRTPVideo,
-                remoteInboundRTPVideo,
-                remoteOutboundRTPAudio,
-                remoteInboundRTPAudio
-            }
-        });
+        if (this._stats) {
+            const newNow = Date.now();
+            let newAudioBytesSent = 0;
+            let newAudioBytesReceived = 0;
+            let newVideoBytesSent = 0;
+            let newVideoBytesReceived = 0;
+            let outboundRTPVideo, inboundRTPVideo, outboundRTPAudio, inboundRTPAudio;
+            let remoteOutboundRTPVideo, remoteInboundRTPVideo, remoteOutboundRTPAudio, remoteInboundRTPAudio;
 
-        this._debugInfo = {
-            ...this._debugInfo,
-            now: newNow,
-            audioBytesSent: newAudioBytesSent,
-            audioBytesReceived: newAudioBytesReceived,
-            videoBytesSent: newVideoBytesSent,
-            videoBytesReceived: newVideoBytesReceived
-        };
+            pcStats.forEach((report) => {        
+                if (report.type === "outbound-rtp" && report.kind === "audio") {
+                    newAudioBytesSent += report.bytesSent;
+                    outboundRTPAudio = report;
+                } else if (report.type === "inbound-rtp" && report.kind === "audio") {
+                    newAudioBytesReceived += report.bytesReceived;
+                    inboundRTPAudio = report;
+                } else if (report.type === "outbound-rtp" && report.kind === "video") {
+                    newVideoBytesSent += report.bytesSent;
+                    outboundRTPVideo = report;
+                } else if (report.type === "inbound-rtp" && report.kind === "video") {
+                    newVideoBytesReceived += report.bytesReceived;
+                    inboundRTPVideo = report;
+                } else if (report.type === "remote-outbound-rtp" && report.kind === "audio") {
+                    remoteOutboundRTPAudio = report;
+                } else if (report.type === "remote-inbound-rtp" && report.kind === "audio") {
+                    remoteInboundRTPAudio = report;
+                } else if (report.type === "remote-outbound-rtp" && report.kind === "video") {
+                    remoteOutboundRTPVideo = report;
+                } else if (report.type === "remote-inbound-rtp" && report.kind === "video") {
+                    remoteInboundRTPVideo = report;
+                }
+            });
+            const elapsed = (newNow - this._info.now) / 1000;
+            const audioUp = kbps(
+                newAudioBytesSent - this._info.audioBytesSent,
+                elapsed
+            );
+            const audioDown = kbps(
+                newAudioBytesReceived - this._info.audioBytesReceived,
+                elapsed
+            );
+            const videoUp = kbps(
+                newVideoBytesSent - this._info.videoBytesSent,
+                elapsed
+            );
+            const videoDown = kbps(
+                newVideoBytesReceived - this._info.videoBytesReceived,
+                elapsed
+            );
+            this._sendEvent({
+                kind: "stats",
+                payload: {
+                    audioUp,
+                    audioDown,
+                    videoUp,
+                    videoDown,
+                    outboundRTPVideo,
+                    inboundRTPVideo,
+                    outboundRTPAudio,
+                    inboundRTPAudio,
+                    remoteOutboundRTPVideo,
+                    remoteInboundRTPVideo,
+                    remoteOutboundRTPAudio,
+                    remoteInboundRTPAudio
+                }
+            });
+
+            this._info = {
+                ...this._info,
+                now: newNow,
+                audioBytesSent: newAudioBytesSent,
+                audioBytesReceived: newAudioBytesReceived,
+                videoBytesSent: newVideoBytesSent,
+                videoBytesReceived: newVideoBytesReceived
+            };
+        }
     }
 }
 
