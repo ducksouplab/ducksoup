@@ -24,7 +24,7 @@ A few notes about GStreamer settings:
 
 - `nvh264dec` VS `avdec_h264`, to be investigated: when enabling TWCC in engine.go, `nvh264dec` crashes GStreamer (`failed to decode picture`). That's for the time being you use CPU H264 decoding even if GPU acceleration is requested (will be used only for encoding)
 
-- `rc-lookahead` improves rate-control accuracy https://docs.nvidia.com/video-technologies/video-codec-sdk/pdf/Using_FFmpeg_with_NVIDIA_GPU_Hardware_Acceleration.pdf
+- `rc-lookahead` is supposed to improve rate-control accuracy https://docs.nvidia.com/video-technologies/video-codec-sdk/pdf/Using_FFmpeg_with_NVIDIA_GPU_Hardware_Acceleration.pdf BUT image freezes, so has been disabled for nvcodec
 
 To try later:
 
