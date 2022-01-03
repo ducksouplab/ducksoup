@@ -199,9 +199,6 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
-			if nvidiaEnabled && p.join.GPU {
-				prop = "target-bitrate"
-			}
 		}
 		for _, n := range names {
 			p.setPropInt(n, prop, value)
