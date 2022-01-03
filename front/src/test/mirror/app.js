@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.0")
+    console.log("[DuckSoup test] v1.5.2")
 });
 
 let state;
@@ -107,7 +107,6 @@ const start = async ({
         videoFx,
         gpu
     };
-    console.log("peerOptions: ", peerOptions);
 
     // UX
     hide(".show-when-not-running");
