@@ -85,10 +85,10 @@ func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
 }
 
 func (ps *peerServer) close(reason string) {
-	if !ps.closed {
-		ps.Lock()
-		defer ps.Unlock()
+	ps.Lock()
+	defer ps.Unlock()
 
+	if !ps.closed {
 		ps.logInfo().Msgf("[ps] closing for reason: %s", reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
