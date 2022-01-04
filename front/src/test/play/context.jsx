@@ -5,12 +5,26 @@ const Context = createContext();
 
 const INTERPOLATION_DURATION = 60;
 
-export const initialState = {
+const DEFAULT_STATE = {
   allFilters: undefined,
   ducksoup: undefined,
-  running: false,
+  started: false,
   filters: [],
 };
+
+const initializeState = () => {
+  const savedState = localStorage.getItem("state");
+  if (savedState !== null) return JSON.parse(savedState);
+  return DEFAULT_STATE;
+}
+
+export const initialState = initializeState();
+
+const saveAndReturn = (state) => {
+  console.log(state);
+  setTimeout(() => localStorage.setItem("state", JSON.stringify(state)), 10);
+  return state;
+}
 
 const newFilterInstance = (template) => {
   const newFilter = { ...template, id: randomId() };
@@ -35,7 +49,7 @@ export const reducer = (state, action) => {
           controlToUpdate.current = value;
         }
       }
-      return state;
+      return saveAndReturn(state);
     }
     case "addFilter": {
       if (state.allFilters) {
@@ -43,13 +57,17 @@ export const reducer = (state, action) => {
         if (toAdd) {
           // important: clone and assign an id
           const newFilter = newFilterInstance(toAdd);
-          return { ...state, filters: [...state.filters, newFilter] };
+          return saveAndReturn({ ...state, filters: [...state.filters, newFilter] });
         }
       }
       return state;
     }
-    case "isRunning":
-      return { ...state, running: true };
+    case "removeFilter": {
+      const newFilters = state.filters.filter((f) => f.id !== action.payload);
+      return saveAndReturn({ ...state, filters: newFilters });
+    }
+    case "start":
+      return { ...state, started: true };
     case "attachPlayer":
       return { ...state, ducksoup: action.payload };
     case "setAllFilters":

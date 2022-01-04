@@ -15,7 +15,7 @@ const round = (value, precision) => {
 
 export default ({ filter: { id }, control }) => {
   const { dispatch } = useContext(Context);
-  const [value, setValue] = useState(control.default);
+  const [value, setValue] = useState(control.current);
   const svg = useRef(null);
   const precision = getPrecision(control.step);
 
@@ -30,7 +30,7 @@ export default ({ filter: { id }, control }) => {
       display_raw: true,
       value_text: false,
       center_zero: false,
-      initial_value: control.default,
+      initial_value: control.current,
       value_min: control.min,
       value_max: control.max,
       value_resolution: control.step,

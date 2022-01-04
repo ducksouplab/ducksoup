@@ -4,14 +4,14 @@ import AddFilter from "./add_filter";
 import Filter from './filter'
 
 export default () => {
-    const { dispatch, state: { filters } } = useContext(Context);
+    const { state: { filters } } = useContext(Context);
     return (
         <div className="container">
             <div className="row">
                 <AddFilter />
             </div>
             <div className="row">
-                <div className="col">
+                <div className="col flex">
                     {filters.map(f => (
                         <Filter key={f.id} filter={f} />
                     ))}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import Context from "../../context";
 
 export default () => {
-    const { dispatch, state: { running, allFilters } } = useContext(Context);
+    const { dispatch, state: { started, allFilters } } = useContext(Context);
     const [activeDisplay, setActiveDisplay] = useState("");
 
     useEffect(() => {
@@ -15,7 +15,7 @@ export default () => {
         dispatch({ type: "addFilter", payload: activeDisplay });
     }
 
-    return !running && (
+    return !started && (
         <>
             <div className="col-auto">
                 <select className="form-select" value={activeDisplay} onChange={e => setActiveDisplay(e.currentTarget.value)}>

@@ -12,7 +12,7 @@ const getSignalingUrl = () => {
 
 const genFxString = (filters) => {
     return filters.reduce((acc, f) => {
-        let intro = acc.length === 0 ? "" : "! ";
+        let intro = acc.length === 0 ? "" : "! audioconvert ! ";
         intro += `${f.gst} name=${f.id} `;
         const props = f.controls.reduce((acc, c) => {
             return acc + `${c.gst}=${c.current} `;
@@ -55,7 +55,7 @@ export default () => {
     }
 
     const handleStart = async () => {
-        dispatch({ type: "isRunning" });
+        dispatch({ type: "start" });
 
         const ducksoup = await DuckSoup.render({
             callback: handleDuckSoupEvents
