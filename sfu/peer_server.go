@@ -211,6 +211,15 @@ func (ps *peerServer) loop() {
 					ps.controlFx(payload)
 				}()
 			}
+		case "polycontrol":
+			payload := polyControlPayload{}
+			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
+				ps.logError().Err(err).Msg("[ps] can't unmarshal control")
+			} else {
+				go func() {
+					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
+				}()
+			}
 		default:
 			if strings.HasPrefix(m.Kind, "debug-") {
 				ps.logDebug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)

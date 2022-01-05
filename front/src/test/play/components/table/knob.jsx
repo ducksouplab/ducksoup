@@ -20,12 +20,11 @@ export default ({ filter: { id }, control }) => {
   const precision = getPrecision(control.step);
 
   const handleValueChange = ({ detail: v }) => {
-    dispatch({ type: "newControlValue", payload: { id, gst: control.gst, value: v } });
+    dispatch({ type: "newControlValue", payload: { id, gst: control.gst, kind: control.kind, value: v } });
     setValue(round(v, precision));
   }
 
   useEffect(() => {
-    console.log(control);
     new SvgKnob(svg.current, {
       display_raw: true,
       value_text: false,

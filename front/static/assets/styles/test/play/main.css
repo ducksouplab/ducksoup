@@ -2,15 +2,18 @@
     display: flex;
     width: 100%;
     justify-content: space-evenly;
+    padding-top: 12px;
 }
 
 .media {
     position: relative;
-    box-sizing: border-box;
+    box-sizing: content-box;
     max-width: 50%;
-    border: 1px solid black;
+    border: 18px solid black;
+    border-radius: 18px;
     width: 800px;
     height: 600px;
+    background-color: #ccc;
 }
 
 .media video {

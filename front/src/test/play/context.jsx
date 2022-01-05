@@ -6,40 +6,50 @@ const Context = createContext();
 const INTERPOLATION_DURATION = 60;
 
 const DEFAULT_STATE = {
-  allFilters: undefined,
+  flatFilters: undefined,
+  groupedFilters: undefined,
   ducksoup: undefined,
   started: false,
   filters: [],
 };
 
 const initializeState = () => {
-  const savedState = localStorage.getItem("state");
-  if (savedState !== null) return JSON.parse(savedState);
-  return DEFAULT_STATE;
+  const serialized = localStorage.getItem("state-v01");
+  let saved;
+  if (serialized !== null) saved = JSON.parse(serialized);
+  return {...DEFAULT_STATE, ...saved};
 }
 
 export const initialState = initializeState();
 
 const saveAndReturn = (state) => {
-  console.log(state);
-  setTimeout(() => localStorage.setItem("state", JSON.stringify(state)), 10);
+  const { filters } = state;
+  setTimeout(() => localStorage.setItem("state-v01", JSON.stringify({ filters })), 10);
   return state;
 }
 
 const newFilterInstance = (template) => {
-  const newFilter = { ...template, id: randomId() };
+  // deep copy with JSON API to avoid clashes of subobjects (controls)
+  // when using same filter several times 
+  const newFilter = JSON.parse(JSON.stringify(template)); 
+  newFilter.id = randomId();
   for (let i = 0; i < newFilter.controls.length; i++) {
     newFilter.controls[i].current = newFilter.controls[i].default;
   }
   return newFilter;
 }
 
+const groupBy = (xs, key) => xs.reduce(function(rv, x) {
+    (rv[x[key]] = rv[x[key]] || []).push(x);
+    return rv;
+}, {});
+
 export const reducer = (state, action) => {
   switch (action.type) {
     case "newControlValue": {
-      const { id, gst, value } = action.payload;
+      const { id, gst, kind, value } = action.payload;
       if (state.ducksoup) {
-        state.ducksoup.controlFx(id, gst, value, INTERPOLATION_DURATION);
+        state.ducksoup.polyControlFx(id, gst, kind, value, INTERPOLATION_DURATION);
       }
       // ugly in place edit
       const filterToUpdate = state.filters.find((f) => f.id === id);
@@ -52,8 +62,8 @@ export const reducer = (state, action) => {
       return saveAndReturn(state);
     }
     case "addFilter": {
-      if (state.allFilters) {
-        const toAdd = state.allFilters.find((f) => f.display === action.payload);
+      if (state.flatFilters) {
+        const toAdd = state.flatFilters.find((f) => f.display === action.payload);
         if (toAdd) {
           // important: clone and assign an id
           const newFilter = newFilterInstance(toAdd);
@@ -68,10 +78,13 @@ export const reducer = (state, action) => {
     }
     case "start":
       return { ...state, started: true };
+    case "stop":
+      return { ...state, started: false };
     case "attachPlayer":
       return { ...state, ducksoup: action.payload };
-    case "setAllFilters":
-      return { ...state, allFilters: action.payload };
+    case "setFilters":
+      const grouped = groupBy(action.payload, "category");
+      return { ...state, flatFilters: action.payload, groupedFilters: grouped };
     default:
       return state;
   }

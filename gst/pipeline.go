@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -221,4 +222,35 @@ func (p *Pipeline) GetFxProp(name string, prop string) float32 {
 	defer C.free(unsafe.Pointer(cProp))
 
 	return float32(C.gstGetPropFloat(p.cPipeline, cName, cProp))
+}
+
+func (p *Pipeline) SetFxPolyProp(name string, prop string, kind string, value string) {
+	cName := C.CString("client_" + name)
+	cProp := C.CString(prop)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProp))
+
+	switch kind {
+	case "float":
+		if v, err := strconv.ParseFloat(value, 32); err == nil {
+			cValue := C.float(float32(v))
+			C.gstSetPropFloat(p.cPipeline, cName, cProp, cValue)
+		}
+	case "double":
+		if v, err := strconv.ParseFloat(value, 64); err == nil {
+			cValue := C.double(v)
+			C.gstSetPropDouble(p.cPipeline, cName, cProp, cValue)
+		}
+	case "int":
+		if v, err := strconv.ParseInt(value, 10, 32); err == nil {
+			cValue := C.int(int32(v))
+			C.gstSetPropInt(p.cPipeline, cName, cProp, cValue)
+		}
+	case "uint64":
+		if v, err := strconv.ParseInt(value, 10, 64); err == nil {
+			cValue := C.ulong(v)
+			C.gstSetPropUint64(p.cPipeline, cName, cProp, cValue)
+		}
+	}
 }

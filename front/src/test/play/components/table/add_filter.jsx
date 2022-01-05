@@ -1,15 +1,29 @@
 import React, { useState, useEffect, useContext } from 'react';
 import Context from "../../context";
 
+const filterOptions = (groupedFilters) => {
+    if (!groupedFilters) return null;
+    const categories = Object.keys(groupedFilters);
+    if (!categories) return null;
+
+    return categories.map(c => (
+        <optgroup key={c} label={c}>
+            {groupedFilters[c].map(f => (
+                <option key={f.display}>{f.display}</option>
+            ))}
+        </optgroup>
+    ));
+}
+
 export default () => {
-    const { dispatch, state: { started, allFilters } } = useContext(Context);
+    const { dispatch, state: { started, flatFilters, groupedFilters } } = useContext(Context);
     const [activeDisplay, setActiveDisplay] = useState("");
 
     useEffect(() => {
-        if (allFilters) {
-            setActiveDisplay(allFilters[0].display);
+        if (flatFilters) {
+            setActiveDisplay(flatFilters[0].display);
         }
-    }, [allFilters]);
+    }, [flatFilters]);
 
     const handleAdd = () => {
         dispatch({ type: "addFilter", payload: activeDisplay });
@@ -19,9 +33,7 @@ export default () => {
         <>
             <div className="col-auto">
                 <select className="form-select" value={activeDisplay} onChange={e => setActiveDisplay(e.currentTarget.value)}>
-                    {allFilters && allFilters.map(f => (
-                        <option key={f.display}>{f.display}</option>
-                    ))}
+                    {filterOptions(groupedFilters)}
                 </select>
             </div>
             <div className="col-auto">

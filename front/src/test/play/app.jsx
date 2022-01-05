@@ -8,8 +8,8 @@ const App = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(async () => {
-      const allFilters = await (await fetch("/assets/config/play.json")).json();
-      dispatch({ type: "setAllFilters", payload: allFilters.audio });
+      const flatFilters = await (await fetch("/assets/config/play.json")).json();
+      dispatch({ type: "setFilters", payload: flatFilters });
   }, []);
 
   return (

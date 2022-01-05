@@ -1,307 +1,315 @@
-{
-  "audio": [
-    {
-      "display": "3bands-eq",
-      "gst": "equalizer-3bands",
-      "category": "spectral",
-      "url": "https://gstreamer.freedesktop.org/documentation/equalizer/equalizer-3bands.html",
-      "controls": [
-        {
-          "display": "0.1 kHz",
-          "gst": "band0",
-          "type": "double",
-          "default": 0,
-          "min": -24,
-          "max": 12,
-          "step": 1
-        },
-        {
-          "display": "1.1 kHz",
-          "gst": "band1",
-          "type": "double",
-          "default": 0,
-          "min": -24,
-          "max": 12,
-          "step": 1
-        },
-        {
-          "display": "11 kHz",
-          "gst": "band2",
-          "type": "double",
-          "default": 0,
-          "min": -24,
-          "max": 12,
-          "step": 1
-        }
-      ]
-    },
-    {
-      "display": "amplify",
-      "gst": "audioamplify",
-      "category": "dynamics",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioamplify.html",
-      "controls": [
-        {
-          "gst": "amplification",
-          "type": "float",
-          "default": 1,
-          "min": 0,
-          "max": 3,
-          "step": 1
-        }
-      ]
-    },
-    {
-      "display": "band-pass",
-      "gst": "audiochebband",
-      "category": "filter",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
-      "fixed": [
-        {
-          "gst": "mode",
-          "value": 0
-        }
-      ],
-      "controls": [
-        {
-          "display": "low",
-          "gst": "lower-frequency",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        },
-        {
-          "display": "high",
-          "gst": "upper-frequency",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        }
-      ]
-    },
-    {
-      "display": "band-reject",
-      "gst": "audiochebband",
-      "category": "filter",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
-      "fixed": [
-        {
-          "gst": "mode",
-          "value": 1
-        }
-      ],
-      "controls": [
-        {
-          "display": "low",
-          "gst": "lower-frequency",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        },
-        {
-          "display": "high",
-          "gst": "upper-frequency",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        }
-      ]
-    },
-    {
-      "display": "compressor",
-      "gst": "audiodynamic",
-      "category": "dynamics",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiodynamic.html",
-      "fixed": [
-        {
-          "gst": "mode",
-          "value": 0
-        },
-        {
-          "gst": "characteristics",
-          "value": 1
-        }
-      ],
-      "controls": [
-        {
-          "gst": "ratio",
-          "type": "float",
-          "default": 1,
-          "min": 1,
-          "max": 20,
-          "step": 1
-        },
-        {
-          "gst": "threshold",
-          "type": "float",
-          "default": 1,
-          "min": 0,
-          "max": 1,
-          "step": 0.01
-        }
-      ]
-    },
-    {
-      "display": "delay",
-      "gst": "audioecho",
-      "category": "time",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioecho.html",
-      "fixed": [
-        {
-          "gst": "max-delay",
-          "value": 2000000000
-        }
-      ],
-      "controls": [
-        {
-          "gst": "delay",
-          "type": "uint64",
-          "default": 0,
-          "min": 0,
-          "max": 2000000000,
-          "step": 1000
-        },
-        {
-          "gst": "feedback",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 1,
-          "step": 0.01
-        },
-        {
-          "gst": "intensity",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 1,
-          "step": 0.01
-        }
-      ]
-    },
-    {
-      "display": "high-pass",
-      "gst": "audiocheblimit",
-      "category": "filter",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
-      "fixed": [
-        {
-          "gst": "mode",
-          "value": 1
-        }
-      ],
-      "controls": [
-        {
-          "gst": "cutoff",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        },
-        {
-          "gst": "poles",
-          "type": "int",
-          "default": 4,
-          "min": 2,
-          "max": 32,
-          "step": 2
-        }
-      ]
-    },
-    {
-      "display": "low-pass",
-      "gst": "audiocheblimit",
-      "category": "filter",
-      "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
-      "fixed": [
-        {
-          "gst": "mode",
-          "value": 0
-        }
-      ],
-      "controls": [
-        {
-          "gst": "cutoff",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 10
-        },
-        {
-          "gst": "poles",
-          "type": "int",
-          "default": 4,
-          "min": 2,
-          "max": 32,
-          "step": 2
-        }
-      ]
-    },
-    {
-      "display": "reverb",
-      "gst": "freeverb",
-      "category": "time",
-      "url": "https://gstreamer.freedesktop.org/documentation/freeverb/index.html",
-      "controls": [
-        {
-          "gst": "level",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 1,
-          "step": 0.01
-        },
-        {
-          "gst": "room-size",
-          "type": "float",
-          "default": 0,
-          "min": 0,
-          "max": 1,
-          "step": 0.01
-        }
-      ]
-    },
-    {
-      "display": "vocoder",
-      "gst": "avocoder",
-      "category": "spectral",
-      "controls": [
-        {
-          "gst": "pitch",
-          "type": "float",
-          "default": 1,
-          "min": 0.5,
-          "max": 2,
-          "step": 0.05
-        },
-        {
-          "gst": "smile",
-          "type": "float",
-          "default": 1,
-          "min": 1,
-          "max": 2,
-          "step": 0.05
-        },
-        {
-          "display": "envelop scaling",
-          "gst": "env-freq-scaling",
-          "type": "float",
-          "default": 1,
-          "min": 0,
-          "max": 10,
-          "step": 0.05
-        }
-      ]
-    }
-  ]
-}
+[
+  {
+    "gst": "equalizer-3bands",
+    "type": "audio",
+    "category": "spectral",
+    "display": "3bands-eq",
+    "url": "https://gstreamer.freedesktop.org/documentation/equalizer/equalizer-3bands.html",
+    "controls": [
+      {
+        "display": "0.1 kHz",
+        "gst": "band0",
+        "kind": "double",
+        "default": 0,
+        "min": -24,
+        "max": 12,
+        "step": 1
+      },
+      {
+        "display": "1.1 kHz",
+        "gst": "band1",
+        "kind": "double",
+        "default": 0,
+        "min": -24,
+        "max": 12,
+        "step": 1
+      },
+      {
+        "display": "11 kHz",
+        "gst": "band2",
+        "kind": "double",
+        "default": 0,
+        "min": -24,
+        "max": 12,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "gst": "audioamplify",
+    "type": "audio",
+    "category": "dynamics",
+    "display": "amplify",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioamplify.html",
+    "controls": [
+      {
+        "gst": "amplification",
+        "kind": "float",
+        "default": 1,
+        "min": 0,
+        "max": 3,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "gst": "audiochebband",
+    "type": "audio",
+    "category": "filter",
+    "display": "band-pass",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
+    "fixed": [
+      {
+        "gst": "mode",
+        "value": 0
+      }
+    ],
+    "controls": [
+      {
+        "display": "low",
+        "gst": "lower-frequency",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      },
+      {
+        "display": "high",
+        "gst": "upper-frequency",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      }
+    ]
+  },
+  {
+    "gst": "audiochebband",
+    "type": "audio",
+    "category": "filter",
+    "display": "band-reject",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiochebband.html",
+    "fixed": [
+      {
+        "gst": "mode",
+        "value": 1
+      }
+    ],
+    "controls": [
+      {
+        "display": "low",
+        "gst": "lower-frequency",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      },
+      {
+        "display": "high",
+        "gst": "upper-frequency",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      }
+    ]
+  },
+  {
+    "gst": "audiodynamic",
+    "type": "audio",
+    "category": "dynamics",
+    "display": "compressor",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiodynamic.html",
+    "fixed": [
+      {
+        "gst": "mode",
+        "value": 0
+      },
+      {
+        "gst": "characteristics",
+        "value": 1
+      }
+    ],
+    "controls": [
+      {
+        "gst": "ratio",
+        "kind": "float",
+        "default": 1,
+        "min": 1,
+        "max": 20,
+        "step": 1
+      },
+      {
+        "gst": "threshold",
+        "kind": "float",
+        "default": 1,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "gst": "audioecho",
+    "type": "audio",
+    "category": "time",
+    "display": "delay",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audioecho.html",
+    "fixed": [
+      {
+        "gst": "max-delay",
+        "value": 2000000000
+      }
+    ],
+    "controls": [
+      {
+        "gst": "delay",
+        "kind": "uint64",
+        "default": 0,
+        "min": 0,
+        "max": 2000000000,
+        "step": 1000
+      },
+      {
+        "gst": "feedback",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      {
+        "gst": "intensity",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "gst": "audiocheblimit",
+    "type": "audio",
+    "category": "filter",
+    "display": "high-pass",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
+    "fixed": [
+      {
+        "gst": "mode",
+        "value": 1
+      }
+    ],
+    "controls": [
+      {
+        "gst": "cutoff",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      },
+      {
+        "gst": "poles",
+        "kind": "int",
+        "default": 4,
+        "min": 2,
+        "max": 32,
+        "step": 2
+      }
+    ]
+  },
+  {
+    "gst": "audiocheblimit",
+    "type": "audio",
+    "category": "filter",
+    "display": "low-pass",
+    "url": "https://gstreamer.freedesktop.org/documentation/audiofx/audiocheblimit.html",
+    "fixed": [
+      {
+        "gst": "mode",
+        "value": 0
+      }
+    ],
+    "controls": [
+      {
+        "gst": "cutoff",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 10
+      },
+      {
+        "gst": "poles",
+        "kind": "int",
+        "default": 4,
+        "min": 2,
+        "max": 32,
+        "step": 2
+      }
+    ]
+  },
+  {
+    "gst": "freeverb",
+    "type": "audio",
+    "category": "time",
+    "display": "reverb",
+    "url": "https://gstreamer.freedesktop.org/documentation/freeverb/index.html",
+    "controls": [
+      {
+        "gst": "level",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      },
+      {
+        "gst": "room-size",
+        "kind": "float",
+        "default": 0,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "gst": "avocoder",
+    "type": "audio",
+    "category": "spectral",
+    "display": "vocoder",
+    "controls": [
+      {
+        "gst": "pitch",
+        "kind": "float",
+        "default": 1,
+        "min": 0.5,
+        "max": 2,
+        "step": 0.05
+      },
+      {
+        "gst": "smile",
+        "kind": "float",
+        "default": 1,
+        "min": 1,
+        "max": 2,
+        "step": 0.05
+      },
+      {
+        "display": "envelop scaling",
+        "gst": "env-freq-scaling",
+        "kind": "float",
+        "default": 1,
+        "min": 0,
+        "max": 10,
+        "step": 0.05
+      }
+    ]
+  }
+]

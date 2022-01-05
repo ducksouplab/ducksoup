@@ -14,10 +14,13 @@ const genFxString = (filters) => {
     return filters.reduce((acc, f) => {
         let intro = acc.length === 0 ? "" : "! audioconvert ! ";
         intro += `${f.gst} name=${f.id} `;
-        const props = f.controls.reduce((acc, c) => {
+        const fixedProps = f.fixed ? f.fixed.reduce((acc, c) => {
+            return acc + `${c.gst}=${c.value} `;
+        }, "") : '';
+        const props = f.controls ? f.controls.reduce((acc, c) => {
             return acc + `${c.gst}=${c.current} `;
-        }, "");
-        return acc + intro + props;
+        }, "") : '';
+        return acc + intro + fixedProps + props;
     }, "");
 }
 
@@ -51,11 +54,19 @@ export default () => {
                 const el = document.getElementById(track.id);
                 if (el) el.parentNode.removeChild(el);
             };
+        } else if (kind === "closed") {
+            dispatch({ type: "stop" });
+            localVideo.current.srcObject = null;
+            remoteVideo.current.srcObject = null;
+            remoteAudio.current.srcObject = null;
         }
     }
 
     const handleStart = async () => {
         dispatch({ type: "start" });
+
+        const audioFx = genFxString(filters);
+        console.log(audioFx);
 
         const ducksoup = await DuckSoup.render({
             callback: handleDuckSoupEvents
@@ -70,7 +81,7 @@ export default () => {
             gpu: true,
             videoFormat: "H264",
             duration: 30,
-            audioFx: genFxString(filters)
+            audioFx
         });
 
         dispatch({ type: "attachPlayer", payload: ducksoup });

@@ -257,6 +257,8 @@ void gstPushBuffer(char *srcname, GstElement *pipeline, void *buffer, int len)
     }
 }
 
+// float get/set
+
 float gstGetPropFloat(GstElement *pipeline, char *name, char *prop) {
     GstElement* el;
     gfloat value;
@@ -283,6 +285,36 @@ void gstSetPropFloat(GstElement *pipeline, char *name, char *prop, float value)
     }
 }
 
+// double get/set
+
+double gstGetPropDouble(GstElement *pipeline, char *name, char *prop) {
+    GstElement* el;
+    gdouble value;
+ 
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_get(el, prop, &value, NULL);
+        gst_object_unref(el);
+    }
+
+    return value;
+}
+
+void gstSetPropDouble(GstElement *pipeline, char *name, char *prop, double value)
+{
+    GstElement* el;
+
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_set(el, prop, value, NULL);
+        gst_object_unref(el);
+    }
+}
+
+// int get/set
+
 gint gstGetPropInt(GstElement *pipeline, char *name, char *prop) {
     GstElement* el;
     gint value;
@@ -298,6 +330,34 @@ gint gstGetPropInt(GstElement *pipeline, char *name, char *prop) {
 }
 
 void gstSetPropInt(GstElement *pipeline, char *name, char *prop, gint value)
+{
+    GstElement* el;
+
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_set(el, prop, value, NULL);
+        gst_object_unref(el);
+    }
+}
+
+// uint64 get/set
+
+guint64 gstGetPropUint64(GstElement *pipeline, char *name, char *prop) {
+    GstElement* el;
+    guint64 value;
+ 
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_get(el, prop, &value, NULL);
+        gst_object_unref(el);
+    }
+
+    return value;
+}
+
+void gstSetPropUint64(GstElement *pipeline, char *name, char *prop, guint64 value)
 {
     GstElement* el;
 

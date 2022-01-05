@@ -42,6 +42,14 @@ type controlPayload struct {
 	Duration int     `json:"duration"`
 }
 
+type polyControlPayload struct {
+	Name     string `json:"name"`
+	Property string `json:"property"`
+	Kind     string `json:"kind"`
+	Value    string `json:"value"`
+	Duration int    `json:"duration"`
+}
+
 // remove special characters like / . *
 func parseString(str string) string {
 	reg, _ := regexp.Compile("[^a-zA-Z0-9-_]+")

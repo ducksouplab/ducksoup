@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.2");
+    console.log("[DuckSoup] v1.5.3");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -202,6 +202,17 @@ class DuckSoup {
             JSON.stringify({
                 kind: "control",
                 payload: JSON.stringify({ name, property, value, ...(duration && { duration }) }),
+            })
+        );
+    }
+
+    polyControlFx(name, property, kind, value) {
+        if (!this._checkControl(name, property, value)) return;
+        const strValue = value.toString();
+        this._ws.send(
+            JSON.stringify({
+                kind: "polycontrol",
+                payload: JSON.stringify({ name, property, kind, value: strValue }),
             })
         );
     }
