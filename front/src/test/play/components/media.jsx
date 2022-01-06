@@ -1,28 +1,6 @@
 import React, { useContext, useRef } from 'react';
 import Context from "../context";
-import { randomId } from '../helpers';
-
-const getSignalingUrl = () => {
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
-    // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
-    const pathPrefix = pathPrefixhMatch[1];
-    return `${wsProtocol}://${window.location.host}${pathPrefix}ws`;
-}
-
-const genFxString = (filters) => {
-    return filters.reduce((acc, f) => {
-        let intro = acc.length === 0 ? "" : "! audioconvert ! ";
-        intro += `${f.gst} name=${f.id} `;
-        const fixedProps = f.fixed ? f.fixed.reduce((acc, c) => {
-            return acc + `${c.gst}=${c.value} `;
-        }, "") : '';
-        const props = f.controls ? f.controls.reduce((acc, c) => {
-            return acc + `${c.gst}=${c.current} `;
-        }, "") : '';
-        return acc + intro + fixedProps + props;
-    }, "");
-}
+import { randomId, getSignalingUrl, genFxString } from '../helpers';
 
 const bindStream = (el, stream) => {
     el.srcObject = stream;
@@ -33,7 +11,7 @@ const bindStream = (el, stream) => {
 }
 
 export default () => {
-    const { dispatch, state: { filters } } = useContext(Context);
+    const { dispatch, state: { enabledFilters, started } } = useContext(Context);
     const localVideo = useRef(null);
     const remoteVideo = useRef(null);
     const remoteAudio = useRef(null);
@@ -54,7 +32,7 @@ export default () => {
                 const el = document.getElementById(track.id);
                 if (el) el.parentNode.removeChild(el);
             };
-        } else if (kind === "closed") {
+        } else if (kind === "closed" || kind === "error") {
             dispatch({ type: "stop" });
             localVideo.current.srcObject = null;
             remoteVideo.current.srcObject = null;
@@ -65,37 +43,52 @@ export default () => {
     const handleStart = async () => {
         dispatch({ type: "start" });
 
-        const audioFx = genFxString(filters);
+        const audioFx = genFxString(enabledFilters, "audio");
+        const videoFx = genFxString(enabledFilters, "video");
+
         console.log(audioFx);
+        console.log(videoFx);
 
         const ducksoup = await DuckSoup.render({
             callback: handleDuckSoupEvents
         }, {
             signalingUrl: getSignalingUrl(),
             debug: true,
-            namespace: "playground",
+            namespace: "play",
             recordingMode: "none",
             size: 1,
             roomId: randomId(),
             userId: randomId(),
             gpu: true,
             videoFormat: "H264",
-            duration: 30,
-            audioFx
+            duration: 60,
+            audioFx,
+            videoFx
         });
 
         dispatch({ type: "attachPlayer", payload: ducksoup });
     }
+
+    const handleStop = async () => {
+        dispatch({ type: "stop" });
+    }
+
     return (
         <div className="media-container">
             <div className="media local">
                 <video ref={localVideo} autoPlay muted />
             </div>
+            <div className="arrow">➜</div>
+            <div className="link">︷</div>
             <div className="media remote">
                 <video ref={remoteVideo} autoPlay />
                 <audio ref={remoteAudio} muted />
-                <div className="control">
-                     <div className="play" onClick={handleStart}><span>►</span></div>
+                <div className="controls">
+                    { started ? (
+                        <div className="stop" onClick={handleStop}><span></span></div>
+                    ) : (
+                        <div className="play" onClick={handleStart}><span>►</span></div>
+                    )}
                 </div>
             </div>
         </div>

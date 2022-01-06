@@ -15,7 +15,16 @@ const App = () => {
   return (
     <Context.Provider value={{ state, dispatch }}>
       <Media />
-      <Table />
+      <div className="container">
+        <div className="row">
+          <div className="col flex-row-reverse">
+              <Table type="audio"/>
+          </div>
+          <div className="col">
+              <Table type="video"/>
+          </div>
+        </div>
+      </div>
     </Context.Provider>
   );
 }

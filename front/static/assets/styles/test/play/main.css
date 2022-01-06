@@ -1,7 +1,14 @@
+@media (min-width: 1700px) {
+    .container {
+        max-width: 1600px;
+    }
+}
+
 .media-container {
     display: flex;
     width: 100%;
     justify-content: space-evenly;
+    align-items: center;
     padding-top: 12px;
 }
 
@@ -21,13 +28,30 @@
     height: 600px;
 }
 
-.control {
-    position: absolute;
-    bottom: -45px;
-    right: 0;
+.media-container .arrow {
+    font-size: 1.5em;
 }
 
-.control .play {
+.media-container .link {
+    position: absolute;
+    z-index: -1;
+    top: 550px;
+    transform: scale(3, 1.2);
+    font-size: 7em;
+    color: #ccc;
+}
+
+.media-container .controls {
+    display: flex;
+    position: absolute;
+    bottom: -80px;
+    right: 2px;
+    padding: 5px;
+    border: 2px solid #CFD8DC;
+    border-radius: 8px;
+}
+
+.media-container .controls div {
     display: flex;
     width: 40px;
     height: 40px;
@@ -35,18 +59,63 @@
     cursor: pointer;
     justify-content: center;
     align-items: center;
+}
+
+.controls .play {
     background-color: forestgreen;
     color: white;
 }
 
+.controls .stop {
+    background-color: #888;
+    color: white;
+}
+
+.controls .stop span {
+    margin-top: 1px;
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: white;
+}
+
+.table-container {
+    margin: 52px 20px 0;
+}
+
+.table-audio .row {
+    justify-content: end;
+    text-align: right;
+}
+
+.add-filter-row {
+    min-height: 45px;
+}
+.add-filter-row .type {
+    text-transform: capitalize;
+}
+
+.filters-row {
+    margin-top: 20px;
+}
+
 .filter {
     position: relative;
-    display: inline-flex;
+    display: inline-block;
     box-sizing: border-box;
-    margin: 4px 8px 4px 0;
+    margin: 4px 0;
     padding: 28px 6px 6px;
     border: 2px solid #CFD8DC;
     border-radius: 8px;
+    min-width: 120px;
+}
+
+.table-audio .filter {
+    margin-left: 5px;
+}
+
+.table-video .filter {
+    margin-right: 5px;
 }
 
 .filter-label {
@@ -83,6 +152,12 @@
 
 .filter-knobs {
     display: flex;
+}
+
+.no-knobs {
+    padding-top: 50px;  
+    height: 140px;
+    text-align: center;
 }
 
 .knob {

@@ -13,6 +13,13 @@ const round = (value, precision) => {
   return parseFloat(Number.parseFloat(value).toFixed(precision));
 }
 
+const displayValue = (value, control) => {
+  if (typeof control.displayDivider === "undefined") return value;
+  let output = value/control.displayDivider;
+  if (typeof control.displayDigits === "undefined") return output;
+  return output.toFixed(control.displayDigits);
+}
+
 export default ({ filter: { id }, control }) => {
   const { dispatch } = useContext(Context);
   const [value, setValue] = useState(control.current);
@@ -40,7 +47,7 @@ export default ({ filter: { id }, control }) => {
   return (
     <div className="knob">
       <svg ref={svg} />
-      <div className="knob-value">{value}</div>
+      <div className="knob-value">{displayValue(value, control)}</div>
       <div className="knob-label"><div>{control.display || control.gst}</div></div>
     </div>
   );

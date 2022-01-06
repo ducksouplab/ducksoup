@@ -20,11 +20,16 @@ export default ({ filter }) => {
                     <div className="filter-help">?</div>
                 </a>
             )}
-            <div className="filter-knobs">
-                {filter.controls.map((c) => (
-                    <Knob key={c.gst} control={c} filter={filter} />
-                ))}
-            </div>
+            { filter.controls ? (
+                <div className="filter-knobs">
+                    {filter.controls.map((c) => (
+                        <Knob key={c.gst} control={c} filter={filter} />
+                    ))}
+                </div>
+            ) : (
+                <div className="no-knobs">no control</div>
+            )}
+            
         </div>
     );
 };

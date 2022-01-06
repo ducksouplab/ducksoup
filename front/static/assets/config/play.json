@@ -172,7 +172,9 @@
         "default": 0,
         "min": 0,
         "max": 2000000000,
-        "step": 1000
+        "step": 1000,
+        "displayDivider": 1000000000,
+        "displayDigits": 2
       },
       {
         "gst": "feedback",
@@ -309,6 +311,248 @@
         "min": 0,
         "max": 10,
         "step": 0.05
+      }
+    ]
+  },
+  {
+    "gst": "coloreffects",
+    "type": "video",
+    "category": "colors",
+    "display": "color-map",
+    "url": "https://gstreamer.freedesktop.org/documentation/coloreffects/coloreffects.html",
+    "controls": [
+      {
+        "gst": "preset",
+        "kind": "int",
+        "default": 1,
+        "min": 0,
+        "max": 5,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "gst": "retinex",
+    "type": "video",
+    "category": "colors",
+    "display": "retinex",
+    "url": "https://gstreamer.freedesktop.org/documentation/opencv/retinex.html",
+    "controls": [
+      {
+        "gst": "scales",
+        "kind": "int",
+        "default": 3,
+        "min": 1,
+        "max": 4,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "gst": "chromahold",
+    "type": "video",
+    "category": "colors",
+    "display": "hold-red",
+    "url": "https://gstreamer.freedesktop.org/documentation/coloreffects/chromahold.html",
+    "controls": [
+      {
+        "gst": "tolerance",
+        "kind": "int",
+        "default": 30,
+        "min": 0,
+        "max": 180,
+        "step": 1
+      }
+    ],
+    "fixed": [
+      {
+        "gst": "target-r",
+        "value": 255
+      },
+      {
+        "gst": "target-g",
+        "value": 0
+      },
+      {
+        "gst": "target-b",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "gst": "chromahold",
+    "type": "video",
+    "category": "colors",
+    "display": "hold-green",
+    "url": "https://gstreamer.freedesktop.org/documentation/coloreffects/chromahold.html",
+    "controls": [
+      {
+        "gst": "tolerance",
+        "kind": "int",
+        "default": 30,
+        "min": 0,
+        "max": 180,
+        "step": 1
+      }
+    ],
+    "fixed": [
+      {
+        "gst": "target-r",
+        "value": 0
+      },
+      {
+        "gst": "target-g",
+        "value": 255
+      },
+      {
+        "gst": "target-b",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "gst": "chromahold",
+    "type": "video",
+    "category": "colors",
+    "display": "hold-blue",
+    "url": "https://gstreamer.freedesktop.org/documentation/coloreffects/chromahold.html",
+    "controls": [
+      {
+        "gst": "tolerance",
+        "kind": "int",
+        "default": 30,
+        "min": 0,
+        "max": 180,
+        "step": 1
+      }
+    ],
+    "fixed": [
+      {
+        "gst": "target-r",
+        "value": 0
+      },
+      {
+        "gst": "target-g",
+        "value": 0
+      },
+      {
+        "gst": "target-b",
+        "value": 255
+      }
+    ]
+  },
+  {
+    "gst": "facedetect",
+    "type": "video",
+    "category": "detect",
+    "display": "face-detect",
+    "url": "https://gstreamer.freedesktop.org/documentation/opencv/facedetect.html",
+    "fixed": [
+      {
+        "gst": "updates",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "gst": "edgedetect",
+    "type": "video",
+    "category": "detect",
+    "display": "edge-detect",
+    "url": "https://gstreamer.freedesktop.org/documentation/opencv/edgedetect.html",
+    "controls": [
+      {
+        "gst": "threshold2",
+        "display": "threshold",
+        "kind": "float",
+        "default": 150,
+        "min": 0,
+        "max": 1000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "gst": "segmentation",
+    "type": "video",
+    "category": "detect",
+    "display": "segmentation",
+    "url": "https://gstreamer.freedesktop.org/documentation/opencv/segmentation.html",
+    "fixed": [
+      {
+        "gst": "test-mode",
+        "value": "true"
+      },
+      {
+        "gst": "method",
+        "value": 2
+      }
+    ],
+    "controls": [
+      {
+        "gst": "learning-rate",
+        "kind": "float",
+        "default": 0.01,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "gst": "mozza",
+    "type": "video",
+    "category": "change",
+    "display": "mozza",
+    "url": "https://gitlab.com/ducksoup/mozza",
+    "fixed": [
+      {
+        "gst": "deform",
+        "value": "/app/plugins/smile10.dfm"
+      }
+    ],
+    "controls": [
+      {
+        "gst": "alpha",
+        "kind": "float",
+        "default": 0.8,
+        "min": -2,
+        "max": 2,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "gst": "gaussianblur",
+    "type": "video",
+    "category": "destroy",
+    "display": "blur",
+    "url": "https://gstreamer.freedesktop.org/documentation/gaudieffects/gaussianblur.html",
+    "controls": [
+      {
+        "gst": "sigma",
+        "kind": "double",
+        "default": 1.2,
+        "min": -20,
+        "max": 20,
+        "step": 0.1
+      }
+    ]
+  },
+  {
+    "gst": "diffuse",
+    "type": "video",
+    "category": "destroy",
+    "display": "diffuse",
+    "url": "https://gstreamer.freedesktop.org/documentation/geometrictransform/diffuse.html",
+    "controls": [
+      {
+        "gst": "scale",
+        "kind": "double",
+        "default": 4,
+        "min": 1,
+        "max": 1000,
+        "step": 1
       }
     ]
   }
