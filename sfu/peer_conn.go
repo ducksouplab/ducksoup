@@ -164,6 +164,9 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 	if err != nil {
 		pc.logError().Err(err).Msg("[pc] can't send PLI")
 	} else {
+		pc.Lock()
+		pc.lastPLI = time.Now()
+		pc.Unlock()
 		pc.logInfo().Msg("[pc] PLI sent")
 	}
 	return
@@ -182,6 +185,9 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 // }
 
 func (pc *peerConn) throttledPLIRequest() {
+	// don't rush
+	<-time.After(200 * time.Millisecond)
+
 	pc.Lock()
 	defer pc.Unlock()
 
@@ -193,10 +199,7 @@ func (pc *peerConn) throttledPLIRequest() {
 				// throttle: don't send too many PLIs
 				pc.logInfo().Msg("[pc] PLI skipped (throttle)")
 			} else {
-				err := pc.writePLI(track)
-				if err == nil {
-					pc.lastPLI = time.Now()
-				}
+				go pc.writePLI(track)
 			}
 		}
 	}

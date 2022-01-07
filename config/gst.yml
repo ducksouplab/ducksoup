@@ -1,5 +1,5 @@
-commonAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=140 do-retransmission=false
-commonVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=140 do-retransmission=false
+commonAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=140 drop-on-latency=true
+commonVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=140 drop-on-latency=true
 commonAudioRawCaps: >-
     audioconvert ! 
     audio/x-raw,channels=1

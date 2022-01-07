@@ -15,7 +15,7 @@ extern void goDebugLog(int level, char *file, char *function,int line, char *msg
 
 void gstStartMainLoop(void);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);
-void gstStartPipeline(GstElement *pipeline);
+void gstStartPipeline(GstElement *pipeline, gboolean genPLI);
 void gstStopPipeline(GstElement *pipeline);
 void gstPushBuffer(char *src, GstElement *pipeline, void *buffer, int len);
 

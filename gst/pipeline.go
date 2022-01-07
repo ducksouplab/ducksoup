@@ -134,7 +134,11 @@ func (p *Pipeline) BindPLICallback(c func()) {
 
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
-	C.gstStartPipeline(p.cPipeline)
+	genPLI := 0
+	if os.Getenv("DS_GST_GEN_PLI") == "true" {
+		genPLI = 1
+	}
+	C.gstStartPipeline(p.cPipeline, C.int(genPLI))
 	p.logger.Info().Msgf("[pipeline] started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
 }
 
