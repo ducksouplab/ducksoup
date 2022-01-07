@@ -157,13 +157,15 @@ func (r *room) countdown() {
 
 // API read-write
 
-func (r *room) incInTracksReadyCount(fromPs *peerServer) {
+func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.TrackRemote) {
 	r.Lock()
 	defer r.Unlock()
 
 	if r.inTracksReadyCount == r.neededTracks {
-		// reconnection case, send start
-		go fromPs.ws.send("start")
+		// reconnection case, then send start only once (check for "audio" for instance)
+		if remoteTrack.Kind().String() == "audio" {
+			go fromPs.ws.send("start")
+		}
 		return
 	}
 
@@ -306,7 +308,7 @@ func (r *room) runMixerSliceFromRemote(
 	receiver *webrtc.RTPReceiver,
 ) {
 	// signal new peer and tracks
-	r.incInTracksReadyCount(ps)
+	r.incInTracksReadyCount(ps, remoteTrack)
 
 	// wait for all peers to connect
 	r.readRemoteWhileWaiting(remoteTrack)

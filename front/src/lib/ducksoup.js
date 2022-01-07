@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.3");
+    console.log("[DuckSoup] v1.5.4");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -218,10 +218,9 @@ class DuckSoup {
     }
 
     // called by client app
-    stop() {
+    stop(code = 1000) {
+        this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
         this._stopRTC();
-        this._ws.close(1000); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
-        clearInterval(state.rampInterval);
     }
 
     // Inner methods
@@ -249,6 +248,10 @@ class DuckSoup {
     }
 
     _stopRTC() {
+        if (state.rampInterval) {
+            clearInterval(state.rampInterval);
+            delete state.rampInterval;
+        }
         if (this._stream) {
             this._stream.getTracks().forEach((track) => track.stop());
         }
@@ -296,7 +299,6 @@ class DuckSoup {
         };
 
         ws.onerror = (event) => {
-            //console.log("[DuckSoup] ws.onerror ", event);
             this._sendEvent({ kind: "error", payload: event.data });
             this.stop(4000); // used as error
         };
@@ -329,15 +331,6 @@ class DuckSoup {
             } else if (message.kind === "start") {
                 // set encoding parameters
                 rampBitrate(pc);
-                // for (const sender of pc.getSenders()) {
-                //     // set bitrate
-                //     const params = sender.getParameters();
-                //     if (!params.encodings) params.encodings = [{}];// needed for FF
-                //     for (const encoding of params.encodings) {
-                //         encoding.maxBitrate = sender.track.kind === "video" ? MAX_VIDEO_BITRATE : MAX_AUDIO_BITRATE;
-                //     }
-                //     await sender.setParameters(params);
-                // }
                 // add listeners on first sender (likely the same info to be shared for audio and video)
                 const firstSender = pc.getSenders()[0];
                 if (firstSender) {
@@ -362,6 +355,7 @@ class DuckSoup {
                 this._sendEvent(message);
             } else if (message.kind.startsWith("error")) {
                 this._sendEvent(message);
+                this.stop(4000);
             }
         };
 

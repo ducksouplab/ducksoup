@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.2")
+    console.log("[DuckSoup test] v1.5.4")
 });
 
 let state;
@@ -230,7 +230,7 @@ const ducksoupListener = (options) => (message) => {
 
     // grouped cases
     if (kind !== "stats") {
-        console.log("[DuckSoup]", kind);
+        console.log("[App]", kind);
     }
     if (kind.startsWith("error") || kind === "closed") {
         reinitUX();
