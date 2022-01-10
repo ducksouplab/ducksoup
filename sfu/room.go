@@ -103,7 +103,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 
 func (r *room) logError() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Error().Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Error().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) logInfo() *zerolog.Event {
@@ -113,12 +113,12 @@ func (r *room) logInfo() *zerolog.Event {
 
 func (r *room) logDebug() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Debug().Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Debug().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) logTrace() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Trace().Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Trace().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) userCount() int {
