@@ -57,8 +57,8 @@ Where:
     - `"error-full"` (no payload) when the videoconference room is full
     - `"error` with more information in payload
     - `"stats"` (payload contains bandwidth usage information) periodically triggered (fired only when `debug` is set to true)
-  - `debug` (boolean, defaults to false) to enable `"debug"` messages sent to server
-  - `stats` (boolean, defaults to false) to enable `"stats"` messages sent to client callback
+  - `stats` (boolean, defaults to false) to enable `"stats"` messages sent to client callback (please note that stats are polled every second)
+  - `debug` (boolean, defaults to false) to enable `"debug"` messages sent to server (please note that a few debug information, for instance PLI count, rely on WebRTC stats data which is only polled every second, meaning some data may be missing)
 
 - `peerOptions` (object) must contain the following properties:
 

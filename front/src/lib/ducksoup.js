@@ -193,6 +193,10 @@ class DuckSoup {
             videoBytesReceived: 0,
             encodedWith: undefined,
             encodedHeight: undefined,
+            pliCount: 0,
+            firCount: 0,
+            keyFramesEncoded: 0,
+            keyFramesDecoded: 0,
         };
     };
 
@@ -469,6 +473,7 @@ class DuckSoup {
         if (this._debug) {
             pcStats.forEach((report) => {
                 if (report.type === "outbound-rtp" && report.kind === "video") {
+                    // encoded size
                     let newEncodedWidth = report.frameWidth || 0;
                     let newEncodedHeight = report.frameHeight || 0;
                     if (newEncodedWidth !== this._info.encodedWith || newEncodedHeight !== this._info.encodedHeight) {
@@ -480,6 +485,52 @@ class DuckSoup {
                         );
                         this._info.encodedWith = newEncodedWidth;
                         this._info.encodedHeight = newEncodedHeight;
+                    }
+                    // PLI
+                    let newPliCount = report.pliCount;
+                    if (newPliCount !== this._info.pliCount) {
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "debug-PLI received",
+                                payload: `total ${newPliCount}`,
+                            })
+                        );
+                        this._info.pliCount = newPliCount;
+                    }
+                    // FIR
+                    let newFirCount = report.firCount;
+                    if (newFirCount !== this._info.firCount) {
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "debug-FIR received",
+                                payload: `total ${newFirCount}`,
+                            })
+                        );
+                        this._info.firCount = newFirCount;
+                    }
+                    // KF
+                    let newKeyFramesEncoded = report.keyFramesEncoded;
+                    if (newKeyFramesEncoded !== this._info.keyFramesEncoded) {
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "debug-keyframe encoded",
+                                payload: `total ${newKeyFramesEncoded}`,
+                            })
+                        );
+                        this._info.keyFramesEncoded = newKeyFramesEncoded;
+                    }
+                }
+                if (report.type === "inbound-rtp" && report.kind === "video") {
+                    // KF
+                    let newKeyFramesDecoded = report.keyFramesDecoded;
+                    if (newKeyFramesDecoded !== this._info.keyFramesDecoded) {
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "debug-keyframe decoded",
+                                payload: `total ${newKeyFramesDecoded}`,
+                            })
+                        );
+                        this._info.keyFramesDecoded = newKeyFramesDecoded;
                     }
                 }
             });
