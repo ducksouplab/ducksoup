@@ -53,6 +53,6 @@ nv264:
       h264parse
   decode: avdec_h264
   encode: >-
-    nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 bframes=4 i-adapt=true zerolatency=true qos=true !
+    nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 bframes=4 zerolatency=true qos=true !
     video/x-h264, profile=high !
     h264parse

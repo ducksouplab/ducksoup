@@ -111,7 +111,7 @@ func (sc *senderController) runListener() {
 				// TODO could implement GCC from TWCC
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.slice.fromPs.pc.throttledPLIRequest()
+					sc.slice.fromPs.pc.throttledPLIRequest(10)
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
 					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				case *rtcp.ReceiverReport:

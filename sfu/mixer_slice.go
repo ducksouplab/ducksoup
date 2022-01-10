@@ -181,7 +181,7 @@ func (s *mixerSlice) loop() {
 	outputFiles := pipeline.BindTrack(s.kind, s)
 	if s.kind == "video" {
 		pipeline.BindPLICallback(func() {
-			pc.throttledPLIRequest()
+			pc.throttledPLIRequest(200)
 		})
 	}
 	if outputFiles != nil {

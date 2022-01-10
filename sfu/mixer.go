@@ -164,11 +164,13 @@ func (m *mixer) updateSignaling() signalingState {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (m *mixer) managedUpdateSignaling(reason string) {
+func (m *mixer) managedUpdateSignaling(reason string, withPLI bool) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
-		go m.dispatchKeyFrame()
+		if withPLI {
+			go m.dispatchRoomPLI()
+		}
 	}()
 
 	m.logInfo().Str("reason", reason).Msg("[mixer] signaling update")
@@ -187,7 +189,7 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 				} else if state == signalingRetryWithDelay {
 					go func() {
 						time.Sleep(time.Second * 2)
-						m.managedUpdateSignaling("asked restart with delay")
+						m.managedUpdateSignaling("asked restart with delay", withPLI)
 					}()
 					return
 				} else if state == signalingRetryNow {
@@ -198,7 +200,7 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 						// we might be blocking a RemoveTrack or AddTrack
 						go func() {
 							time.Sleep(time.Second * 3)
-							m.managedUpdateSignaling("restarted after too many tries")
+							m.managedUpdateSignaling("restarted after too many tries", withPLI)
 						}()
 						return
 					}
@@ -211,11 +213,11 @@ func (m *mixer) managedUpdateSignaling(reason string) {
 // sends a keyframe to all PeerConnections, used everytime a new user joins the call
 // (in that case, requesting a FullIntraRequest may be preferred/more accurate, over a PictureLossIndicator
 // but the effect is probably the same)
-func (m *mixer) dispatchKeyFrame() {
+func (m *mixer) dispatchRoomPLI() {
 	m.RLock()
 	defer m.RUnlock()
 
 	for _, ps := range m.r.peerServerIndex {
-		ps.pc.throttledPLIRequest()
+		ps.pc.throttledPLIRequest(1000)
 	}
 }

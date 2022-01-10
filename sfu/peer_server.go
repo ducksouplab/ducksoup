@@ -222,7 +222,7 @@ func (ps *peerServer) loop() {
 			}
 		default:
 			if strings.HasPrefix(m.Kind, "debug-") {
-				ps.logDebug().Msgf("[remote] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
+				ps.logDebug().Msgf("[client] %v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
 			}
 		}
 	}

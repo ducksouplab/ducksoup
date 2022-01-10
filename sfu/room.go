@@ -196,7 +196,7 @@ func (r *room) incOutTracksReadyCount() {
 	if r.outTracksReadyCount == r.neededTracks {
 		// TOFIX without this timeout, some tracks are not sent to peers,
 		<-time.After(1000 * time.Millisecond)
-		go r.mixer.managedUpdateSignaling("all processed tracks are ready")
+		go r.mixer.managedUpdateSignaling("all processed tracks are ready", true)
 	}
 }
 
@@ -211,7 +211,7 @@ func (r *room) connectPeerServer(ps *peerServer) {
 	r.Lock()
 	defer func() {
 		r.Unlock()
-		r.mixer.managedUpdateSignaling("new user#" + ps.userId)
+		r.mixer.managedUpdateSignaling("new user#"+ps.userId, false)
 	}()
 
 	r.peerServerIndex[ps.userId] = ps
@@ -241,7 +241,7 @@ func (r *room) disconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
-		go r.mixer.managedUpdateSignaling("disconnected")
+		go r.mixer.managedUpdateSignaling("disconnected", false)
 
 		if r.connectedUserCount() == 0 && !r.running { // don't keep this room
 			r.delete()

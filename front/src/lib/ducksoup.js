@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.4");
+    console.log("[DuckSoup] v1.5.5");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -191,8 +191,8 @@ class DuckSoup {
             audioBytesReceived: 0,
             videoBytesSent: 0,
             videoBytesReceived: 0,
-            encodedWith: 0,
-            encodedHeight: 0,
+            encodedWith: undefined,
+            encodedHeight: undefined,
         };
     };
 
@@ -469,12 +469,12 @@ class DuckSoup {
         if (this._debug) {
             pcStats.forEach((report) => {
                 if (report.type === "outbound-rtp" && report.kind === "video") {
-                    let newEncodedWidth = report.frameWidth;
-                    let newEncodedHeight = report.frameHeight;
-                    if (newEncodedWidth && newEncodedHeight && newEncodedWidth !== this._info.encodedWith || newEncodedHeight !== this._info.encodedHeight) {
+                    let newEncodedWidth = report.frameWidth || 0;
+                    let newEncodedHeight = report.frameHeight || 0;
+                    if (newEncodedWidth !== this._info.encodedWith || newEncodedHeight !== this._info.encodedHeight) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-new outbound encoded size",
+                                kind: "debug-video encoding size",
                                 payload: `${newEncodedWidth}x${newEncodedHeight}`,
                             })
                         );

@@ -184,9 +184,9 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 // 	}
 // }
 
-func (pc *peerConn) throttledPLIRequest() {
+func (pc *peerConn) throttledPLIRequest(waitFor int) {
 	// don't rush
-	<-time.After(200 * time.Millisecond)
+	<-time.After(time.Duration(waitFor) * time.Millisecond)
 
 	pc.Lock()
 	defer pc.Unlock()
