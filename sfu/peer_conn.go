@@ -111,7 +111,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		pc.logInfo().Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
+		pc.logInfo().Uint32("ssrc", uint32(remoteTrack.SSRC())).Str("track", remoteTrack.ID()).Msgf("[pc] new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 

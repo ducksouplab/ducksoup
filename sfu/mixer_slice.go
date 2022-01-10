@@ -19,7 +19,6 @@ const (
 	maxInterpolatorDuration = 5000
 	encoderPeriod           = 1000
 	statsPeriod             = 3000
-	logPeriod               = 7300
 	diffThreshold           = 10
 )
 
@@ -41,7 +40,6 @@ type mixerSlice struct {
 	encoderTicker         *time.Ticker
 	// stats
 	statsTicker   *time.Ticker
-	logTicker     *time.Ticker
 	lastStats     time.Time
 	inputBits     uint64
 	outputBits    uint64
@@ -99,7 +97,6 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		encoderTicker:         time.NewTicker(encoderPeriod * time.Millisecond),
 		// stats
 		statsTicker: time.NewTicker(statsPeriod * time.Millisecond),
-		logTicker:   time.NewTicker(logPeriod * time.Millisecond),
 		lastStats:   time.Now(),
 		// status
 		endCh: make(chan struct{}),
@@ -115,8 +112,8 @@ func (s *mixerSlice) logInfo() *zerolog.Event {
 	return s.r.logInfo().Str("fromUser", s.fromPs.userId)
 }
 
-func (s *mixerSlice) logTrace() *zerolog.Event {
-	return s.r.logTrace().Str("fromUser", s.fromPs.userId)
+func (s *mixerSlice) logDebug() *zerolog.Event {
+	return s.r.logDebug().Str("fromUser", s.fromPs.userId)
 }
 
 // Same ID as output track
@@ -170,7 +167,6 @@ func (s *mixerSlice) stop() {
 	s.pipeline.Stop()
 	s.statsTicker.Stop()
 	s.encoderTicker.Stop()
-	s.logTicker.Stop()
 	close(s.endCh)
 }
 
@@ -236,7 +232,7 @@ func (s *mixerSlice) runTickers() {
 						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 						// format and log
 						display := fmt.Sprintf("%v kbit/s", newPotentialRate/1000)
-						s.logTrace().Msgf("[slice] %s target bitrate: %s", s.kind, display)
+						s.logDebug().Msgf("[slice] %s target bitrate: %s", s.kind, display)
 					}
 				}
 			}
@@ -258,8 +254,8 @@ func (s *mixerSlice) runTickers() {
 			// log
 			displayInputBitrateKbs := s.inputBitrate / 1000
 			displayOutputBitrateKbs := s.outputBitrate / 1000
-			s.logTrace().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
-			s.logTrace().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
+			s.logDebug().Msgf("[slice] %s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
+			s.logDebug().Msgf("[slice] %s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
 		}
 	}()
 }

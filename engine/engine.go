@@ -5,6 +5,7 @@ package engine
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
@@ -25,10 +26,12 @@ var (
 	H264Codecs []webrtc.RTPCodecParameters
 	VP8Codecs  []webrtc.RTPCodecParameters
 	// VP9 is not supported for the time being (GStreamer pipelines remained to be defined)
-	VP9Codecs []webrtc.RTPCodecParameters
+	VP9Codecs  []webrtc.RTPCodecParameters
+	ssrcRegexp *regexp.Regexp
 )
 
 func init() {
+	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
 		{Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},
@@ -139,21 +142,21 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerCC:
 			res += fmt.Sprintf(
-				"[TWCC] #%v reftime:%v ssrc:%v base:%v count:%v chunks: ",
+				"[TWCC] #%v ssrc:%v reftime:%v base:%v count:%v chunks: ",
 				rtcpPacket.FbPktCount,
-				rtcpPacket.ReferenceTime,
 				rtcpPacket.MediaSSRC,
+				rtcpPacket.ReferenceTime,
 				rtcpPacket.BaseSequenceNumber,
 				rtcpPacket.PacketStatusCount,
 			)
 			for _, chunk := range rtcpPacket.PacketChunks {
 				res += fmt.Sprintf("%+v ", chunk)
 			}
-		case *rtcp.ReceiverReport:
-			res += "[RR sent] reports: "
-			for _, report := range rtcpPacket.Reports {
-				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
-			}
+			// case *rtcp.ReceiverReport:
+			// 	res += "[RR sent] reports: "
+			// 	for _, report := range rtcpPacket.Reports {
+			// 		res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
+			// 	}
 			// default:
 			// 	res += fmt.Sprintf("[%T sent]", rtcpPacket)
 		}
@@ -180,8 +183,16 @@ type logWriteCloser struct{}
 func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if n > 0 {
+		msg := string(p)
+		match := ssrcRegexp.FindStringSubmatch(msg)
 		// trace level to respect DS_LOG_LEVEL setting
-		log.Logger.Trace().Msg(string(p))
+		if len(match) > 0 {
+			// remove ssrc from string and add it as a log prop
+			msg = ssrcRegexp.ReplaceAllString(msg, "")
+			log.Logger.Trace().Str("ssrc", match[1]).Msg(msg)
+		} else {
+			log.Logger.Trace().Msg(msg)
+		}
 	}
 	return
 }
