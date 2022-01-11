@@ -81,7 +81,7 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		logger:       logger,
 	}
 
-	p.logger.Info().Str("pipeline", pipelineStr).Msg("[pipeline] initialized")
+	p.logger.Info().Str("context", "track").Str("pipeline", pipelineStr).Msg("pipeline initialized")
 
 	pipelines.add(p)
 	return p
@@ -139,7 +139,7 @@ func (p *Pipeline) start() {
 		genPLI = 1
 	}
 	C.gstStartPipeline(p.cPipeline, C.int(genPLI))
-	p.logger.Info().Msgf("[pipeline] started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
+	p.logger.Info().Str("context", "track").Msgf("pipeline started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
 }
 
 // stop the GStreamer pipeline
@@ -150,7 +150,7 @@ func (p *Pipeline) Stop() {
 	p.stoppedCount += 1
 	if p.stoppedCount == 2 { // audio and video buffers from mixerSlice have been stopped
 		C.gstStopPipeline(p.cPipeline)
-		p.logger.Info().Msg("[pipeline] stop requested")
+		p.logger.Info().Str("context", "track").Msg("pipeline stop requested")
 	}
 }
 

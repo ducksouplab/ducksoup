@@ -97,5 +97,5 @@ func init() {
 	}
 
 	// log
-	log.Info().Msgf("[init] GStreamer config loaded: %+v", config)
+	log.Info().Str("context", "init").Msgf("GStreamer config loaded: %+v", config)
 }

@@ -23,6 +23,7 @@ type wsConn struct {
 	createdAt time.Time
 	userId    string
 	roomId    string
+	namespace string
 }
 
 type messageOut struct {
@@ -106,18 +107,18 @@ func parseFrameRate(join types.JoinPayload) (frameRate int) {
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
-	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", ""}
+	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", ""}
 }
 
 func (ws *wsConn) logError() *zerolog.Event {
-	return log.Error().Str("room", ws.roomId).Str("user", ws.userId)
+	return log.Error().Str("context", "peer").Str("namespace", ws.namespace).Str("room", ws.roomId).Str("user", ws.userId)
 }
 
 func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		ws.logError().Err(err).Msg("[ws] can't read JSON")
+		ws.logError().Err(err).Msg("can't read JSON")
 	}
 	return
 }
@@ -147,6 +148,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	// bind fields
 	ws.roomId = join.RoomId
 	ws.userId = join.UserId
+	ws.namespace = join.Namespace
 
 	return
 }
@@ -157,7 +159,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msgf("[ws] can't write JSON: %+v", m)
+		ws.logError().Err(err).Msgf("can't write JSON: %+v", m)
 	}
 	return
 }
@@ -171,7 +173,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msgf("[ws] can't write JSON with payload: %+v", m)
+		ws.logError().Err(err).Msgf("can't write JSON with payload: %+v", m)
 	}
 	return
 }

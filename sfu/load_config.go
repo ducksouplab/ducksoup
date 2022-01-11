@@ -33,5 +33,5 @@ func init() {
 	}
 
 	// log
-	log.Info().Msgf("[init] SFU config loaded: %+v", config)
+	log.Info().Str("context", "init").Msgf("SFU config loaded: %+v", config)
 }

@@ -92,10 +92,10 @@ func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char
 	msg := C.GoString(cMsg)
 
 	if level == GstLevelError {
-		log.Error().Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+		log.Error().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
 	} else if level == GstLevelWarning {
-		log.Warn().Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+		log.Warn().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
 	} else {
-		log.Info().Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+		log.Info().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
 	}
 }

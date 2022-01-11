@@ -43,11 +43,11 @@ func newSenderController(sender *webrtc.RTPSender, slice *mixerSlice, toUserId s
 }
 
 func (sc *senderController) logError() *zerolog.Event {
-	return sc.slice.logError().Str("toUser", sc.toUserId)
+	return sc.slice.logError().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
 func (sc *senderController) logInfo() *zerolog.Event {
-	return sc.slice.logInfo().Str("toUser", sc.toUserId)
+	return sc.slice.logInfo().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
@@ -79,7 +79,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 			newOptimalBitrate = streamConfig.MinBitrate
 		}
 
-		sc.logInfo().Msgf("[sender] %d packets lost, previous bitrate %d, new bitrate %d",
+		sc.logInfo().Msgf("%d packets lost, previous bitrate %d, new bitrate %d",
 			loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
 	} else {
 		newOptimalBitrate = prevOptimalBitrate
@@ -100,7 +100,7 @@ func (sc *senderController) runListener() {
 			packets, _, err := sc.sender.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					sc.logError().Err(err).Msg("[sender] can't read RTCP")
+					sc.logError().Err(err).Msg("can't read RTCP")
 					continue
 				} else {
 					return

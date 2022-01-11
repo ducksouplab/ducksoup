@@ -247,7 +247,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 		i.Add(logSent)
 	}
 	if err := registerInterceptors(m, i); err != nil {
-		log.Error().Err(err).Msg("[engine] can't register interceptors")
+		log.Error().Err(err).Str("context", "peer").Msg("engine can't register interceptors")
 	}
 
 	return webrtc.NewAPI(

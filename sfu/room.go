@@ -103,17 +103,17 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 
 func (r *room) logError() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Error().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Error().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) logInfo() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Info().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Info().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) logDebug() *zerolog.Event {
 	elapsed := time.Since(r.createdAt)
-	return log.Debug().Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
+	return log.Debug().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
 }
 
 func (r *room) userCount() int {
@@ -141,7 +141,7 @@ func (r *room) countdown() {
 
 	r.Lock()
 	r.running = false
-	r.logInfo().Msg("[room] ended")
+	r.logInfo().Msg("room ended")
 	r.Unlock()
 
 	// listened by peerServers, mixer, mixerTracks
@@ -166,11 +166,11 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 	}
 
 	r.inTracksReadyCount++
-	r.logInfo().Msgf("[room] track count: %d", r.inTracksReadyCount)
+	r.logInfo().Msgf("room track count: %d", r.inTracksReadyCount)
 
 	if r.inTracksReadyCount == r.neededTracks {
 		r.startedAt = time.Now()
-		r.logInfo().Msg("[room] ready to start")
+		r.logInfo().Msg("room ready to start")
 		// do start
 		close(r.waitForAllCh)
 		r.running = true
@@ -224,7 +224,7 @@ func (r *room) deleteIfEmpty() {
 
 func (r *room) delete() {
 	rooms.delete(r)
-	r.logInfo().Msg("[room] deleted")
+	r.logInfo().Msg("room deleted")
 }
 
 func (r *room) disconnectUser(userId string) {
@@ -291,7 +291,7 @@ func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				r.logError().Err(err).Msg("[room] readRemoteWhileWaiting")
+				r.logError().Err(err).Msg("room readRemoteWhileWaiting")
 				return
 			}
 		}
@@ -312,7 +312,7 @@ func (r *room) runMixerSliceFromRemote(
 	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		r.logError().Err(err).Msg("[room] runMixerSliceFromRemote")
+		r.logError().Err(err).Msg("room runMixerSliceFromRemote")
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)

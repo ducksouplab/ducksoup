@@ -153,7 +153,7 @@ static GstPadProbeReturn input_track_event_pad_probe_callback(GstPad * pad, GstP
     }
     // else if (gst_event_is (event, GST_RTP_EVENT_RETRANSMISSION_REQUEST)) {
     //     // TODO handle as a nack and possibly disable pion nack interceptor
-    //     g_print ("[info] [gst.c] pad_probe got upstream RTP transmission request\n");
+    //     g_print ("pad_probe got upstream RTP transmission request\n");
     // }
     return GST_PAD_PROBE_OK;
 }
@@ -195,7 +195,7 @@ void gstStartPipeline(GstElement *pipeline, gboolean genPLI)
     GstElement *video_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_src");
     GstPad *video_src_pad = gst_element_get_static_pad(video_src, "src");
     if (genPLI == TRUE) {
-        goDebugLog(3, "gst.c", "gstStartPipeline", 0, "[gst.c] enable GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME tracking");
+        goDebugLog(3, "gst.c", "gstStartPipeline", 0, "enable GST_VIDEO_EVENT_FORCE_KEY_UNIT_NAME tracking");
         gst_pad_add_probe (video_src_pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, input_track_event_pad_probe_callback, pipeline, NULL);
     }
     gst_object_unref(video_src);

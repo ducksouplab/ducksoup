@@ -31,9 +31,9 @@ func main() {
 	if !cmdBuildMode {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error().Msgf("[main] app panic caught: %v", r)
+				log.Error().Str("context", "app").Msgf("app panic caught: %v", r)
 			}
-			log.Info().Msg("[main] app stopped")
+			log.Info().Str("context", "app").Msg("app stopped")
 		}()
 
 		// launch http (with websockets) server

@@ -33,11 +33,11 @@ func newMixer(r *room) *mixer {
 }
 
 func (m *mixer) logError() *zerolog.Event {
-	return m.r.logError()
+	return m.r.logError().Str("context", "signaling")
 }
 
 func (m *mixer) logInfo() *zerolog.Event {
-	return m.r.logInfo()
+	return m.r.logInfo().Str("context", "signaling")
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
@@ -84,9 +84,9 @@ func (m *mixer) updateTracks() signalingState {
 			_, ok := m.sliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("[mixer] can't remove sent track")
+					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("can't remove sent track")
 				} else {
-					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("[mixer] removed sent track")
+					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("removed sent track")
 				}
 			}
 		}
@@ -98,17 +98,17 @@ func (m *mixer) updateTracks() signalingState {
 			trackId := s.ID()
 			if alreadySent {
 				// don't double send
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding already sent track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("skip adding already sent track")
 			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] skip adding own track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("skip adding own track")
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
-					m.logError().Err(err).Str("user", userId).Str("track", trackId).Msg("[mixer] can't add track")
+					m.logError().Err(err).Str("user", userId).Str("track", trackId).Msg("can't add track")
 					return signalingRetryNow
 				} else {
-					m.logInfo().Str("user", userId).Str("track", trackId).Msg("[mixer] track added")
+					m.logInfo().Str("user", userId).Str("track", trackId).Msg("track added")
 				}
 
 				s.addSender(sender, userId)
@@ -123,26 +123,26 @@ func (m *mixer) updateOffers() signalingState {
 		userId := ps.userId
 		pc := ps.pc
 
-		m.logInfo().Str("user", userId).Msgf("[mixer] signaling state: %v", pc.SignalingState())
+		m.logInfo().Str("user", userId).Msgf("signaling state: %v", pc.SignalingState())
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			m.logError().Str("user", userId).Msg("[mixer] can't create offer")
+			m.logError().Str("user", userId).Msg("can't create offer")
 			return signalingRetryNow
 		}
 
 		if pc.PendingLocalDescription() != nil {
-			m.logError().Str("user", userId).Msg("[mixer] pending local description")
+			m.logError().Str("user", userId).Msg("pending local description")
 		}
 
 		if err = pc.SetLocalDescription(offer); err != nil {
-			m.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("[mixer] can't set local description")
+			m.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("can't set local description")
 			return signalingRetryWithDelay
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			m.logError().Str("user", userId).Err(err).Msg("[mixer] can't marshal offer")
+			m.logError().Str("user", userId).Err(err).Msg("can't marshal offer")
 			return signalingRetryNow
 		}
 
@@ -173,7 +173,7 @@ func (m *mixer) managedUpdateSignaling(reason string, withPLI bool) {
 		}
 	}()
 
-	m.logInfo().Str("reason", reason).Msg("[mixer] signaling update")
+	m.logInfo().Str("reason", reason).Msg("signaling update")
 
 	for {
 		select {

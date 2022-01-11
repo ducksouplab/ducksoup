@@ -198,7 +198,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_GST_GEN_PLI=true` (default to false) enable PLI (picture loss indication) request emitted from Gstreamer
 - `DS_LOG_STDOUT=true` (defaults to false, except when `DS_ENV=DEV`) to print logs to Stdout (if `DS_LOG_FILE` is also set, logs are written to both)
 - `DS_LOG_FILE=log/ducksoup.log` (defaults to none) to declare a file to write logs to (fails silently if file can't be opened)
-- `DS_LOG_LEVEL` (defaults to 2) to select log level display (see next section)
+- `DS_LOG_LEVEL` (defaults to 3) to select log level display (see next section)
 - `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
@@ -236,12 +236,26 @@ Depending on `DS_LOG_LEVEL`, here are the generated logs (the default value is `
 - `0` no log
 - `1` errors
 - `2` server info and above
-- `3` client debug info and above
-- `4` debug logs (including RTCP reports and estimated bitrates) and above
+- `3` client info, in/out/encoding bitrates info and above
+- `4` debug logs (including TWCC reports) and above
+
+Please note that while we rely on zerolog, we don't use the same semantics regarding levels, their index and meaning.
+
+Each log has a `context` property that helps grouping:
+
+- `room`: related to room (creation, end, adding tracks...) 
+- `peer`: related to overall peer communication (websocket, peer connection) 
+- `signaling`: related to peer webrtc signaling
+- `track`: related to peer media tracks
+- `client`: related to client-side generated information
+- `gstreamer` raw GStreamer logs
+- `init` for a log occuring when app initializes
+- `app` for app-level logs (uncaught panic for instance)
+- `js-build` for esbuild messages (happen when building [Front-end dependencies](#front-end-dependencies))
 
 Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.
 
-Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_LEVEL`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1` 
+Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_LEVEL`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1`.
 
 ### Run DuckSoup server
 
