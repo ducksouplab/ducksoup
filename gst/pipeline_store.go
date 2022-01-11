@@ -45,7 +45,7 @@ func (ps *pipelineStore) delete(id string) {
 
 	p, ok := ps.index[id]
 	if ok {
-		log.Info().Str("context", "track").Str("namespace", p.join.Namespace).Str("room", p.join.RoomId).Str("user", p.join.UserId).Str("pipeline", id).Msg("pipeline deleted")
+		log.Info().Str("context", "pipeline").Str("namespace", p.join.Namespace).Str("room", p.join.RoomId).Str("user", p.join.UserId).Str("pipeline", id).Msg("pipeline_deleted")
 	}
 
 	delete(ps.index, id)

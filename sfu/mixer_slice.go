@@ -105,15 +105,15 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 }
 
 func (s *mixerSlice) logError() *zerolog.Event {
-	return s.r.logError().Str("context", "track").Str("fromUser", s.fromPs.userId)
+	return s.r.logError().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logInfo() *zerolog.Event {
-	return s.r.logInfo().Str("context", "track").Str("fromUser", s.fromPs.userId)
+	return s.r.logInfo().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logDebug() *zerolog.Event {
-	return s.r.logDebug().Str("context", "track").Str("fromUser", s.fromPs.userId)
+	return s.r.logDebug().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 // Same ID as output track
@@ -177,7 +177,7 @@ func (s *mixerSlice) loop() {
 	outputFiles := pipeline.BindTrack(s.kind, s)
 	if s.kind == "video" {
 		pipeline.BindPLICallback(func() {
-			pc.throttledPLIRequest(200)
+			pc.throttledPLIRequest(200, "from pipeline")
 		})
 	}
 	if outputFiles != nil {
@@ -187,7 +187,8 @@ func (s *mixerSlice) loop() {
 	// go s.runReceiverListener()
 
 	defer func() {
-		s.logInfo().Msgf("stopped %s track %s", s.kind, s.ID())
+		msg := fmt.Sprintf("%s_track_stopped", s.kind)
+		s.logInfo().Str("track", s.ID()).Msg(msg)
 		s.stop()
 	}()
 
@@ -231,8 +232,8 @@ func (s *mixerSlice) runTickers() {
 						s.Unlock()
 						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 						// format and log
-						display := fmt.Sprintf("%v kbit/s", newPotentialRate/1000)
-						s.logDebug().Msgf("%s target bitrate: %s", s.kind, display)
+						msg := fmt.Sprintf("%s_target_bitrate_updated", s.kind)
+						s.logDebug().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
 					}
 				}
 			}
@@ -252,10 +253,13 @@ func (s *mixerSlice) runTickers() {
 			s.lastStats = tickTime
 			s.Unlock()
 			// log
-			displayInputBitrateKbs := s.inputBitrate / 1000
-			displayOutputBitrateKbs := s.outputBitrate / 1000
-			s.logDebug().Msgf("%s input bitrate: %v kbit/s", s.output.Kind().String(), displayInputBitrateKbs)
-			s.logDebug().Msgf("%s output bitrate: %v kbit/s", s.output.Kind().String(), displayOutputBitrateKbs)
+			displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
+			displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
+
+			inputMsg := fmt.Sprintf("%s_input_bitrate_estimated", s.output.Kind().String())
+			outputMsg := fmt.Sprintf("%s_output_bitrate_estimated", s.output.Kind().String())
+			s.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
+			s.logDebug().Uint64("value", displayOutputBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
 		}
 	}()
 }

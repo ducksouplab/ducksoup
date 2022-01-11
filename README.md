@@ -224,7 +224,7 @@ DuckSoup SFU settings are defined in `config/sfu.yml`:
 - `audio` defines min/max/default values of target bitrates for output (reencoded) audio tracks
 - `video` defines min/max/default values of target bitrates for output (reencoded) video tracks
 
-### Logs
+### Logs configuration
 
 Logs are managed with [zerolog](https://github.com/rs/zerolog):
 
@@ -241,21 +241,124 @@ Depending on `DS_LOG_LEVEL`, here are the generated logs (the default value is `
 
 Please note that while we rely on zerolog, we don't use the same semantics regarding levels, their index and meaning.
 
-Each log has a `context` property that helps grouping:
+GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_LEVEL`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1`.
 
-- `room`: related to room (creation, end, adding tracks...) 
-- `peer`: related to overall peer communication (websocket, peer connection) 
-- `signaling`: related to peer webrtc signaling
-- `track`: related to peer media tracks
-- `client`: related to client-side generated information
-- `gstreamer` raw GStreamer logs
-- `init` for a log occuring when app initializes
-- `app` for app-level logs (uncaught panic for instance)
-- `js-build` for esbuild messages (happen when building [Front-end dependencies](#front-end-dependencies))
+### Logs reference
 
-Logs related to a room (and dependent resources like mixer, mixer_slice) have an `elapsed` property that displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.
+This section details how logs can be parsed, each entry being stored as a JSON object.
 
-Finally, GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_LEVEL`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1`.
+First of all, each log has the following properties:
+- `level`: useful to separate errors (`"error"`) from others (`"info"`, `"debug"`, `"trace"`)
+- `time`: a timestamp as text (`"20060102-150405.000"`)
+- `context`: used to categorize related logs
+- `message`: a unique string that describes the event that generated the log (`"room_end"` for instance)
+
+Here are some optional but frequent properties:
+- `value`: depending on the log, a `value` may convey additional data
+- `unit`: sometimes needed to illustrate `value`'s meaning 
+- `error`: error logs (`level: "error"`) often have an `error` property (the associated Go error's string)
+
+Now let's list all the possible `context`s:
+
+- `"room"`: related to room (creation, end, adding tracks...) 
+- `"peer"`: related to overall peer communication (websocket, peer connection) 
+- `"signaling"`: related to peer webrtc signaling
+- `"track"`: related to peer media tracks
+- `"pipeline"`: related to processing pipelines attached to tracks
+- `"client"`: related to client-side generated information
+- `"gstreamer"`: raw GStreamer logs
+- `"init"`: logs occuring when app initializes
+- `"app"`: app-level logs (uncaught panic for instance)
+- `"js-build"`: for esbuild messages (happen only when building [Front-end dependencies](#front-end-dependencies))
+
+Logs whose context is either `"room"`, `"peer"`, `"signaling"`, `"track"`, `"pipeline"` or `"client"` embed the following properties:
+
+- `"namespace"`: a namespace used by DuckSoup client to categorize the experiment
+- `"room"`: the room id
+- `"user"`: the user id
+- `"elapsed"`: displays the elapsed time since the room creation, which differs from the room starting time. Indeed the room is created when the first peer joins, whereas it is started (or running) only when all input tracks (of all peers) have been added.
+
+Finally, here is a reference of all log messages, grouped by context:
+
+`peer` context:
+
+- `message: "websocket_upgraded"`: websocket upgrade granted from given `origin` property
+- `message: "peer_server_started"`: peer server (websocket and RTC peer connection) started (after a websocket join event)
+- `message: "peer_server_ended"`: peer server ended (additional `cause` property)
+- `message: "room_ending_sent"`: "room ending" websocket message sent to peer
+
+`room` context:
+
+- `message: "room_created"`: room created by given user from given `origin` property
+- `message: "peer_joined"`: user joined room (additional `payload` property)
+- `message: "room_track_added"`: peer track added to room (track counts decides if room is ready to start)
+- `message: "room_started"`: when all peers and tracks are ready
+- `message: "room_ended"`
+- `message: "room_deleted"`: occurs after room has ended and all users have disconnected. Or occur even if room was not started (not enough users)
+
+`track` context:
+
+- `message: "remote_audio_track_added"`: remote/incoming audio track added to peer connection (additional properties: `track`'s ID, `ssrc`, `mime`)
+- `message: "audio_target_bitrate_updated"`: new target bitrate of encoder for outgoing track as described by `value` and `unit` propeties
+- `message: "video_target_bitrate_updated"`: same for video
+- `message: "audio_input_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
+- `message: "video_input_bitrate_estimated"`: same for video
+- `message: "audio_output_bitrate_estimated"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
+- `message: "video_output_bitrate_estimated"`: same for video
+- `message: "loss_threshold_exceeded"`: too many lost packets (property `value` reflects ReceiverReport loss count)
+- `message: "audio_track_stopped"`: audio track (with given `track` ID property) stopped after pipeline stopped
+- `message: "video_track_stopped"`: same for video
+- `message: "pli_sent"`: Picture Loss Indication sent to peer (additional `cause` property)
+- `message: "pli_skipped"`: Picture Loss Indication skipped (throttling, additional `cause` property)
+- `message: "client_video_resolution_updated"`
+- `message: "client_pli_received_count_updated"`
+- `message: "client_fir_received_count_updated"`
+- `message: "client_keyframe_encoded_count_updated"`
+- `message: "client_keyframe_decoded_count_updated"`
+
+`pipeline` context:
+
+- `message: "pipeline_created"`: pipeline (associated to track) has been created
+- `message: "pipeline_started"`: pipeline started (additional property `recording_prefix` giving recorded files prefixes)
+- `message: "pipeline_stopped"`: pipeline stopped (for instance when room ends)
+- `message: "pipeline_deleted"`: pipeline deleted
+- `message: "gstreamer_pli_requested"`: Picture Loss Indication emitted by GStreamer pipeline associated to the track
+
+`signaling` context, mostly used to debug signaling:
+
+- `message: "connection_state_changed"`: triggered by pion WebRTC (new state in `value` property)
+- `message: "signaling_state_changed"`: same
+- `message: "ice_connection_state_changed"`: same
+- `message: "ice_gathering_state_changed"`: same
+- `message: "negotiation_needed"`: triggered by pion WebRTC
+- `message: "client_signaling_state_changed"`: trigger by browser
+- `message: "client_connection_state_changed"`: same
+- `message: "client_ice_connection_state_changed"`: same
+- `message: "client_ice_gathering_state_changed"`: same
+- `message: "client_negotiation_needed"`: same
+- `message: "client_ice_candidate_failed"`: same
+- `message: "client_candidate_added"`: candidate sent to server via websocket added
+- `message: "client_answer_accepted"`: answer sent to server via websocket accepted
+- `message: "signaling_update_requested"`: signaling update (additional `cause` property)
+- `message: "track_added"`: track added to peer connection
+- `message: "track_removed"`: track removed due to room state (for instance if a peer has disconnected)
+- `message: "offer_update_requested"`: when tracks have been added/removed from peer connection, generate and share new offer (comes with an additional `current_state` property that give the peer connection state before the offer update)
+- `message: "duplicate_track_skipped"`: track already added to peer connection
+- `message: "own_track_skipped"`: own track not to be sent back to originating peer (except for mirror room)
+
+`app` context:
+
+- `message: "app_started"`
+- `message: "app_ended"` (main function has ended)
+- `message: "app_panicked"` (panic recovered in main function), additional information in the `message` property
+
+Regarding `gstreamer` context, logs are forwarded from GStreamer to DuckSoup and `message`s are free text generated by GStreamer.
+
+A few additional messages exist, they should not occur (they imply a DuckSoup bug or a GStreamer error):
+
+- `message: "pipeline_not_found"`: GStreamer processing can't be mapped to a Go pipeline
+- `message: "track_write_failed"`: can't write to RTP output track
+- `message: "gstreamer_pipeline_error"`: a GStreamer error associated to the given Go pipeline
 
 ### Run DuckSoup server
 

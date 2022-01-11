@@ -30,7 +30,7 @@ func init() {
 	if logFile != "" {
 		fileWriter, fileErr := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if fileErr != nil {
-			log.Error().Msg("error opening log file")
+			log.Error().Str("context", "init").Msg("error opening log file")
 		} else {
 			writers = append(writers, fileWriter)
 		}
@@ -43,9 +43,10 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	level := convertLevel(os.Getenv("DS_LOG_LEVEL"))
-	zerolog.SetGlobalLevel(level)
-	log.Info().Str("context", "init").Msgf("logger configured with level: %v", level)
+	level := os.Getenv("DS_LOG_LEVEL")
+	zeroLevel := convertLevel(os.Getenv("DS_LOG_LEVEL"))
+	zerolog.SetGlobalLevel(zeroLevel)
+	log.Info().Str("context", "init").Str("level", level).Msg("logger_configured")
 }
 
 func convertLevel(dsLevel string) zerolog.Level {

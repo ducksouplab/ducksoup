@@ -79,8 +79,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 			newOptimalBitrate = streamConfig.MinBitrate
 		}
 
-		sc.logInfo().Msgf("%d packets lost, previous bitrate %d, new bitrate %d",
-			loss, prevOptimalBitrate/1000, newOptimalBitrate/1000)
+		sc.logInfo().Int("value", int(loss)).Msg("loss_threshold_exceeded")
 	} else {
 		newOptimalBitrate = prevOptimalBitrate
 	}
@@ -111,7 +110,7 @@ func (sc *senderController) runListener() {
 				// TODO could implement GCC from TWCC
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.slice.fromPs.pc.throttledPLIRequest(10)
+					sc.slice.fromPs.pc.throttledPLIRequest(10, "requested by other peer")
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
 					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				case *rtcp.ReceiverReport:

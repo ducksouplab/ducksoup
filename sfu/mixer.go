@@ -86,7 +86,7 @@ func (m *mixer) updateTracks() signalingState {
 				if err := pc.RemoveTrack(sender); err != nil {
 					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("can't remove sent track")
 				} else {
-					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("removed sent track")
+					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("track_removed")
 				}
 			}
 		}
@@ -98,17 +98,17 @@ func (m *mixer) updateTracks() signalingState {
 			trackId := s.ID()
 			if alreadySent {
 				// don't double send
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("skip adding already sent track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("duplicate_track_skipped")
 			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("skip adding own track")
+				m.logInfo().Str("user", userId).Str("track", trackId).Msg("own_track_skipped")
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
 					m.logError().Err(err).Str("user", userId).Str("track", trackId).Msg("can't add track")
 					return signalingRetryNow
 				} else {
-					m.logInfo().Str("user", userId).Str("track", trackId).Msg("track added")
+					m.logInfo().Str("user", userId).Str("track", trackId).Msg("track_added")
 				}
 
 				s.addSender(sender, userId)
@@ -123,7 +123,7 @@ func (m *mixer) updateOffers() signalingState {
 		userId := ps.userId
 		pc := ps.pc
 
-		m.logInfo().Str("user", userId).Msgf("signaling state: %v", pc.SignalingState())
+		m.logInfo().Str("user", userId).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
 
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
@@ -164,16 +164,16 @@ func (m *mixer) updateSignaling() signalingState {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (m *mixer) managedUpdateSignaling(reason string, withPLI bool) {
+func (m *mixer) managedUpdateSignaling(cause string, withPLI bool) {
 	m.Lock()
 	defer func() {
 		m.Unlock()
 		if withPLI {
-			go m.dispatchRoomPLI()
+			go m.dispatchRoomPLI(cause)
 		}
 	}()
 
-	m.logInfo().Str("reason", reason).Msg("signaling update")
+	m.logInfo().Str("cause", cause).Msg("signaling_update_requested")
 
 	for {
 		select {
@@ -213,11 +213,11 @@ func (m *mixer) managedUpdateSignaling(reason string, withPLI bool) {
 // sends a keyframe to all PeerConnections, used everytime a new user joins the call
 // (in that case, requesting a FullIntraRequest may be preferred/more accurate, over a PictureLossIndicator
 // but the effect is probably the same)
-func (m *mixer) dispatchRoomPLI() {
+func (m *mixer) dispatchRoomPLI(cause string) {
 	m.RLock()
 	defer m.RUnlock()
 
 	for _, ps := range m.r.peerServerIndex {
-		ps.pc.throttledPLIRequest(1000)
+		ps.pc.throttledPLIRequest(1000, cause)
 	}
 }

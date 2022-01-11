@@ -47,16 +47,15 @@ func Build() {
 				OnRebuild: func(result api.BuildResult) {
 					if len(result.Errors) > 0 {
 						for _, msg := range result.Errors {
-							log.Error().Str("context", "js-build").Msgf("error: %v", msg.Text)
+							log.Error().Str("context", "js-build").Msg(msg.Text)
 						}
 					} else {
 						if len(result.Warnings) > 0 {
-							log.Info().Str("context", "js-build").Msgf("success with %d warnings", len(result.Warnings))
 							for _, msg := range result.Warnings {
-								log.Info().Str("context", "js-build").Msgf("warning: %v", msg.Text)
+								log.Info().Str("context", "js-build").Msgf("%v", msg.Text)
 							}
 						} else {
-							log.Info().Str("context", "js-build").Msg("success")
+							log.Info().Str("context", "js-build")
 						}
 					}
 				},
@@ -65,7 +64,7 @@ func Build() {
 		build := api.Build(buildOptions)
 
 		if len(build.Errors) > 0 {
-			log.Fatal().Msgf("JS build fatal error: %v", build.Errors[0].Text)
+			log.Fatal().Str("context", "js-build").Msgf("%v", build.Errors[0].Text)
 		}
 	}
 }

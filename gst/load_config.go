@@ -1,6 +1,7 @@
 package gst
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
@@ -97,5 +98,5 @@ func init() {
 	}
 
 	// log
-	log.Info().Str("context", "init").Msgf("GStreamer config loaded: %+v", config)
+	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", config)).Msg("gstreamer_config_loaded")
 }

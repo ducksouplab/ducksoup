@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sync"
 	"time"
@@ -159,7 +160,7 @@ func (ws *wsConn) send(text string) (err error) {
 
 	m := &messageOut{Kind: text}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msgf("can't write JSON: %+v", m)
+		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("json_write_failed")
 	}
 	return
 }
@@ -173,7 +174,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Payload: payload,
 	}
 	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Msgf("can't write JSON with payload: %+v", m)
+		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("json_write_with_payload_failed")
 	}
 	return
 }

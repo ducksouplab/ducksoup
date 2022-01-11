@@ -1,6 +1,8 @@
 package sfu
 
 import (
+	"fmt"
+
 	"github.com/creamlab/ducksoup/helpers"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
@@ -33,5 +35,5 @@ func init() {
 	}
 
 	// log
-	log.Info().Str("context", "init").Msgf("SFU config loaded: %+v", config)
+	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", config)).Msg("sfu_config_loaded")
 }

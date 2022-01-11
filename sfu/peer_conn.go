@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -111,39 +112,40 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		pc.logInfo().Str("context", "track").Uint32("ssrc", uint32(remoteTrack.SSRC())).Str("track", remoteTrack.ID()).Msgf("new incoming %s track", remoteTrack.Codec().RTPCodecCapability.MimeType)
+		msg := fmt.Sprintf("remote_%s_track_added", remoteTrack.Kind())
+		pc.logInfo().Str("context", "track").Uint32("ssrc", uint32(remoteTrack.SSRC())).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg(msg)
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		pc.logInfo().Msgf("connection state: %v", p.String())
+		pc.logInfo().Str("value", p.String()).Msg("connection_state_changed")
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
 				pc.logError().Err(err).Msg("peer connection state failed")
 			}
 		case webrtc.PeerConnectionStateClosed:
-			ps.close("pc closed")
+			ps.close("PeerConnection closed")
 		}
 	})
 
 	// for logging
 
+	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
+		pc.logInfo().Str("value", state.String()).Msg("signaling_state_changed")
+	})
+
 	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
-		pc.logInfo().Msgf("ice state change: %v", state)
+		pc.logInfo().Str("value", state.String()).Msg("ice_connection_state_changed")
 	})
 
 	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-		pc.logInfo().Msgf("ice gathering state change: %v", state)
+		pc.logInfo().Str("value", state.String()).Msg("ice_gathering_state_changed")
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		pc.logInfo().Msg("negotiation needed")
-	})
-
-	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		pc.logInfo().Msgf("signaling state change: %v", state)
+		pc.logInfo().Msg("negotiation_needed")
 	})
 
 	// Debug: send periodic PLIs
@@ -155,7 +157,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	// }()
 }
 
-func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
+func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error) {
 	err = pc.WriteRTCP([]rtcp.Packet{
 		&rtcp.PictureLossIndication{
 			MediaSSRC: uint32(track.SSRC()),
@@ -167,7 +169,7 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 		pc.Lock()
 		pc.lastPLI = time.Now()
 		pc.Unlock()
-		pc.logInfo().Str("context", "track").Msg("PLI sent")
+		pc.logInfo().Str("context", "track").Str("cause", cause).Msg("pli_sent")
 	}
 	return
 }
@@ -184,7 +186,7 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote) (err error) {
 // 	}
 // }
 
-func (pc *peerConn) throttledPLIRequest(waitFor int) {
+func (pc *peerConn) throttledPLIRequest(waitFor int, cause string) {
 	// don't rush
 	<-time.After(time.Duration(waitFor) * time.Millisecond)
 
@@ -197,9 +199,9 @@ func (pc *peerConn) throttledPLIRequest(waitFor int) {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < delayBetweenPLIs {
 				// throttle: don't send too many PLIs
-				pc.logInfo().Str("context", "track").Msg("PLI skipped (throttle)")
+				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("pli_skipped")
 			} else {
-				go pc.writePLI(track)
+				go pc.writePLI(track, cause)
 			}
 		}
 	}

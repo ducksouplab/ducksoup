@@ -55,11 +55,12 @@ func (rs *roomStore) join(join types.JoinPayload) (*room, error) {
 			// new user joined existing room
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Info().Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Msg("user joined room")
+			log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 			return r, nil
 		}
 	} else {
-		log.Info().Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Str("origin", join.Origin).Msg("room created for given origin")
+		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Str("origin", join.Origin).Msg("room_created")
+		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		newRoom := newRoom(qualifiedId, join)
 		rooms.index[qualifiedId] = newRoom
 		return newRoom, nil

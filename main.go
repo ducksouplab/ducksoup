@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/creamlab/ducksoup/front"
@@ -31,13 +32,14 @@ func main() {
 	if !cmdBuildMode {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error().Str("context", "app").Msgf("app panic caught: %v", r)
+				log.Error().Str("context", "app").Err(fmt.Errorf("%v", r)).Msg("app_panicked")
 			}
-			log.Info().Str("context", "app").Msg("app stopped")
+			log.Info().Str("context", "app").Msg("app_ended")
 		}()
 
 		// launch http (with websockets) server
 		go server.ListenAndServe()
+		log.Info().Str("context", "app").Msg("app_started")
 
 		// start Glib main loop for GStreamer
 		gst.StartMainLoop()

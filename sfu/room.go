@@ -141,9 +141,9 @@ func (r *room) countdown() {
 
 	r.Lock()
 	r.running = false
-	r.logInfo().Msg("room ended")
 	r.Unlock()
 
+	r.logInfo().Msg("room_ended")
 	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
 	// actual deleting is done when all users have disconnected, see disconnectUser
@@ -166,14 +166,14 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 	}
 
 	r.inTracksReadyCount++
-	r.logInfo().Msgf("room track count: %d", r.inTracksReadyCount)
+	r.logInfo().Int("count", r.inTracksReadyCount).Msg("room_track_added")
 
 	if r.inTracksReadyCount == r.neededTracks {
 		r.startedAt = time.Now()
-		r.logInfo().Msg("room ready to start")
 		// do start
 		close(r.waitForAllCh)
 		r.running = true
+		r.logInfo().Msg("room_started")
 		// send start to all peers
 		for _, ps := range r.peerServerIndex {
 			go ps.ws.send("start")
@@ -224,7 +224,7 @@ func (r *room) deleteIfEmpty() {
 
 func (r *room) delete() {
 	rooms.delete(r)
-	r.logInfo().Msg("room deleted")
+	r.logInfo().Msg("room_deleted")
 }
 
 func (r *room) disconnectUser(userId string) {

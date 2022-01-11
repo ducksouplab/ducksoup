@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -30,7 +31,7 @@ var (
 	upgrader       = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Info().Str("context", "peer").Msgf("websocket upgrade from origin: %v", origin)
+			log.Info().Str("context", "peer").Str("origin", origin).Msg("websocket_upgraded")
 			return helpers.Contains(allowedOrigins, origin)
 		},
 	}
@@ -55,7 +56,7 @@ func init() {
 	statsPassword = helpers.Getenv("DS_STATS_PASSWORD", "ducksoup")
 
 	// log
-	log.Info().Str("context", "init").Msgf("allowed websockets origins: %v", allowedOrigins)
+	log.Info().Str("context", "init").Str("origins", fmt.Sprintf("%v", allowedOrigins)).Msg("websocket_origins_allowed")
 }
 
 // handle incoming websockets
@@ -147,10 +148,10 @@ func ListenAndServe() {
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Info().Str("context", "init").Msgf("https listening on port %v", port)
+		log.Info().Str("context", "init").Str("port", port).Msg("https_server_started")
 		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Info().Str("context", "init").Msgf("http listening on port %v", port)
+		log.Info().Str("context", "init").Str("port", port).Msg("http_server_started")
 		log.Fatal().Err(server.ListenAndServe()) // blocking
 	}
 }

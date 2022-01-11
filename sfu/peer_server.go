@@ -3,6 +3,7 @@ package sfu
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -84,12 +85,11 @@ func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
 	}
 }
 
-func (ps *peerServer) close(reason string) {
+func (ps *peerServer) close(cause string) {
 	ps.Lock()
 	defer ps.Unlock()
 
 	if !ps.closed {
-		ps.logInfo().Str("context", "peer").Msgf("closing for reason: %s", reason)
 		// ps.closed check ensure closedCh is not closed twice
 		ps.closed = true
 
@@ -99,6 +99,8 @@ func (ps *peerServer) close(reason string) {
 		ps.pc.Close()
 		ps.ws.Close()
 		ps.r.disconnectUser(ps.userId)
+
+		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
 	}
 }
 
@@ -156,7 +158,7 @@ func (ps *peerServer) loop() {
 		select {
 		case <-time.After(time.Duration(ps.r.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
-			ps.logInfo().Str("context", "room").Msg("room ending message sent")
+			ps.logInfo().Str("context", "peer").Msg("room_ending_sent")
 			ps.ws.send("ending")
 		case <-ps.closedCh:
 			// user might have disconnected
@@ -179,7 +181,7 @@ func (ps *peerServer) loop() {
 		}
 
 		switch m.Kind {
-		case "candidate":
+		case "client_candidate":
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
 				ps.logError().Err(err).Msg("can't unmarshal candidate")
@@ -190,8 +192,8 @@ func (ps *peerServer) loop() {
 				ps.logError().Err(err).Msg("can't add candidate")
 				return
 			}
-			ps.logInfo().Msgf("added remote candidate: %+v", candidate)
-		case "answer":
+			ps.logInfo().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_candidate_added")
+		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
 				ps.logError().Err(err).Msg("can't unmarshal answer")
@@ -202,7 +204,8 @@ func (ps *peerServer) loop() {
 				ps.logError().Err(err).Msg("can't set remote description")
 				return
 			}
-		case "control":
+			ps.logInfo().Msg("client_answer_accepted")
+		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				ps.logError().Err(err).Msg("can't unmarshal control")
@@ -211,7 +214,7 @@ func (ps *peerServer) loop() {
 					ps.controlFx(payload)
 				}()
 			}
-		case "polycontrol":
+		case "client_polycontrol":
 			payload := polyControlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				ps.logError().Err(err).Msg("can't unmarshal control")
@@ -220,9 +223,18 @@ func (ps *peerServer) loop() {
 					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
 				}()
 			}
+		case "client_video_resolution_updated":
+			ps.logDebug().Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
 		default:
-			if strings.HasPrefix(m.Kind, "debug-") {
-				ps.logDebug().Str("context", "client").Msgf("%v: %v", strings.TrimPrefix(m.Kind, "debug-"), m.Payload)
+			if strings.HasPrefix(m.Kind, "client_") {
+				if strings.Contains(m.Kind, "count") {
+					if count, err := strconv.ParseInt(m.Payload, 10, 64); err == nil {
+						// "count" logs refer to track context
+						ps.logDebug().Str("context", "track").Int64("value", count).Msg(m.Kind)
+					}
+				} else {
+					ps.logDebug().Str("payload", m.Payload).Msg(m.Kind)
+				}
 			}
 		}
 	}
@@ -247,7 +259,6 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	userId := joinPayload.UserId
 	roomId := joinPayload.RoomId
 	namespace := joinPayload.Namespace
-	log.Info().Str("context", "signaling").Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msgf("joined with payload: %+v", joinPayload)
 
 	r, err := rooms.join(joinPayload)
 	if err != nil {
@@ -265,6 +276,8 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	}
 
 	ps := newPeerServer(joinPayload, r, pc, ws)
+
+	log.Info().Str("context", "peer").Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("peer_server_started")
 
 	ps.loop() // blocking
 }

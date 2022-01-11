@@ -7,6 +7,7 @@ package gst
 */
 import "C"
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -66,6 +67,8 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 	defer C.free(unsafe.Pointer(cId))
 
 	logger := log.With().
+		Str("context", "pipeline").
+		Str("namespace", join.Namespace).
 		Str("room", join.RoomId).
 		Str("user", join.UserId).
 		Str("pipeline", id).
@@ -81,7 +84,7 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		logger:       logger,
 	}
 
-	p.logger.Info().Str("context", "track").Str("pipeline", pipelineStr).Msg("pipeline initialized")
+	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_created")
 
 	pipelines.add(p)
 	return p
@@ -139,7 +142,8 @@ func (p *Pipeline) start() {
 		genPLI = 1
 	}
 	C.gstStartPipeline(p.cPipeline, C.int(genPLI))
-	p.logger.Info().Str("context", "track").Msgf("pipeline started with recording prefix: %s/%s", p.join.Namespace, p.filePrefix)
+	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
+	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")
 }
 
 // stop the GStreamer pipeline
@@ -150,7 +154,7 @@ func (p *Pipeline) Stop() {
 	p.stoppedCount += 1
 	if p.stoppedCount == 2 { // audio and video buffers from mixerSlice have been stopped
 		C.gstStopPipeline(p.cPipeline)
-		p.logger.Info().Str("context", "track").Msg("pipeline stop requested")
+		p.logger.Info().Msg("pipeline_stopped")
 	}
 }
 
@@ -217,7 +221,6 @@ func (p *Pipeline) SetFxProp(name string, prop string, value float32) {
 }
 
 func (p *Pipeline) GetFxProp(name string, prop string) float32 {
-	log.Debug().Msg(name + " " + prop)
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString("client_" + name)
 	cProp := C.CString(prop)

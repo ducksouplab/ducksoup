@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.6");
+    console.log("[DuckSoup] v1.5.7");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -204,7 +204,7 @@ class DuckSoup {
         if (!this._checkControl(name, property, value, duration)) return;
         this._ws.send(
             JSON.stringify({
-                kind: "control",
+                kind: "client_control",
                 payload: JSON.stringify({ name, property, value, ...(duration && { duration }) }),
             })
         );
@@ -215,7 +215,7 @@ class DuckSoup {
         const strValue = value.toString();
         this._ws.send(
             JSON.stringify({
-                kind: "polycontrol",
+                kind: "client_polycontrol",
                 payload: JSON.stringify({ name, property, kind, value: strValue }),
             })
         );
@@ -267,7 +267,7 @@ class DuckSoup {
     _debugCandidatePair(pair) {
         this._ws.send(
             JSON.stringify({
-                kind: "debug-selected candidate pair",
+                kind: "client_selected_candidate_pair",
                 payload: `client=${pair.local.candidate} server=${pair.remote.candidate}`,
             })
         );
@@ -321,7 +321,7 @@ class DuckSoup {
                 pc.setLocalDescription(answer);
                 ws.send(
                     JSON.stringify({
-                        kind: "answer",
+                        kind: "client_answer",
                         payload: JSON.stringify(answer),
                     })
                 );
@@ -375,7 +375,7 @@ class DuckSoup {
                 if (!e.candidate) return;
                 ws.send(
                     JSON.stringify({
-                        kind: "candidate",
+                        kind: "client_candidate",
                         payload: JSON.stringify(e.candidate),
                     })
                 );
@@ -413,11 +413,11 @@ class DuckSoup {
 
             // for server logging
             if (this._debug) {
-                pc.onnegotiationneeded = (e) => {
+                pc.onconnectionstatechange = () => {
                     ws.send(
                         JSON.stringify({
-                            kind: "debug-negotiation needed",
-                            payload: "",
+                            kind: "client_connection_state_changed",
+                            payload: pc.connectionState,
                         })
                     );
                 };
@@ -425,7 +425,7 @@ class DuckSoup {
                 pc.onsignalingstatechange = (e) => {
                     ws.send(
                         JSON.stringify({
-                            kind: "debug-signaling state change",
+                            kind: "client_signaling_state_changed",
                             payload: pc.signalingState.toString(),
                         })
                     );
@@ -434,7 +434,7 @@ class DuckSoup {
                 pc.oniceconnectionstatechange = (e) => {
                     ws.send(
                         JSON.stringify({
-                            kind: "debug-ice connection state change",
+                            kind: "client_ice_connection_state_changed",
                             payload: pc.iceConnectionState.toString(),
                         })
                     );
@@ -443,8 +443,17 @@ class DuckSoup {
                 pc.onicegatheringstatechange = (e) => {
                     ws.send(
                         JSON.stringify({
-                            kind: "debug-ice gathering state change",
+                            kind: "client_ice_gathering_state_changed",
                             payload: pc.iceGatheringState.toString(),
+                        })
+                    );
+                };
+                
+                pc.onnegotiationneeded = (e) => {
+                    ws.send(
+                        JSON.stringify({
+                            kind: "client_negotiation_needed",
+                            payload: "",
                         })
                     );
                 };
@@ -452,7 +461,7 @@ class DuckSoup {
                 pc.onicecandidateerror = (e) => {
                     ws.send(
                         JSON.stringify({
-                            kind: "debug-ice candidate error",
+                            kind: "client_ice_candidate_failed",
                             payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
                         })
                     );
@@ -482,7 +491,7 @@ class DuckSoup {
                     ) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-video encoding size",
+                                kind: "client_video_resolution_updated",
                                 payload: `${newEncodedWidth}x${newEncodedHeight}`,
                             })
                         );
@@ -494,8 +503,8 @@ class DuckSoup {
                     if (newPliCount !== this._info.pliCount) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-PLI received",
-                                payload: `total ${newPliCount}`,
+                                kind: "client_pli_received_count_updated",
+                                payload: `${newPliCount}`,
                             })
                         );
                         this._info.pliCount = newPliCount;
@@ -505,8 +514,8 @@ class DuckSoup {
                     if (newFirCount !== this._info.firCount) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-FIR received",
-                                payload: `total ${newFirCount}`,
+                                kind: "client_fir_received_count_updated",
+                                payload: `${newFirCount}`,
                             })
                         );
                         this._info.firCount = newFirCount;
@@ -516,8 +525,8 @@ class DuckSoup {
                     if (newKeyFramesEncoded !== this._info.keyFramesEncoded) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-keyframe encoded",
-                                payload: `total ${newKeyFramesEncoded}`,
+                                kind: "client_keyframe_encoded_count_updated",
+                                payload: `${newKeyFramesEncoded}`,
                             })
                         );
                         this._info.keyFramesEncoded = newKeyFramesEncoded;
@@ -529,8 +538,8 @@ class DuckSoup {
                     if (newKeyFramesDecoded !== this._info.keyFramesDecoded) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "debug-keyframe decoded",
-                                payload: `total ${newKeyFramesDecoded}`,
+                                kind: "client_keyframe_decoded_count_updated",
+                                payload: `${newKeyFramesDecoded}`,
                             })
                         );
                         this._info.keyFramesDecoded = newKeyFramesDecoded;
