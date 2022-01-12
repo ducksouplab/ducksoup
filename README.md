@@ -254,31 +254,30 @@ GStreamer logs are intercepted and sent to DuckSoup in order to have them centra
 This section details how logs can be parsed, each entry being stored as a JSON object.
 
 First of all, each log has the following properties:
-- `level`: useful to separate errors (`"error"`) from others (`"info"`, `"debug"`, `"trace"`)
-- `time`: a timestamp as text (`"20060102-150405.000"`)
-- `context`: used to categorize related logs
+- `level`: useful to separate errors (``level: "error"`) from others (`"info"`, `"debug"`, `"trace"`)
+- `time`: a timestamp (`"20060102-150405.000"`)
+- `context`: used to categorize logs (see more below)
 - `message`: a unique string that describes the event that generated the log (`"room_end"` for instance)
 
 Here are some optional but frequent properties:
 - `value`: depending on the log, a `value` may convey additional data
 - `unit`: sometimes needed to illustrate `value`'s meaning 
-- `error`: error logs (`level: "error"`) often have an `error` property (the associated Go error's string)
-- `source: "client"`: only if log has been generated as is by client. Please note `message`s below starting with `client_` mean they are related to client, but they may be generated either client or server side, and the `source` property helps distinguish between them.
+- `error`: error logs (when `level: "error"`) often have an `error` property (the associated Go error's string) giving more details
+- `source: "client"`: only if log has been generated as is by the client (ducksoup.js). Please note that when a log has a `message` property that starts with `client_`, it means the log is related to client/remote peer. But this log may be generated either client or server side, and the `source` property helps distinguish between the two.
 
 Now let's list all the possible `context`s:
 
-- `"room"`: related to room (creation, end, adding tracks...) 
 - `"peer"`: related to overall peer communication (websocket, peer connection) 
-- `"signaling"`: related to peer webrtc signaling
+- `"room"`: related to room (creation, end, adding tracks...) 
 - `"track"`: related to peer media tracks
 - `"pipeline"`: related to processing pipelines attached to tracks
-- `"client"`: related to client-side generated information
-- `"gstreamer"`: raw GStreamer logs
+- `"signaling"`: related to peer webrtc signaling
+- `"gstreamer"`: GStreamer logs
 - `"init"`: logs occuring when app initializes
-- `"app"`: app-level logs (uncaught panic for instance)
+- `"app"`: app-level logs
 - `"js-build"`: for esbuild messages (happen only when building [Front-end dependencies](#front-end-dependencies))
 
-Logs whose context is either `"room"`, `"peer"`, `"signaling"`, `"track"`, `"pipeline"` or `"client"` embed the following properties:
+Logs whose context is either `"peer"`, `"room"`, `"track"`, `"pipeline"` or `"signaling"` embed the following properties:
 
 - `"namespace"`: a namespace used by DuckSoup client to categorize the experiment
 - `"room"`: room id
@@ -290,37 +289,37 @@ Finally, here is a reference of all log messages, grouped by context:
 
 `peer` context:
 
-- `message: "websocket_upgraded"`: websocket upgrade granted from given `origin` property
+- `message: "websocket_upgraded"`: websocket upgrade granted for the given `origin` property
 - `message: "peer_server_started"`: peer server (websocket and RTC peer connection) started (after a websocket join event)
 - `message: "peer_server_ended"`: peer server ended (additional `cause` property)
-- `message: "room_ending_sent"`: "room ending" websocket message sent to peer
+- `message: "room_ending_sent"`: room "ending" websocket message sent to peer
 
 `room` context:
 
-- `message: "room_created"`: room created by given user from given `origin` property
+- `message: "room_created"`: room created by given user (additional `origin` property)
 - `message: "peer_joined"`: user joined room (additional `payload` property)
-- `message: "room_track_added"`: peer track added to room (track counts decides if room is ready to start)
+- `message: "room_track_added"`: peer track added to room (when enough tracks have been added, room is ready to start)
 - `message: "room_started"`: when all peers and tracks are ready
-- `message: "room_ended"`
+- `message: "room_ended"`: room ended (room time limit has been reached)
 - `message: "room_deleted"`: occurs after room has ended and all users have disconnected. Or occur even if room was not started (not enough users)
 
 `track` context:
 
-- `message: "client_audio_track_added"`: remote/incoming audio track added to peer connection (additional properties: `track`'s ID, `ssrc`, `mime`)
+- `message: "client_audio_track_added"`: remote/incoming audio track added to server peer connection (additional properties: `track`'s ID, `ssrc`, `mime`)
 - `message: "client_video_track_added"`: same for video
+- `message: "audio_in_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
+- `message: "video_in_bitrate_estimated"`: same for video
 - `message: "audio_target_bitrate_updated"`: new target bitrate of encoder for outgoing track as described by `value` and `unit` propeties
 - `message: "video_target_bitrate_updated"`: same for video
-- `message: "audio_input_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
-- `message: "video_input_bitrate_estimated"`: same for video
-- `message: "audio_output_bitrate_estimated"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
-- `message: "video_output_bitrate_estimated"`: same for video
+- `message: "audio_out_bitrate_estimated"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
+- `message: "video_out_bitrate_estimated"`: same for video
 - `message: "loss_threshold_exceeded"`: too many lost packets (property `value` reflects ReceiverReport loss count)
-- `message: "audio_track_stopped"`: audio track (with given `track` ID property) stopped after pipeline stopped
+- `message: "audio_track_stopped"`: processed audio track (server-side, with given `track` ID property) stopped after pipeline stopped
 - `message: "video_track_stopped"`: same for video
-- `message: "pli_sent"`: Picture Loss Indication sent to peer (additional `cause` property)
+- `message: "pli_sent"`: Picture Loss Indication sent to client (additional `cause` property)
 - `message: "pli_skipped"`: Picture Loss Indication skipped (throttling, additional `cause` property)
-- `message: "audio_report_in"`: describe audio `lost` RTP packets (coming from client) among `count` (total) RTP packets emitted by client (since last report)
-- `message: "video_report_in"`: same for video
+- `message: "audio_in_report"`: describe audio `lost` RTP packets (coming from client) among `count` (total) RTP packets emitted by client (since last report)
+- `message: "video_in_report"`: same for video
 - `message: "client_video_resolution_updated"`
 - `message: "client_pli_received_count_updated"`
 - `message: "client_fir_received_count_updated"`

@@ -228,7 +228,7 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 										Str("user", ssrcLog.User).
 										Uint64("lost", lost).
 										Uint64("count", count).
-										Msg(ssrcLog.Kind + "_report_in")
+										Msg(ssrcLog.Kind + "_in_report")
 								}
 							}
 						}

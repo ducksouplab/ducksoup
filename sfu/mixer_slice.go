@@ -256,8 +256,8 @@ func (s *mixerSlice) runTickers() {
 			displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
 			displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
 
-			inputMsg := fmt.Sprintf("%s_input_bitrate_estimated", s.output.Kind().String())
-			outputMsg := fmt.Sprintf("%s_output_bitrate_estimated", s.output.Kind().String())
+			inputMsg := fmt.Sprintf("%s_in_bitrate_estimated", s.output.Kind().String())
+			outputMsg := fmt.Sprintf("%s_out_bitrate_estimated", s.output.Kind().String())
 			s.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
 			s.logDebug().Uint64("value", displayOutputBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
 		}

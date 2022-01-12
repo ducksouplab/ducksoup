@@ -505,7 +505,6 @@ class DuckSoup {
                     // FPS
                     let newFramesPerSecond = report.framesPerSecond;
                     if (newFramesPerSecond !== this._info.framesPerSecond) {
-                        console.log(newFramesPerSecond)
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_fps_updated",
