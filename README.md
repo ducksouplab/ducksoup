@@ -58,11 +58,6 @@ Where:
     - `"error` with more information in payload
     - `"stats"` (payload contains bandwidth usage information) periodically triggered (fired only when `stats` is set to true)
   - `stats` (boolean, defaults to false) to enable `"stats"` messages sent to client callback (please note that stats are polled every second)
-  - `logLevel` (int, defaults to 1):
-    - 0: no client logs sent to server
-    - 1: logs related to RTP stats (bitrates, fps, keyframes...) are sent to server
-    - 2: above + logs related to signaling are sent to server
-    - please note that logs relying on WebRTC stats data are only polled every second, meaning some data samples may be missing
 
 - `peerOptions` (object) must contain the following properties:
 
@@ -86,6 +81,12 @@ Where:
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
   - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding, if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVIDIA=true` environment variable (see [Environment variables](#environment-variables))
+  - `logLevel` (int, defaults to 1):
+    - 0: no client logs sent to server
+    - 1: logs related to RTP stats (bitrates, fps, keyframes...) are sent to server
+    - 2: above + logs related to signaling are sent to server
+    - please note that logs relying on WebRTC stats data are only polled every second, meaning some data samples may be missing
+
 
 For a usage example, you may have a look at `front/src/test/app.js`
 

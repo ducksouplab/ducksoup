@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.4")
+    console.log("[DuckSoup test] v1.5.8")
 });
 
 let state;
@@ -105,7 +105,8 @@ const start = async ({
         frameRate,
         audioFx,
         videoFx,
-        gpu
+        gpu,
+        logLevel: 2,
     };
 
     // UX
@@ -124,7 +125,6 @@ const start = async ({
     const options = { isMirror };
     state.ducksoup = await DuckSoup.render({
         callback: ducksoupListener(options),
-        logLevel: 2,
         stats: true,
     }, peerOptions);
 };

@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.7");
+    console.log("[DuckSoup] v1.5.8");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -182,8 +182,8 @@ class DuckSoup {
             video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
         };
         this._logLevel = 1;
-        if (embedOptions && typeof embedOptions.logLevel !== undefined) {
-            this._logLevel = embedOptions.logLevel;
+        if (peerOptions && typeof peerOptions.logLevel !== undefined) {
+            this._logLevel = peerOptions.logLevel;
         }
         this._stats = embedOptions && embedOptions.stats;
         this._callback = embedOptions && embedOptions.callback;
