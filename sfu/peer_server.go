@@ -66,15 +66,15 @@ func newPeerServer(
 }
 
 func (ps *peerServer) logError() *zerolog.Event {
-	return ps.r.logError().Str("context", "signaling").Str("user", ps.userId)
+	return ps.r.logger.Error().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) logInfo() *zerolog.Event {
-	return ps.r.logInfo().Str("context", "signaling").Str("user", ps.userId)
+	return ps.r.logger.Info().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) logDebug() *zerolog.Event {
-	return ps.r.logDebug().Str("context", "signaling").Str("user", ps.userId)
+	return ps.r.logger.Debug().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
@@ -192,7 +192,7 @@ func (ps *peerServer) loop() {
 				ps.logError().Err(err).Msg("can't add candidate")
 				return
 			}
-			ps.logInfo().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_candidate_added")
+			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_candidate_added")
 		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
@@ -204,7 +204,7 @@ func (ps *peerServer) loop() {
 				ps.logError().Err(err).Msg("can't set remote description")
 				return
 			}
-			ps.logInfo().Msg("client_answer_accepted")
+			ps.logDebug().Msg("client_answer_accepted")
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
@@ -224,16 +224,16 @@ func (ps *peerServer) loop() {
 				}()
 			}
 		case "client_video_resolution_updated":
-			ps.logDebug().Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
+			ps.logDebug().Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
 		default:
 			if strings.HasPrefix(m.Kind, "client_") {
 				if strings.Contains(m.Kind, "count") {
 					if count, err := strconv.ParseInt(m.Payload, 10, 64); err == nil {
 						// "count" logs refer to track context
-						ps.logDebug().Str("context", "track").Int64("value", count).Msg(m.Kind)
+						ps.logDebug().Str("context", "track").Str("source", "client").Int64("value", count).Msg(m.Kind)
 					}
 				} else {
-					ps.logDebug().Str("payload", m.Payload).Msg(m.Kind)
+					ps.logDebug().Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
 				}
 			}
 		}
@@ -260,7 +260,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	roomId := joinPayload.RoomId
 	namespace := joinPayload.Namespace
 
-	r, err := rooms.join(joinPayload)
+	r, err := roomStoreSingleton.join(joinPayload)
 	if err != nil {
 		// joinRoom err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))

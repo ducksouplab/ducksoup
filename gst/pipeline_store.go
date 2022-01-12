@@ -8,7 +8,7 @@ import (
 
 var (
 	// sfu package exposed singleton
-	pipelines *pipelineStore
+	pipelineStoreSingleton *pipelineStore
 )
 
 type pipelineStore struct {
@@ -17,7 +17,7 @@ type pipelineStore struct {
 }
 
 func init() {
-	pipelines = newPipelinetore()
+	pipelineStoreSingleton = newPipelinetore()
 }
 
 func newPipelinetore() *pipelineStore {

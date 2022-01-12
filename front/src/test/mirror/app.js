@@ -124,7 +124,7 @@ const start = async ({
     const options = { isMirror };
     state.ducksoup = await DuckSoup.render({
         callback: ducksoupListener(options),
-        debug: true,
+        logLevel: 2,
         stats: true,
     }, peerOptions);
 };

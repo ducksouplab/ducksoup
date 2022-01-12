@@ -86,7 +86,7 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 
 	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_created")
 
-	pipelines.add(p)
+	pipelineStoreSingleton.add(p)
 	return p
 }
 
@@ -137,9 +137,9 @@ func (p *Pipeline) BindPLICallback(c func()) {
 
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
-	genPLI := 0
-	if os.Getenv("DS_GST_GEN_PLI") == "true" {
-		genPLI = 1
+	genPLI := 1
+	if os.Getenv("DS_GST_DISABLE_PLI") == "true" {
+		genPLI = 0
 	}
 	C.gstStartPipeline(p.cPipeline, C.int(genPLI))
 	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)

@@ -1,7 +1,7 @@
 package sfu
 
 func Inspect() interface{} {
-	return rooms.inspect()
+	return roomStoreSingleton.inspect()
 }
 
 func (rs *roomStore) inspect() interface{} {

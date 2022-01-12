@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/creamlab/ducksoup/helpers"
+	"github.com/creamlab/ducksoup/store"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
@@ -45,6 +46,9 @@ type room struct {
 	size         int
 	duration     int
 	neededTracks int
+	ssrcs        []uint32
+	// log
+	logger zerolog.Logger
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -96,24 +100,28 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
+		ssrcs:               []uint32{},
 	}
 	r.mixer = newMixer(r)
+	// log (call Run hook whenever logging)
+	r.logger = log.With().
+		Str("context", "room").
+		Str("namespace", join.Namespace).
+		Str("room", join.RoomId).
+		Logger().
+		Hook(r)
+
 	return r
 }
 
-func (r *room) logError() *zerolog.Event {
-	elapsed := time.Since(r.createdAt)
-	return log.Error().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
-}
-
-func (r *room) logInfo() *zerolog.Event {
-	elapsed := time.Since(r.createdAt)
-	return log.Info().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
-}
-
-func (r *room) logDebug() *zerolog.Event {
-	elapsed := time.Since(r.createdAt)
-	return log.Debug().Str("context", "room").Str("namespace", r.namespace).Str("room", r.id).Str("elapsed", elapsed.Round(time.Millisecond).String())
+// Run: implement log Hook interface
+func (r *room) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+	sinceCreation := time.Since(r.createdAt).Round(time.Millisecond).String()
+	e.Str("sinceCreation", sinceCreation)
+	if !r.startedAt.IsZero() {
+		sinceStart := time.Since(r.startedAt).Round(time.Millisecond).String()
+		e.Str("sinceStart", sinceStart)
+	}
 }
 
 func (r *room) userCount() int {
@@ -143,7 +151,7 @@ func (r *room) countdown() {
 	r.running = false
 	r.Unlock()
 
-	r.logInfo().Msg("room_ended")
+	r.logger.Info().Msg("room_ended")
 	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
 	// actual deleting is done when all users have disconnected, see disconnectUser
@@ -166,14 +174,14 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 	}
 
 	r.inTracksReadyCount++
-	r.logInfo().Int("count", r.inTracksReadyCount).Msg("room_track_added")
+	r.logger.Info().Int("count", r.inTracksReadyCount).Msg("room_track_added")
 
 	if r.inTracksReadyCount == r.neededTracks {
-		r.startedAt = time.Now()
 		// do start
 		close(r.waitForAllCh)
 		r.running = true
-		r.logInfo().Msg("room_started")
+		r.logger.Info().Msg("room_started")
+		r.startedAt = time.Now()
 		// send start to all peers
 		for _, ps := range r.peerServerIndex {
 			go ps.ws.send("start")
@@ -181,6 +189,14 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 		go r.countdown()
 		return
 	}
+}
+
+func (r *room) addSSRC(ssrc uint32, kind string, userId string) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.ssrcs = append(r.ssrcs, ssrc)
+	go store.AddToSSRCIndex(ssrc, kind, r.namespace, r.id, userId)
 }
 
 func (r *room) incOutTracksReadyCount() {
@@ -223,8 +239,12 @@ func (r *room) deleteIfEmpty() {
 }
 
 func (r *room) delete() {
-	rooms.delete(r)
-	r.logInfo().Msg("room_deleted")
+	roomStoreSingleton.delete(r)
+	r.logger.Info().Msg("room_deleted")
+	// cleanup
+	for _, ssrc := range r.ssrcs {
+		store.RemoveFromSSRCIndex(ssrc)
+	}
 }
 
 func (r *room) disconnectUser(userId string) {
@@ -291,7 +311,7 @@ func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				r.logError().Err(err).Msg("room readRemoteWhileWaiting")
+				r.logger.Error().Err(err).Msg("room readRemoteWhileWaiting")
 				return
 			}
 		}
@@ -312,7 +332,7 @@ func (r *room) runMixerSliceFromRemote(
 	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
 	if err != nil {
-		r.logError().Err(err).Msg("room runMixerSliceFromRemote")
+		r.logger.Error().Err(err).Msg("room runMixerSliceFromRemote")
 	} else {
 		// needed to relay control fx events between peer server and output track
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)

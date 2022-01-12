@@ -105,15 +105,15 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 }
 
 func (s *mixerSlice) logError() *zerolog.Event {
-	return s.r.logError().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.r.logger.Error().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logInfo() *zerolog.Event {
-	return s.r.logInfo().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.r.logger.Info().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logDebug() *zerolog.Event {
-	return s.r.logDebug().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.r.logger.Debug().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 // Same ID as output track

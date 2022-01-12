@@ -181,7 +181,10 @@ class DuckSoup {
             audio: { ...DEFAULT_CONSTRAINTS.audio, echoCancellation, ...peerOptions.audio },
             video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
         };
-        this._debug = embedOptions && embedOptions.debug;
+        this._logLevel = 1;
+        if (embedOptions && typeof embedOptions.logLevel !== undefined) {
+            this._logLevel = embedOptions.logLevel;
+        }
         this._stats = embedOptions && embedOptions.stats;
         this._callback = embedOptions && embedOptions.callback;
         // needed for debug and stats
@@ -197,6 +200,7 @@ class DuckSoup {
             firCount: 0,
             keyFramesEncoded: 0,
             keyFramesDecoded: 0,
+            framesPerSecond: undefined,
         };
     };
 
@@ -339,7 +343,7 @@ class DuckSoup {
                 const firstSender = pc.getSenders()[0];
                 if (firstSender) {
                     const iceTransport = firstSender.transport.iceTransport;
-                    if (this._debug) {
+                    if (this._logLevel >= 2) {
                         // initial pair
                         this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
                         // change
@@ -412,7 +416,7 @@ class DuckSoup {
             };
 
             // for server logging
-            if (this._debug) {
+            if (this._logLevel >= 2) {
                 pc.onconnectionstatechange = () => {
                     ws.send(
                         JSON.stringify({
@@ -470,7 +474,7 @@ class DuckSoup {
         }
 
         // Getting peerconnection stats is needed either for stats or debug option
-        if (this._stats || this._debug) {
+        if (this._stats || this._logLevel >= 1) {
             this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
         }
     }
@@ -479,7 +483,7 @@ class DuckSoup {
         const pc = this._pc;
         const pcStats = await pc.getStats();
 
-        if (this._debug) {
+        if (this._logLevel >= 1) {
             pcStats.forEach((report) => {
                 if (report.type === "outbound-rtp" && report.kind === "video") {
                     // encoded size
@@ -497,6 +501,18 @@ class DuckSoup {
                         );
                         this._info.encodedWith = newEncodedWidth;
                         this._info.encodedHeight = newEncodedHeight;
+                    }
+                    // FPS
+                    let newFramesPerSecond = report.framesPerSecond;
+                    if (newFramesPerSecond !== this._info.framesPerSecond) {
+                        console.log(newFramesPerSecond)
+                        this._ws.send(
+                            JSON.stringify({
+                                kind: "client_fps_updated",
+                                payload: `${newFramesPerSecond}`,
+                            })
+                        );
+                        this._info.framesPerSecond = newFramesPerSecond;
                     }
                     // PLI
                     let newPliCount = report.pliCount;

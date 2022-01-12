@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
+	"github.com/creamlab/ducksoup/store"
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/packetdump"
@@ -26,12 +29,14 @@ var (
 	H264Codecs []webrtc.RTPCodecParameters
 	VP8Codecs  []webrtc.RTPCodecParameters
 	// VP9 is not supported for the time being (GStreamer pipelines remained to be defined)
-	VP9Codecs  []webrtc.RTPCodecParameters
-	ssrcRegexp *regexp.Regexp
+	VP9Codecs                           []webrtc.RTPCodecParameters
+	ssrcRegexp, countRegexp, lostRegexp *regexp.Regexp
 )
 
 func init() {
 	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)
+	countRegexp = regexp.MustCompile(`count:(.*?) `)
+	lostRegexp = regexp.MustCompile(`lost:(.*?)$`)
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
 		{Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},
@@ -141,17 +146,31 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerCC:
-			res += fmt.Sprintf(
-				"[TWCC] #%v ssrc:%v reftime:%v base:%v count:%v chunks: ",
-				rtcpPacket.FbPktCount,
-				rtcpPacket.MediaSSRC,
-				rtcpPacket.ReferenceTime,
-				rtcpPacket.BaseSequenceNumber,
-				rtcpPacket.PacketStatusCount,
-			)
+			var count uint16 = 0
+			var lost uint16 = 0
 			for _, chunk := range rtcpPacket.PacketChunks {
-				res += fmt.Sprintf("%+v ", chunk)
+				switch chk := chunk.(type) {
+				case *rtcp.RunLengthChunk:
+					count += chk.RunLength
+					if chk.PacketStatusSymbol == 0 {
+						lost += chk.RunLength
+					}
+				case *rtcp.StatusVectorChunk:
+					for _, symbol := range chk.SymbolList {
+						count += 1
+						if symbol == 0 {
+							lost += 1
+						}
+					}
+				}
 			}
+			res += fmt.Sprintf(
+				"[TWCC] ssrc:%v count:%v lost:%v",
+				rtcpPacket.MediaSSRC,
+				count,
+				lost,
+			)
+
 			// case *rtcp.ReceiverReport:
 			// 	res += "[RR sent] reports: "
 			// 	for _, report := range rtcpPacket.Reports {
@@ -184,12 +203,38 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if n > 0 {
 		msg := string(p)
-		match := ssrcRegexp.FindStringSubmatch(msg)
-		// trace level to respect DS_LOG_LEVEL setting
-		if len(match) > 0 {
-			// remove ssrc from string and add it as a log prop
-			msg = ssrcRegexp.ReplaceAllString(msg, "")
-			log.Logger.Trace().Str("ssrc", match[1]).Msg(msg)
+		if strings.HasPrefix(msg, "[TWCC]") {
+			ssrcMatch := ssrcRegexp.FindStringSubmatch(msg)
+			// trace level to respect DS_LOG_LEVEL setting
+			if len(ssrcMatch) > 0 {
+				// remove ssrc from string and add it as a log prop
+				msg = ssrcRegexp.ReplaceAllString(msg, "")
+
+				if ssrc64, err := strconv.ParseUint(ssrcMatch[1], 10, 32); err == nil {
+					ssrc := uint32(ssrc64)
+					ssrcLog := store.GetFromSSRCIndex(ssrc)
+					if ssrcLog != nil {
+						countMatch := countRegexp.FindStringSubmatch(msg)
+						lostMatch := lostRegexp.FindStringSubmatch(msg)
+
+						if len(countMatch) > 0 && len(lostMatch) > 0 {
+							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil {
+								if lost, err := strconv.ParseUint(lostMatch[1], 10, 64); err == nil {
+									log.Logger.Trace().
+										Str("context", "track").
+										Str("ssrc", ssrcMatch[1]).
+										Str("namespace", ssrcLog.Namespace).
+										Str("room", ssrcLog.Room).
+										Str("user", ssrcLog.User).
+										Uint64("lost", lost).
+										Uint64("count", count).
+										Msg(ssrcLog.Kind + "_report_in")
+								}
+							}
+						}
+					}
+				}
+			}
 		} else {
 			log.Logger.Trace().Msg(msg)
 		}

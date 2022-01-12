@@ -10,7 +10,7 @@ import (
 
 var (
 	// sfu package exposed singleton
-	rooms *roomStore
+	roomStoreSingleton *roomStore
 )
 
 type roomStore struct {
@@ -19,7 +19,7 @@ type roomStore struct {
 }
 
 func init() {
-	rooms = newRoomStore()
+	roomStoreSingleton = newRoomStore()
 }
 
 func newRoomStore() *roomStore {
@@ -33,7 +33,7 @@ func (rs *roomStore) join(join types.JoinPayload) (*room, error) {
 	qualifiedId := qualifiedId(join)
 	userId := join.UserId
 
-	if r, ok := rooms.index[qualifiedId]; ok {
+	if r, ok := roomStoreSingleton.index[qualifiedId]; ok {
 		r.Lock()
 		defer r.Unlock()
 		connected, ok := r.connectedIndex[userId]
@@ -62,7 +62,7 @@ func (rs *roomStore) join(join types.JoinPayload) (*room, error) {
 		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Str("origin", join.Origin).Msg("room_created")
 		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		newRoom := newRoom(qualifiedId, join)
-		rooms.index[qualifiedId] = newRoom
+		roomStoreSingleton.index[qualifiedId] = newRoom
 		return newRoom, nil
 	}
 }

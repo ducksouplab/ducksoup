@@ -48,7 +48,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 	ppc, err := newPionPeerConn(join, r)
 	if err != nil {
 		// pc is not created for now so we use the room logger
-		r.logError().Err(err).Str("user", join.UserId)
+		r.logger.Error().Err(err).Str("user", join.UserId)
 		return
 	}
 
@@ -87,11 +87,15 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 }
 
 func (pc *peerConn) logError() *zerolog.Event {
-	return pc.r.logError().Str("context", "signaling").Str("user", pc.userId)
+	return pc.r.logger.Error().Str("context", "signaling").Str("user", pc.userId)
 }
 
 func (pc *peerConn) logInfo() *zerolog.Event {
-	return pc.r.logInfo().Str("context", "signaling").Str("user", pc.userId)
+	return pc.r.logger.Info().Str("context", "signaling").Str("user", pc.userId)
+}
+
+func (pc *peerConn) logDebug() *zerolog.Event {
+	return pc.r.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
 }
 
 func (pc *peerConn) connectPeerServer(ps *peerServer) {
@@ -112,8 +116,11 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		msg := fmt.Sprintf("remote_%s_track_added", remoteTrack.Kind())
-		pc.logInfo().Str("context", "track").Uint32("ssrc", uint32(remoteTrack.SSRC())).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg(msg)
+		ssrc := uint32(remoteTrack.SSRC())
+		ps.r.addSSRC(ssrc, remoteTrack.Kind().String(), ps.userId)
+
+		msg := fmt.Sprintf("client_%s_track_added", remoteTrack.Kind())
+		pc.logDebug().Str("context", "track").Uint32("ssrc", ssrc).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg(msg)
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 

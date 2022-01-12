@@ -33,11 +33,11 @@ func newMixer(r *room) *mixer {
 }
 
 func (m *mixer) logError() *zerolog.Event {
-	return m.r.logError().Str("context", "signaling")
+	return m.r.logger.Error().Str("context", "signaling")
 }
 
 func (m *mixer) logInfo() *zerolog.Event {
-	return m.r.logInfo().Str("context", "signaling")
+	return m.r.logger.Info().Str("context", "signaling")
 }
 
 // Add to list of tracks and fire renegotation for all PeerConnections
