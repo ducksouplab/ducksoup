@@ -507,7 +507,7 @@ class DuckSoup {
                     if (newFramesPerSecond !== this._info.framesPerSecond) {
                         this._ws.send(
                             JSON.stringify({
-                                kind: "client_fps_updated",
+                                kind: "client_video_fps_updated",
                                 payload: `${newFramesPerSecond}`,
                             })
                         );
