@@ -249,21 +249,21 @@ Please note that while we rely on zerolog, we don't use the same semantics regar
 
 GStreamer logs are intercepted and sent to DuckSoup in order to have them centralized, facilitating further analysis. Nevertheless, what logs GStreamer generates is still controlled by the `GST_DEBUG` environement variable (independent from `DS_LOG_LEVEL`). Here is an example to hide video decoding warnings: `GST_DEBUG=2,videodecoder:1`.
 
-### Logs reference
+### Logs format
 
 This section details how logs can be parsed, each entry being stored as a JSON object.
 
 First of all, each log has the following properties:
-- `level`: useful to separate errors (``level: "error"`) from others (`"info"`, `"debug"`, `"trace"`)
-- `time`: a timestamp (`"20060102-150405.000"`)
+- `level`: useful to separate errors (`level: "error"`) from other types (`"info"`, `"debug"`, `"trace"`)
+- `time`: the log timestamp (`"20060102-150405.000"`)
 - `context`: used to categorize logs (see more below)
-- `message`: a unique string that describes the event that generated the log (`"room_end"` for instance)
+- `message`: a unique string that describes the event that generated the log (`"room_end"` for instance, see [Log message reference](#logs-message-reference))
 
 Here are some optional but frequent properties:
 - `value`: depending on the log, a `value` may convey additional data
 - `unit`: sometimes needed to illustrate `value`'s meaning 
-- `error`: error logs (when `level: "error"`) often have an `error` property (the associated Go error's string) giving more details
-- `source: "client"`: only if log has been generated as is by the client (ducksoup.js). Please note that when a log has a `message` property that starts with `client_`, it means the log is related to client/remote peer. But this log may be generated either client or server side, and the `source` property helps distinguish between the two.
+- `error`: Go error's string explaining `level: "error"` logs
+- `source: "client"`: present only if log has been generated as is by the client (ducksoup.js). Please note that when a log has a `message` property that starts with `client_`, it means the log is related to the client/remote peer. But this log may be generated either client or server-side. In that case, the `source` property helps distinguish between the two.
 
 Now let's list all the possible `context`s:
 
@@ -285,7 +285,9 @@ Logs whose context is either `"peer"`, `"room"`, `"track"`, `"pipeline"` or `"si
 - `"sinceCreation"`: elapsed time since room creation
 - `"sinceStart"`: elapsed time since room start
 
-Finally, here is a reference of all log messages, grouped by context:
+### Logs message reference
+
+Here is a reference of all log messages, grouped by context:
 
 `peer` context:
 
