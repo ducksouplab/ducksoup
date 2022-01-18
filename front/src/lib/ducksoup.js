@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.8");
+    console.log("[DuckSoup] v1.5.9");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -229,6 +229,22 @@ class DuckSoup {
     stop(code = 1000) {
         this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
         this._stopRTC();
+    }
+
+
+    // called by debug/client app to do tests
+    async limit(maxKbps) {
+        for (const sender of this._pc.getSenders()) {
+            // set bitrate
+            const params = sender.getParameters();
+            if (!params.encodings) params.encodings = [{}];// needed for FF
+            for (const encoding of params.encodings) {
+                if (sender.track.kind === "video") {
+                    encoding.maxBitrate = maxKbps * 1000;
+                }
+            }
+            await sender.setParameters(params);
+        }
     }
 
     // Inner methods

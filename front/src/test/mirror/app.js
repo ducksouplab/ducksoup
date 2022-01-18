@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.8")
+    console.log("[DuckSoup test] v1.5.9")
 });
 
 let state;
@@ -127,6 +127,7 @@ const start = async ({
         callback: ducksoupListener(options),
         stats: true,
     }, peerOptions);
+    window.state = state;
 };
 
 document.addEventListener("DOMContentLoaded", async () => {

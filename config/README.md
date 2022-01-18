@@ -14,7 +14,7 @@ A few notes about GStreamer settings:
 
 - when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more CPU resources. It's the currently chosen solution (note that decoding/reencoding is only needed for video, not for audio)
 
-- Another solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264) and `webmmux` (for vp8).
+- Another solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264)
 
 - queue params: `max-size-buffers=0 max-size-bytes=0` disable max-size on buffers and bytes. When teeing, the branch that does recording has an additionnal `max-size-time=5000000000` property. A queue blocks whenever one of the 3 dimensions (buffers, bytes, time) max is reached (unless `leaky`)
 

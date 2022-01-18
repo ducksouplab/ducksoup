@@ -10,7 +10,7 @@ commonVideoRawCaps: >-
     video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 commonVideoRawCapsLight: >-
     videoconvert ! 
-    video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg
+    video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 opus:
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
