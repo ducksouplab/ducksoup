@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -12,21 +13,34 @@ const (
 	timeFormat = "20060102-150405.000"
 )
 
+// used by file.go
+var root string
+
 func init() {
+	// CAUTION: other init functions in "helpers" package may be called before this
+	if os.Getenv("DS_ENV") == "DEV" {
+		if err := godotenv.Load(".env"); err != nil {
+			log.Fatal().Err(err)
+		}
+	}
+
+	// used by file.go
+	root = GetenvOr("DS_TEST_ROOT", ".") + "/"
+
 	// zerolog defaults
 	zerolog.TimeFieldFormat = timeFormat
-	if os.Getenv("DS_ENV") == "DEV" {
+	if Getenv("DS_ENV") == "DEV" {
 		log.Logger = log.With().Caller().Logger()
 	}
 
 	// manage multi log output
 	var writers []io.Writer
 	// stdout writer
-	if os.Getenv("DS_ENV") == "DEV" || os.Getenv("DS_LOG_STDOUT") == "true" {
+	if Getenv("DS_ENV") == "DEV" || Getenv("DS_LOG_STDOUT") == "true" {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
 	}
 	// file writer
-	logFile := os.Getenv("DS_LOG_FILE")
+	logFile := Getenv("DS_LOG_FILE")
 	if logFile != "" {
 		fileWriter, fileErr := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if fileErr != nil {
@@ -43,8 +57,8 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	level := os.Getenv("DS_LOG_LEVEL")
-	zeroLevel := convertLevel(os.Getenv("DS_LOG_LEVEL"))
+	level := Getenv("DS_LOG_LEVEL")
+	zeroLevel := convertLevel(Getenv("DS_LOG_LEVEL"))
 	zerolog.SetGlobalLevel(zeroLevel)
 	log.Info().Str("context", "init").Str("level", level).Msg("logger_configured")
 }

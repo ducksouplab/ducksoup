@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/creamlab/ducksoup/front"
 	"github.com/creamlab/ducksoup/gst"
@@ -17,7 +16,7 @@ var (
 
 func init() {
 
-	if os.Getenv("DS_ENV") == "BUILD_FRONT" {
+	if helpers.Getenv("DS_ENV") == "BUILD_FRONT" {
 		cmdBuildMode = true
 	}
 

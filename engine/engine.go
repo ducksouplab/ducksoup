@@ -4,12 +4,12 @@ package engine
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/creamlab/ducksoup/helpers"
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/creamlab/ducksoup/store"
 	"github.com/pion/ice/v2"
@@ -277,7 +277,7 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 
 	i := &interceptor.Registry{}
 
-	if os.Getenv("DS_LOG_LEVEL") == "4" {
+	if helpers.Getenv("DS_LOG_LEVEL") == "4" {
 		// logReceived, _ := packetdump.NewReceiverInterceptor(
 		// 	packetdump.RTCPWriter(zerolog.Nop()),
 		// 	packetdump.RTPFormatter(formatReceivedRTP),

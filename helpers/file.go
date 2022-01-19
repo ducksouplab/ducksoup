@@ -8,12 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var root string
-
-func init() {
-	root = Getenv("DS_TEST_ROOT", ".") + "/"
-}
-
 // Open file relatively to project
 func Open(name string) (*os.File, error) {
 	path := fmt.Sprintf(root+"%s", name)

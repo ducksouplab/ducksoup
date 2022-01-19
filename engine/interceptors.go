@@ -1,8 +1,7 @@
 package engine
 
 import (
-	"os"
-
+	"github.com/creamlab/ducksoup/helpers"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/interceptor/pkg/report"
@@ -21,7 +20,7 @@ func registerInterceptors(mediaEngine *webrtc.MediaEngine, interceptorRegistry *
 		return err
 	}
 
-	if os.Getenv("DS_GEN_TWCC") == "true" {
+	if helpers.Getenv("DS_GEN_TWCC") == "true" {
 		if err := configureTWCCHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
 			return err
 		}

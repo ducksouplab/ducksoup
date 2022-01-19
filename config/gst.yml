@@ -31,7 +31,7 @@ vp8:
   encode: >-
     vp8enc name={{.Name}} deadline=1 cpu-used=4 end-usage=1
     undershoot=95 keyframe-max-dist=999999 max-quantizer=56
-    min-force-key-unit-interval=1000000000 qos=true
+    qos=true
 x264:
   rtp:
     caps: application/x-rtp,encoding-name=H264
@@ -44,7 +44,7 @@ x264:
     x264enc name={{.Name}} pass=17
     multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
     speed-preset=ultrafast tune=zerolatency 
-    min-force-key-unit-interval=1000000000 qos=true !
+    qos=true !
     video/x-h264, profile=high ! 
     h264parse
 nv264:
@@ -57,6 +57,6 @@ nv264:
   decode: avdec_h264
   encode: >-
     nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 bframes=4 zerolatency=true
-    min-force-key-unit-interval=1000000000 qos=true !
+    qos=true !
     video/x-h264, profile=high !
     h264parse

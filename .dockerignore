@@ -2,6 +2,9 @@
 data
 plugins
 
+# dev only
+.env
+
 # not used
 .devcontainer
 certs

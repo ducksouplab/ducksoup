@@ -1,8 +1,7 @@
 package front
 
 import (
-	"os"
-
+	"github.com/creamlab/ducksoup/helpers"
 	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/zerolog/log"
@@ -14,10 +13,10 @@ var (
 )
 
 func init() {
-	if os.Getenv("DS_ENV") == "DEV" {
+	if helpers.Getenv("DS_ENV") == "DEV" {
 		developmentMode = true
 	}
-	if os.Getenv("DS_ENV") == "BUILD_FRONT" {
+	if helpers.Getenv("DS_ENV") == "BUILD_FRONT" {
 		cmdBuildMode = true
 	}
 }

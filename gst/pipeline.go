@@ -8,12 +8,12 @@ package gst
 import "C"
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
 
+	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	nvidiaEnabled = strings.ToLower(os.Getenv("DS_NVIDIA")) == "true"
+	nvidiaEnabled = strings.ToLower(helpers.Getenv("DS_NVIDIA")) == "true"
 }
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -138,7 +138,7 @@ func (p *Pipeline) BindPLICallback(c func()) {
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
 	genPLI := 1
-	if os.Getenv("DS_GST_DISABLE_PLI") == "true" {
+	if helpers.Getenv("DS_GST_DISABLE_PLI") == "true" {
 		genPLI = 0
 	}
 	C.gstStartPipeline(p.cPipeline, C.int(genPLI))

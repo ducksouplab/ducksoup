@@ -7,11 +7,11 @@ package gst
 import "C"
 import (
 	"errors"
-	"os"
 	"regexp"
 	"strconv"
 	"unsafe"
 
+	"github.com/creamlab/ducksoup/helpers"
 	"github.com/creamlab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
@@ -26,7 +26,7 @@ var (
 
 func init() {
 	enableLogTracking = false
-	if os.Getenv("DS_GST_ENABLE_TRACKING") == "true" {
+	if helpers.Getenv("DS_GST_ENABLE_TRACKING") == "true" {
 		enableLogTracking = true
 	}
 	idRegexp = regexp.MustCompile(`user-id: (.*?),`)

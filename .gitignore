@@ -5,6 +5,9 @@ core
 .vscode
 forks
 
+# conf & secrets
+.env
+
 # logs and recorded data
 data
 log

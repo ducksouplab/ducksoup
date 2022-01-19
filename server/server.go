@@ -39,21 +39,21 @@ var (
 
 func init() {
 	// environment variables use
-	envOrigins := os.Getenv("DS_ORIGINS")
+	envOrigins := helpers.Getenv("DS_ORIGINS")
 	if len(envOrigins) > 0 {
 		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
 	}
-	if os.Getenv("DS_ENV") == "DEV" {
-		allowedOrigins = append(allowedOrigins, "https://localhost:8080", "https://localhost:8000", "http://localhost:8000")
+	if helpers.Getenv("DS_ENV") == "DEV" {
+		allowedOrigins = append(allowedOrigins, "https://localhost:8000", "http://localhost:8000")
 	}
 
 	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
-	webPrefix = helpers.Getenv("DS_WEB_PREFIX", "")
+	webPrefix = helpers.GetenvOr("DS_WEB_PREFIX", "")
 	// basic Auth
-	testLogin = helpers.Getenv("DS_TEST_LOGIN", "ducksoup")
-	testPassword = helpers.Getenv("DS_TEST_PASSWORD", "ducksoup")
-	statsLogin = helpers.Getenv("DS_STATS_LOGIN", "ducksoup")
-	statsPassword = helpers.Getenv("DS_STATS_PASSWORD", "ducksoup")
+	testLogin = helpers.GetenvOr("DS_TEST_LOGIN", "ducksoup")
+	testPassword = helpers.GetenvOr("DS_TEST_PASSWORD", "ducksoup")
+	statsLogin = helpers.GetenvOr("DS_STATS_LOGIN", "ducksoup")
+	statsPassword = helpers.GetenvOr("DS_STATS_PASSWORD", "ducksoup")
 
 	// log
 	log.Info().Str("context", "init").Str("origins", fmt.Sprintf("%v", allowedOrigins)).Msg("websocket_origins_allowed")
