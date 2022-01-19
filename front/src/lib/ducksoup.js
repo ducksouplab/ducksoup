@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.9");
+    console.log("[DuckSoup] v1.5.10");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -489,6 +489,12 @@ class DuckSoup {
             }
         }
 
+        setTimeout(() => {
+            if (ws.readyState === 0) {
+                console.error("[DuckSoup] ws can't connect (after 3 seconds)");  
+            }
+        }, 3000);
+
         // Getting peerconnection stats is needed either for stats or debug option
         if (this._stats || this._logLevel >= 1) {
             this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
@@ -520,7 +526,8 @@ class DuckSoup {
                     }
                     // FPS
                     let newFramesPerSecond = report.framesPerSecond;
-                    if (newFramesPerSecond !== this._info.framesPerSecond) {
+                    if ((typeof newFramesPerSecond !== "undefined") && (newFramesPerSecond !== this._info.framesPerSecond)) {
+                        console.log(newFramesPerSecond)
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_video_fps_updated",
@@ -531,7 +538,7 @@ class DuckSoup {
                     }
                     // PLI
                     let newPliCount = report.pliCount;
-                    if (newPliCount !== this._info.pliCount) {
+                    if ((typeof newPliCount !== "undefined") && (newPliCount !== this._info.pliCount)) {
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_pli_received_count_updated",
@@ -542,7 +549,7 @@ class DuckSoup {
                     }
                     // FIR
                     let newFirCount = report.firCount;
-                    if (newFirCount !== this._info.firCount) {
+                    if ((typeof newFirCount !== "undefined") && (newFirCount !== this._info.firCount)) {
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_fir_received_count_updated",
@@ -553,7 +560,7 @@ class DuckSoup {
                     }
                     // KF
                     let newKeyFramesEncoded = report.keyFramesEncoded;
-                    if (newKeyFramesEncoded !== this._info.keyFramesEncoded) {
+                    if ((typeof newKeyFramesEncoded !== "undefined") && (newKeyFramesEncoded !== this._info.keyFramesEncoded)) {
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_keyframe_encoded_count_updated",
@@ -566,7 +573,7 @@ class DuckSoup {
                 if (report.type === "inbound-rtp" && report.kind === "video") {
                     // KF
                     let newKeyFramesDecoded = report.keyFramesDecoded;
-                    if (newKeyFramesDecoded !== this._info.keyFramesDecoded) {
+                    if ((typeof newKeyFramesDecoded !== "undefined") && (newKeyFramesDecoded !== this._info.keyFramesDecoded)) {
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_keyframe_decoded_count_updated",
