@@ -13,15 +13,21 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const delayBetweenPLIs = 300 * time.Millisecond
+// too many PLI may be requested when room starts
+// (new peer joins, encoder detecting poor quality... to be investigated)
+// that's why we throttle PLI request with initialPLIMinInterval and
+// later with mainPLIMinInterval
+const initialPLIMinInterval = 2000 * time.Millisecond
+const mainPLIMinInterval = 300 * time.Millisecond
 
 // New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
-	userId  string
-	r       *room
-	lastPLI time.Time
+	userId         string
+	r              *room
+	lastPLI        time.Time
+	pliMinInterval time.Duration
 }
 
 // API
@@ -53,9 +59,15 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 	}
 
 	// initial lastPLI far enough in the past
-	lastPLI := time.Now().Add(-2 * delayBetweenPLIs)
+	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
 
-	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI}
+	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval}
+
+	// after an initial delay, change the minimum PLI interval
+	go func() {
+		<-time.After(4000 * time.Millisecond)
+		pc.pliMinInterval = mainPLIMinInterval
+	}()
 
 	// accept one audio
 	_, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
@@ -204,7 +216,7 @@ func (pc *peerConn) throttledPLIRequest(waitFor int, cause string) {
 		track := receiver.Track()
 		if track != nil && track.Kind().String() == "video" {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
-			if durationSinceLastPLI < delayBetweenPLIs {
+			if durationSinceLastPLI < pc.pliMinInterval {
 				// throttle: don't send too many PLIs
 				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("pli_skipped")
 			} else {
