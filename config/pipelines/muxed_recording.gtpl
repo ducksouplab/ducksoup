@@ -63,7 +63,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.RawCapsLight}} !
+    {{.Video.RawCapsWith .Width .Height .FrameRate}} !
 
     tee name=tee_video_in ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -92,7 +92,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.RawCapsLight}} !
+    {{.Video.RawCapsWith .Width .Height .FrameRate}} !
     {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
     {{/* video stream has to be written to two files if there is an aufio fx*/}}
     {{if .Audio.Fx }}
