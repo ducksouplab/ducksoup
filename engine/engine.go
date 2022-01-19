@@ -218,7 +218,8 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 						lostMatch := lostRegexp.FindStringSubmatch(msg)
 
 						if len(countMatch) > 0 && len(lostMatch) > 0 {
-							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil {
+							// don't log empty counts
+							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil && count != 0 {
 								if lost, err := strconv.ParseUint(lostMatch[1], 10, 64); err == nil {
 									log.Logger.Trace().
 										Str("context", "track").
