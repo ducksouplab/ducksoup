@@ -61,4 +61,6 @@ ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
 ENV GST_DEBUG=2
 
-CMD ./ducksoup
+# write date and then append err to file if CONTAINER_STDERR_FILE exists
+SHELL ["/bin/bash", "-c"]
+CMD if [[ -z "${CONTAINER_STDERR_FILE}" ]]; then ./ducksoup; else (date 1>&2; ./ducksoup) 2>>${CONTAINER_STDERR_FILE}; fi
