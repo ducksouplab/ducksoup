@@ -236,15 +236,16 @@ DuckSoup SFU settings are defined in `config/sfu.yml`:
 
 If you have a `.env` file at the root of the project (you may copy/paste/edit the provided `env.example`) and **if `DS_ENV=DEV`**, then all the variables defined in `.env` will be accessible to DuckSoup.
 
-Indeed, you may prefer editing this `.env` file (over defining all the environment variables in the command line) and launching:
+Indeed, you may prefer editing this `.env` file (over defining all the environment variables in the command line) and then run:
 
 ```
-go build && DS_ENV=DEV ./ducksoup
+go build && DS_ENV=DEV GST_DEBUG=2,videodecoder:1 ./ducksoup
 ```
 
 A few important remarks:
 
-- this feature is only enabled for `DS_ENV=DEV` (meaning `DS_ENV` is defined before/independently from `.env`)
+- this feature is only enabled when `DS_ENV=DEV` (meaning `DS_ENV` is defined before/independently from `.env`)
+- it only works for DuckSoup (not for GStreamer, that's why `GST_DEBUG` is still set in the example above)
 - `.env` is loaded by `helpers/init.go`, that's why the `helpers` package is imported by other packages that use environment variable
 - `.env` is not bundled in the Docker images documented below and is only meant as a development feature
 
