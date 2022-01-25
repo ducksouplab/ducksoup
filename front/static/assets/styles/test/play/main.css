@@ -61,15 +61,32 @@
     align-items: center;
 }
 
-.controls .play {
+.media-container .controls div.play {
     background-color: forestgreen;
     color: white;
 }
 
-.controls .stop {
+.media-container .controls div.stop {
     background-color: #888;
     color: white;
 }
+
+.media-container .controls div.record {
+    margin: 4px 12px 0 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 20%;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    color:red;
+    font-size: 1.3em;
+}
+
+.media-container .controls .input-group {
+    width: 80px;
+    margin-right: 12px;
+}
+
 
 .controls .stop span {
     margin-top: 1px;

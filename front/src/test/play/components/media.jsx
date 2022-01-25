@@ -11,7 +11,7 @@ const bindStream = (el, stream) => {
 }
 
 export default () => {
-    const { dispatch, state: { enabledFilters, started } } = useContext(Context);
+    const { dispatch, state: { enabledFilters, started, record, duration } } = useContext(Context);
     const localVideo = useRef(null);
     const remoteVideo = useRef(null);
     const remoteAudio = useRef(null);
@@ -55,13 +55,13 @@ export default () => {
             signalingUrl: getSignalingUrl(),
             debug: true,
             namespace: "play",
-            recordingMode: "none",
+            duration: duration,
+            recordingMode: record ? "muxed" : "none",
             size: 1,
             roomId: randomId(),
             userId: randomId(),
             gpu: true,
             videoFormat: "H264",
-            duration: 60,
             audioFx,
             videoFx
         });
@@ -71,6 +71,14 @@ export default () => {
 
     const handleStop = async () => {
         dispatch({ type: "stop" });
+    }
+
+    const handleToggleRecord = async () => {
+        dispatch({ type: "toggleRecord" });
+    }
+
+    const handleDuration = async (e) => {
+        dispatch({ type: "setDuration", payload: parseInt(e.target.value, 10) });
     }
 
     return (
@@ -87,7 +95,20 @@ export default () => {
                     { started ? (
                         <div className="stop" onClick={handleStop}><span></span></div>
                     ) : (
-                        <div className="play" onClick={handleStart}><span>►</span></div>
+                        <>
+                            <div className="record" onClick={handleToggleRecord}>
+                                { record ? (
+                                    <span>●</span>
+                                    ) : (
+                                    <span>◌</span>
+                                )}
+                            </div>    
+                            <div className="input-group input-group-sm">
+                                <input type="text" className="form-control" value={duration} onChange={handleDuration} />
+                                <span className="input-group-text">sec</span>
+                            </div>
+                            <div className="play" onClick={handleStart}><span>►</span></div>
+                        </>
                     )}
                 </div>
             </div>

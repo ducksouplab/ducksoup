@@ -3,11 +3,14 @@ import { randomId } from './helpers';
 
 const Context = createContext();
 
-const INTERPOLATION_DURATION = 60;
+const DEFAULT_DURATION = 60; // seconds
+const INTERPOLATION_DURATION = 60; // ms
 
 const DEFAULT_STATE = {
   ducksoup: undefined,
   started: false,
+  record: false,
+  duration: DEFAULT_DURATION,
   flatFilters: undefined,
   enabledFilters: [],
   groupedAudioFilters: undefined,
@@ -81,6 +84,18 @@ export const reducer = (state, action) => {
     }
     case "start":
       return { ...state, started: true };
+    case "toggleRecord":
+      return { ...state, record: !state.record };
+    case "setDuration":
+      let newDuration = action.payload;
+      if(isNaN(newDuration)) {
+        newDuration = DEFAULT_DURATION;
+      } else if (newDuration < 1) {
+        newDuration = 1;
+      } else if (newDuration > 600) {
+        newDuration = 600;
+      }
+      return { ...state, duration: newDuration };
     case "stop":
       if (state.ducksoup) {
         state.ducksoup.stop();
