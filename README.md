@@ -49,7 +49,7 @@ Where:
     - `"track"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a new track sent by the server is available. This event is used to render the track to the DOM, It won't be triggered if you defined `mountEl`
     - `"start"` (no payload) when videoconferencing starts
     - `"ending"` (no payload) when videoconferencing is soon ending
-    - `"files"` with a list of recording files for this peer. This event is emitted when recording is over, meaning `"closed"` will be received soon after.
+    - `"files"` with a list of recording files for this peer. This event is emitted when recording is over and may be treated as an `"end"` event.
     - `"closed"` (no payload) when websocket is closed
     - `"error-disconnection"` (no payload) when websocket communication has abnormally stopped
     - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect

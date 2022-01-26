@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.10");
+    console.log("[DuckSoup] v1.5.11");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -527,7 +527,6 @@ class DuckSoup {
                     // FPS
                     let newFramesPerSecond = report.framesPerSecond;
                     if ((typeof newFramesPerSecond !== "undefined") && (newFramesPerSecond !== this._info.framesPerSecond)) {
-                        console.log(newFramesPerSecond)
                         this._ws.send(
                             JSON.stringify({
                                 kind: "client_video_fps_updated",
