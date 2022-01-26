@@ -297,8 +297,6 @@ const ducksoupListener = (options) => (message) => {
         }
     } else if (kind === "error-duplicate") {
         replaceMessage("Connection denied (already connected)");
-    } else if (kind === "error-disconnection") {
-        appendMessage("Error: disconnected");
     } else if (kind === "error") {
         replaceMessage("Error");
     } else if (kind === "stats") {

@@ -51,7 +51,6 @@ Where:
     - `"ending"` (no payload) when videoconferencing is soon ending
     - `"files"` with a list of recording files for this peer. This event is emitted when recording is over and may be treated as an `"end"` event.
     - `"closed"` (no payload) when websocket is closed
-    - `"error-disconnection"` (no payload) when websocket communication has abnormally stopped
     - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect
     - `"error-duplicate"` (no payload) when a user with same `userId` (see `peerOptions` below) is already connected
     - `"error-full"` (no payload) when the videoconference room is full
