@@ -79,17 +79,6 @@ func goWriteVideo(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int
 	writeNewSample("video", cId, buffer, bufferLen)
 }
 
-//export goPLIRequest
-func goPLIRequest(cId *C.char) {
-	id := C.GoString(cId)
-	p, ok := pipelineStoreSingleton.find(id)
-
-	if ok {
-		p.logger.Info().Msg("gstreamer_pli_requested")
-		p.pliCallback()
-	}
-}
-
 //export goPipelineLog
 func goPipelineLog(cId *C.char, msg *C.char, isError C.int) {
 	id := C.GoString(cId)

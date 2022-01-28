@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.11");
+    console.log("[DuckSoup] v1.5.12");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -158,8 +158,8 @@ class DuckSoup {
     // API
 
     constructor(embedOptions, peerOptions) {
-        console.log("embedOptions: ", embedOptions);
-        console.log("peerOptions: ", peerOptions);
+        console.log("[DuckSoup] embedOptions: ", embedOptions);
+        console.log("[DuckSoup] peerOptions: ", peerOptions);
 
         const err = optionsFirstError(embedOptions, peerOptions);
         if (err) throw new Error(err);
@@ -358,8 +358,8 @@ class DuckSoup {
                 // add listeners on first sender (likely the same info to be shared for audio and video)
                 const firstSender = pc.getSenders()[0];
                 if (firstSender) {
-                    const iceTransport = firstSender.transport.iceTransport;
-                    if (this._logLevel >= 2) {
+                    const { iceTransport } = firstSender.transport;
+                    if (iceTransport && this._logLevel >= 2) {
                         // initial pair
                         this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
                         // change
@@ -402,6 +402,7 @@ class DuckSoup {
             };
 
             pc.ontrack = (event) => {
+                console.log(`[DuckSoup] on track (while connection state is ${pc.connectionState})`)
                 if (this._mountEl) {
                     let el = document.createElement(event.track.kind);
                     el.id = event.track.id;
@@ -567,7 +568,7 @@ class DuckSoup {
                             })
                         );
                         this._info.keyFramesEncoded = newKeyFramesEncoded;
-                        console.log("keyFramesEncoded", newKeyFramesEncoded);
+                        console.log("[DuckSoup] encoded KFs", newKeyFramesEncoded);
                     }
                 }
                 if (report.type === "inbound-rtp" && report.kind === "video") {
@@ -581,7 +582,7 @@ class DuckSoup {
                             })
                         );
                         this._info.keyFramesDecoded = newKeyFramesDecoded;
-                        console.log("keyFramesDecoded", newKeyFramesDecoded);
+                        console.log("[DuckSoup] decoded KFs", newKeyFramesDecoded);
                     }
                 }
             });

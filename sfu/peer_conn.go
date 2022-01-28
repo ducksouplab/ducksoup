@@ -17,8 +17,8 @@ import (
 // (new peer joins, encoder detecting poor quality... to be investigated)
 // that's why we throttle PLI request with initialPLIMinInterval and
 // later with mainPLIMinInterval
-const initialPLIMinInterval = 2000 * time.Millisecond
-const mainPLIMinInterval = 300 * time.Millisecond
+const initialPLIMinInterval = 3000 * time.Millisecond
+const mainPLIMinInterval = 1000 * time.Millisecond
 
 // New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {

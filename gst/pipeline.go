@@ -38,7 +38,6 @@ type Pipeline struct {
 	audioOutput types.TrackWriter
 	videoOutput types.TrackWriter
 	filePrefix  string
-	pliCallback func()
 	// stoppedCount=2 if audio and video have been stopped
 	stoppedCount int
 	// log
@@ -131,17 +130,9 @@ func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (files []string) 
 	return
 }
 
-func (p *Pipeline) BindPLICallback(c func()) {
-	p.pliCallback = c
-}
-
 // start the GStreamer pipeline
 func (p *Pipeline) start() {
-	genPLI := 1
-	if helpers.Getenv("DS_GST_DISABLE_PLI") == "true" {
-		genPLI = 0
-	}
-	C.gstStartPipeline(p.cPipeline, C.int(genPLI))
+	C.gstStartPipeline(p.cPipeline)
 	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
 	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")
 }

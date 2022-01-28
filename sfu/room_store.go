@@ -59,9 +59,9 @@ func (rs *roomStore) join(join types.JoinPayload) (*room, error) {
 			return r, nil
 		}
 	} else {
-		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Str("origin", join.Origin).Msg("room_created")
-		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		newRoom := newRoom(qualifiedId, join)
+		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Str("qualifiedId", qualifiedId).Str("origin", join.Origin).Msg("room_created")
+		log.Info().Str("context", "room").Str("namespace", join.Namespace).Str("room", join.RoomId).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		roomStoreSingleton.index[qualifiedId] = newRoom
 		return newRoom, nil
 	}

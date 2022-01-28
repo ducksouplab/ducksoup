@@ -171,15 +171,10 @@ func (s *mixerSlice) stop() {
 }
 
 func (s *mixerSlice) loop() {
-	pipeline, room, pc, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.pc, s.fromPs.userId
+	pipeline, room, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.userId
 
 	// returns a callback to push buffer to
 	outputFiles := pipeline.BindTrack(s.kind, s)
-	if s.kind == "video" {
-		pipeline.BindPLICallback(func() {
-			pc.throttledPLIRequest(200, "from pipeline")
-		})
-	}
 	if outputFiles != nil {
 		room.addFiles(userId, outputFiles)
 	}

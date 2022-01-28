@@ -218,6 +218,6 @@ func (m *mixer) dispatchRoomPLI(cause string) {
 	defer m.RUnlock()
 
 	for _, ps := range m.r.peerServerIndex {
-		ps.pc.throttledPLIRequest(1000, cause)
+		ps.pc.throttledPLIRequest(500, cause)
 	}
 }
