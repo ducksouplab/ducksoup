@@ -264,7 +264,7 @@ const ducksoupListener = (options) => (message) => {
             el.style.height = state.height + "px";
             // append
             container.appendChild(el);
-            container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-bottom show-when-ending'><div>Conversation soon ending</div></div>");
+            container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-bottom show-when-ending'><div>Conversation ending soon</div></div>");
             if (state.isMirror) {
                 container.insertAdjacentHTML("beforeend", "<div class='overlay overlay-top show-when-running'><div>Through server</div></div>");
             } else {

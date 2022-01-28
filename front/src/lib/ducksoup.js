@@ -567,6 +567,7 @@ class DuckSoup {
                             })
                         );
                         this._info.keyFramesEncoded = newKeyFramesEncoded;
+                        console.log("keyFramesEncoded", newKeyFramesEncoded);
                     }
                 }
                 if (report.type === "inbound-rtp" && report.kind === "video") {
@@ -580,6 +581,7 @@ class DuckSoup {
                             })
                         );
                         this._info.keyFramesDecoded = newKeyFramesDecoded;
+                        console.log("keyFramesDecoded", newKeyFramesDecoded);
                     }
                 }
             });
