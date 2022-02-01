@@ -113,6 +113,14 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 		interpolator.Stop()
 	}
 
+	ps.logInfo().
+		Str("context", "track").
+		Str("name", payload.Name).
+		Str("property", payload.Property).
+		Float32("value", payload.Value).
+		Int("duration", payload.Duration).
+		Msg("client_control_fx")
+
 	duration := payload.Duration
 	if duration == 0 {
 		ps.pipeline.SetFxProp(payload.Name, payload.Property, payload.Value)
@@ -221,6 +229,13 @@ func (ps *peerServer) loop() {
 			} else {
 				go func() {
 					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
+					ps.logInfo().
+						Str("context", "track").
+						Str("name", payload.Name).
+						Str("property", payload.Property).
+						Str("value", payload.Value).
+						Int("duration", payload.Duration).
+						Msg("client_control_fx")
 				}()
 			}
 		case "client_video_resolution_updated":
@@ -235,6 +250,12 @@ func (ps *peerServer) loop() {
 				} else {
 					ps.logDebug().Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
 				}
+			} else if strings.HasPrefix(m.Kind, "ext_") {
+				ps.logDebug().
+					Str("context", "ext").
+					Str("source", "client").
+					Str("payload", m.Payload).
+					Msg(m.Kind)
 			}
 		}
 	}

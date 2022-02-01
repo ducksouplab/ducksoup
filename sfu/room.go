@@ -19,7 +19,7 @@ const (
 	TracksPerPeer   = 2
 	DefaultDuration = 30
 	MaxDuration     = 1200
-	Ending          = 10
+	Ending          = 15
 )
 
 // room holds all the resources of a given experiment, accepting an exact number of *size* attendees

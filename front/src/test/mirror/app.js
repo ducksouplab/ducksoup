@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.9")
+    console.log("[DuckSoup test] v1.5.11")
 });
 
 let state;
@@ -287,6 +287,7 @@ const ducksoupListener = (options) => (message) => {
         };
     } else if (kind === "ending") {
         show(".show-when-ending");
+        if (state.ducksoup) state.ducksoup.log("room_ending_received");
     } else if (kind === "files") {
         if (payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";

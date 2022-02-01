@@ -17,8 +17,9 @@ import (
 // (new peer joins, encoder detecting poor quality... to be investigated)
 // that's why we throttle PLI request with initialPLIMinInterval and
 // later with mainPLIMinInterval
-const initialPLIMinInterval = 3000 * time.Millisecond
-const mainPLIMinInterval = 1000 * time.Millisecond
+const initialPLIMinInterval = 3 * time.Second
+const mainPLIMinInterval = 1 * time.Second
+const changePLIMinIntervalAfter = 7 * time.Second
 
 // New type created mostly to extend webrtc.PeerConnection with additional methods
 type peerConn struct {
@@ -65,7 +66,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 
 	// after an initial delay, change the minimum PLI interval
 	go func() {
-		<-time.After(4000 * time.Millisecond)
+		<-time.After(changePLIMinIntervalAfter)
 		pc.pliMinInterval = mainPLIMinInterval
 	}()
 

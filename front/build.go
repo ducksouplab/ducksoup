@@ -2,7 +2,6 @@ package front
 
 import (
 	"github.com/creamlab/ducksoup/helpers"
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/zerolog/log"
 )
@@ -46,15 +45,15 @@ func Build() {
 				OnRebuild: func(result api.BuildResult) {
 					if len(result.Errors) > 0 {
 						for _, msg := range result.Errors {
-							log.Error().Str("context", "js-build").Msg(msg.Text)
+							log.Error().Str("context", "js_build").Msg(msg.Text)
 						}
 					} else {
 						if len(result.Warnings) > 0 {
 							for _, msg := range result.Warnings {
-								log.Info().Str("context", "js-build").Msgf("%v", msg.Text)
+								log.Info().Str("context", "js_build").Msgf("%v", msg.Text)
 							}
 						} else {
-							log.Info().Str("context", "js-build")
+							log.Info().Str("context", "js_build").Msg("build_success")
 						}
 					}
 				},
@@ -63,7 +62,7 @@ func Build() {
 		build := api.Build(buildOptions)
 
 		if len(build.Errors) > 0 {
-			log.Fatal().Str("context", "js-build").Msgf("%v", build.Errors[0].Text)
+			log.Fatal().Str("context", "js_build").Msgf("%v", build.Errors[0].Text)
 		}
 	}
 }

@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.12");
+    console.log("[DuckSoup] v1.5.13");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -206,29 +206,22 @@ class DuckSoup {
 
     controlFx(name, property, value, duration) {
         if (!this._checkControl(name, property, value, duration)) return;
-        this._ws.send(
-            JSON.stringify({
-                kind: "client_control",
-                payload: JSON.stringify({ name, property, value, ...(duration && { duration }) }),
-            })
-        );
+        this._send("client_control", { name, property, value, ...(duration && { duration }) });
     }
 
     polyControlFx(name, property, kind, value) {
         if (!this._checkControl(name, property, value)) return;
         const strValue = value.toString();
-        this._ws.send(
-            JSON.stringify({
-                kind: "client_polycontrol",
-                payload: JSON.stringify({ name, property, kind, value: strValue }),
-            })
-        );
+        this._send("client_polycontrol", { name, property, kind, value: strValue });
     }
 
-    // called by client app
     stop(code = 1000) {
         this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
         this._stopRTC();
+    }
+
+    log(kind, payload) {
+        this._send(`ext_${kind}`, payload);
     }
 
 
@@ -246,8 +239,19 @@ class DuckSoup {
             await sender.setParameters(params);
         }
     }
+    
 
     // Inner methods
+
+    _send(kind, payload) {
+        const message = { kind };
+        // conditionnally add and possiblty format payload
+        if (!!payload) {
+            const payloadStr = typeof payload === "string" ? payload : JSON.stringify(payload);
+            message.payload = payloadStr;
+        }
+        this._ws.send(JSON.stringify(message));
+    }
 
     async _initialize() {
         try {
@@ -285,12 +289,7 @@ class DuckSoup {
     }
 
     _debugCandidatePair(pair) {
-        this._ws.send(
-            JSON.stringify({
-                kind: "client_selected_candidate_pair",
-                payload: `client=${pair.local.candidate} server=${pair.remote.candidate}`,
-            })
-        );
+        this._send("client_selected_candidate_pair", `client=${pair.local.candidate} server=${pair.remote.candidate}`);
     }
 
     async _startRTC() {
@@ -516,57 +515,32 @@ class DuckSoup {
                         newEncodedHeight &&
                         (newEncodedWidth !== this._info.encodedWith || newEncodedHeight !== this._info.encodedHeight)
                     ) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_video_resolution_updated",
-                                payload: `${newEncodedWidth}x${newEncodedHeight}`,
-                            })
-                        );
+                        this._send("client_video_resolution_updated", `${newEncodedWidth}x${newEncodedHeight}`);
                         this._info.encodedWith = newEncodedWidth;
                         this._info.encodedHeight = newEncodedHeight;
                     }
                     // FPS
                     let newFramesPerSecond = report.framesPerSecond;
                     if ((typeof newFramesPerSecond !== "undefined") && (newFramesPerSecond !== this._info.framesPerSecond)) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_video_fps_updated",
-                                payload: `${newFramesPerSecond}`,
-                            })
-                        );
+                        this._send("client_video_fps_updated", `${newFramesPerSecond}`);
                         this._info.framesPerSecond = newFramesPerSecond;
                     }
                     // PLI
                     let newPliCount = report.pliCount;
                     if ((typeof newPliCount !== "undefined") && (newPliCount !== this._info.pliCount)) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_pli_received_count_updated",
-                                payload: `${newPliCount}`,
-                            })
-                        );
+                        this._send("client_pli_received_count_updated", `${newPliCount}`);
                         this._info.pliCount = newPliCount;
                     }
                     // FIR
                     let newFirCount = report.firCount;
                     if ((typeof newFirCount !== "undefined") && (newFirCount !== this._info.firCount)) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_fir_received_count_updated",
-                                payload: `${newFirCount}`,
-                            })
-                        );
+                        this._send("client_fir_received_count_updated", `${newFirCount}`);
                         this._info.firCount = newFirCount;
                     }
                     // KF
                     let newKeyFramesEncoded = report.keyFramesEncoded;
                     if ((typeof newKeyFramesEncoded !== "undefined") && (newKeyFramesEncoded !== this._info.keyFramesEncoded)) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_keyframe_encoded_count_updated",
-                                payload: `${newKeyFramesEncoded}`,
-                            })
-                        );
+                        this._send("client_keyframe_encoded_count_updated", `${newKeyFramesEncoded}`);
                         this._info.keyFramesEncoded = newKeyFramesEncoded;
                         console.log("[DuckSoup] encoded KFs", newKeyFramesEncoded);
                     }
@@ -575,12 +549,7 @@ class DuckSoup {
                     // KF
                     let newKeyFramesDecoded = report.keyFramesDecoded;
                     if ((typeof newKeyFramesDecoded !== "undefined") && (newKeyFramesDecoded !== this._info.keyFramesDecoded)) {
-                        this._ws.send(
-                            JSON.stringify({
-                                kind: "client_keyframe_decoded_count_updated",
-                                payload: `${newKeyFramesDecoded}`,
-                            })
-                        );
+                        this._send("client_keyframe_decoded_count_updated", `${newKeyFramesDecoded}`);
                         this._info.keyFramesDecoded = newKeyFramesDecoded;
                         console.log("[DuckSoup] decoded KFs", newKeyFramesDecoded);
                     }
