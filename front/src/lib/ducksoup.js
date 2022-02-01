@@ -542,7 +542,7 @@ class DuckSoup {
                     if ((typeof newKeyFramesEncoded !== "undefined") && (newKeyFramesEncoded !== this._info.keyFramesEncoded)) {
                         this._send("client_keyframe_encoded_count_updated", `${newKeyFramesEncoded}`);
                         this._info.keyFramesEncoded = newKeyFramesEncoded;
-                        console.log("[DuckSoup] encoded KFs", newKeyFramesEncoded);
+                        //console.log("[DuckSoup] encoded KFs", newKeyFramesEncoded);
                     }
                 }
                 if (report.type === "inbound-rtp" && report.kind === "video") {
@@ -551,7 +551,7 @@ class DuckSoup {
                     if ((typeof newKeyFramesDecoded !== "undefined") && (newKeyFramesDecoded !== this._info.keyFramesDecoded)) {
                         this._send("client_keyframe_decoded_count_updated", `${newKeyFramesDecoded}`);
                         this._info.keyFramesDecoded = newKeyFramesDecoded;
-                        console.log("[DuckSoup] decoded KFs", newKeyFramesDecoded);
+                        //console.log("[DuckSoup] decoded KFs", newKeyFramesDecoded);
                     }
                 }
             });
