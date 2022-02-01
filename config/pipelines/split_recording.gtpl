@@ -66,7 +66,6 @@ video_src. !
     queue max-size-buffers=0 max-size-bytes=0 ! 
     videoconvert ! 
     {{.Video.Fx}} ! 
-    videoconvert ! 
     {{.Video.RawCapsLight}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} !
     tee name=tee_video_out ! 

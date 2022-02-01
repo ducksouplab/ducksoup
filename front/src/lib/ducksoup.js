@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.13");
+    console.log("[DuckSoup] v1.5.14");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -216,7 +216,7 @@ class DuckSoup {
     }
 
     stop(code = 1000) {
-        this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+        if(this._ws) this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
         this._stopRTC();
     }
 
@@ -338,12 +338,7 @@ class DuckSoup {
                 const answer = await pc.createAnswer();
                 answer.sdp = processSDP(answer.sdp);
                 pc.setLocalDescription(answer);
-                ws.send(
-                    JSON.stringify({
-                        kind: "client_answer",
-                        payload: JSON.stringify(answer),
-                    })
-                );
+                this._send("client_answer", answer);
             } else if (message.kind === "candidate") {
                 const candidate = looseJSONParse(message.payload);
                 try {
@@ -383,21 +378,11 @@ class DuckSoup {
         };
 
         ws.onopen = () => {
-            ws.send(
-                JSON.stringify({
-                    kind: "join",
-                    payload: JSON.stringify(this._joinPayload),
-                })
-            );
+            this._send("join", this._joinPayload);
 
             pc.onicecandidate = (e) => {
                 if (!e.candidate) return;
-                ws.send(
-                    JSON.stringify({
-                        kind: "client_candidate",
-                        payload: JSON.stringify(e.candidate),
-                    })
-                );
+                this._send("client_candidate", e.candidate);
             };
 
             pc.ontrack = (event) => {
@@ -434,57 +419,33 @@ class DuckSoup {
             // for server logging
             if (this._logLevel >= 2) {
                 pc.onconnectionstatechange = () => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_connection_state_changed",
-                            payload: pc.connectionState,
-                        })
-                    );
+                    this._send("client_connection_state_changed", pc.connectionState);
+                    // console.log("[DuckSoup] onconnectionstatechange:", pc.connectionState);
                 };
     
-                pc.onsignalingstatechange = (e) => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_signaling_state_changed",
-                            payload: pc.signalingState.toString(),
-                        })
-                    );
+                pc.onsignalingstatechange = () => {
+                    this._send("client_signaling_state_changed", pc.signalingState.toString());
+                    // console.log("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
                 };
     
-                pc.oniceconnectionstatechange = (e) => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_ice_connection_state_changed",
-                            payload: pc.iceConnectionState.toString(),
-                        })
-                    );
+                pc.oniceconnectionstatechange = () => {
+                    this._send("client_ice_connection_state_changed", pc.iceConnectionState.toString());
+                    // console.log("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
                 };
     
-                pc.onicegatheringstatechange = (e) => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_ice_gathering_state_changed",
-                            payload: pc.iceGatheringState.toString(),
-                        })
-                    );
+                pc.onicegatheringstatechange = () => {
+                    this._send("client_ice_gathering_state_changed", pc.iceGatheringState.toString());
+                    // console.log("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
                 };
                 
-                pc.onnegotiationneeded = (e) => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_negotiation_needed",
-                            payload: "",
-                        })
-                    );
+                pc.onnegotiationneeded = () => {
+                    this._send("client_negotiation_needed");
+                    // console.log("[DuckSoup] onnegotiationneeded:");
                 };
     
                 pc.onicecandidateerror = (e) => {
-                    ws.send(
-                        JSON.stringify({
-                            kind: "client_ice_candidate_failed",
-                            payload: `${e.url}#${e.errorCode}: ${e.errorText}`,
-                        })
-                    );
+                    this._send("client_ice_candidate_failed", `${e.url}#${e.errorCode}: ${e.errorText}`);
+                    // console.log("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
                 };
             }
         }

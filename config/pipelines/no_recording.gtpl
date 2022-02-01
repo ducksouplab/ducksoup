@@ -30,7 +30,6 @@ video_src. !
     {{.Video.RawCapsWith .Width .Height .FrameRate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
-    videoconvert ! 
     {{.Video.RawCapsLight}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
     {{.Video.Rtp.Pay}} ! 
