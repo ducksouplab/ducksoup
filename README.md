@@ -330,7 +330,7 @@ Here is a reference of all log messages, grouped by context:
 
 - `message: "client_audio_track_added"`: remote/incoming audio track added to server peer connection (additional properties: `track`'s ID, `ssrc`, `mime`)
 - `message: "client_video_track_added"`: same for video
-- `message: "client_control_fx"`: JS client has requested an update of a GStreamer fx (identified by `name`, updated with `property` and `value`) 
+- `message: "client_fx_control"`: JS client has requested an update of a GStreamer fx (identified by `name`, updated with `property` and `value`) 
 - `message: "audio_in_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
 - `message: "video_in_bitrate_estimated"`: same for video
 - `message: "audio_target_bitrate_updated"`: new target bitrate of encoder for outgoing track as described by `value` and `unit` propeties

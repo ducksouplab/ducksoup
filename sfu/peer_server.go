@@ -119,7 +119,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 		Str("property", payload.Property).
 		Float32("value", payload.Value).
 		Int("duration", payload.Duration).
-		Msg("client_control_fx")
+		Msg("client_fx_control")
 
 	duration := payload.Duration
 	if duration == 0 {
@@ -235,7 +235,7 @@ func (ps *peerServer) loop() {
 						Str("property", payload.Property).
 						Str("value", payload.Value).
 						Int("duration", payload.Duration).
-						Msg("client_control_fx")
+						Msg("client_fx_control")
 				}()
 			}
 		case "client_video_resolution_updated":
