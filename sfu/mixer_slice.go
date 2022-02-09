@@ -37,6 +37,7 @@ type mixerSlice struct {
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
 	optimalBitrate        uint64
+	maxBitrate            uint64
 	encoderTicker         *time.Ticker
 	// stats
 	statsTicker   *time.Ticker
@@ -74,6 +75,11 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		return nil, errors.New("invalid kind")
 	}
 
+	maxBitrate := config.Video.MaxBitrate
+	if kind == "audio" {
+		maxBitrate = config.Audio.MaxBitrate
+	}
+
 	newId := remoteTrack.ID()
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, newId, ps.streamId)
 
@@ -95,6 +101,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		// controller
 		senderControllerIndex: map[string]*senderController{},
 		encoderTicker:         time.NewTicker(encoderPeriod * time.Millisecond),
+		maxBitrate:            maxBitrate,
 		// stats
 		statsTicker: time.NewTicker(statsPeriod * time.Millisecond),
 		lastStats:   time.Now(),
@@ -208,6 +215,16 @@ func (s *mixerSlice) loop() {
 	}
 }
 
+func (s *mixerSlice) updateOptimalRate(newPotentialRate uint64) {
+	s.Lock()
+	s.optimalBitrate = newPotentialRate
+	s.Unlock()
+	s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
+	// format and log
+	msg := fmt.Sprintf("%s_target_bitrate_updated", s.kind)
+	s.logDebug().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+}
+
 func (s *mixerSlice) runTickers() {
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
@@ -221,14 +238,11 @@ func (s *mixerSlice) runTickers() {
 				if s.pipeline != nil && newPotentialRate > 0 {
 					// skip updating previous value and encoding rate too often
 					diff := helpers.AbsPercentageDiff(s.optimalBitrate, newPotentialRate)
-					if diff > diffThreshold { // works also for diff being Inf+ (when updating from 0, diff is Inf+)
-						s.Lock()
-						s.optimalBitrate = newPotentialRate
-						s.Unlock()
-						s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
-						// format and log
-						msg := fmt.Sprintf("%s_target_bitrate_updated", s.kind)
-						s.logDebug().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
+					diffIsBigEnough := diff > diffThreshold
+					diffToMax := diff > 0 && (newPotentialRate == s.maxBitrate)
+					if diffIsBigEnough || diffToMax {
+						go s.updateOptimalRate(newPotentialRate)
 					}
 				}
 			}

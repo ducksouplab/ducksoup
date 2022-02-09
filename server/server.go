@@ -106,6 +106,10 @@ func basicAuthWith(refLogin, refPassword string) mux.MiddlewareFunc {
 	}
 }
 
+func notFound(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("context", "server").Str("URL", r.URL.String()).Msg("not_found")
+}
+
 // API
 
 func ListenAndServe() {
@@ -113,6 +117,7 @@ func ListenAndServe() {
 	flag.Parse()
 
 	router := mux.NewRouter()
+	router.NotFoundHandler = http.HandlerFunc(notFound)
 	// websocket handler
 	router.HandleFunc(webPrefix+"/ws", websocketHandler)
 
