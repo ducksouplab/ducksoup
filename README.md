@@ -594,7 +594,7 @@ docker exec -it ducksoup_1 bash
 If the goal is to distribute and minimize the image size, consider the multi-stage image built with:
 
 ```
-docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
+docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:gst-1.20.0 .
 ```
 
 Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
@@ -607,14 +607,14 @@ Run by binding to port *8100* (as an example), setting user and environment vari
 
 ```
 docker run --name ducksoup_multi_1 \
-  -p 8100:8000 \
+  -p 8101:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
   -e DS_ORIGINS=http://localhost:8100 \
   -v "$(pwd)"/plugins:/app/plugins:ro \
   -v "$(pwd)"/data:/app/data \
   --rm \
-  ducksoup_multi:latest
+  ducksoup_multi:gst-1.20.0
 ```
 
 To enter the container:
@@ -626,8 +626,8 @@ docker exec -it ducksoup_multi_1 bash
 As an aside, this multi-stage image is published on Docker Hub as `creamlab/ducksoup`, let's tag it and push it:
 
 ```
-docker tag ducksoup_multi creamlab/ducksoup
-docker push creamlab/ducksoup:latest
+docker tag ducksoup_multi:gst-1.20.0 creamlab/ducksoup:gst-1.20.0
+docker push creamlab/ducksoup:gst-1.20.0
 ```
 
 The `docker/docker-compose.yml` example relies on `creamlab/ducksoup`, let's to run it with docker-compose:

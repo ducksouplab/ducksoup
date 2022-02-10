@@ -14,7 +14,7 @@ A few notes about GStreamer settings:
 
 - input media streams are stored with a `-dry.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-wet.extension`
 
-- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more CPU resources. It's the currently chosen solution (note that decoding/reencoding is only needed for video, not for audio)
+- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio)
 
 - Another solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264)
 
