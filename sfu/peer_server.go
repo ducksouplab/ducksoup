@@ -101,6 +101,8 @@ func (ps *peerServer) close(cause string) {
 		ps.r.disconnectUser(ps.userId)
 
 		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
+	} else {
+		ps.r.deleteIfEmpty()
 	}
 }
 

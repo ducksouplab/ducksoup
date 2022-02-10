@@ -31,7 +31,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.14");
+    console.log("[DuckSoup] v1.5.15");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -452,9 +452,9 @@ class DuckSoup {
 
         setTimeout(() => {
             if (ws.readyState === 0) {
-                console.error("[DuckSoup] ws can't connect (after 3 seconds)");  
+                console.error("[DuckSoup] ws can't connect (after 10 seconds)");  
             }
-        }, 3000);
+        }, 10000);
 
         // Getting peerconnection stats is needed either for stats or debug option
         if (this._stats || this._logLevel >= 1) {

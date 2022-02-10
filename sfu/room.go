@@ -32,6 +32,7 @@ type room struct {
 	joinedCountIndex    map[string]int         // per user id
 	filesIndex          map[string][]string    // per user id, contains media file names
 	running             bool
+	deleted             bool
 	createdAt           time.Time
 	startedAt           time.Time
 	inTracksReadyCount  int
@@ -87,6 +88,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 	r := &room{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
+		deleted:             false,
 		connectedIndex:      connectedIndex,
 		joinedCountIndex:    joinedCountIndex,
 		waitForAllCh:        make(chan struct{}),
@@ -233,8 +235,9 @@ func (r *room) deleteIfEmpty() {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.connectedUserCount() == 0 && !r.running { // don't keep this room
+	if r.connectedUserCount() == 0 && !r.running && !r.deleted { // don't keep this room
 		r.delete()
+		r.deleted = true
 	}
 }
 
