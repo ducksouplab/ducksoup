@@ -541,13 +541,13 @@ It is possible to build DuckSoup server from source within your preferred enviro
 One may prefer relying on Docker to provide images with everything needed to build and run DuckSoup. Two options are suggested:
 
 1. start from a debian image and install dependencies using apt: `docker/from-packages/Dockerfile.code` is provided as such an example
-2. use the custom [creamlab/bullseye-gstreamer](https://hub.docker.com/repository/docker/creamlab/bullseye-gstreamer) image published on Docker Hub and whose definition is available [here](https://github.com/creamlab/docker-gstreamer)
+2. use the custom [creamlab/debian-gstreamer](https://hub.docker.com/repository/docker/creamlab/debian-gstreamer) image published on Docker Hub and whose definition is available [here](https://github.com/creamlab/docker-gstreamer)
 
 The first option is good enough to work, and one may prefer it to have a simple installation process but with package manager versions of GStreamer and Go.
 
-The second option relies on the `creamlab/bullseye-gstreamer` base image, managed in a [separate repository](https://github.com/creamlab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
+The second option relies on the `creamlab/debian-gstreamer` base image, managed in a [separate repository](https://github.com/creamlab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
 
-In this project, we use `creamlab/bullseye-gstreamer` as a base for:
+In this project, we use `creamlab/debian-gstreamer` as a base for:
 
 - `docker/Dockerfile.code` defines the image used to run a container within vscode (Go is installed, but DuckSoup remains to be compiled by the developer when needed)
 - `docker/Dockerfile.build.single` defines an image with Go installed and DuckSoup compiled
@@ -652,7 +652,7 @@ Here are a few considerations regarding Docker and NVIDIA:
 
   3. Restart Docker (`systemctl restart docker`)
 
-- set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/bullseye-gstreamer` base image has these already set (so this step should not be necessary)
+- set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/debian-gstreamer` base image has these already set (so this step should not be necessary)
 
 - run the container with GPU enabled:
 

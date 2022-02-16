@@ -1,4 +1,4 @@
-FROM creamlab/bullseye-gstreamer:latest
+FROM creamlab/debian-gstreamer:bullseye-gst1.20.0
 
 RUN apt-get update && apt-get upgrade -y
 

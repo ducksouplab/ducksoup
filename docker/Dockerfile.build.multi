@@ -1,4 +1,4 @@
-FROM creamlab/bullseye-gstreamer:latest AS builder
+FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -49,7 +49,7 @@ RUN yarn
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 # runner stage
-FROM creamlab/bullseye-gstreamer:latest AS final
+FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS final
 
 RUN apt-get update && apt-get upgrade -y
 
