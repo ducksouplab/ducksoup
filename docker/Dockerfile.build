@@ -22,30 +22,51 @@ ENV PATH=$PATH:/usr/local/go/bin
 ENV CGO_LDFLAGS="-L/opt/gstreamer/lib/x86_64-linux-gnu"
 ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
 
-# DuckSoup
-WORKDIR /app
+# build DuckSoup
+WORKDIR /build
+
+# for js /test/play/ app
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN apt-get update && apt-get install -y yarn
 
 # layer with deps
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# layer more frequently updated (DuckSoup source)
-COPY . .
+# DuckSoup go source
+COPY main.go .
+COPY engine ./engine
+COPY front/build.go ./front/build.go
+COPY gst ./gst
+COPY helpers ./helpers
+COPY sequencing ./sequencing
+COPY server ./server
+COPY sfu ./sfu
+COPY stats ./stats
+COPY store ./store
+COPY types ./types
+
+# Compile DuckSoup server
 RUN go build
 
-# for js /test/play/ app
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-RUN apt-get update && apt-get install -y yarn
-RUN yarn
+# check .dockerignore to see generated scripts are excluded first...
+COPY front/static ./front/static
+# DuckSoup JS source
+COPY front/src ./front/src
 
-# Build front assets once
+# Build DuckSoup front
+COPY package.json .
+RUN yarn
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
 ENV GST_DEBUG=2
+
+# add config files last not to refresh too many layers in case only config changes
+COPY config ./config
 
 # write date and then append err to file if CONTAINER_STDERR_FILE exists
 SHELL ["/bin/bash", "-c"]

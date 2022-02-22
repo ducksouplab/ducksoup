@@ -550,35 +550,36 @@ The second option relies on the `creamlab/debian-gstreamer` base image, managed 
 In this project, we use `creamlab/debian-gstreamer` as a base for:
 
 - `docker/Dockerfile.code` defines the image used to run a container within vscode (Go is installed, but DuckSoup remains to be compiled by the developer when needed)
-- `docker/Dockerfile.build.single` defines an image with Go installed and DuckSoup compiled
-- `docker/Dockerfile.build.multi` defines a multi-stage build image: in the first stage Go is installed and DuckSoup is compiled, in the final stage we only keep DuckSoup binary
+- `docker/Dockerfile.build` defines an image with Go installed and DuckSoup compiled
 
-Please note that the official [DuckSoup image](https://hub.docker.com/r/creamlab/ducksoup) is built from `docker/Dockerfile.build.multi`. This image is used in particular by [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup), a project that showcases a possible DuckSoup deployment workflow relying on Docker Compose.
+Please note that the official [DuckSoup image](https://hub.docker.com/r/creamlab/ducksoup) is built from `docker/Dockerfile.build`. This image is used in particular by [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup), a project that showcases a possible DuckSoup deployment workflow relying on Docker Compose.
 
-### DuckSoup "single" Docker image
+### DuckSoup Docker image
 
 Build image:
 
 ```
-docker build -f docker/Dockerfile.build.single -t ducksoup:latest .
+docker build -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
-Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
+Supposing we use a `deploy` user ftoor run the container, prepare `data` and `log` folders, to be mounted as volumes in the container:
 
 ```
-sudo chown -R deploy:deploy data
+mkdir data log
+chown -R deploy:deploy data log
 ```
 
-Run by binding to port *8100* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
+Run by binding to port *8008* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
 
 ```
 docker run --name ducksoup_1 \
-  -p 8100:8000 \
+  -p 8008:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
-  -e DS_ORIGINS=http://localhost:8100 \
-  -v "$(pwd)"/plugins:/app/plugins:ro \
-  -v "$(pwd)"/data:/app/data \
+  -e DS_ORIGINS=http://localhost:8008 \
+  -v $(pwd)/plugins:/app/plugins:ro \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/log:/app/log \
   --rm \
   ducksoup:latest
 ```
@@ -589,52 +590,14 @@ To enter the container:
 docker exec -it ducksoup_1 bash
 ```
 
-### DuckSoup multi-stage Docker image
-
-If the goal is to distribute and minimize the image size, consider the multi-stage image built with:
+As an aside, this image is published on Docker Hub as `creamlab/ducksoup`, let's tag it and push it:
 
 ```
-docker build -f docker/Dockerfile.build.multi -t ducksoup_multi:latest .
-```
-
-Supposing we use a `deploy` user for running the container, prepare the volume `data` target:
-
-```
-sudo chown -R deploy:deploy data
-```
-
-Run by binding to port *8100* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
-
-```
-docker run --name ducksoup_multi_1 \
-  -p 8100:8000 \
-  -u $(id deploy -u):$(id deploy -g) \
-  -e GST_DEBUG=2 \
-  -e DS_ORIGINS=http://localhost:8100 \
-  -v "$(pwd)"/plugins:/app/plugins:ro \
-  -v "$(pwd)"/data:/app/data \
-  --rm \
-  ducksoup_multi:latest
-```
-
-To enter the container:
-
-```
-docker exec -it ducksoup_multi_1 bash
-```
-
-As an aside, this multi-stage image is published on Docker Hub as `creamlab/ducksoup`, let's tag it and push it:
-
-```
-docker tag ducksoup_multi creamlab/ducksoup
+docker tag ducksoup creamlab/ducksoup
 docker push creamlab/ducksoup:latest
 ```
 
-The `docker/docker-compose.yml` example relies on `creamlab/ducksoup`, let's to run it with docker-compose:
-
-```
-DS_USER=$(id deploy -u) DS_GROUP=$(id deploy -g) docker-compose -f docker/docker-compose.yml up --build
-```
+With this image, `root` is the user that launches and owns files in the Docker container. The project [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup) shows a way to build a lightweight image on top of this one with another user.
 
 ### GPU-enabled Docker containers
 
@@ -659,13 +622,13 @@ Here are a few considerations regarding Docker and NVIDIA:
 ```
 docker run --name ducksoup_multi_1 \
   --gpus all \
-  -p 8100:8000 \
+  -p 8008:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
   -e DS_NVIDIA=true \
-  -e DS_ORIGINS=http://localhost:8100 \
-  -v "$(pwd)"/plugins:/app/plugins:ro \
-  -v "$(pwd)"/data:/app/data \
+  -e DS_ORIGINS=http://localhost:8008 \
+  -v $(pwd)/plugins:/app/plugins:ro \
+  -v $(pwd)/data:/app/data \
   --rm \
   ducksoup_multi:latest
 ```

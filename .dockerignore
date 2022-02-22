@@ -5,6 +5,9 @@ plugins
 # dev only
 .env
 
+# regenerated while building
+front/static/assets/scripts
+
 # not used
 .devcontainer
 certs

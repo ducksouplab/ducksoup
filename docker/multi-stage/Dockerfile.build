@@ -1,3 +1,4 @@
+# WARNING: image not maintained
 FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS builder
 
 RUN apt-get update && apt-get upgrade -y
@@ -23,43 +24,61 @@ ENV CGO_LDFLAGS="-L/opt/gstreamer/lib/x86_64-linux-gnu"
 ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
 
 # build DuckSoup
-WORKDIR /usr/local/src/ducksoup
+WORKDIR /build
+
+# for js /test/play/ app
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+RUN apt-get update && apt-get install -y yarn
 
 # layer with deps
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# layer more frequently updated (DuckSoup source)
-COPY . .
+# DuckSoup go source
+COPY main.go .
+COPY engine ./engine
+COPY front/build.go ./front/build.go
+COPY gst ./gst
+COPY helpers ./helpers
+COPY sequencing ./sequencing
+COPY server ./server
+COPY sfu ./sfu
+COPY stats ./stats
+COPY store ./store
+COPY types ./types
+
+# Compile DuckSoup server
 RUN go build
 
-RUN mkdir -p /build
-RUN cp ./ducksoup /build
-RUN cp -r ./config /build
-RUN cp -r ./front /build
+# DuckSoup JS source
+COPY front/src ./front/src
 
-# for js /test/play/ app
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-RUN apt-get update && apt-get install -y yarn
+# Build DuckSoup front
+COPY package.json .
 RUN yarn
-
-# Build front assets once
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
-# runner stage
+# (final) runner stage
 FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS final
 
 RUN apt-get update && apt-get upgrade -y
 
-WORKDIR /app
-
-COPY --from=builder /build .
-
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
 ENV GST_DEBUG=2
+
+WORKDIR /app
+
+COPY --from=builder /build/ducksoup .
+# check .dockerignore to see generated scripts are excluded first...
+COPY front/static ./front/static
+# ... but added from build
+COPY --from=builder /build/front/static/assets/scripts ./front/static/assets/scripts
+
+# add config files last not to refresh too many layers in case only config changes
+COPY config ./config
 
 # write date and then append err to file if CONTAINER_STDERR_FILE exists
 SHELL ["/bin/bash", "-c"]

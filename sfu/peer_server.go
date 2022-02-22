@@ -178,9 +178,14 @@ func (ps *peerServer) loop() {
 
 	// wait for room end
 	go func() {
-		<-ps.r.endCh
-		ps.ws.sendWithPayload("files", ps.r.files()) // peer could have left (ws closed) but room is still running
-		ps.close("room ended")
+		select {
+		case <-ps.r.endCh:
+			ps.ws.sendWithPayload("files", ps.r.files()) // peer could have left (ws closed) but room is still running
+			ps.close("room ended")
+		case <-ps.closedCh:
+			// user might have disconnected
+			return
+		}
 	}()
 
 	for {

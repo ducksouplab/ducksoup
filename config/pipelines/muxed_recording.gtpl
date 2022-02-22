@@ -74,6 +74,7 @@ video_src. !
     queue max-size-buffers=0 max-size-bytes=0 ! 
     videoconvert ! 
     {{.Video.Fx}} ! 
+    queue max-size-time=75000000 ! 
     {{.Video.RawCapsLight}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
 

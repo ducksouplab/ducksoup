@@ -158,7 +158,9 @@ func (r *room) countdown() {
 	close(r.endCh)
 	// actual deleting is done when all users have disconnected, see disconnectUser
 	// except when room was already empty (started but peers left)
-	r.deleteIfEmpty()
+	<-time.After(3000 * time.Millisecond)
+	r.delete()
+	// r.deleteIfEmpty()
 }
 
 // API read-write
@@ -262,6 +264,7 @@ func (r *room) disconnectUser(userId string) {
 		r.connectedIndex[userId] = false
 		go r.mixer.managedUpdateSignaling("disconnected", false)
 
+		// don't delete only if is empty since users may have disconnected temporarily
 		if r.connectedUserCount() == 0 && !r.running { // don't keep this room
 			r.delete()
 		}

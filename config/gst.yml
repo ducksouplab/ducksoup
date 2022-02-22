@@ -1,16 +1,16 @@
-commonAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=140 drop-on-latency=true
-commonVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=140 drop-on-latency=true
+commonAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=140
+commonVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 latency=140
 commonAudioRawCaps: >-
-    audioconvert ! 
-    audio/x-raw,channels=1
+  audioconvert ! 
+  audio/x-raw,channels=1
 commonVideoRawCaps: >-
-    videoconvert ! 
-    videorate ! 
-    videoscale ! 
-    video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
+  videoconvert ! 
+  videorate ! 
+  videoscale ! 
+  video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 commonVideoRawCapsLight: >-
-    videoconvert ! 
-    video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
+  videoconvert ! 
+  video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 opus:
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
@@ -26,37 +26,40 @@ vp8:
   rtp:
     caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
     pay: rtpvp8pay
-    depay: rtpvp8depay
-  decode: vp8dec
+    depay: rtpvp8depay wait-for-keyframe=true
+  decode: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encode: >-
     vp8enc name={{.Name}} deadline=1 cpu-used=4 end-usage=1
     undershoot=95 keyframe-max-dist=999999 max-quantizer=56
+    min-force-key-unit-interval=3000000000
     qos=true
 x264:
   rtp:
     caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
-      rtph264depay !
+      rtph264depay wait-for-keyframe=true !
       h264parse
-  decode: avdec_h264
+  decode: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encode: >-
     x264enc name={{.Name}} pass=17
     multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
     speed-preset=ultrafast tune=zerolatency 
+    min-force-key-unit-interval=3000000000
     qos=true !
-    video/x-h264, profile=high ! 
+    video/x-h264, profile=constrained-baseline ! 
     h264parse
 nv264:
   rtp:
     caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
-      rtph264depay !
+      rtph264depay wait-for-keyframe=true !
       h264parse
-  decode: avdec_h264
+  decode: nvh264dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encode: >-
     nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 bframes=4 zerolatency=true
+    min-force-key-unit-interval=3000000000
     qos=true !
-    video/x-h264, profile=high !
+    video/x-h264, profile=constrained-baseline !
     h264parse
