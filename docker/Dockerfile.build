@@ -1,4 +1,4 @@
-FROM creamlab/debian-gstreamer:bullseye-gst1.20.0
+FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.17.6.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="231654bbf2dab3d86c1619ce799e77b03d96f9b50770297c8f4dff8836fc8ca2"
+ENV GO_ARCHIVE=go1.17.7.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="02b111284bedbfa35a7e5b74a06082d18632eff824fd144312f6063943d49259"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
@@ -51,8 +51,6 @@ COPY types ./types
 # Compile DuckSoup server
 RUN go build
 
-# check .dockerignore to see generated scripts are excluded first...
-COPY front/static ./front/static
 # DuckSoup JS source
 COPY front/src ./front/src
 
@@ -61,9 +59,22 @@ COPY package.json .
 RUN yarn
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
+# (final) runner stage
+FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS final
+
+RUN apt-get update && apt-get upgrade -y
+
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
 ENV GST_DEBUG=2
+
+WORKDIR /app
+
+COPY --from=builder /build/ducksoup .
+# check .dockerignore to see generated scripts are excluded first...
+COPY front/static ./front/static
+# ... but added from build
+COPY --from=builder /build/front/static/assets/scripts ./front/static/assets/scripts
 
 # add config files last not to refresh too many layers in case only config changes
 COPY config ./config

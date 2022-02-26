@@ -620,7 +620,7 @@ Here are a few considerations regarding Docker and NVIDIA:
 - run the container with GPU enabled:
 
 ```
-docker run --name ducksoup_multi_1 \
+docker run --name ducksoup_gpu_1 \
   --gpus all \
   -p 8008:8000 \
   -u $(id deploy -u):$(id deploy -g) \
@@ -630,7 +630,7 @@ docker run --name ducksoup_multi_1 \
   -v $(pwd)/plugins:/app/plugins:ro \
   -v $(pwd)/data:/app/data \
   --rm \
-  ducksoup_multi:latest
+  ducksoup:latest
 ```
 
 ## Credits
