@@ -45,6 +45,12 @@ func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnectio
 			{
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
+			{
+				URLs: []string{"stun:stun3.l.google.com:19302"},
+			},
+			{
+				URLs: []string{"stun:stun.stunprotocol.org:3478"},
+			},
 		},
 	}
 	ppc, err = api.NewPeerConnection(config)
