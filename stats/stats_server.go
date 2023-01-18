@@ -3,7 +3,7 @@ package stats
 import (
 	"time"
 
-	"github.com/creamlab/ducksoup/sfu"
+	"github.com/ducksouplab/ducksoup/sfu"
 	"github.com/gorilla/websocket"
 )
 

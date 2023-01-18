@@ -1,4 +1,4 @@
-FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS builder
+FROM ducksouplab/debian-gstreamer:latest AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.17.7.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="02b111284bedbfa35a7e5b74a06082d18632eff824fd144312f6063943d49259"
+ENV GO_ARCHIVE=go1.19.5.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="36519702ae2fd573c9869461990ae550c8c0d955cd28d2827a6b159fda81ff95"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
@@ -60,7 +60,7 @@ RUN yarn
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 # (final) runner stage
-FROM creamlab/debian-gstreamer:bullseye-gst1.20.0 AS final
+FROM ducksouplab/debian-gstreamer:latest AS final
 
 RUN apt-get update && apt-get upgrade -y
 

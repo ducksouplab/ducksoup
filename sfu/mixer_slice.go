@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/gst"
-	"github.com/creamlab/ducksoup/helpers"
-	"github.com/creamlab/ducksoup/sequencing"
+	"github.com/ducksouplab/ducksoup/gst"
+	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/sequencing"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"

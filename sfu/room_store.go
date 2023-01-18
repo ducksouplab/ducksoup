@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
 

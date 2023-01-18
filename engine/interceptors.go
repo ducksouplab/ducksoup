@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/creamlab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/interceptor/pkg/report"

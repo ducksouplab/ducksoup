@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/creamlab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 )

@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/creamlab/ducksoup/helpers"
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
 

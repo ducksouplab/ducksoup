@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/creamlab/ducksoup/front"
-	"github.com/creamlab/ducksoup/gst"
-	"github.com/creamlab/ducksoup/helpers"
-	"github.com/creamlab/ducksoup/server"
+	"github.com/ducksouplab/ducksoup/front"
+	"github.com/ducksouplab/ducksoup/gst"
+	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/server"
 	"github.com/rs/zerolog/log"
 )
 

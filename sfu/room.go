@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/helpers"
-	"github.com/creamlab/ducksoup/store"
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/store"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/creamlab/ducksoup/helpers"
-	"github.com/creamlab/ducksoup/sfu"
-	"github.com/creamlab/ducksoup/stats"
+	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/sfu"
+	"github.com/ducksouplab/ducksoup/stats"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"

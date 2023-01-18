@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/gst"
-	"github.com/creamlab/ducksoup/sequencing"
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/gst"
+	"github.com/ducksouplab/ducksoup/sequencing"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"

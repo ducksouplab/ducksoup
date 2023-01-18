@@ -3,7 +3,7 @@ package sfu
 import (
 	"testing"
 
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/types"
 )
 
 func newJoinPayload(origin, roomId, userId, namespace string, size int) types.JoinPayload {

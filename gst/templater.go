@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/types"
 )
 
 func newPipelineDef(join types.JoinPayload, filePrefix string) string {

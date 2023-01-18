@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/engine"
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/engine"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"

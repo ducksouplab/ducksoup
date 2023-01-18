@@ -8,7 +8,7 @@ From a technical standpoint, DuckSoup is:
 - with the possibility to record and optionnally transform video and audio streams thanks to [GStreamer](https://gstreamer.freedesktop.org/)
 
 
-*The companion repository [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup) documents a possible DuckSoup deployment workflow relying on Docker Compose.*
+*The companion repository [deploy-ducksoup](https://github.com/ducksouplab/deploy-ducksoup) documents a possible DuckSoup deployment workflow relying on Docker Compose.*
 
 ## DuckSoup server overview
 
@@ -248,7 +248,7 @@ A few important remarks:
 - `.env` is loaded by `helpers/init.go`, that's why the `helpers` package is imported by other packages that use environment variable
 - `.env` is not bundled in the Docker images documented below and is only meant as a development feature
 
-Nevertheless, using `.env` files in production may also be interesting. A solution relying on Docker Compose is documented [here](https://github.com/creamlab/deploy-ducksoup#environment-variables).
+Nevertheless, using `.env` files in production may also be interesting. A solution relying on Docker Compose is documented [here](https://github.com/ducksouplab/deploy-ducksoup#environment-variables).
 
 ### Logs configuration
 
@@ -541,18 +541,18 @@ It is possible to build DuckSoup server from source within your preferred enviro
 One may prefer relying on Docker to provide images with everything needed to build and run DuckSoup. Two options are suggested:
 
 1. start from a debian image and install dependencies using apt: `docker/from-packages/Dockerfile.code` is provided as such an example
-2. use the custom [creamlab/debian-gstreamer](https://hub.docker.com/repository/docker/creamlab/debian-gstreamer) image published on Docker Hub and whose definition is available [here](https://github.com/creamlab/docker-gstreamer)
+2. use the custom [ducksouplab/debian-gstreamer](https://hub.docker.com/repository/docker/ducksouplab/debian-gstreamer) image published on Docker Hub and whose definition is available [here](https://github.com/ducksouplab/docker-gstreamer)
 
 The first option is good enough to work, and one may prefer it to have a simple installation process but with package manager versions of GStreamer and Go.
 
-The second option relies on the `creamlab/debian-gstreamer` base image, managed in a [separate repository](https://github.com/creamlab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
+The second option relies on the `ducksouplab/debian-gstreamer` base image, managed in a [separate repository](https://github.com/ducksouplab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
 
-In this project, we use `creamlab/debian-gstreamer` as a base for:
+In this project, we use `ducksouplab/debian-gstreamer` as a base for:
 
 - `docker/Dockerfile.code` defines the image used to run a container within vscode (Go is installed, but DuckSoup remains to be compiled by the developer when needed)
 - `docker/Dockerfile.build` defines an image with Go installed and DuckSoup compiled
 
-Please note that the official [DuckSoup image](https://hub.docker.com/r/creamlab/ducksoup) is built from `docker/Dockerfile.build`. This image is used in particular by [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup), a project that showcases a possible DuckSoup deployment workflow relying on Docker Compose.
+Please note that the official [DuckSoup image](https://hub.docker.com/r/ducksouplab/ducksoup) is built from `docker/Dockerfile.build`. This image is used in particular by [deploy-ducksoup](https://github.com/ducksouplab/deploy-ducksoup), a project that showcases a possible DuckSoup deployment workflow relying on Docker Compose.
 
 ### DuckSoup Docker image
 
@@ -562,7 +562,7 @@ Build image:
 docker build -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
-Supposing we use a `deploy` user ftoor run the container, prepare `data` and `log` folders, to be mounted as volumes in the container:
+Supposing we use a `deploy` user to run the container, prepare `data` and `log` folders, to be mounted as volumes in the container:
 
 ```
 mkdir data log
@@ -590,14 +590,14 @@ To enter the container:
 docker exec -it ducksoup_1 bash
 ```
 
-As an aside, this image is published on Docker Hub as `creamlab/ducksoup`, let's tag it and push it:
+As an aside, this image is published on Docker Hub as `ducksouplab/ducksoup`, let's tag it and push it:
 
 ```
-docker tag ducksoup creamlab/ducksoup
-docker push creamlab/ducksoup:latest
+docker tag ducksoup ducksouplab/ducksoup
+docker push ducksouplab/ducksoup:latest
 ```
 
-With this image, `root` is the user that launches and owns files in the Docker container. The project [deploy-ducksoup](https://github.com/creamlab/deploy-ducksoup) shows a way to build a lightweight image on top of this one with another user.
+With this image, `root` is the user that launches and owns files in the Docker container. The project [deploy-ducksoup](https://github.com/ducksouplab/deploy-ducksoup) shows a way to build a lightweight image on top of this one with another user.
 
 ### GPU-enabled Docker containers
 
@@ -615,7 +615,7 @@ Here are a few considerations regarding Docker and NVIDIA:
 
   3. Restart Docker (`systemctl restart docker`)
 
-- set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `creamlab/debian-gstreamer` base image has these already set (so this step should not be necessary)
+- set the desired NVIDIA capabilities within the container thanks to a few [environment variables](https://github.com/NVIDIA/nvidia-container-runtime#environment-variables-oci-spec). Regarding DuckSoup, the `ducksouplab/debian-gstreamer` base image has these already set (so this step should not be necessary)
 
 - run the container with GPU enabled:
 

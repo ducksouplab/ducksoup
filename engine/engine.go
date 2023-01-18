@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/creamlab/ducksoup/helpers"
-	_ "github.com/creamlab/ducksoup/helpers" // rely on helpers logger init side-effect
-	"github.com/creamlab/ducksoup/store"
+	"github.com/ducksouplab/ducksoup/helpers"
+	_ "github.com/ducksouplab/ducksoup/helpers" // rely on helpers logger init side-effect
+	"github.com/ducksouplab/ducksoup/store"
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/packetdump"

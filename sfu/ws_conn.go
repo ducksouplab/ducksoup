@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creamlab/ducksoup/types"
+	"github.com/ducksouplab/ducksoup/types"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
