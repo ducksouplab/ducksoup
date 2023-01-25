@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:latest AS builder
+FROM ducksouplab/debian-gstreamer:bullseye-gstreamer1.22.0 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -60,7 +60,7 @@ RUN yarn
 RUN DS_ENV=BUILD_FRONT ./ducksoup
 
 # (final) runner stage
-FROM ducksouplab/debian-gstreamer:latest AS final
+FROM ducksouplab/debian-gstreamer:bullseye-gstreamer1.22.0 AS final
 
 RUN apt-get update && apt-get upgrade -y
 
