@@ -42,7 +42,7 @@ func newPeerServer(
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	pipeline := gst.CreatePipeline(join, r.filePrefixWithCount(join))
+	pipeline := gst.NewPipeline(join)
 
 	ps := &peerServer{
 		userId:            join.UserId,
