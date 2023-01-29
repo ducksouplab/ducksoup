@@ -55,7 +55,7 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
+func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 
 	pipelineStr := newPipelineDef(join, filePrefix)
 	id := uuid.New().String()
@@ -78,18 +78,17 @@ func CreatePipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		id:           id,
 		join:         join,
 		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
-		filePrefix:   filePrefix,
 		stoppedCount: 0,
 		logger:       logger,
 	}
 
-	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_created")
+	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_initialized")
 
 	pipelineStoreSingleton.add(p)
 	return p
 }
 
-func (p *Pipeline) outputFiles() []string {
+func (p *Pipeline) OutputFiles() []string {
 	namespace := p.join.Namespace
 	hasFx := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
 	if hasFx {
@@ -117,21 +116,20 @@ func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
 	//C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
-func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) (files []string) {
+func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) {
 	if kind == "audio" {
 		p.audioOutput = t
 	} else {
 		p.videoOutput = t
 	}
-	if p.audioOutput != nil && p.videoOutput != nil {
-		p.start()
-		files = p.outputFiles()
-	}
-	return
 }
 
-// start the GStreamer pipeline
-func (p *Pipeline) start() {
+func (p *Pipeline) IsReady() bool {
+	return p.audioOutput != nil && p.videoOutput != nil
+}
+
+func (p *Pipeline) Start() {
+	// GStreamer start
 	C.gstStartPipeline(p.cPipeline)
 	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
 	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")

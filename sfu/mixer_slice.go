@@ -181,9 +181,10 @@ func (s *mixerSlice) loop() {
 	pipeline, room, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.userId
 
 	// returns a callback to push buffer to
-	outputFiles := pipeline.BindTrack(s.kind, s)
-	if outputFiles != nil {
-		room.addFiles(userId, outputFiles)
+	pipeline.BindTrack(s.kind, s)
+	if pipeline.IsReady() {
+		pipeline.Start()
+		room.addFiles(userId, pipeline.OutputFiles())
 	}
 	go s.runTickers()
 	// go s.runReceiverListener()
