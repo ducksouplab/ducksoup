@@ -9,25 +9,14 @@ import "C"
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"unsafe"
 
-	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
-
-// global state
-var (
-	nvidiaEnabled bool
-)
-
-func init() {
-	nvidiaEnabled = strings.ToLower(helpers.Getenv("DS_NVIDIA")) == "true"
-}
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {

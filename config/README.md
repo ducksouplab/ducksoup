@@ -43,3 +43,11 @@ https://gstreamer.freedesktop.org/documentation/opus/opusenc.html
 
 Old vp8 encoder settings:
 vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true
+
+From GStreamer 1.18 release notes:
+
+    "nvdec: add H264 + H265 stateless codec implementation nvh264sldec
+    and nvh265sldec with fewer features but improved latency. You can
+    set the environment variable GST_USE_NV_STATELESS_CODEC=h264 to use
+    the stateless decoder variant as nvh264dec instead of the “normal”
+    NVDEC decoder implementatio"

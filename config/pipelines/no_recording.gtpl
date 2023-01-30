@@ -9,8 +9,8 @@ audio_src. !
     {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     {{.Audio.Decode}} !
-    {{.Audio.RawCaps}} !
-    audioconvert ! 
+    audioconvert !
+    audio/x-raw,channels=1 !
     {{.Audio.Fx}} ! 
     audioconvert !  
     {{.Audio.EncodeWith "audio_encoder_wet" .Namespace .FilePrefix}} ! 
@@ -27,10 +27,10 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.RawCapsWith .Width .Height .FrameRate}} !
+    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
-    {{.Video.RawCapsLight}} !
+    {{.Video.ConvertColorOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.
