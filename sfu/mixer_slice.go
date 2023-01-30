@@ -171,7 +171,7 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 }
 
 func (s *mixerSlice) stop() {
-	s.pipeline.GStreamerStop()
+	s.pipeline.Stop()
 	s.statsTicker.Stop()
 	s.encoderTicker.Stop()
 	close(s.endCh)
@@ -180,13 +180,12 @@ func (s *mixerSlice) stop() {
 func (s *mixerSlice) loop() {
 	pipeline, room, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.userId
 
+	// returns a callback to push buffer to
 	pipeline.BindTrack(s.kind, s)
-	if pipeline.IsReadyToStart() {
-		filePrefix := room.filePrefixWithStartAndCount(userId)
-		outputFiles := pipeline.GStreamerStart(filePrefix)
-		room.addFiles(userId, outputFiles)
+	if pipeline.IsReady() {
+		pipeline.Start()
+		room.addFiles(userId, pipeline.OutputFiles())
 	}
-
 	go s.runTickers()
 	// go s.runReceiverListener()
 

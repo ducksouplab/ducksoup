@@ -1,16 +1,12 @@
-commonAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=150
-commonVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 latency=150
-commonAudioRawCaps: >-
-  audioconvert ! 
-  audio/x-raw,channels=1
-commonVideoRawCaps: >-
-  videoconvert ! 
-  videorate ! 
-  videoscale ! 
-  video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
-commonVideoRawCapsLight: >-
-  videoconvert ! 
+sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=150
+sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 latency=150
+sharedVideoConvertColor: >-
+  {{.Convert}} ! 
   video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
+sharedVideoConvertColorRateScale: >-
+  {{.Convert}} ! 
+  videorate ! 
+  video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 opus:
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
@@ -39,7 +35,8 @@ x264:
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay wait-for-keyframe=true !
-      h264parse
+      h264parse !
+      h264timestamper
   decode: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encode: >-
     x264enc name={{.Name}} pass=17
@@ -55,7 +52,8 @@ nv264:
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay wait-for-keyframe=true !
-      h264parse
+      h264parse !
+      h264timestamper
   decode: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encode: >-
     nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 zerolatency=true

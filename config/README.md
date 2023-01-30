@@ -10,9 +10,9 @@ Currently different recording modes are offered:
 
 A few notes about GStreamer settings:
 
-- currently, setting `min-force-key-unit-interval` on encoders is disabled (more tests have to be done), it may be an interesting option to limit PLI requests
-
 - input media streams are stored with a `-dry.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-wet.extension`
+
+- currently, setting `min-force-key-unit-interval` on encoders is disabled (more tests have to be done), it may be an interesting option to limit PLI requests
 
 - when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio)
 
@@ -43,3 +43,11 @@ https://gstreamer.freedesktop.org/documentation/opus/opusenc.html
 
 Old vp8 encoder settings:
 vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true
+
+From GStreamer 1.18 release notes:
+
+    "nvdec: add H264 + H265 stateless codec implementation nvh264sldec
+    and nvh265sldec with fewer features but improved latency. You can
+    set the environment variable GST_USE_NV_STATELESS_CODEC=h264 to use
+    the stateless decoder variant as nvh264dec instead of the “normal”
+    NVDEC decoder implementatio"

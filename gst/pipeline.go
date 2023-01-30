@@ -9,25 +9,14 @@ import "C"
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"unsafe"
 
-	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
-
-// global state
-var (
-	nvidiaEnabled bool
-)
-
-func init() {
-	nvidiaEnabled = strings.ToLower(helpers.Getenv("DS_NVIDIA")) == "true"
-}
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
@@ -54,10 +43,16 @@ func StartMainLoop() {
 	C.gstStartMainLoop()
 }
 
-// GO pipeline initialized with a GStreamer parsed pipeline (not started)
-func NewPipeline(join types.JoinPayload) *Pipeline {
+// create a GStreamer pipeline
+func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 
+	pipelineStr := newPipelineDef(join, filePrefix)
 	id := uuid.New().String()
+
+	cPipelineStr := C.CString(pipelineStr)
+	cId := C.CString(id)
+	defer C.free(unsafe.Pointer(cPipelineStr))
+	defer C.free(unsafe.Pointer(cId))
 
 	logger := log.With().
 		Str("context", "pipeline").
@@ -71,17 +66,18 @@ func NewPipeline(join types.JoinPayload) *Pipeline {
 		mu:           sync.Mutex{},
 		id:           id,
 		join:         join,
+		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
 		stoppedCount: 0,
 		logger:       logger,
 	}
 
-	p.logger.Info().Str("id", id).Msg("pipeline_initialized")
+	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_initialized")
 
 	pipelineStoreSingleton.add(p)
 	return p
 }
 
-func (p *Pipeline) outputFiles() []string {
+func (p *Pipeline) OutputFiles() []string {
 	namespace := p.join.Namespace
 	hasFx := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
 	if hasFx {
@@ -117,21 +113,19 @@ func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) {
 	}
 }
 
-func (p *Pipeline) IsReadyToStart() bool {
+func (p *Pipeline) IsReady() bool {
 	return p.audioOutput != nil && p.videoOutput != nil
 }
 
-// Initializes GStreamer pipeline by parsing a string representation of it,
-// containing file paths to write audio and video. Those paths are returned
-func (p *Pipeline) GStreamerStart(filePrefix string) []string {
-	p.filePrefix = filePrefix
-	p.parse()
-	p.start()
-	return p.outputFiles()
+func (p *Pipeline) Start() {
+	// GStreamer start
+	C.gstStartPipeline(p.cPipeline)
+	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
+	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")
 }
 
 // stop the GStreamer pipeline
-func (p *Pipeline) GStreamerStop() {
+func (p *Pipeline) Stop() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -140,27 +134,6 @@ func (p *Pipeline) GStreamerStop() {
 		C.gstStopPipeline(p.cPipeline)
 		p.logger.Info().Msg("pipeline_stopped")
 	}
-}
-
-// parse the GStreamer pipeline
-func (p *Pipeline) parse() {
-	pipelineStr := newPipelineDef(p.join, p.filePrefix)
-
-	cPipelineStr := C.CString(pipelineStr)
-	cId := C.CString(p.id)
-	defer C.free(unsafe.Pointer(cPipelineStr))
-	defer C.free(unsafe.Pointer(cId))
-
-	p.cPipeline = C.gstParsePipeline(cPipelineStr, cId)
-
-	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_parsed")
-}
-
-// start the GStreamer pipeline
-func (p *Pipeline) start() {
-	C.gstStartPipeline(p.cPipeline)
-	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
-	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")
 }
 
 func (p *Pipeline) getPropInt(name string, prop string) int {

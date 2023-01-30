@@ -134,11 +134,10 @@ func (r *room) connectedUserCount() (count int) {
 	return len(r.peerServerIndex)
 }
 
-func (r *room) filePrefixWithStartAndCount(userId string) string {
+func (r *room) filePrefix(userId string) string {
 	connectionCount := r.joinedCountForUser(userId)
-	// time room user count
-	return time.Now().Format("20060102-150405.000") +
-		"-n-" + r.namespace +
+	// time room user count, previously included time.Now().Format("20060102-150405.000")
+	return "n-" + r.namespace +
 		"-r-" + r.id +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)

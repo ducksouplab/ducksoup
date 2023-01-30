@@ -24,8 +24,8 @@ audio_src. !
     tee_audio_in. ! 
     queue max-size-buffers=0 max-size-bytes=0 ! 
     {{.Audio.Decode}} !
-    {{.Audio.RawCaps}} !
     audioconvert ! 
+    audio/x-raw,channels=1 !
     {{.Audio.Fx}} ! 
     audioconvert ! 
     {{.Audio.EncodeWith "audio_encoder_dry" .Namespace .FilePrefix}} !
@@ -55,7 +55,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.RawCapsWith .Width .Height .FrameRate}} !
+    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
 
     tee name=tee_video_in ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -66,7 +66,7 @@ video_src. !
     queue max-size-buffers=0 max-size-bytes=0 ! 
     videoconvert ! 
     {{.Video.Fx}} ! 
-    {{.Video.RawCapsLight}} !
+    {{.Video.ConvertColorOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} !
     tee name=tee_video_out ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -82,7 +82,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.RawCapsWith .Width .Height .FrameRate}} !
+    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
     {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} !
     dry_video_recorder.
 
