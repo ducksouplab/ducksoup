@@ -79,7 +79,7 @@ Where:
   - `recordingMode` (string) possible values: `muxed` (default if none, records audio/video in the same muxed file), `split` (records separate files for audio and video), `passthrough` (records input streams and sends them back, without applying any fx or reencoding) or `none` (no recording)
   - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
-  - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding, if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVIDIA=true` environment variable (see [Environment variables](#environment-variables))
+  - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding (and other cuda accelerated plugins like raw video [conversions](https://gstreamer.freedesktop.org/documentation/nvcodec/cudaconvertscale.html)), if relevant hardware is available on host and if DuckSoup is launched with the `DS_NVCODEC=true` environment variable (see [Environment variables](#environment-variables))
   - `logLevel` (int, defaults to 1):
     - 0: no client logs sent to server
     - 1: logs related to RTP stats (bitrates, fps, keyframes...) are sent to server
@@ -210,7 +210,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - `DS_STATS_PASSWORD` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
-- `DS_NVIDIA` (default to false) set to true if NVIDIA accelerated encoding and decoding is accessible on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers))
+- `DS_NVCODEC` (default to false) set to true if NVIDIA GPU is enabled on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers)) and relevant GStreamer [nvcodec](https://gstreamer.freedesktop.org/documentation/nvcodec/index.html) plugin is preferred for video encoding (rather than relying on the CPU)
 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 
@@ -220,7 +220,7 @@ Since DuckSoup relies on GStreamer, GStreamer environment variables may be usefu
 Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
-- `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` if NVIDIA codec is enabled.
+- `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` depending on `DS_NVCODEC` (and `gpu` on `peerOptions`).
 
 DuckSoup server settings are defined in `config/server.yml`:
 
@@ -423,7 +423,7 @@ DS_ORIGINS=https://ducksoup-caller-host.com ./ducksoup
 An example to build and run with a few settings:
 
 ```
-go build && GST_DEBUG=2,videodecoder:1 DS_NVIDIA=true DS_ENV=DEV ./ducksoup
+go build && GST_DEBUG=2,videodecoder:1 DS_NVCODEC=true DS_ENV=DEV ./ducksoup
 ```
 
 To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:
@@ -545,7 +545,7 @@ One may prefer relying on Docker to provide images with everything needed to bui
 
 The first option is good enough to work, and one may prefer it to have a simple installation process but with package manager versions of GStreamer and Go.
 
-The second option relies on the `ducksouplab/debian-gstreamer` base image, managed in a [separate repository](https://github.com/ducksouplab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling nvidia nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
+The second option relies on the `ducksouplab/debian-gstreamer` base image, managed in a [separate repository](https://github.com/ducksouplab/docker-gstreamer), with the advantage of coming with a recompiled GStreamer (enabling NVIDIA enabled nvcodec plugin), opencv and dlib, and possibly more recent versions of GStreamer and Go.
 
 In this project, we use `ducksouplab/debian-gstreamer` as a base for:
 
@@ -625,7 +625,7 @@ docker run --name ducksoup_gpu_1 \
   -p 8008:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
-  -e DS_NVIDIA=true \
+  -e DS_NVCODEC=true \
   -e DS_ORIGINS=http://localhost:8008 \
   -v $(pwd)/plugins:/app/plugins:ro \
   -v $(pwd)/data:/app/data \

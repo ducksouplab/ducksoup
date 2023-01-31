@@ -67,6 +67,7 @@ func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		id:           id,
 		join:         join,
 		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
+		filePrefix:   filePrefix,
 		stoppedCount: 0,
 		logger:       logger,
 	}

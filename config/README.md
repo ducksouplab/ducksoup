@@ -16,6 +16,10 @@ A few notes about GStreamer settings:
 
 - when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio)
 
+- some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Other muxers should be retested
+
+- disregard of dry paths, on wet paths: we always constrain caps before fx since some may rely on constant sizes
+
 - Another solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264)
 
 - queue params: `max-size-buffers=0 max-size-bytes=0` disable max-size on buffers and bytes. When teeing, the branch that does recording has an additionnal `max-size-time=5000000000` property. A queue blocks whenever one of the 3 dimensions (buffers, bytes, time) max is reached (unless `leaky`)
@@ -29,6 +33,8 @@ A few notes about GStreamer settings:
 - `nvh264enc`: crash if bframes is not zero
 
 - `rc-lookahead` is supposed to improve rate-control accuracy https://docs.nvidia.com/video-technologies/video-codec-sdk/pdf/Using_FFmpeg_with_NVIDIA_GPU_Hardware_Acceleration.pdf BUT image freezes, so has been disabled for nvcodec
+
+- `h264timestamper` triggers an "Unknown frame rate, assume 25/1" that's why we disabled it since framerate should not be defined by this elemend
 
 To try later:
 
@@ -44,7 +50,13 @@ https://gstreamer.freedesktop.org/documentation/opus/opusenc.html
 Old vp8 encoder settings:
 vp8enc keyframe-max-dist=64 resize-allowed=true dropframe-threshold=25 max-quantizer=56 cpu-used=5 threads=4 deadline=1 qos=true
 
-From GStreamer 1.18 release notes:
+From Gstreamer 1.22 release notes (about h264timestamper):
+
+    Muxers are often picky and need proper PTS/DTS timestamps set on the input buffers, but that can be a problem if the encoded input media stream comes from a source that doesn't provide proper signalling of DTS, such as is often the case for RTP, RTSP and WebRTC streams or Matroska container files. Theoretically parsers should be able to fix this up, but it would probably require fairly invasive changes in the parsers, so two new elements h264timestamper and h265timestamper bridge the gap in the meantime and can reconstruct missing PTS/DTS.
+
+See https://gstreamer.freedesktop.org/documentation/codectimestamper/h264timestamper.html?gi-language=c#h264timestamper-page
+
+From GStreamer 1.18 release notes (about nvh264sldec):
 
     "nvdec: add H264 + H265 stateless codec implementation nvh264sldec
     and nvh265sldec with fewer features but improved latency. You can

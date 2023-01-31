@@ -27,10 +27,10 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
-    {{.Video.ConvertColorOnly}} !
+    {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.

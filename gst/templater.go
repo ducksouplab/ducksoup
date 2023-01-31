@@ -9,50 +9,56 @@ import "C"
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/ducksouplab/ducksoup/types"
+	"github.com/rs/zerolog/log"
 )
 
 func newPipelineDef(join types.JoinPayload, filePrefix string) string {
-	audioCodec := config.Opus
+	audioOptions := config.Opus
 	// rely on the fact that assigning to a struct with only primitive values (string), is copying by value
 	// caution: don't extend codec type with non primitive values
-	if &audioCodec == &config.Opus {
+	if &audioOptions == &config.Opus {
 		panic("Unhandled audioCodec assign")
 	}
 	// choose videoCodec
-	var videoCodec codec
+	var videoOptions mediaOptions
+	nvcodec := nvcodecEnv && join.GPU
 	switch join.VideoFormat {
 	case "VP8":
-		videoCodec = config.VP8
+		videoOptions = config.VP8
 	case "H264":
-		if nvidiaEnabled && join.GPU {
-			videoCodec = config.NV264
+		if nvcodec {
+			videoOptions = config.NV264
 		} else {
-			videoCodec = config.X264
+			videoOptions = config.X264
 		}
 	default:
 		panic("Unhandled format " + join.VideoFormat)
 	}
-	// set gpu
-	videoCodec.GPU = join.GPU
+	// set env options
+	videoOptions.nvcodec = nvcodec
 	// complete with Fx
-	audioCodec.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
-	videoCodec.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
+	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
+	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
+
+	log.Info().Str("context", "pipeline").Str("audioOptions", fmt.Sprintf("%v", audioOptions)).Msg("template_data")
+	log.Info().Str("context", "pipeline").Str("videoOptions", fmt.Sprintf("%v", videoOptions)).Msg("template_data")
 
 	// shape template data
 	data := struct {
-		Video      codec
-		Audio      codec
+		Video      mediaOptions
+		Audio      mediaOptions
 		Namespace  string
 		FilePrefix string
 		Width      int
 		Height     int
 		FrameRate  int
 	}{
-		videoCodec,
-		audioCodec,
+		videoOptions,
+		audioOptions,
 		join.Namespace,
 		filePrefix,
 		join.Width,

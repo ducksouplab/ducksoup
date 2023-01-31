@@ -11,23 +11,23 @@ import (
 )
 
 type gstConfig struct {
-	SharedAudioRTPJitterBuffer       string `yaml:"sharedAudioRTPJitterBuffer"`
-	SharedVideoRTPJitterBuffer       string `yaml:"sharedVideoRTPJitterBuffer"`
-	SharedVideoConvertColor          string `yaml:"sharedVideoConvertColor"`
-	SharedVideoConvertColorRateScale string `yaml:"sharedVideoConvertColorRateScale"`
-	Opus                             codec
-	VP8                              codec `yaml:"vp8"`
-	X264                             codec
-	NV264                            codec `yaml:"nv264"`
+	SharedAudioRTPJitterBuffer    string `yaml:"sharedAudioRTPJitterBuffer"`
+	SharedVideoRTPJitterBuffer    string `yaml:"sharedVideoRTPJitterBuffer"`
+	SharedVideoCapFormat          string `yaml:"sharedVideoCapFormat"`
+	SharedVideoCapFormatRateScale string `yaml:"sharedVideoCapFormatRateScale"`
+	Opus                          mediaOptions
+	VP8                           mediaOptions `yaml:"vp8"`
+	X264                          mediaOptions
+	NV264                         mediaOptions `yaml:"nv264"`
 }
 
 // global state
-var nvidiaEnabled bool
+var nvcodecEnv bool
 var config gstConfig
 var muxedRecordingTemplater, splitRecordingTemplater, passthroughTemplater, noRecordingTemplater *template.Template
 
 func init() {
-	nvidiaEnabled = strings.ToLower(helpers.Getenv("DS_NVIDIA")) == "true"
+	nvcodecEnv = strings.ToLower(helpers.Getenv("DS_NVCODEC")) == "true"
 
 	// load config from yml file
 	f, err := helpers.Open("config/gst.yml")

@@ -55,7 +55,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
 
     tee name=tee_video_in ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -66,7 +66,7 @@ video_src. !
     queue max-size-buffers=0 max-size-bytes=0 ! 
     videoconvert ! 
     {{.Video.Fx}} ! 
-    {{.Video.ConvertColorOnly}} !
+    {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} !
     tee name=tee_video_out ! 
     queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
@@ -82,7 +82,11 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decode}} !
-    {{.Video.ConvertColorRateScale .Width .Height .FrameRate}} !
+
+    {{.Video.Decode}} !
+    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
+
     {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} !
     dry_video_recorder.
 
