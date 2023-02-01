@@ -12,10 +12,10 @@ type mediaOptions struct {
 	// live property depending on Join (and DS_NVCODEC), not used within template
 	nvcodec bool
 	// properties depending on yml definitions
-	Fx     string
-	Decode string
-	Encode string
-	Cap    struct {
+	Fx      string
+	Decoder string
+	Encoder string
+	Cap     struct {
 		Format          string // don't constraint width/height/framerate, but only properties that a plugin might have changed
 		FormatRateScale string // constraint width/height/framerate and more to ensure stability before muxer
 	}
@@ -39,7 +39,7 @@ func (mo *mediaOptions) addSharedVideoProperties() {
 
 // template helpers
 func (mo mediaOptions) EncodeWith(name, nameSpace, filePrefix string) (output string) {
-	output = strings.Replace(mo.Encode, "{{.Name}}", name, -1)
+	output = strings.Replace(mo.Encoder, "{{.Name}}", name, -1)
 	output = strings.Replace(output, "{{.Namespace}}", nameSpace, -1)
 	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
 	return

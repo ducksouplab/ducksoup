@@ -8,7 +8,7 @@ audio_src. !
 {{if .Audio.Fx}}
     {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
-    {{.Audio.Decode}} !
+    {{.Audio.Decoder}} !
     audioconvert !
     audio/x-raw,channels=1 !
     {{.Audio.Fx}} ! 
@@ -26,7 +26,7 @@ video_src. !
 {{if .Video.Fx}}
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
-    {{.Video.Decode}} !
+    {{.Video.Decoder}} !
     {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 

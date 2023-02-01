@@ -1,43 +1,46 @@
 sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=150
 sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 latency=150
 sharedVideoCapFormat: >-
-  {{.Convert}} ! 
+  {{.Convert}} !
   video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 sharedVideoCapFormatRateScale: >-
-  {{.Convert}} ! 
-  videorate ! 
+  {{.Convert}} !
+  videorate !
   video/x-raw{{.FrameRate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
 opus:
+  encoding: "OPUS"
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
     pay: rtpopuspay
     depay: >-
       rtpopusdepay !
       opusparse
-  decode: decodebin
-  encode: >-
+  decoder: decodebin
+  encoder: >-
     opusenc name={{.Name}} audio-type=2048 bitrate-type=1 perfect-timestamp=true !
     opusparse
 vp8:
+  encoding: "VP8"
   rtp:
     caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
     pay: rtpvp8pay
     depay: rtpvp8depay wait-for-keyframe=true
-  decode: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
-  encode: >-
+  decoder: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
+  encoder: >-
     vp8enc name={{.Name}} deadline=1 cpu-used=4 end-usage=1
     undershoot=95 keyframe-max-dist=999999 max-quantizer=56
     min-force-key-unit-interval=3000000000
     qos=true
 x264:
+  encoding: "H264"
   rtp:
     caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay wait-for-keyframe=true !
       h264parse
-  decode: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
-  encode: >-
+  decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
+  encoder: >-
     x264enc name={{.Name}} pass=17
     multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
     speed-preset=ultrafast tune=zerolatency 
@@ -46,14 +49,15 @@ x264:
     video/x-h264, profile=constrained-baseline ! 
     h264parse
 nv264:
+  encoding: "H264"
   rtp:
     caps: application/x-rtp,encoding-name=H264
     pay: rtph264pay config-interval=-1
     depay: >-
       rtph264depay wait-for-keyframe=true !
       h264parse
-  decode: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
-  encode: >-
+  decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
+  encoder: >-
     nvh264enc name={{.Name}} rc-mode=3 preset=4 gop-size=15 zerolatency=true
     b-adapt=0 bframes=0 rc-lookahead=0
     min-force-key-unit-interval=3000000000

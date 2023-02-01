@@ -20,7 +20,7 @@ audio_src. !
 
     tee_audio_in. ! 
     queue max-size-buffers=0 max-size-bytes=0 ! 
-    {{.Audio.Decode}} !
+    {{.Audio.Decoder}} !
     audioconvert !
     audio/x-raw,channels=1 !
     {{.Audio.Fx}} ! 
@@ -62,7 +62,7 @@ video_src. !
 {{if .Video.Fx}}
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
-    {{.Video.Decode}} !
+    {{.Video.Decoder}} !
     {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
 
     tee name=tee_video_in ! 
@@ -93,7 +93,7 @@ video_src. !
     {{.Video.Rtp.Depay}} ! 
 
     {{if not .Video.SkipFixedCaps}}
-        {{.Video.Decode}} !
+        {{.Video.Decoder}} !
         {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
         {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
     {{end}}

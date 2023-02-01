@@ -32,8 +32,11 @@ A few notes about GStreamer settings:
 
 - `h264timestamper` triggers an "Unknown frame rate, assume 25/1" that's why we disabled it since framerate should not be defined by this elemend
 
-About muxers
+About cuda
 
+Check how to use cudaupload, cudadownload and where to put caps here: https://gstreamer.freedesktop.org/documentation/nvcodec/cudascale.html?gi-language=c
+
+About muxers
 
 - when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio), and costs more processing only when there is not FX (since with FX decoding/reencoding is needed anyway)
 
@@ -50,6 +53,8 @@ Latest tests:
 Conclusion: if we could prevent mp4mux from crashing we could use matroskamux for vp8 and mp4mux for h264, and decoding/capping/reencoding would be disabled when no fx is added to the video.
 
 Encoder settings:
+
+Try nvcudah264enc, should be used in conjunction with cudaupload/cudadownload?
 
 https://gstreamer.freedesktop.org/documentation/x264/index.html
 https://gstreamer.freedesktop.org/documentation/nvcodec/nvh264enc.html

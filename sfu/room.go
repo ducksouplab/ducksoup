@@ -41,7 +41,8 @@ type room struct {
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	id           string
+	id           string // public id
+	hid          string // internal id
 	qualifiedId  string // prefixed by origin, used for indexing in roomStore
 	namespace    string
 	size         int
@@ -98,6 +99,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		outTracksReadyCount: 0,
 		qualifiedId:         qualifiedId,
 		id:                  join.RoomId,
+		hid:                 helpers.RandomHexString(12),
 		namespace:           join.Namespace,
 		size:                size,
 		duration:            duration,
@@ -142,6 +144,7 @@ func (r *room) filePrefix(userId string) string {
 	// if several files need to be synchronized
 	return time.Now().Format("20060102-150405.000") +
 		"-n-" + r.namespace +
+		"-i-" + r.hid +
 		"-r-" + r.id +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)
