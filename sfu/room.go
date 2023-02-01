@@ -136,8 +136,12 @@ func (r *room) connectedUserCount() (count int) {
 
 func (r *room) filePrefix(userId string) string {
 	connectionCount := r.joinedCountForUser(userId)
-	// time room user count, previously included time.Now().Format("20060102-150405.000")
-	return "n-" + r.namespace +
+	// caution: time reflects the moment the pipeline is initialized.
+	// When pipeline is started, files are written to, but it's better
+	// to rely on the time advertised by the OS (file properties)
+	// if several files need to be synchronized
+	return time.Now().Format("20060102-150405.000") +
+		"-n-" + r.namespace +
 		"-r-" + r.id +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)
