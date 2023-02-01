@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
+// capitalized props are accessible to template
 type mediaOptions struct {
+	// calculated property
+	SkipFixedCaps bool
 	// live property depending on Join (and DS_NVCODEC), not used within template
 	nvcodec bool
 	// properties depending on yml definitions

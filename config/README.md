@@ -14,10 +14,6 @@ A few notes about GStreamer settings:
 
 - currently, setting `min-force-key-unit-interval` on encoders is disabled (more tests have to be done), it may be an interesting option to limit PLI requests
 
-- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio)
-
-- some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Other muxers should be retested
-
 - disregard of dry paths, on wet paths: we always constrain caps before fx since some may rely on constant sizes
 
 - Another solution is to prefer muxers robust to caps updates: `mpegtsmux` (for h264)
@@ -36,9 +32,22 @@ A few notes about GStreamer settings:
 
 - `h264timestamper` triggers an "Unknown frame rate, assume 25/1" that's why we disabled it since framerate should not be defined by this elemend
 
-To try later:
+About muxers
 
-- do-timestamp=true on appsrc
+
+- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio), and costs more processing only when there is not FX (since with FX decoding/reencoding is needed anyway)
+
+- some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Indeed "avc3 is not officially supported, only use this format for smart encoding" is seen in https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/blob/discontinued-for-monorepo/gst/matroska/matroska-mux.c
+
+Latest tests:
+
+- matroskamux + h264 + resolution change > KO
+- matroskamux + vp8 + resolution change > OK (that's why we disabled fixed caps for vp8)
+- mpegtsmux: h264 only and written files are KO
+- webmmux: vp8 only and written files bad quality at start (lost initial kf ?)
+- mp4mux: h264 only and crashes with warnings 'Sample with zero duration on pad" and "error: Buffer has no PTS" (GST_DEBUG=6 prevents the crash...)
+
+Conclusion: if we could prevent mp4mux from crashing we could use matroskamux for vp8 and mp4mux for h264, and decoding/capping/reencoding would be disabled when no fx is added to the video.
 
 Encoder settings:
 

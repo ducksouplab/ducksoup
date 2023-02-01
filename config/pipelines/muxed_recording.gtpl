@@ -92,9 +92,11 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
 
-    {{.Video.Decode}} !
-    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
-    {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
+    {{if not .Video.SkipFixedCaps}}
+        {{.Video.Decode}} !
+        {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+        {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
+    {{end}}
     
     {{/* video stream has to be written to two files if there is an aufio fx*/}}
     {{if .Audio.Fx }}

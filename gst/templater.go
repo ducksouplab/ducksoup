@@ -29,6 +29,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	switch join.VideoFormat {
 	case "VP8":
 		videoOptions = config.VP8
+		videoOptions.SkipFixedCaps = true
 	case "H264":
 		if nvcodec {
 			videoOptions = config.NV264
@@ -44,8 +45,8 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
 
-	log.Info().Str("context", "pipeline").Str("audioOptions", fmt.Sprintf("%v", audioOptions)).Msg("template_data")
-	log.Info().Str("context", "pipeline").Str("videoOptions", fmt.Sprintf("%v", videoOptions)).Msg("template_data")
+	log.Info().Str("context", "pipeline").Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
+	log.Info().Str("context", "pipeline").Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
 
 	// shape template data
 	data := struct {
