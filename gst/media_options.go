@@ -11,6 +11,7 @@ type mediaOptions struct {
 	SkipFixedCaps bool
 	// live property depending on Join (and DS_NVCODEC), not used within template
 	nvcodec bool
+	Overlay bool
 	// properties depending on yml definitions
 	Fx      string
 	Decoder string

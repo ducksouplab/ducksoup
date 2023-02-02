@@ -37,7 +37,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.18");
+    console.log("[DuckSoup] v1.5.19");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -66,15 +66,16 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu } = peerOptions;
+    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay } = peerOptions;
     if (!["VP8", "H264"].includes(videoFormat)) videoFormat = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
     if (isNaN(height)) height = null;
     if (isNaN(frameRate)) frameRate = null;
     if (!gpu) gpu = null;
+    if (!overlay) overlay = null;
 
-    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu });
+    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay });
 };
 
 const preferMono = (sdp) => {

@@ -39,8 +39,9 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	default:
 		panic("Unhandled format " + join.VideoFormat)
 	}
-	// set env options
+	// set env and join dependent options
 	videoOptions.nvcodec = nvcodec
+	videoOptions.Overlay = join.Overlay
 	// complete with Fx
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)

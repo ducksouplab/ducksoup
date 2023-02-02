@@ -30,6 +30,9 @@ video_src. !
     {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
+    {{if .Video.Overlay }}
+        timeoverlay ! 
+    {{end}}
     {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
     {{.Video.Rtp.Pay}} ! 

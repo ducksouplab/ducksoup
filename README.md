@@ -85,7 +85,7 @@ Where:
     - 1: logs related to RTP stats (bitrates, fps, keyframes...) are sent to server
     - 2: above + logs related to signaling are sent to server
     - please note that logs relying on WebRTC stats data are only polled every second, meaning some data samples may be missing
-
+  - `overlay` (boolean, defaults to false) add text overlay on top of the video mainly for debugging purposes
 
 For a usage example, you may have a look at `front/src/test/app.js`
 
@@ -424,6 +424,12 @@ An example to build and run with a few settings:
 
 ```
 go build && GST_DEBUG=2,videodecoder:1 DS_NVCODEC=true DS_ENV=DEV ./ducksoup
+```
+
+The following shortcut build and run DuckSoup with useful development settings:
+
+```
+yarn dev
 ```
 
 To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:

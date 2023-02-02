@@ -314,17 +314,18 @@ func (r *room) endingDelay() (delay int) {
 	return
 }
 
-func (r *room) readRemoteWhileWaiting(remoteTrack *webrtc.TrackRemote) {
+// return false if an error ends the waiting
+func (r *room) readRemoteTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
 		case <-r.waitForAllCh:
 			// trial is over, no need to trigger signaling on every closing track
-			return
+			return true
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				r.logger.Error().Err(err).Msg("room readRemoteWhileWaiting")
-				return
+				r.logger.Error().Err(err).Msg("room readRemoteTillAllReady")
+				return false
 			}
 		}
 	}
@@ -339,23 +340,25 @@ func (r *room) runMixerSliceFromRemote(
 	r.incInTracksReadyCount(ps, remoteTrack)
 
 	// wait for all peers to connect
-	r.readRemoteWhileWaiting(remoteTrack)
+	ok := r.readRemoteTillAllReady(remoteTrack)
 
-	slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
+	if ok {
+		slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
 
-	if err != nil {
-		r.logger.Error().Err(err).Msg("room runMixerSliceFromRemote")
-	} else {
-		// needed to relay control fx events between peer server and output track
-		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
+		if err != nil {
+			r.logger.Error().Err(err).Msg("room runMixerSliceFromRemote")
+		} else {
+			// needed to relay control fx events between peer server and output track
+			ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
-		// will trigger signaling if needed
-		r.incOutTracksReadyCount()
+			// will trigger signaling if needed
+			r.incOutTracksReadyCount()
 
-		slice.loop() // blocking
+			slice.loop() // blocking
 
-		// track has ended
-		r.mixer.removeMixerSlice(slice)
-		r.decOutTracksReadyCount()
+			// track has ended
+			r.mixer.removeMixerSlice(slice)
+			r.decOutTracksReadyCount()
+		}
 	}
 }

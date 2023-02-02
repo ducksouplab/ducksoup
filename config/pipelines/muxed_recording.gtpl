@@ -73,7 +73,11 @@ video_src. !
     tee_video_in. ! 
     queue max-size-buffers=0 max-size-bytes=0 ! 
     videoconvert ! 
-    {{.Video.Fx}} ! 
+    {{.Video.Fx}} !
+    {{if .Video.Overlay }}
+        timeoverlay ! 
+    {{end}}
+
     queue max-size-time=75000000 ! 
     {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
