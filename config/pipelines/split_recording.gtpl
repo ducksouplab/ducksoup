@@ -85,9 +85,10 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-
-    {{.Video.Decoder}} !
     {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{if .Video.Overlay }}
+        timeoverlay ! 
+    {{end}}
     {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} !
     dry_video_recorder.
 

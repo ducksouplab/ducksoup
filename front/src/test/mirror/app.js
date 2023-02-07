@@ -227,7 +227,7 @@ const appendMessage = (message) => {
     document.getElementById("stopped-message").innerHTML += message + '<br/>';
 };
 
-// communication with iframe
+// communication with player
 const ducksoupListener = (options) => (message) => {
     const { kind, payload } = message;
     const mountEl = document.getElementById("ducksoup-root");

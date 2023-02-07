@@ -4,7 +4,8 @@
   "main": "app.jsx",
   "license": "MIT",
   "scripts": {
-    "dev": "go build && DS_ENV=DEV GST_DEBUG=2,videodecoder:1 DS_GEN_TWCC=true DS_NVCODEC=true ./ducksoup"
+    "dev": "go build && DS_ENV=DEV GST_DEBUG=2,videodecoder:1 DS_GEN_TWCC=true DS_NVCODEC=true ./ducksoup",
+    "deps": "go get -t -u ./... && go mod tidy"
   },
   "dependencies": {
     "react": "^17.0.2",

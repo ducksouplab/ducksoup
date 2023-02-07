@@ -99,6 +99,9 @@ video_src. !
     {{if not .Video.SkipFixedCaps}}
         {{.Video.Decoder}} !
         {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+        {{if .Video.Overlay }}
+            timeoverlay ! 
+        {{end}}
         {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
     {{end}}
     

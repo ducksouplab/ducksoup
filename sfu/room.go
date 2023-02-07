@@ -162,11 +162,13 @@ func (r *room) countdown() {
 	r.logger.Info().Msg("room_ended")
 	// listened by peerServers, mixer, mixerTracks
 	close(r.endCh)
-	// actual deleting is done when all users have disconnected, see disconnectUser
-	// except when room was already empty (started but peers left)
+
 	<-time.After(3000 * time.Millisecond)
-	r.delete()
-	// r.deleteIfEmpty()
+	// most likely already deleted, see disconnectUser
+	// except if room was empty before turning to r.running=false
+	if !r.deleted {
+		r.delete()
+	}
 }
 
 // API read-write
@@ -216,7 +218,7 @@ func (r *room) incOutTracksReadyCount() {
 	r.outTracksReadyCount++
 
 	if r.outTracksReadyCount == r.neededTracks {
-		// TOFIX without this timeout, some tracks are not sent to peers,
+		// TODO FIX without this timeout, some tracks are not sent to peers,
 		<-time.After(1000 * time.Millisecond)
 		go r.mixer.managedUpdateSignaling("all processed tracks are ready", true)
 	}
@@ -243,7 +245,8 @@ func (r *room) deleteIfEmpty() {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.connectedUserCount() == 0 && !r.running && !r.deleted { // don't keep this room
+	// delete condition
+	if r.connectedUserCount() == 0 && !r.running && !r.deleted {
 		r.delete()
 		r.deleted = true
 	}
@@ -351,7 +354,7 @@ func (r *room) runMixerSliceFromRemote(
 			// needed to relay control fx events between peer server and output track
 			ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
-			// will trigger signaling if needed
+			// trigger signaling if needed
 			r.incOutTracksReadyCount()
 
 			slice.loop() // blocking

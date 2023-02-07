@@ -393,7 +393,7 @@ class DuckSoup {
             };
 
             pc.ontrack = (event) => {
-                console.log(`[DuckSoup] on track (while connection state is ${pc.connectionState})`)
+                console.log(`[DuckSoup] on track (while connection state is ${pc.connectionState})`);
                 if (this._mountEl) {
                     let el = document.createElement(event.track.kind);
                     el.id = event.track.id;
