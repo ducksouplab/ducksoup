@@ -5,4 +5,4 @@ audio:
 video:
   defaultBitrate: 300000
   minBitrate: 100000
-  maxBitrate: 1000000
+  maxBitrate: 900000

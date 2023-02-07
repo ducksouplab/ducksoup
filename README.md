@@ -85,7 +85,7 @@ Where:
     - 1: logs related to RTP stats (bitrates, fps, keyframes...) are sent to server
     - 2: above + logs related to signaling are sent to server
     - please note that logs relying on WebRTC stats data are only polled every second, meaning some data samples may be missing
-  - `overlay` (boolean, defaults to false) add text overlay on top of the video mainly for debugging purposes
+  - `overlay` (boolean, defaults to false) add text overlay on top of the video (mainly for debugging purposes)
 
 For a usage example, you may have a look at `front/src/test/app.js`
 
@@ -211,6 +211,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - `DS_STATS_PASSWORD` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
 - `DS_NVCODEC` (default to false) set to true if NVIDIA GPU is enabled on the host (see [GPU-enabled Docker containers](#gpu-enabled-docker-containers)) and relevant GStreamer [nvcodec](https://gstreamer.freedesktop.org/documentation/nvcodec/index.html) plugin is preferred for video encoding (rather than relying on the CPU)
+- `DS_FORCE_OVERLAY` (defaults to false) set to true to display a time overlay in videos (recorded)
 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 

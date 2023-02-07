@@ -41,7 +41,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string) string {
 	}
 	// set env and join dependent options
 	videoOptions.nvcodec = nvcodec
-	videoOptions.Overlay = join.Overlay
+	videoOptions.Overlay = join.Overlay || forceOverlayEnv
 	// complete with Fx
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)

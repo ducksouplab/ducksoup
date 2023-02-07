@@ -166,9 +166,11 @@ func (r *room) countdown() {
 	<-time.After(3000 * time.Millisecond)
 	// most likely already deleted, see disconnectUser
 	// except if room was empty before turning to r.running=false
+	r.Lock()
 	if !r.deleted {
-		r.delete()
+		r.unguardedDelete()
 	}
+	r.Unlock()
 }
 
 // API read-write
@@ -241,18 +243,9 @@ func (r *room) connectPeerServer(ps *peerServer) {
 	r.peerServerIndex[ps.userId] = ps
 }
 
-func (r *room) deleteIfEmpty() {
-	r.Lock()
-	defer r.Unlock()
-
-	// delete condition
-	if r.connectedUserCount() == 0 && !r.running && !r.deleted {
-		r.delete()
-		r.deleted = true
-	}
-}
-
-func (r *room) delete() {
+// should be called by another method that locked the room (mutex)
+func (r *room) unguardedDelete() {
+	r.deleted = true
 	roomStoreSingleton.delete(r)
 	r.logger.Info().Msg("room_deleted")
 	// cleanup
@@ -273,9 +266,10 @@ func (r *room) disconnectUser(userId string) {
 		r.connectedIndex[userId] = false
 		go r.mixer.managedUpdateSignaling("disconnected", false)
 
-		// don't delete only if is empty since users may have disconnected temporarily
-		if r.connectedUserCount() == 0 && !r.running { // don't keep this room
-			r.delete()
+		// users may have disconnected temporarily
+		// delete only if is empty and not running
+		if r.connectedUserCount() == 0 && !r.running && !r.deleted {
+			r.unguardedDelete()
 		}
 	}
 }

@@ -22,12 +22,13 @@ type gstConfig struct {
 }
 
 // global state
-var nvcodecEnv bool
+var nvcodecEnv, forceOverlayEnv bool
 var config gstConfig
 var muxedRecordingTemplater, splitRecordingTemplater, passthroughTemplater, noRecordingTemplater *template.Template
 
 func init() {
 	nvcodecEnv = strings.ToLower(helpers.Getenv("DS_NVCODEC")) == "true"
+	forceOverlayEnv = strings.ToLower(helpers.Getenv("DS_FORCE_OVERLAY")) == "true"
 
 	// load config from yml file
 	f, err := helpers.Open("config/gst.yml")

@@ -98,12 +98,11 @@ func (ps *peerServer) close(cause string) {
 		// clean up bound components
 		ps.pc.Close()
 		ps.ws.Close()
-		ps.r.disconnectUser(ps.userId)
 
 		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
-	} else {
-		ps.r.deleteIfEmpty()
 	}
+	// cleanup anyway
+	ps.r.disconnectUser(ps.userId)
 }
 
 func (ps *peerServer) controlFx(payload controlPayload) {
