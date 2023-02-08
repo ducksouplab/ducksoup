@@ -43,7 +43,7 @@ func goDeletePipeline(cId *C.char) {
 	pipelineStoreSingleton.delete(id)
 }
 
-func writeNewSample(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
+func writeTo(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 	id := C.GoString(cId)
 	p, ok := pipelineStoreSingleton.find(id)
 
@@ -71,12 +71,12 @@ func writeNewSample(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C
 
 //export goWriteAudio
 func goWriteAudio(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
-	writeNewSample("audio", cId, buffer, bufferLen)
+	writeTo("audio", cId, buffer, bufferLen)
 }
 
 //export goWriteVideo
 func goWriteVideo(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
-	writeNewSample("video", cId, buffer, bufferLen)
+	writeTo("video", cId, buffer, bufferLen)
 }
 
 //export goPipelineLog

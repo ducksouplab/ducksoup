@@ -50,6 +50,10 @@ func (sc *senderController) logInfo() *zerolog.Event {
 	return sc.slice.logInfo().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
+func (sc *senderController) logDebug() *zerolog.Event {
+	return sc.slice.logDebug().Str("context", "track").Str("toUser", sc.toUserId)
+}
+
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 // credits to https://github.com/jech/galene
 func (sc *senderController) updateRateFromLoss(loss uint8) {
@@ -111,9 +115,12 @@ func (sc *senderController) runListener() {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
 					sc.slice.fromPs.pc.throttledPLIRequest("PLI from other peer")
-				case *rtcp.ReceiverEstimatedMaximumBitrate:
-					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
+				// REMB not received because if TWCC is enabled
+				// case *rtcp.ReceiverEstimatedMaximumBitrate:
+				// 	sc.logDebug().Msgf("%T %+v", packet, packet)
+				//sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				case *rtcp.ReceiverReport:
+					// sc.logDebug().Msgf("%T %+v", packet, packet)
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(sc.ssrc) {
 							sc.updateRateFromLoss(r.FractionLost)

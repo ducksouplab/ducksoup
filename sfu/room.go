@@ -363,8 +363,8 @@ func (r *room) runMixerSliceFromRemote(
 		// trigger signaling if needed
 		signalingNeeded := r.incOutTracksReadyCount()
 		if signalingNeeded {
-			// TODO FIX without this timeout, some tracks are not sent to peers,
-			<-time.After(1000 * time.Millisecond)
+			// FIXED? without this timeout, some tracks are not sent to peers,
+			// <-time.After(1000 * time.Millisecond)
 			go r.mixer.managedGlobalSignaling("out_tracks_ready", true)
 		}
 		// blocking until room ends or user disconnects

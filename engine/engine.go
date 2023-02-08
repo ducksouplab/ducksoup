@@ -145,6 +145,13 @@ func init() {
 func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
+		case *rtcp.TransportLayerNack:
+			res += fmt.Sprintf(
+				"[NACK] ssrc:%v sender:%v nacks:%v",
+				rtcpPacket.MediaSSRC,
+				rtcpPacket.SenderSSRC,
+				rtcpPacket.Nacks,
+			)
 		case *rtcp.TransportLayerCC:
 			var count uint16 = 0
 			var lost uint16 = 0
