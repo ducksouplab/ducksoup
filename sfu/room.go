@@ -136,6 +136,12 @@ func (r *room) connectedUserCount() (count int) {
 	return len(r.peerServerIndex)
 }
 
+// users are connected but some out tracks may still be in the process of
+// being attached and (not) ready (yet)
+func (r *room) allUsersConnected() bool {
+	return r.connectedUserCount() == r.size
+}
+
 func (r *room) filePrefix(userId string) string {
 	connectionCount := r.joinedCountForUser(userId)
 	// caution: time reflects the moment the pipeline is initialized.
@@ -213,17 +219,24 @@ func (r *room) addSSRC(ssrc uint32, kind string, userId string) {
 	go store.AddToSSRCIndex(ssrc, kind, r.namespace, r.id, userId)
 }
 
-func (r *room) incOutTracksReadyCount() {
+// returns true if signaling is needed
+func (r *room) incOutTracksReadyCount() bool {
 	r.Lock()
 	defer r.Unlock()
 
 	r.outTracksReadyCount++
 
+	// all out tracks are ready
 	if r.outTracksReadyCount == r.neededTracks {
-		// TODO FIX without this timeout, some tracks are not sent to peers,
-		<-time.After(1000 * time.Millisecond)
-		go r.mixer.managedUpdateSignaling("out_tracks_ready", true)
+		return true
 	}
+	// room with >= 3 users: after two users have disconnected and only one came back
+	// trigger signaling (for an even number of out tracks since they go
+	// by audio/video pairs)
+	if r.running && (r.outTracksReadyCount%2 == 0) {
+		return true
+	}
+	return false
 }
 
 func (r *room) decOutTracksReadyCount() {
@@ -261,7 +274,7 @@ func (r *room) disconnectUser(userId string) {
 		delete(r.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		r.connectedIndex[userId] = false
-		go r.mixer.managedUpdateSignaling("disconnected", false)
+		go r.mixer.managedGlobalSignaling("user_disconnected", false)
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
@@ -346,7 +359,12 @@ func (r *room) runMixerSliceFromRemote(
 			ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 			// trigger signaling if needed
-			r.incOutTracksReadyCount()
+			signalingNeeded := r.incOutTracksReadyCount()
+			if signalingNeeded {
+				// TODO FIX without this timeout, some tracks are not sent to peers,
+				<-time.After(1000 * time.Millisecond)
+				go r.mixer.managedGlobalSignaling("out_tracks_ready", true)
+			}
 
 			slice.loop() // blocking
 

@@ -37,7 +37,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.19");
+    console.log("[DuckSoup] v1.5.20");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -339,6 +339,7 @@ class DuckSoup {
 
             if (message.kind === "offer") {
                 const offer = looseJSONParse(message.payload);
+                console.log("[DuckSoup] offer (length: " + message.payload.length + ")")
 
                 pc.setRemoteDescription(offer);
                 // console.log("[DuckSoup] offer: ", offer);

@@ -109,7 +109,6 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		endCh: make(chan struct{}),
 	}
 
-	slice.logInfo().Str("from", ps.userId).Str("track", slice.ID()).Msg("out_track_created_in_slice")
 	return
 }
 
@@ -192,8 +191,7 @@ func (s *mixerSlice) loop() {
 	// go s.runReceiverListener()
 
 	defer func() {
-		msg := fmt.Sprintf("%s_track_stopped", s.kind)
-		s.logInfo().Str("track", s.ID()).Msg(msg)
+		s.logInfo().Str("track", s.ID()).Str("kind", s.kind).Msg("out_track_stopped")
 		s.stop()
 	}()
 

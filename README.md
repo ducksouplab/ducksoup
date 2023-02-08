@@ -339,8 +339,7 @@ Here is a reference of all log messages, grouped by context:
 - `message: "audio_out_bitrate_estimated"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
 - `message: "video_out_bitrate_estimated"`: same for video
 - `message: "loss_threshold_exceeded"`: too many lost packets (property `value` reflects ReceiverReport loss count)
-- `message: "audio_track_stopped"`: processed audio track (server-side, with given `track` ID property) stopped after pipeline stopped
-- `message: "video_track_stopped"`: same for video
+- `message: "out_track_stopped"`: processed track (server-side, with given `track` ID and `kind` properties) stopped after pipeline stopped
 - `message: "pli_sent"`: Picture Loss Indication sent to client (additional `cause` property)
 - `message: "pli_skipped"`: Picture Loss Indication skipped (throttling, additional `cause` property)
 - `message: "audio_in_report"`: describe audio `lost` RTP packets (coming from client) among `count` (total) RTP packets emitted by client (since last report)

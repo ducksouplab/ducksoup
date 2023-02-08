@@ -58,11 +58,17 @@ func newPeerServer(
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 	}
 
-	// connect components for further communication
+	// connect for further communication
 	r.connectPeerServer(ps)
-	r.mixer.managedUpdateSignaling("new_user#"+ps.userId, false)
+	if r.allUsersConnected() {
+		// optim: update tracks from others (all are there) and share offer
+		ps.updateTracksAndShareOffer()
+	} else {
+		// ready to share offer, in(coming) tracks already prepared during PC initialization
+		ps.shareOffer()
+	}
+	// some events on pc needs API from ws or room
 	pc.handleCallbacks(ps)
-
 	return ps
 }
 
@@ -84,6 +90,119 @@ func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
 	} else if kind == "video" {
 		ps.videoSlice = slice
 	}
+}
+
+func (ps *peerServer) cleanOutTracks() {
+	userId := ps.userId
+	pc := ps.pc
+
+	for _, sender := range pc.GetSenders() {
+		if sender.Track() == nil {
+			continue
+		}
+		sentTrackId := sender.Track().ID()
+		// if we have a RTPSender that doesn't map to an existing track remove and signal
+		_, ok := ps.r.mixer.sliceIndex[sentTrackId]
+		if !ok {
+			if err := pc.RemoveTrack(sender); err != nil {
+				ps.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("remove_track_failed")
+			} else {
+				ps.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("track_removed")
+			}
+		}
+	}
+}
+
+func (ps *peerServer) prepareOutTracks() bool {
+	userId := ps.userId
+	pc := ps.pc
+
+	// map of sender we are already sending, so we don't double send
+	alreadySentIndex := map[string]bool{}
+
+	for _, sender := range pc.GetSenders() {
+		if sender.Track() == nil {
+			continue
+		}
+		sentTrackId := sender.Track().ID()
+		// if we have a RTPSender that doesn't map to an existing track remove and signal
+		_, ok := ps.r.mixer.sliceIndex[sentTrackId]
+		if ok {
+			alreadySentIndex[sentTrackId] = true
+		}
+	}
+
+	// add all necessary track (not yet to the PeerConnection or not coming from same peer)
+	for id, s := range ps.r.mixer.sliceIndex {
+		_, alreadySent := alreadySentIndex[id]
+
+		trackId := s.ID()
+		fromId := s.fromPs.userId
+		if alreadySent {
+			// don't double send
+			ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_dup_track_to_pc_skipped")
+		} else if ps.r.size != 1 && s.fromPs.userId == userId {
+			// don't send own tracks, except when room size is 1 (room then acts as a mirror)
+			ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_own_track_to_pc_skipped")
+		} else {
+			sender, err := pc.AddTrack(s.output)
+			if err != nil {
+				ps.logError().Err(err).Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_out_track_to_pc_failed")
+				return false
+			} else {
+				ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("out_track_added_to_pc")
+			}
+			s.addSender(sender, userId)
+		}
+	}
+	return true
+}
+
+func (ps *peerServer) shareOffer() bool {
+	userId := ps.userId
+	pc := ps.pc
+
+	ps.logInfo().Str("user", userId).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
+
+	if pc.PendingLocalDescription() != nil {
+		ps.logError().Str("user", userId).Msg("pending_local_description_blocks_offer")
+		return false
+	}
+
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
+		ps.logError().Str("user", userId).Msg("create_offer_failed")
+		return false
+	}
+
+	if err = pc.SetLocalDescription(offer); err != nil {
+		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("set_local_description_failed")
+		return false
+	} else {
+		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("set_local_description")
+	}
+
+	offerString, err := json.Marshal(offer)
+	if err != nil {
+		ps.logError().Str("user", userId).Err(err).Msg("marshal_offer_failed")
+		return false
+	}
+
+	if err = ps.ws.sendWithPayload("offer", string(offerString)); err != nil {
+		return false
+	}
+	return true
+}
+
+func (ps *peerServer) updateTracksAndShareOffer() bool {
+	ps.cleanOutTracks()
+	if state := ps.prepareOutTracks(); !state {
+		return state
+	}
+	if state := ps.shareOffer(); !state {
+		return state
+	}
+	return true
 }
 
 func (ps *peerServer) close(cause string) {
