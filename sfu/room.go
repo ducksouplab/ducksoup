@@ -346,31 +346,31 @@ func (r *room) runMixerSliceFromRemote(
 	// signal new peer and tracks
 	r.incInTracksReadyCount(ps, remoteTrack)
 
+	// prepare slice
+	slice, err := newMixerSlice(ps, remoteTrack, receiver)
+	if err != nil {
+		r.logger.Error().Err(err).Msg("new_mixer_slice_failed")
+	}
+	// index to be searchable by track id
+	r.mixer.indexMixerSlice(slice)
+	// needed to relay control fx events between peer server and output track
+	ps.setMixerSlice(remoteTrack.Kind().String(), slice)
+
 	// wait for all peers to connect
 	ok := r.readRemoteTillAllReady(remoteTrack)
 
 	if ok {
-		slice, err := r.mixer.newMixerSliceFromRemote(ps, remoteTrack, receiver)
-
-		if err != nil {
-			r.logger.Error().Err(err).Msg("room runMixerSliceFromRemote")
-		} else {
-			// needed to relay control fx events between peer server and output track
-			ps.setMixerSlice(remoteTrack.Kind().String(), slice)
-
-			// trigger signaling if needed
-			signalingNeeded := r.incOutTracksReadyCount()
-			if signalingNeeded {
-				// TODO FIX without this timeout, some tracks are not sent to peers,
-				<-time.After(1000 * time.Millisecond)
-				go r.mixer.managedGlobalSignaling("out_tracks_ready", true)
-			}
-
-			slice.loop() // blocking
-
-			// track has ended
-			r.mixer.removeMixerSlice(slice)
-			r.decOutTracksReadyCount()
+		// trigger signaling if needed
+		signalingNeeded := r.incOutTracksReadyCount()
+		if signalingNeeded {
+			// TODO FIX without this timeout, some tracks are not sent to peers,
+			<-time.After(1000 * time.Millisecond)
+			go r.mixer.managedGlobalSignaling("out_tracks_ready", true)
 		}
+		// blocking until room ends or user disconnects
+		slice.loop()
+		// track has ended
+		r.mixer.removeMixerSlice(slice)
+		r.decOutTracksReadyCount()
 	}
 }

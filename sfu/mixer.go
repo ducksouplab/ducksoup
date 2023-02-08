@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
 )
 
@@ -36,16 +35,12 @@ func (m *mixer) logDebug() *zerolog.Event {
 }
 
 // Add to list of tracks
-func (m *mixer) newMixerSliceFromRemote(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (slice *mixerSlice, err error) {
-	slice, err = newMixerSlice(ps, remoteTrack, receiver)
+func (m *mixer) indexMixerSlice(slice *mixerSlice) {
+	m.Lock()
+	defer m.Unlock()
 
-	if err == nil {
-		m.Lock()
-		m.sliceIndex[slice.ID()] = slice
-		m.logInfo().Str("track", slice.ID()).Str("from", slice.fromPs.userId).Str("kind", slice.kind).Msg("out_track_indexed")
-		m.Unlock()
-	}
-	return
+	m.sliceIndex[slice.ID()] = slice
+	m.logInfo().Str("track", slice.ID()).Str("from", slice.fromPs.userId).Str("kind", slice.kind).Msg("out_track_indexed")
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
