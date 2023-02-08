@@ -188,7 +188,7 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 	}
 
 	r.inTracksReadyCount++
-	r.logger.Info().Int("count", r.inTracksReadyCount).Msg("room_track_added")
+	r.logger.Info().Int("count", r.inTracksReadyCount).Msg("in_track_added_to_room")
 
 	if r.inTracksReadyCount == r.neededTracks {
 		// do start
@@ -222,7 +222,7 @@ func (r *room) incOutTracksReadyCount() {
 	if r.outTracksReadyCount == r.neededTracks {
 		// TODO FIX without this timeout, some tracks are not sent to peers,
 		<-time.After(1000 * time.Millisecond)
-		go r.mixer.managedUpdateSignaling("all processed tracks are ready", true)
+		go r.mixer.managedUpdateSignaling("out_tracks_ready", true)
 	}
 }
 

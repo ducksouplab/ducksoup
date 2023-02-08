@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -40,6 +41,10 @@ func (m *mixer) logInfo() *zerolog.Event {
 	return m.r.logger.Info().Str("context", "signaling")
 }
 
+func (m *mixer) logDebug() *zerolog.Event {
+	return m.r.logger.Debug().Str("context", "signaling")
+}
+
 // Add to list of tracks and fire renegotation for all PeerConnections
 func (m *mixer) newMixerSliceFromRemote(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (slice *mixerSlice, err error) {
 	slice, err = newMixerSlice(ps, remoteTrack, receiver)
@@ -76,18 +81,17 @@ func (m *mixer) updateTracks() signalingState {
 			if sender.Track() == nil {
 				continue
 			}
-
 			sentTrackId := sender.Track().ID()
-			alreadySentIndex[sentTrackId] = true
-
 			// if we have a RTPSender that doesn't map to an existing track remove and signal
 			_, ok := m.sliceIndex[sentTrackId]
 			if !ok {
 				if err := pc.RemoveTrack(sender); err != nil {
-					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("can't remove sent track")
+					m.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("remove_track_failed")
 				} else {
 					m.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("track_removed")
 				}
+			} else {
+				alreadySentIndex[sentTrackId] = true
 			}
 		}
 
@@ -96,19 +100,20 @@ func (m *mixer) updateTracks() signalingState {
 			_, alreadySent := alreadySentIndex[id]
 
 			trackId := s.ID()
+			fromId := s.fromPs.userId
 			if alreadySent {
 				// don't double send
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("duplicate_track_skipped")
+				m.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_dup_track_to_pc_skipped")
 			} else if m.r.size != 1 && s.fromPs.userId == userId {
 				// don't send own tracks, except when room size is 1 (room then acts as a mirror)
-				m.logInfo().Str("user", userId).Str("track", trackId).Msg("own_track_skipped")
+				m.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_own_track_to_pc_skipped")
 			} else {
 				sender, err := pc.AddTrack(s.output)
 				if err != nil {
-					m.logError().Err(err).Str("user", userId).Str("track", trackId).Msg("can't add track")
+					m.logError().Err(err).Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_out_track_to_pc_failed")
 					return signalingRetryNow
 				} else {
-					m.logInfo().Str("user", userId).Str("track", trackId).Msg("track_added")
+					m.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("out_track_added_to_pc")
 				}
 
 				s.addSender(sender, userId)
@@ -125,24 +130,27 @@ func (m *mixer) updateOffers() signalingState {
 
 		m.logInfo().Str("user", userId).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
 
+		if pc.PendingLocalDescription() != nil {
+			m.logError().Str("user", userId).Msg("pending_local_description_blocks_offer")
+			return signalingRetryWithDelay
+		}
+
 		offer, err := pc.CreateOffer(nil)
 		if err != nil {
-			m.logError().Str("user", userId).Msg("can't create offer")
+			m.logError().Str("user", userId).Msg("create_offer_failed")
 			return signalingRetryNow
 		}
 
-		if pc.PendingLocalDescription() != nil {
-			m.logError().Str("user", userId).Msg("pending local description")
-		}
-
 		if err = pc.SetLocalDescription(offer); err != nil {
-			m.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("can't set local description")
+			m.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("set_local_description_failed")
 			return signalingRetryWithDelay
+		} else {
+			m.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("set_local_description")
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			m.logError().Str("user", userId).Err(err).Msg("can't marshal offer")
+			m.logError().Str("user", userId).Err(err).Msg("marshal_offer_failed")
 			return signalingRetryNow
 		}
 

@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -81,7 +80,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		pc.logError().Err(err).Msg("can't add audio transceiver")
+		pc.logError().Err(err).Msg("add_audio_transceiver_failed")
 		return
 	}
 
@@ -90,7 +89,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		pc.logError().Err(err).Msg("can't add video transceiver")
+		pc.logError().Err(err).Msg("add_video_transceiver_failed")
 		return
 	}
 
@@ -98,7 +97,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 	if join.VideoFormat == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
-			pc.logError().Err(err).Msg("can't set codec preferences")
+			pc.logError().Err(err).Msg("set_codec_preferences_failed")
 			return
 		}
 	}
@@ -117,7 +116,8 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 	return pc.r.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
 }
 
-func (pc *peerConn) connectPeerServer(ps *peerServer) {
+// pc callbacks trigger actions handled by ws or room or pc itself
+func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
@@ -125,9 +125,13 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 			return
 		}
 
+		if pc.RemoteDescription() == nil {
+			pc.logError().Msg("remote_description_should_come_first")
+		}
+
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			pc.logError().Err(err).Msg("can't marshal candidate")
+			pc.logError().Err(err).Msg("marshal_candidate_failed")
 			return
 		}
 
@@ -138,8 +142,7 @@ func (pc *peerConn) connectPeerServer(ps *peerServer) {
 		ssrc := uint32(remoteTrack.SSRC())
 		ps.r.addSSRC(ssrc, remoteTrack.Kind().String(), ps.userId)
 
-		msg := fmt.Sprintf("client_%s_track_added", remoteTrack.Kind())
-		pc.logDebug().Str("context", "track").Uint32("ssrc", ssrc).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg(msg)
+		pc.logDebug().Str("context", "track").Str("kind", remoteTrack.Kind().String()).Uint32("ssrc", ssrc).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg("in_track_received")
 		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
@@ -190,7 +193,7 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error
 		},
 	})
 	if err != nil {
-		pc.logError().Err(err).Str("context", "track").Msg("can't send PLI")
+		pc.logError().Err(err).Str("context", "track").Msg("send_pli_failed")
 	} else {
 		pc.Lock()
 		pc.lastPLI = time.Now()

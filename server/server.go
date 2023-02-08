@@ -64,7 +64,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	// upgrade HTTP request to Websocket
 	unsafeConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Error().Str("context", "peer").Err(err).Msg("can't upgrade websocket")
+		log.Error().Str("context", "peer").Err(err).Msg("upgrade_websocket_failed")
 		return
 	}
 

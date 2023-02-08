@@ -99,7 +99,7 @@ func (sc *senderController) runListener() {
 			packets, _, err := sc.sender.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					sc.logError().Err(err).Msg("can't read RTCP")
+					sc.logError().Err(err).Msg("read_sent_rtcp_failed")
 					continue
 				} else {
 					return

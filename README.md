@@ -323,15 +323,14 @@ Here is a reference of all log messages, grouped by context:
 
 - `message: "room_created"`: room created by given user (additional `origin` property)
 - `message: "peer_joined"`: user joined room (additional `payload` property)
-- `message: "room_track_added"`: peer track added to room (when enough tracks have been added, room is ready to start)
+- `message: "in_track_added"`: incoming peer track added to room (when enough tracks have been added, room is ready to start)
 - `message: "room_started"`: when all peers and tracks are ready
 - `message: "room_ended"`: room ended (room time limit has been reached)
 - `message: "room_deleted"`: occurs after room has ended and all users have disconnected. Or occur even if room was not started (not enough users)
 
 `track` context:
 
-- `message: "client_audio_track_added"`: remote/incoming audio track added to server peer connection (additional properties: `track`'s ID, `ssrc`, `mime`)
-- `message: "client_video_track_added"`: same for video
+- `message: "in_track_received"`: remote/incoming audio track added to server peer connection (additional properties: `track`'s ID, `ssrc`, `mime`, `type`: `audio` or `video`)
 - `message: "client_fx_control"`: JS client has requested an update of a GStreamer fx (identified by `name`, updated with `property` and `value`) 
 - `message: "audio_in_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
 - `message: "video_in_bitrate_estimated"`: same for video

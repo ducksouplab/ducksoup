@@ -119,7 +119,7 @@ func (ws *wsConn) read() (m messageIn, err error) {
 	err = ws.ReadJSON(&m)
 
 	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		ws.logError().Err(err).Msg("can't read JSON")
+		ws.logError().Err(err).Msg("read_json_failed")
 	}
 	return
 }

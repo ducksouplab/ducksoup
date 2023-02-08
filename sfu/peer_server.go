@@ -60,7 +60,7 @@ func newPeerServer(
 
 	// connect components for further communication
 	r.connectPeerServer(ps) // also triggers signaling
-	pc.connectPeerServer(ps)
+	pc.handleCallbacks(ps)
 
 	return ps
 }
@@ -198,31 +198,31 @@ func (ps *peerServer) loop() {
 		case "client_candidate":
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				ps.logError().Err(err).Msg("can't unmarshal candidate")
+				ps.logError().Err(err).Msg("unmarshal_candidate_failed")
 				return
 			}
 
 			if err := ps.pc.AddICECandidate(candidate); err != nil {
-				ps.logError().Err(err).Msg("can't add candidate")
+				ps.logError().Err(err).Msg("add_candidate_failed")
 				return
 			}
 			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_candidate_added")
 		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-				ps.logError().Err(err).Msg("can't unmarshal answer")
+				ps.logError().Err(err).Msg("unmarshal_answer_failed")
 				return
 			}
 
 			if err := ps.pc.SetRemoteDescription(answer); err != nil {
-				ps.logError().Err(err).Msg("can't set remote description")
+				ps.logError().Err(err).Msg("set_remote_description_failed")
 				return
 			}
-			ps.logDebug().Msg("client_answer_accepted")
+			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("set_remote_description")
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("can't unmarshal control")
+				ps.logError().Err(err).Msg("unmarshal_control_failed")
 			} else {
 				go func() {
 					ps.controlFx(payload)
@@ -231,7 +231,7 @@ func (ps *peerServer) loop() {
 		case "client_polycontrol":
 			payload := polyControlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("can't unmarshal control")
+				ps.logError().Err(err).Msg("unmarshal_polycontrol_failed")
 			} else {
 				go func() {
 					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
@@ -298,7 +298,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	pc, err := newPeerConn(joinPayload, r)
 	if err != nil {
 		ws.send("error-peer-connection")
-		log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("can't create pc")
+		log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("create_pc_failed")
 		return
 	}
 

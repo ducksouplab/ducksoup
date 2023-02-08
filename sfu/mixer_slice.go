@@ -108,6 +108,8 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		// status
 		endCh: make(chan struct{}),
 	}
+
+	slice.logInfo().Str("from", ps.userId).Str("track", slice.ID()).Msg("out_track_created_in_slice")
 	return
 }
 
@@ -138,7 +140,7 @@ func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
 		s.Unlock()
 		go sc.runListener()
 	} else {
-		s.logError().Str("toUser", toUserId).Msg("can't add sender: wrong number of encoding parameters")
+		s.logError().Str("toUser", toUserId).Str("cause", "wrong number of encoding parameters").Msg("add_sender_failed")
 	}
 }
 
@@ -285,7 +287,7 @@ func (s *mixerSlice) runTickers() {
 // 			i, _, err := s.receiver.Read(buf)
 // 			if err != nil {
 // 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					s.logError().Err(err).Msg("can't read RTCP packet")
+// 					s.logError().Err(err).Msg("read_received_rtcp_failed")
 // 				}
 // 				return
 // 			}
@@ -294,7 +296,7 @@ func (s *mixerSlice) runTickers() {
 
 // 			packets, err := rtcp.Unmarshal(buf[:i])
 // 			if err != nil {
-// 				s.logError().Err(err).Msg("can't unmarshal RTCP packet")
+// 				s.logError().Err(err).Msg("unmarshal_received_rtcp_failed")
 // 				continue
 // 			}
 
