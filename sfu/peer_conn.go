@@ -56,25 +56,7 @@ func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnectio
 	return
 }
 
-func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
-	ppc, err := newPionPeerConn(join, r)
-	if err != nil {
-		// pc is not created for now so we use the room logger
-		r.logger.Error().Err(err).Str("user", join.UserId)
-		return
-	}
-
-	// initial lastPLI far enough in the past
-	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
-
-	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval}
-
-	// after an initial delay, change the minimum PLI interval
-	go func() {
-		<-time.After(changePLIMinIntervalAfter)
-		pc.pliMinInterval = mainPLIMinInterval
-	}()
-
+func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 	// accept one audio
 	_, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
@@ -101,6 +83,29 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 			return
 		}
 	}
+	return
+}
+
+func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
+	ppc, err := newPionPeerConn(join, r)
+	if err != nil {
+		// pc is not created for now so we use the room logger
+		r.logger.Error().Err(err).Str("user", join.UserId)
+		return
+	}
+
+	// initial lastPLI far enough in the past
+	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
+
+	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval}
+
+	// after an initial delay, change the minimum PLI interval
+	go func() {
+		<-time.After(changePLIMinIntervalAfter)
+		pc.pliMinInterval = mainPLIMinInterval
+	}()
+
+	err = pc.prepareInTracks(join)
 	return
 }
 

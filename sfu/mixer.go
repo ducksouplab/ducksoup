@@ -64,7 +64,7 @@ func (m *mixer) removeMixerSlice(s *mixerSlice) {
 	m.Unlock()
 }
 
-func (m *mixer) updateTracks() signalingState {
+func (m *mixer) prepareOutTracks() signalingState {
 	for userId, ps := range m.r.peerServerIndex {
 		// iterate to update peer connections of each PeerServer
 		pc := ps.pc
@@ -123,7 +123,7 @@ func (m *mixer) updateTracks() signalingState {
 	return signalingOk
 }
 
-func (m *mixer) updateOffers() signalingState {
+func (m *mixer) createOffers() signalingState {
 	for _, ps := range m.r.peerServerIndex {
 		userId := ps.userId
 		pc := ps.pc
@@ -165,10 +165,10 @@ func (m *mixer) updateOffers() signalingState {
 // - add or remove tracks on peer connections
 // - update and send offers
 func (m *mixer) updateSignaling() signalingState {
-	if s := m.updateTracks(); s != signalingOk {
+	if s := m.prepareOutTracks(); s != signalingOk {
 		return s
 	}
-	return m.updateOffers()
+	return m.createOffers()
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks

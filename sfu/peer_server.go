@@ -59,7 +59,8 @@ func newPeerServer(
 	}
 
 	// connect components for further communication
-	r.connectPeerServer(ps) // also triggers signaling
+	r.connectPeerServer(ps)
+	r.mixer.managedUpdateSignaling("new_user#"+ps.userId, false)
 	pc.handleCallbacks(ps)
 
 	return ps

@@ -235,10 +235,7 @@ func (r *room) decOutTracksReadyCount() {
 
 func (r *room) connectPeerServer(ps *peerServer) {
 	r.Lock()
-	defer func() {
-		r.Unlock()
-		r.mixer.managedUpdateSignaling("new user#"+ps.userId, false)
-	}()
+	defer r.Unlock()
 
 	r.peerServerIndex[ps.userId] = ps
 }
