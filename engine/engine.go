@@ -3,22 +3,13 @@ package engine
 // inspired by https://github.com/jech/galene group package
 
 import (
-	"fmt"
 	"regexp"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/ducksouplab/ducksoup/helpers"
 	_ "github.com/ducksouplab/ducksoup/helpers" // rely on helpers logger init side-effect
-	"github.com/ducksouplab/ducksoup/store"
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/pkg/packetdump"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
+	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/webrtc/v3"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -135,141 +126,22 @@ func init() {
 	}
 }
 
-// func formatReceivedRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
-// 	for _, pkt := range pkts {
-// 		res += fmt.Sprintf("[receiver] %T RTCP packet: %v\n", pkt, pkt)
-// 	}
-// 	return res
-// }
-
-func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
-	for _, pkt := range pkts {
-		switch rtcpPacket := pkt.(type) {
-		case *rtcp.TransportLayerNack:
-			res += fmt.Sprintf(
-				"[NACK] ssrc:%v sender:%v nacks:%v",
-				rtcpPacket.MediaSSRC,
-				rtcpPacket.SenderSSRC,
-				rtcpPacket.Nacks,
-			)
-		case *rtcp.TransportLayerCC:
-			var count uint16 = 0
-			var lost uint16 = 0
-			for _, chunk := range rtcpPacket.PacketChunks {
-				switch chk := chunk.(type) {
-				case *rtcp.RunLengthChunk:
-					count += chk.RunLength
-					if chk.PacketStatusSymbol == 0 {
-						lost += chk.RunLength
-					}
-				case *rtcp.StatusVectorChunk:
-					for _, symbol := range chk.SymbolList {
-						count += 1
-						if symbol == 0 {
-							lost += 1
-						}
-					}
-				}
-			}
-			res += fmt.Sprintf(
-				"[TWCC] ssrc:%v count:%v lost:%v",
-				rtcpPacket.MediaSSRC,
-				count,
-				lost,
-			)
-
-			// case *rtcp.ReceiverReport:
-			// 	res += "[RR sent] reports: "
-			// 	for _, report := range rtcpPacket.Reports {
-			// 		res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
-			// 	}
-			// default:
-			// 	res += fmt.Sprintf("[%T sent]", rtcpPacket)
-		}
-	}
-	return res
-}
-
-func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
-	var twcc rtp.TransportCCExtension
-	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
-	twcc.Unmarshal(ext)
-
-	return fmt.Sprintf("[RTP] #%v now:%v ssrc:%v size:%v",
-		twcc.TransportSequence,
-		time.Now().Format("15:04:05.99999999"),
-		pkt.SSRC,
-		pkt.MarshalSize(),
-	)
-}
-
-// used by RTCP log interceptors
-type logWriteCloser struct{}
-
-func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
-	n = len(p)
-	if n > 0 {
-		msg := string(p)
-		if strings.HasPrefix(msg, "[TWCC]") {
-			ssrcMatch := ssrcRegexp.FindStringSubmatch(msg)
-			// trace level to respect DS_LOG_LEVEL setting
-			if len(ssrcMatch) > 0 {
-				// remove ssrc from string and add it as a log prop
-				msg = ssrcRegexp.ReplaceAllString(msg, "")
-
-				if ssrc64, err := strconv.ParseUint(ssrcMatch[1], 10, 32); err == nil {
-					ssrc := uint32(ssrc64)
-					ssrcLog := store.GetFromSSRCIndex(ssrc)
-					if ssrcLog != nil {
-						countMatch := countRegexp.FindStringSubmatch(msg)
-						lostMatch := lostRegexp.FindStringSubmatch(msg)
-
-						if len(countMatch) > 0 && len(lostMatch) > 0 {
-							// don't log empty counts
-							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil && count != 0 {
-								if lost, err := strconv.ParseUint(lostMatch[1], 10, 64); err == nil {
-									log.Logger.Trace().
-										Str("context", "track").
-										Str("ssrc", ssrcMatch[1]).
-										Str("namespace", ssrcLog.Namespace).
-										Str("room", ssrcLog.Room).
-										Str("user", ssrcLog.User).
-										Uint64("lost", lost).
-										Uint64("count", count).
-										Msg(ssrcLog.Kind + "_in_report")
-								}
-							}
-						}
-					}
-				}
-			}
-		} else {
-			log.Logger.Trace().Msg(msg)
-		}
-	}
-	return
-}
-
-func (wc *logWriteCloser) Close() (err error) {
-	return
-}
-
 // APIs are used to create peer connections, possible codecs are set once for all (at API level)
 // but preferred codecs for a given track are set at transceiver level
 // currently NewWebRTCAPI (rather than pion default one) prevents a freeze/lag observed after ~20 seconds
-func NewWebRTCAPI() (*webrtc.API, error) {
+func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
-	m := &webrtc.MediaEngine{}
 
+	// initialize media engine
+	m := &webrtc.MediaEngine{}
 	// always include opus
 	for _, c := range OpusCodecs {
 		if err := m.RegisterCodec(c, webrtc.RTPCodecTypeAudio); err != nil {
 			return nil, err
 		}
 	}
-
 	// select video codecs
 	for _, c := range VP8Codecs {
 		if err := m.RegisterCodec(c, webrtc.RTPCodecTypeVideo); err != nil {
@@ -282,24 +154,11 @@ func NewWebRTCAPI() (*webrtc.API, error) {
 		}
 	}
 
+	// initialize interceptor registry
 	i := &interceptor.Registry{}
 
-	if helpers.Getenv("DS_LOG_LEVEL") == "4" {
-		// logReceived, _ := packetdump.NewReceiverInterceptor(
-		// 	packetdump.RTCPWriter(zerolog.Nop()),
-		// 	packetdump.RTPFormatter(formatReceivedRTP),
-		// 	packetdump.RTPWriter(&logWriteCloser{}),
-		// )
-		// i.Add(logReceived)
-
-		logSent, _ := packetdump.NewSenderInterceptor(
-			packetdump.RTCPFormatter(formatSentRTCP),
-			packetdump.RTCPWriter(&logWriteCloser{}),
-			packetdump.RTPWriter(zerolog.Nop()),
-		)
-		i.Add(logSent)
-	}
-	if err := registerInterceptors(m, i); err != nil {
+	// enhance them
+	if err := configureAPIOptions(m, i, estimatorCh); err != nil {
 		log.Error().Err(err).Str("context", "peer").Msg("engine can't register interceptors")
 	}
 

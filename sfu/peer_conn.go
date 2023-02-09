@@ -7,6 +7,7 @@ import (
 
 	"github.com/ducksouplab/ducksoup/engine"
 	"github.com/ducksouplab/ducksoup/types"
+	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
@@ -28,13 +29,15 @@ type peerConn struct {
 	r              *room
 	lastPLI        time.Time
 	pliMinInterval time.Duration
+	ccEstimator    cc.BandwidthEstimator
 }
 
 // API
 
-func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnection, err error) {
+func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
 	// create RTC API
-	api, err := engine.NewWebRTCAPI()
+	estimatorCh := make(chan cc.BandwidthEstimator, 1)
+	api, err := engine.NewWebRTCAPI(estimatorCh)
 	if err != nil {
 		return
 	}
@@ -53,6 +56,8 @@ func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnectio
 		},
 	}
 	ppc, err = api.NewPeerConnection(config)
+	// Wait until our Bandwidth Estimator has been created
+	ccEstimator = <-estimatorCh
 	return
 }
 
@@ -87,7 +92,7 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 }
 
 func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
-	ppc, err := newPionPeerConn(join, r)
+	ppc, ccEstimator, err := newPionPeerConn(join, r)
 	if err != nil {
 		// pc is not created for now so we use the room logger
 		r.logger.Error().Err(err).Str("user", join.UserId)
@@ -97,7 +102,7 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 	// initial lastPLI far enough in the past
 	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
 
-	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval}
+	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval, ccEstimator}
 
 	// after an initial delay, change the minimum PLI interval
 	go func() {

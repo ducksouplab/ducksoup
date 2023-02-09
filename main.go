@@ -21,6 +21,11 @@ func init() {
 	}
 
 	helpers.EnsureDir("./data")
+
+	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_NVCODEC", "false"))).Msg("DS_NVCODEC")
+	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_GEN_TWCC", "false"))).Msg("DS_GEN_TWCC")
+	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_GCC", "false"))).Msg("DS_GCC")
+	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_FORCE_OVERLAY", "false"))).Msg("DS_FORCE_OVERLAY")
 }
 
 func main() {

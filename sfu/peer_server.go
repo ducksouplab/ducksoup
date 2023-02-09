@@ -152,7 +152,7 @@ func (ps *peerServer) prepareOutTracks() bool {
 			} else {
 				ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("out_track_added_to_pc")
 			}
-			s.addSender(sender, userId)
+			s.addSender(pc, sender)
 		}
 	}
 	return true

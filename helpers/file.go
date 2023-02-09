@@ -10,13 +10,13 @@ import (
 
 // Open file relatively to project
 func Open(name string) (*os.File, error) {
-	path := fmt.Sprintf(root+"%s", name)
+	path := fmt.Sprintf(rootEnv+"%s", name)
 	return os.Open(path)
 }
 
 func ReadFile(name string) string {
 	var output string
-	path := fmt.Sprintf(root+"%s", name)
+	path := fmt.Sprintf(rootEnv+"%s", name)
 	f, err := os.Open(path)
 
 	if err != nil {

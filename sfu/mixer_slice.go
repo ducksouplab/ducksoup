@@ -17,7 +17,7 @@ import (
 const (
 	defaultInterpolatorStep = 30
 	maxInterpolatorDuration = 5000
-	encoderPeriod           = 1000
+	encoderPeriod           = 1250
 	statsPeriod             = 3000
 	diffThreshold           = 10
 )
@@ -129,15 +129,16 @@ func (s *mixerSlice) ID() string {
 	return s.output.ID()
 }
 
-func (s *mixerSlice) addSender(sender *webrtc.RTPSender, toUserId string) {
+func (s *mixerSlice) addSender(pc *peerConn, sender *webrtc.RTPSender) {
 	params := sender.GetParameters()
 
+	toUserId := pc.userId
 	if len(params.Encodings) == 1 {
-		sc := newSenderController(sender, s, toUserId)
+		sc := newSenderController(pc, s, sender)
 		s.Lock()
 		s.senderControllerIndex[toUserId] = sc
 		s.Unlock()
-		go sc.runListener()
+		go sc.loop()
 	} else {
 		s.logError().Str("toUser", toUserId).Str("cause", "wrong number of encoding parameters").Msg("add_sender_failed")
 	}
@@ -223,7 +224,7 @@ func (s *mixerSlice) updateOptimalRate(newPotentialRate uint64) {
 	s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", s.kind)
-	s.logDebug().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+	s.logInfo().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
 }
 
 func (s *mixerSlice) runTickers() {

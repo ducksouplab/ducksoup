@@ -14,7 +14,7 @@ const (
 )
 
 // used by file.go
-var root string
+var rootEnv string
 
 func init() {
 	// CAUTION: other init functions in "helpers" package may be called before this
@@ -25,7 +25,7 @@ func init() {
 	}
 
 	// used by file.go
-	root = GetenvOr("DS_TEST_ROOT", ".") + "/"
+	rootEnv = GetenvOr("DS_TEST_ROOT", ".") + "/"
 
 	// zerolog defaults
 	zerolog.TimeFieldFormat = timeFormat
@@ -40,9 +40,9 @@ func init() {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
 	}
 	// file writer
-	logFile := Getenv("DS_LOG_FILE")
-	if logFile != "" {
-		fileWriter, fileErr := os.OpenFile(logFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	logFileEnv := Getenv("DS_LOG_FILE")
+	if logFileEnv != "" {
+		fileWriter, fileErr := os.OpenFile(logFileEnv, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if fileErr != nil {
 			log.Error().Str("context", "init").Msg("error opening log file")
 		} else {
@@ -57,10 +57,10 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	level := Getenv("DS_LOG_LEVEL")
+	levelEnv := Getenv("DS_LOG_LEVEL")
 	zeroLevel := convertLevel(Getenv("DS_LOG_LEVEL"))
 	zerolog.SetGlobalLevel(zeroLevel)
-	log.Info().Str("context", "init").Str("level", level).Msg("logger_configured")
+	log.Info().Str("context", "init").Str("level", levelEnv).Msg("logger_configured")
 }
 
 func convertLevel(dsLevel string) zerolog.Level {

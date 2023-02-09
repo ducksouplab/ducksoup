@@ -39,9 +39,9 @@ var (
 
 func init() {
 	// environment variables use
-	envOrigins := helpers.Getenv("DS_ORIGINS")
-	if len(envOrigins) > 0 {
-		allowedOrigins = append(allowedOrigins, strings.Split(envOrigins, ",")...)
+	envOriginsEnv := helpers.Getenv("DS_ORIGINS")
+	if len(envOriginsEnv) > 0 {
+		allowedOrigins = append(allowedOrigins, strings.Split(envOriginsEnv, ",")...)
 	}
 	if helpers.Getenv("DS_ENV") == "DEV" {
 		allowedOrigins = append(allowedOrigins, "https://localhost:8000", "http://localhost:8000")
