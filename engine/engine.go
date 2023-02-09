@@ -5,15 +5,24 @@ package engine
 import (
 	"regexp"
 
+	"github.com/ducksouplab/ducksoup/helpers"
 	_ "github.com/ducksouplab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
 )
 
+type sfuConfig struct {
+	Video struct {
+		DefaultBitrate uint64 `yaml:"defaultBitrate"`
+	}
+}
+
 var (
+	defaultBitrate    uint64
 	videoRTCPFeedback []webrtc.RTCPFeedback
 	// exported
 	OpusCodecs []webrtc.RTPCodecParameters
@@ -25,6 +34,22 @@ var (
 )
 
 func init() {
+	// get video default encoding bitrate
+	var c sfuConfig
+	f, err := helpers.Open("config/sfu.yml")
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+	defer f.Close()
+
+	decoder := yaml.NewDecoder(f)
+	err = decoder.Decode(&c)
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+	defaultBitrate = c.Video.DefaultBitrate
+
+	// other shared vars
 	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)
 	countRegexp = regexp.MustCompile(`count:(.*?) `)
 	lostRegexp = regexp.MustCompile(`lost:(.*?)$`)

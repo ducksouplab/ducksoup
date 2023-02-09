@@ -78,7 +78,7 @@ func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 	// Passing `nil` means we use the default Estimation Algorithm which is Google Congestion Control.
 	// You can use the other ones that Pion provides, or write your own!
 	congestionController, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
-		return gcc.NewSendSideBWE(gcc.SendSideBWEInitialBitrate(150000))
+		return gcc.NewSendSideBWE(gcc.SendSideBWEInitialBitrate(int(defaultBitrate)))
 	})
 	congestionController.OnNewPeerConnection(func(id string, ccEstimator cc.BandwidthEstimator) {
 		estimatorCh <- ccEstimator
@@ -234,13 +234,6 @@ func configurePacketDump(i *interceptor.Registry) error {
 
 // used for packet dumps
 
-// func formatReceivedRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
-// 	for _, pkt := range pkts {
-// 		res += fmt.Sprintf("[receiver] %T RTCP packet: %v\n", pkt, pkt)
-// 	}
-// 	return res
-// }
-
 func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
@@ -288,6 +281,13 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	}
 	return res
 }
+
+// func formatReceivedRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
+// 	for _, pkt := range pkts {
+// 		res += fmt.Sprintf("[receiver] %T RTCP packet: %v\n", pkt, pkt)
+// 	}
+// 	return res
+// }
 
 func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
 	var twcc rtp.TransportCCExtension
