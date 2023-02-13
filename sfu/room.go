@@ -148,9 +148,9 @@ func (r *room) filePrefix(userId string) string {
 	// When pipeline is started, files are written to, but it's better
 	// to rely on the time advertised by the OS (file properties)
 	// if several files need to be synchronized
-	return time.Now().Format("20060102-150405.000") +
+	return "i-" + r.hid +
+		"-j-" + time.Now().Format("20060102-150405.000") +
 		"-n-" + r.namespace +
-		"-i-" + r.hid +
 		"-r-" + r.id +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)

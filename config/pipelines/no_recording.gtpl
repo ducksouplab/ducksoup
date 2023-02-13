@@ -1,5 +1,5 @@
-appsrc name=audio_src format=time is-live=true format=GST_FORMAT_TIME
-appsrc name=video_src format=time is-live=true format=GST_FORMAT_TIME
+appsrc name=audio_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 
@@ -35,6 +35,7 @@ video_src. !
     {{end}}
     {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
+    queue max-size-buffers=0 max-size-bytes=0 min-threshold-bytes=1280 ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.
 {{else}}

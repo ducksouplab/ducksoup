@@ -333,12 +333,12 @@ Here is a reference of all log messages, grouped by context:
 
 - `message: "in_track_received"`: remote/incoming audio track added to server peer connection (additional properties: `track`'s ID, `ssrc`, `mime`, `type`: `audio` or `video`)
 - `message: "client_fx_control"`: JS client has requested an update of a GStreamer fx (identified by `name`, updated with `property` and `value`) 
-- `message: "audio_in_bitrate_estimated"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
-- `message: "video_in_bitrate_estimated"`: same for video
+- `message: "audio_in_bitrate"`: estimated input bitrate of incoming track as described by `value` and `unit` propeties
+- `message: "video_in_bitrate"`: same for video
 - `message: "audio_target_bitrate_updated"`: new target bitrate of encoder for outgoing track as described by `value` and `unit` propeties
 - `message: "video_target_bitrate_updated"`: same for video
-- `message: "audio_out_bitrate_estimated"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
-- `message: "video_out_bitrate_estimated"`: same for video
+- `message: "audio_out_bitrate"`: estimated output bitrate of outgoing track as described by `value` and `unit` propeties
+- `message: "video_out_bitrate"`: same for video
 - `message: "loss_threshold_exceeded"`: too many lost packets (property `value` reflects ReceiverReport loss count)
 - `message: "out_track_stopped"`: processed track (server-side, with given `track` ID and `kind` properties) stopped after pipeline stopped
 - `message: "pli_sent"`: Picture Loss Indication sent to client (additional `cause` property)

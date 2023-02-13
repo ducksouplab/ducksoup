@@ -53,6 +53,7 @@ func writeTo(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 			output = p.audioOutput
 		} else {
 			output = p.videoOutput
+			// p.logger.Debug().Int("value", int(bufferLen)).Msg("rtp_buffer_length")
 		}
 
 		buf := C.GoBytes(buffer, bufferLen)

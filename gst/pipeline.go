@@ -9,6 +9,7 @@ import "C"
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -27,6 +28,9 @@ type Pipeline struct {
 	audioOutput types.TrackWriter
 	videoOutput types.TrackWriter
 	filePrefix  string
+	// options
+	videoOptions mediaOptions
+	audioOptions mediaOptions
 	// stoppedCount=2 if audio and video have been stopped
 	stoppedCount int
 	// log
@@ -35,6 +39,41 @@ type Pipeline struct {
 
 func fileName(namespace string, prefix string, suffix string) string {
 	return namespace + "/" + prefix + "-" + suffix + ".mkv"
+}
+
+func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions) {
+	audioOptions = config.Opus
+	// rely on the fact that assigning to a struct with only primitive values (string), is copying by value
+	// caution: don't extend codec type with non primitive values
+	if &audioOptions == &config.Opus {
+		panic("Unhandled audioCodec assign")
+	}
+	// choose videoCodec
+	nvcodec := nvcodecEnv && join.GPU
+	switch join.VideoFormat {
+	case "VP8":
+		videoOptions = config.VP8
+		videoOptions.SkipFixedCaps = true
+	case "H264":
+		if nvcodec {
+			videoOptions = config.NV264
+		} else {
+			videoOptions = config.X264
+		}
+	default:
+		panic("Unhandled format " + join.VideoFormat)
+	}
+	// set env and join dependent options
+	videoOptions.nvcodec = nvcodec
+	videoOptions.Overlay = join.Overlay || forceOverlayEnv
+	// complete with Fx
+	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
+	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
+
+	log.Info().Str("context", "pipeline").Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
+	log.Info().Str("context", "pipeline").Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
+
+	return
 }
 
 // API
@@ -46,7 +85,8 @@ func StartMainLoop() {
 // create a GStreamer pipeline
 func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 
-	pipelineStr := newPipelineDef(join, filePrefix)
+	videoOptions, audioOptions := getOptions(join)
+	pipelineStr := newPipelineDef(join, filePrefix, videoOptions, audioOptions)
 	id := uuid.New().String()
 
 	cPipelineStr := C.CString(pipelineStr)
@@ -68,6 +108,8 @@ func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		join:         join,
 		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
 		filePrefix:   filePrefix,
+		videoOptions: videoOptions,
+		audioOptions: audioOptions,
 		stoppedCount: 0,
 		logger:       logger,
 	}
@@ -187,6 +229,10 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
+			if p.videoOptions.nvcodec == true {
+				// https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
+				prop = "max-bitrate"
+			}
 		}
 		for _, n := range names {
 			p.setPropInt(n, prop, value)

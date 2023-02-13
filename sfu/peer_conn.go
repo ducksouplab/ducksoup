@@ -135,10 +135,6 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 			return
 		}
 
-		if pc.RemoteDescription() == nil {
-			pc.logError().Msg("remote_description_should_come_first")
-		}
-
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
 			pc.logError().Err(err).Msg("marshal_candidate_failed")

@@ -316,6 +316,10 @@ func (ps *peerServer) loop() {
 
 		switch m.Kind {
 		case "client_candidate":
+			if ps.pc.RemoteDescription() == nil {
+				ps.pc.logError().Msg("remote_description_should_come_first")
+			}
+
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
 				ps.logError().Err(err).Msg("unmarshal_candidate_failed")

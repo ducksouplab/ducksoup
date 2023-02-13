@@ -1,5 +1,5 @@
-appsrc name=audio_src format=time is-live=true format=GST_FORMAT_TIME
-appsrc name=video_src format=time is-live=true format=GST_FORMAT_TIME
+appsrc name=audio_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-dry.ogg 
