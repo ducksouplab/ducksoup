@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("[DuckSoup test] v1.5.19")
+    console.log("[DuckSoup test] v1.5.21")
 });
 
 let state;
@@ -39,8 +39,8 @@ const parseIntWithFallback = (raw, fallback) => {
 const start = async ({
     signalingUrl,
     isMirror: im,
-    userId: uid,
-    roomId: rid,
+    userId: uId,
+    interactionName: iName,
     size: s,
     videoFormat,
     recordingMode,
@@ -57,10 +57,10 @@ const start = async ({
 }) => {
     const isMirror = !!im;
     // required
-    const roomId = isMirror ? randomId() : rid;
-    const userId = isMirror ? randomId() : uid;
+    const interactionName = isMirror ? randomId() : iName;
+    const userId = isMirror ? randomId() : uId;
     const size = isMirror ? 1 : parseInt(s, 10);
-    const namespace = isMirror ? "mirror" : "room";
+    const namespace = isMirror ? "mirror" : "interaction";
     // parse
     const width = parseIntWithFallback(w, 800);
     const height = parseIntWithFallback(h, 600);
@@ -92,7 +92,7 @@ const start = async ({
     // full peerOptions
     const peerOptions = {
         signalingUrl,
-        roomId,
+        interactionName,
         userId,
         duration,
         // optional
@@ -290,7 +290,7 @@ const ducksoupListener = (options) => (message) => {
         };
     } else if (kind === "ending") {
         show(".show-when-ending");
-        if (state.ducksoup) state.ducksoup.log("room_ending_received");
+        if (state.ducksoup) state.ducksoup.log("interaction_ending_received");
     } else if (kind === "files") {
         if (payload && payload[state.userId]) {
             let html = "The following files have been recorded:<br/><br/>";

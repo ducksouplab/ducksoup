@@ -1,6 +1,6 @@
 // Init
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup stats] v0.1.1");
+    console.log("[DuckSoup stats] v0.1.2");
     start();
 });
 
@@ -29,7 +29,7 @@ const start = () => {
     };
 
     ws.onmessage = async (event) => {
-        let rooms = looseJSONParse(event.data).payload;
-        document.getElementById("root").innerHTML = JSON.stringify({ rooms }, null, 2);
+        let interactions = looseJSONParse(event.data).payload;
+        document.getElementById("root").innerHTML = JSON.stringify({ interactions }, null, 2);
     };
 }

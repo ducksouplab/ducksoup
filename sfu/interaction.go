@@ -22,8 +22,8 @@ const (
 	Ending          = 15
 )
 
-// room holds all the resources of a given experiment, accepting an exact number of *size* attendees
-type room struct {
+// interaction holds all the resources of a given experiment, accepting an exact number of *size* attendees
+type interaction struct {
 	sync.RWMutex
 	// guarded by mutex
 	mixer               *mixer
@@ -41,10 +41,10 @@ type room struct {
 	waitForAllCh chan struct{}
 	endCh        chan struct{}
 	// other (written only during initialization)
-	id           string // public id
-	hid          string // internal id
-	qualifiedId  string // prefixed by origin, used for indexing in roomStore
+	id           string // origin+namespace+name, used for indexing in interactionStore
+	randomId     string // random internal id
 	namespace    string
+	name         string // public name
 	size         int
 	duration     int
 	neededTracks int
@@ -55,11 +55,11 @@ type room struct {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func qualifiedId(join types.JoinPayload) string {
-	return join.Origin + "#" + join.RoomId
+func generateId(join types.JoinPayload) string {
+	return join.Origin + "#" + join.Namespace + "#" + join.Name
 }
 
-func newRoom(qualifiedId string, join types.JoinPayload) *room {
+func newInteraction(id string, join types.JoinPayload) *interaction {
 	// process duration
 	duration := join.Duration
 	if duration < 1 {
@@ -76,7 +76,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		size = MaxSize
 	}
 
-	// room initialized with one connected peer
+	// interaction initialized with one connected peer
 	connectedIndex := make(map[string]bool)
 	connectedIndex[join.UserId] = true
 	joinedCountIndex := make(map[string]int)
@@ -86,7 +86,7 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 	helpers.EnsureDir("./data/" + join.Namespace)
 	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
 
-	r := &room{
+	i := &interaction{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
 		deleted:             false,
@@ -97,95 +97,95 @@ func newRoom(qualifiedId string, join types.JoinPayload) *room {
 		createdAt:           time.Now(),
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
-		qualifiedId:         qualifiedId,
-		id:                  join.RoomId,
-		hid:                 helpers.RandomHexString(12),
+		randomId:            helpers.RandomHexString(12),
 		namespace:           join.Namespace,
+		id:                  id,
+		name:                join.Name,
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
 		ssrcs:               []uint32{},
 	}
-	r.mixer = newMixer(r)
+	i.mixer = newMixer(i)
 	// log (call Run hook whenever logging)
-	r.logger = log.With().
-		Str("context", "room").
+	i.logger = log.With().
+		Str("context", "interaction").
 		Str("namespace", join.Namespace).
-		Str("room", join.RoomId).
+		Str("interaction", join.Name).
 		Logger().
-		Hook(r)
+		Hook(i)
 
-	return r
+	return i
 }
 
 // Run: implement log Hook interface
-func (r *room) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	sinceCreation := time.Since(r.createdAt).Round(time.Millisecond).String()
+func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+	sinceCreation := time.Since(i.createdAt).Round(time.Millisecond).String()
 	e.Str("sinceCreation", sinceCreation)
-	if !r.startedAt.IsZero() {
-		sinceStart := time.Since(r.startedAt).Round(time.Millisecond).String()
+	if !i.startedAt.IsZero() {
+		sinceStart := time.Since(i.startedAt).Round(time.Millisecond).String()
 		e.Str("sinceStart", sinceStart)
 	}
 }
 
-func (r *room) userCount() int {
-	return len(r.connectedIndex)
+func (i *interaction) userCount() int {
+	return len(i.connectedIndex)
 }
 
-func (r *room) connectedUserCount() (count int) {
-	return len(r.peerServerIndex)
+func (i *interaction) connectedUserCount() (count int) {
+	return len(i.peerServerIndex)
 }
 
 // users are connected but some out tracks may still be in the process of
 // being attached and (not) ready (yet)
-func (r *room) allUsersConnected() bool {
-	return r.connectedUserCount() == r.size
+func (i *interaction) allUsersConnected() bool {
+	return i.connectedUserCount() == i.size
 }
 
-func (r *room) filePrefix(userId string) string {
-	connectionCount := r.joinedCountForUser(userId)
+func (i *interaction) filePrefix(userId string) string {
+	connectionCount := i.joinedCountForUser(userId)
 	// caution: time reflects the moment the pipeline is initialized.
 	// When pipeline is started, files are written to, but it's better
 	// to rely on the time advertised by the OS (file properties)
 	// if several files need to be synchronized
-	return "i-" + r.hid +
-		"-j-" + time.Now().Format("20060102-150405.000") +
-		"-n-" + r.namespace +
-		"-r-" + r.id +
+	return "i-" + i.randomId +
+		"-a-" + time.Now().Format("20060102-150405.000") +
+		"-ns-" + i.namespace +
+		"-n-" + i.name +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
-func (r *room) countdown() {
+func (i *interaction) countdown() {
 	// blocking "end" event and delete
-	endTimer := time.NewTimer(time.Duration(r.duration) * time.Second)
+	endTimer := time.NewTimer(time.Duration(i.duration) * time.Second)
 	<-endTimer.C
 
-	r.Lock()
-	r.running = false
-	r.Unlock()
+	i.Lock()
+	i.running = false
+	i.Unlock()
 
-	r.logger.Info().Msg("room_ended")
+	i.logger.Info().Msg("interaction_ended")
 	// listened by peerServers, mixer, mixerTracks
-	close(r.endCh)
+	close(i.endCh)
 
 	<-time.After(3000 * time.Millisecond)
 	// most likely already deleted, see disconnectUser
-	// except if room was empty before turning to r.running=false
-	r.Lock()
-	if !r.deleted {
-		r.unguardedDelete()
+	// except if interaction was empty before turning to i.running=false
+	i.Lock()
+	if !i.deleted {
+		i.unguardedDelete()
 	}
-	r.Unlock()
+	i.Unlock()
 }
 
 // API read-write
 
-func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.TrackRemote) {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.TrackRemote) {
+	i.Lock()
+	defer i.Unlock()
 
-	if r.inTracksReadyCount == r.neededTracks {
+	if i.inTracksReadyCount == i.neededTracks {
 		// reconnection case, then send start only once (check for "audio" for instance)
 		if remoteTrack.Kind().String() == "audio" {
 			go fromPs.ws.send("start")
@@ -193,127 +193,127 @@ func (r *room) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.Tra
 		return
 	}
 
-	r.inTracksReadyCount++
-	r.logger.Info().Int("count", r.inTracksReadyCount).Msg("in_track_added_to_room")
+	i.inTracksReadyCount++
+	i.logger.Info().Int("count", i.inTracksReadyCount).Msg("in_track_added_to_interaction")
 
-	if r.inTracksReadyCount == r.neededTracks {
+	if i.inTracksReadyCount == i.neededTracks {
 		// do start
-		close(r.waitForAllCh)
-		r.running = true
-		r.logger.Info().Msg("room_started")
-		r.startedAt = time.Now()
+		close(i.waitForAllCh)
+		i.running = true
+		i.logger.Info().Msg("interaction_started")
+		i.startedAt = time.Now()
 		// send start to all peers
-		for _, ps := range r.peerServerIndex {
+		for _, ps := range i.peerServerIndex {
 			go ps.ws.send("start")
 		}
-		go r.countdown()
+		go i.countdown()
 		return
 	}
 }
 
-func (r *room) addSSRC(ssrc uint32, kind string, userId string) {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) addSSRC(ssrc uint32, kind string, userId string) {
+	i.Lock()
+	defer i.Unlock()
 
-	r.ssrcs = append(r.ssrcs, ssrc)
-	go store.AddToSSRCIndex(ssrc, kind, r.namespace, r.id, userId)
+	i.ssrcs = append(i.ssrcs, ssrc)
+	go store.AddToSSRCIndex(ssrc, kind, i.namespace, i.name, userId)
 }
 
 // returns true if signaling is needed
-func (r *room) incOutTracksReadyCount() bool {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) incOutTracksReadyCount() bool {
+	i.Lock()
+	defer i.Unlock()
 
-	r.outTracksReadyCount++
+	i.outTracksReadyCount++
 
 	// all out tracks are ready
-	if r.outTracksReadyCount == r.neededTracks {
+	if i.outTracksReadyCount == i.neededTracks {
 		return true
 	}
-	// room with >= 3 users: after two users have disconnected and only one came back
+	// interaction with >= 3 users: after two users have disconnected and only one came back
 	// trigger signaling (for an even number of out tracks since they go
 	// by audio/video pairs)
-	if r.running && (r.outTracksReadyCount%2 == 0) {
+	if i.running && (i.outTracksReadyCount%2 == 0) {
 		return true
 	}
 	return false
 }
 
-func (r *room) decOutTracksReadyCount() {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) decOutTracksReadyCount() {
+	i.Lock()
+	defer i.Unlock()
 
-	r.outTracksReadyCount--
+	i.outTracksReadyCount--
 }
 
-func (r *room) connectPeerServer(ps *peerServer) {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) connectPeerServer(ps *peerServer) {
+	i.Lock()
+	defer i.Unlock()
 
-	r.peerServerIndex[ps.userId] = ps
+	i.peerServerIndex[ps.userId] = ps
 }
 
-// should be called by another method that locked the room (mutex)
-func (r *room) unguardedDelete() {
-	r.deleted = true
-	roomStoreSingleton.delete(r)
-	r.logger.Info().Msg("room_deleted")
+// should be called by another method that locked the interaction (mutex)
+func (i *interaction) unguardedDelete() {
+	i.deleted = true
+	interactionStoreSingleton.delete(i)
+	i.logger.Info().Msg("interaction_deleted")
 	// cleanup
-	for _, ssrc := range r.ssrcs {
+	for _, ssrc := range i.ssrcs {
 		store.RemoveFromSSRCIndex(ssrc)
 	}
 }
 
-func (r *room) disconnectUser(userId string) {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) disconnectUser(userId string) {
+	i.Lock()
+	defer i.Unlock()
 
 	// protects decrementing since RemovePeer maybe called several times for same user
-	if r.connectedIndex[userId] {
+	if i.connectedIndex[userId] {
 		// remove user current connection details (=peerServer)
-		delete(r.peerServerIndex, userId)
+		delete(i.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
-		r.connectedIndex[userId] = false
-		go r.mixer.managedGlobalSignaling("user_disconnected", false)
+		i.connectedIndex[userId] = false
+		go i.mixer.managedGlobalSignaling("user_disconnected", false)
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
-		if r.connectedUserCount() == 0 && !r.running && !r.deleted {
-			r.unguardedDelete()
+		if i.connectedUserCount() == 0 && !i.running && !i.deleted {
+			i.unguardedDelete()
 		}
 	}
 }
 
-func (r *room) addFiles(userId string, files []string) {
-	r.Lock()
-	defer r.Unlock()
+func (i *interaction) addFiles(userId string, files []string) {
+	i.Lock()
+	defer i.Unlock()
 
-	r.filesIndex[userId] = append(r.filesIndex[userId], files...)
+	i.filesIndex[userId] = append(i.filesIndex[userId], files...)
 }
 
 // API read
 
-func (r *room) joinedCountForUser(userId string) int {
-	r.RLock()
-	defer r.RUnlock()
+func (i *interaction) joinedCountForUser(userId string) int {
+	i.RLock()
+	defer i.RUnlock()
 
-	return r.joinedCountIndex[userId]
+	return i.joinedCountIndex[userId]
 }
 
-func (r *room) files() map[string][]string {
-	r.RLock()
-	defer r.RUnlock()
+func (i *interaction) files() map[string][]string {
+	i.RLock()
+	defer i.RUnlock()
 
-	return r.filesIndex
+	return i.filesIndex
 }
 
-func (r *room) endingDelay() (delay int) {
-	r.RLock()
-	defer r.RUnlock()
+func (i *interaction) endingDelay() (delay int) {
+	i.RLock()
+	defer i.RUnlock()
 
-	elapsed := time.Since(r.startedAt)
+	elapsed := time.Since(i.startedAt)
 
-	remaining := r.duration - int(elapsed.Seconds())
+	remaining := i.duration - int(elapsed.Seconds())
 	delay = remaining - Ending
 	if delay < 1 {
 		delay = 1
@@ -322,55 +322,55 @@ func (r *room) endingDelay() (delay int) {
 }
 
 // return false if an error ends the waiting
-func (r *room) readRemoteTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
+func (i *interaction) readRemoteTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
-		case <-r.waitForAllCh:
+		case <-i.waitForAllCh:
 			// trial is over, no need to trigger signaling on every closing track
 			return true
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				r.logger.Error().Err(err).Msg("room readRemoteTillAllReady")
+				i.logger.Error().Err(err).Msg("read_remote_till_all_ready_failed")
 				return false
 			}
 		}
 	}
 }
 
-func (r *room) runMixerSliceFromRemote(
+func (i *interaction) runMixerSliceFromRemote(
 	ps *peerServer,
 	remoteTrack *webrtc.TrackRemote,
 	receiver *webrtc.RTPReceiver,
 ) {
 	// signal new peer and tracks
-	r.incInTracksReadyCount(ps, remoteTrack)
+	i.incInTracksReadyCount(ps, remoteTrack)
 
 	// prepare slice
 	slice, err := newMixerSlice(ps, remoteTrack, receiver)
 	if err != nil {
-		r.logger.Error().Err(err).Msg("new_mixer_slice_failed")
+		i.logger.Error().Err(err).Msg("new_mixer_slice_failed")
 	}
 	// index to be searchable by track id
-	r.mixer.indexMixerSlice(slice)
+	i.mixer.indexMixerSlice(slice)
 	// needed to relay control fx events between peer server and output track
 	ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 	// wait for all peers to connect
-	ok := r.readRemoteTillAllReady(remoteTrack)
+	ok := i.readRemoteTillAllReady(remoteTrack)
 
 	if ok {
 		// trigger signaling if needed
-		signalingNeeded := r.incOutTracksReadyCount()
+		signalingNeeded := i.incOutTracksReadyCount()
 		if signalingNeeded {
 			// FIXED? without this timeout, some tracks are not sent to peers,
 			// <-time.After(1000 * time.Millisecond)
-			go r.mixer.managedGlobalSignaling("out_tracks_ready", true)
+			go i.mixer.managedGlobalSignaling("out_tracks_ready", true)
 		}
-		// blocking until room ends or user disconnects
+		// blocking until interaction ends or user disconnects
 		slice.loop()
 		// track has ended
-		r.mixer.removeMixerSlice(slice)
-		r.decOutTracksReadyCount()
+		i.mixer.removeMixerSlice(slice)
+		i.decOutTracksReadyCount()
 	}
 }

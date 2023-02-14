@@ -121,7 +121,7 @@ func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char
 					Str("context", "gstreamer").
 					Int("GST_LEVEL", level).
 					Str("namespace", idsMatch[1]).
-					Str("room", idsMatch[2]).
+					Str("interaction", idsMatch[2]).
 					Str("user", idsMatch[3]).
 					Str("frame", frame).
 					Bool("value", tracking).

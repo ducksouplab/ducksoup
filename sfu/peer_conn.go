@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// too many PLI may be requested when room starts
+// too many PLI may be requested when interaction starts
 // (new peer joins, encoder detecting poor quality... to be investigated)
 // that's why we throttle PLI request with initialPLIMinInterval and
 // later with mainPLIMinInterval
@@ -26,7 +26,7 @@ type peerConn struct {
 	sync.Mutex
 	*webrtc.PeerConnection
 	userId         string
-	r              *room
+	i              *interaction
 	lastPLI        time.Time
 	pliMinInterval time.Duration
 	ccEstimator    cc.BandwidthEstimator
@@ -34,7 +34,7 @@ type peerConn struct {
 
 // API
 
-func newPionPeerConn(join types.JoinPayload, r *room) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
+func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
 	// create RTC API
 	estimatorCh := make(chan cc.BandwidthEstimator, 1)
 	api, err := engine.NewWebRTCAPI(estimatorCh)
@@ -91,18 +91,18 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 	return
 }
 
-func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
-	ppc, ccEstimator, err := newPionPeerConn(join, r)
+func newPeerConn(join types.JoinPayload, i *interaction) (pc *peerConn, err error) {
+	ppc, ccEstimator, err := newPionPeerConn(join, i)
 	if err != nil {
-		// pc is not created for now so we use the room logger
-		r.logger.Error().Err(err).Str("user", join.UserId)
+		// pc is not created for now so we use the interaction logger
+		i.logger.Error().Err(err).Str("user", join.UserId)
 		return
 	}
 
 	// initial lastPLI far enough in the past
 	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
 
-	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, r, lastPLI, initialPLIMinInterval, ccEstimator}
+	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, i, lastPLI, initialPLIMinInterval, ccEstimator}
 
 	// after an initial delay, change the minimum PLI interval
 	go func() {
@@ -115,18 +115,18 @@ func newPeerConn(join types.JoinPayload, r *room) (pc *peerConn, err error) {
 }
 
 func (pc *peerConn) logError() *zerolog.Event {
-	return pc.r.logger.Error().Str("context", "signaling").Str("user", pc.userId)
+	return pc.i.logger.Error().Str("context", "signaling").Str("user", pc.userId)
 }
 
 func (pc *peerConn) logInfo() *zerolog.Event {
-	return pc.r.logger.Info().Str("context", "signaling").Str("user", pc.userId)
+	return pc.i.logger.Info().Str("context", "signaling").Str("user", pc.userId)
 }
 
 func (pc *peerConn) logDebug() *zerolog.Event {
-	return pc.r.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
+	return pc.i.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
 }
 
-// pc callbacks trigger actions handled by ws or room or pc itself
+// pc callbacks trigger actions handled by ws or interaction or pc itself
 func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	// trickle ICE. Emit server candidate to client
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -146,10 +146,10 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		ssrc := uint32(remoteTrack.SSRC())
-		ps.r.addSSRC(ssrc, remoteTrack.Kind().String(), ps.userId)
+		ps.i.addSSRC(ssrc, remoteTrack.Kind().String(), ps.userId)
 
 		pc.logDebug().Str("context", "track").Str("kind", remoteTrack.Kind().String()).Uint32("ssrc", ssrc).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg("in_track_received")
-		ps.r.runMixerSliceFromRemote(ps, remoteTrack, receiver)
+		ps.i.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 
 	// if PeerConnection is closed remove it from global list

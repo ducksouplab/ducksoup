@@ -11,10 +11,10 @@ var (
 )
 
 type ssrcLog struct {
-	Kind      string
-	Namespace string
-	Room      string
-	User      string
+	Kind        string
+	Namespace   string
+	Interaction string
+	User        string
 }
 
 type ssrcIndex struct {
@@ -30,23 +30,23 @@ func newIdsIndex() *ssrcIndex {
 	return &ssrcIndex{sync.Mutex{}, make(map[uint32]*ssrcLog)}
 }
 
-func AddToSSRCIndex(ssrc uint32, kind, namespace, room, user string) {
+func AddToSSRCIndex(ssrc uint32, kind, namespace, interaction, user string) {
 	ssrcIndexSingleton.Lock()
 	defer ssrcIndexSingleton.Unlock()
 
 	if _, ok := ssrcIndexSingleton.index[ssrc]; ok {
 		log.Error().
-			Str("context", "room").
+			Str("context", "interaction").
 			Str("namespace", namespace).
-			Str("room", room).
+			Str("interaction", interaction).
 			Str("user", user).
 			Msg("ssrc_index_failed")
 	} else {
 		newIds := &ssrcLog{
-			Namespace: namespace,
-			Room:      room,
-			User:      user,
-			Kind:      kind,
+			Namespace:   namespace,
+			Interaction: interaction,
+			User:        user,
+			Kind:        kind,
 		}
 		ssrcIndexSingleton.index[ssrc] = newIds
 	}

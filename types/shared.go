@@ -1,7 +1,7 @@
 package types
 
 type JoinPayload struct {
-	RoomId   string `json:"roomId"`
+	Name     string `json:"name"`
 	UserId   string `json:"userId"`
 	Duration int    `json:"duration"`
 	// optional

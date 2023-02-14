@@ -97,7 +97,7 @@ func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 	logger := log.With().
 		Str("context", "pipeline").
 		Str("namespace", join.Namespace).
-		Str("room", join.RoomId).
+		Str("interaction", join.Name).
 		Str("user", join.UserId).
 		Str("pipeline", id).
 		Logger()

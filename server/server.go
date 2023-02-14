@@ -128,7 +128,7 @@ func ListenAndServe() {
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 	testRouter.Use(basicAuthWith(testLogin, testPassword))
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
-	testRouter.PathPrefix("/room/").Handler(http.StripPrefix(webPrefix+"/test/room/", http.FileServer(http.Dir("./front/static/pages/test/room/"))))
+	testRouter.PathPrefix("/interaction/").Handler(http.StripPrefix(webPrefix+"/test/interaction/", http.FileServer(http.Dir("./front/static/pages/test/interaction/"))))
 	testRouter.PathPrefix("/play/").Handler(http.StripPrefix(webPrefix+"/test/play/", http.FileServer(http.Dir("./front/static/pages/test/play/"))))
 
 	// stats pages with basic auth

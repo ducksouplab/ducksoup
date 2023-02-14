@@ -10,28 +10,28 @@ import (
 type mixer struct {
 	sync.RWMutex
 	sliceIndex map[string]*mixerSlice // per remote track id
-	r          *room
+	i          *interaction
 }
 
 // mixer
 
-func newMixer(r *room) *mixer {
+func newMixer(i *interaction) *mixer {
 	return &mixer{
 		sliceIndex: map[string]*mixerSlice{},
-		r:          r,
+		i:          i,
 	}
 }
 
 func (m *mixer) logError() *zerolog.Event {
-	return m.r.logger.Error().Str("context", "signaling")
+	return m.i.logger.Error().Str("context", "signaling")
 }
 
 func (m *mixer) logInfo() *zerolog.Event {
-	return m.r.logger.Info().Str("context", "signaling")
+	return m.i.logger.Info().Str("context", "signaling")
 }
 
 func (m *mixer) logDebug() *zerolog.Event {
-	return m.r.logger.Debug().Str("context", "signaling")
+	return m.i.logger.Debug().Str("context", "signaling")
 }
 
 // Add to list of tracks
@@ -57,10 +57,10 @@ func (m *mixer) removeMixerSlice(s *mixerSlice) {
 // - share offer with client
 func (m *mixer) updateSignaling() bool {
 	// lock for peerServerIndex
-	m.r.Lock()
-	defer m.r.Unlock()
+	m.i.Lock()
+	defer m.i.Unlock()
 
-	for _, ps := range m.r.peerServerIndex {
+	for _, ps := range m.i.peerServerIndex {
 		if !ps.updateTracksAndShareOffer() {
 			return false
 		}
@@ -75,13 +75,13 @@ func (m *mixer) managedGlobalSignaling(cause string, withPLI bool) {
 	defer func() {
 		m.Unlock()
 		if withPLI {
-			go m.dispatchRoomPLI(cause)
+			go m.dispatchInteractionPLI(cause)
 		}
 	}()
 
 	m.logInfo().Str("cause", cause).Msg("signaling_update_requested")
 
-	if !m.r.deleted {
+	if !m.i.deleted {
 		ok := m.updateSignaling()
 		if ok {
 			return
@@ -99,11 +99,11 @@ func (m *mixer) managedGlobalSignaling(cause string, withPLI bool) {
 // sends a keyframe to all PeerConnections, used everytime a new user joins the call
 // (in that case, requesting a FullIntraRequest may be preferred/more accurate, over a PictureLossIndicator
 // but the effect is probably the same)
-func (m *mixer) dispatchRoomPLI(cause string) {
+func (m *mixer) dispatchInteractionPLI(cause string) {
 	m.RLock()
 	defer m.RUnlock()
 
-	for _, ps := range m.r.peerServerIndex {
+	for _, ps := range m.i.peerServerIndex {
 		ps.pc.throttledPLIRequest(cause)
 	}
 }

@@ -21,10 +21,10 @@ const (
 type wsConn struct {
 	sync.Mutex
 	*websocket.Conn
-	createdAt time.Time
-	userId    string
-	roomId    string
-	namespace string
+	createdAt       time.Time
+	userId          string
+	interactionName string
+	namespace       string
 }
 
 type messageOut struct {
@@ -112,7 +112,7 @@ func newWsConn(unsafeConn *websocket.Conn) *wsConn {
 }
 
 func (ws *wsConn) logError() *zerolog.Event {
-	return log.Error().Str("context", "peer").Str("namespace", ws.namespace).Str("room", ws.roomId).Str("user", ws.userId)
+	return log.Error().Str("context", "peer").Str("namespace", ws.namespace).Str("interaction", ws.interactionName).Str("user", ws.userId)
 }
 
 func (ws *wsConn) read() (m messageIn, err error) {
@@ -135,9 +135,9 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 
 	err = json.Unmarshal([]byte(m.Payload), &join)
 	// restrict to authorized values
-	join.RoomId = parseString(join.RoomId)
-	join.UserId = parseString(join.UserId)
 	join.Namespace = parseString(join.Namespace)
+	join.Name = parseString(join.Name)
+	join.UserId = parseString(join.UserId)
 	join.VideoFormat = parseVideoFormat(join)
 	join.RecordingMode = parseRecordingMode(join)
 	join.Width = parseWidth(join)
@@ -147,7 +147,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	join.Origin = origin
 
 	// bind fields
-	ws.roomId = join.RoomId
+	ws.interactionName = join.Name
 	ws.userId = join.UserId
 	ws.namespace = join.Namespace
 

@@ -331,7 +331,7 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 										Str("context", "track").
 										Str("ssrc", ssrcMatch[1]).
 										Str("namespace", ssrcLog.Namespace).
-										Str("room", ssrcLog.Room).
+										Str("interaction", ssrcLog.Interaction).
 										Str("user", ssrcLog.User).
 										Uint64("lost", lost).
 										Uint64("count", count).

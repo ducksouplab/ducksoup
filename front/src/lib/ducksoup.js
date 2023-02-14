@@ -37,7 +37,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.20");
+    console.log("[DuckSoup] v1.5.22");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -51,9 +51,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Pure functions
 
-const optionsFirstError = ({ mountEl, callback }, { roomId, userId, duration }) => {
+const optionsFirstError = ({ mountEl, callback }, { interactionName, userId, duration }) => {
     if (!mountEl && !callback) return "invalid embedOptions";
-    if (typeof roomId === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) return "invalid peerOptions";
+    if (typeof interactionName === 'undefined' || typeof userId === 'undefined' || isNaN(duration)) return "invalid peerOptions";
     return null;
 };
 
@@ -66,7 +66,7 @@ const clean = (obj) => {
 
 const parseJoinPayload = (peerOptions) => {
     // explicit list, without origin
-    let { roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay } = peerOptions;
+    let { interactionName, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay } = peerOptions;
     if (!["VP8", "H264"].includes(videoFormat)) videoFormat = null;
     if (isNaN(size)) size = null;
     if (isNaN(width)) width = null;
@@ -75,7 +75,7 @@ const parseJoinPayload = (peerOptions) => {
     if (!gpu) gpu = null;
     if (!overlay) overlay = null;
 
-    return clean({ roomId, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay });
+    return clean({ interactionName, userId, duration, size, width, height, audioFx, videoFx, frameRate, namespace, videoFormat, recordingMode, gpu, overlay });
 };
 
 const preferMono = (sdp) => {
@@ -182,7 +182,7 @@ class DuckSoup {
         this._signalingUrl = peerOptions.signalingUrl;
         this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
         this._joinPayload = parseJoinPayload(peerOptions);
-        // by default we cancel echo except in mirror mode (room size=1) (mirror mode is for test purposes)
+        // by default we cancel echo except in mirror mode (interaction size=1) (mirror mode is for test purposes)
         const echoCancellation = this._joinPayload.size !== 1;
         this._constraints = {
             audio: { ...DEFAULT_CONSTRAINTS.audio, echoCancellation, ...peerOptions.audio },
@@ -307,7 +307,7 @@ class DuckSoup {
         // Add local tracks before signaling
         const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
         stream.getTracks().forEach((track) => {
-            // implement a mute-like behavior (with `enabled`) until the room does start
+            // implement a mute-like behavior (with `enabled`) until the interaction does start
             // see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/enabled
             //track.enabled = false;//disabled for now
             pc.addTrack(track, stream);

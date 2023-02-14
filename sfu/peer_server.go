@@ -20,17 +20,17 @@ import (
 
 type peerServer struct {
 	sync.Mutex
-	userId     string
-	roomId     string
-	streamId   string // one stream Id shared by mixerSlices on a given pc
-	join       types.JoinPayload
-	r          *room
-	pc         *peerConn
-	ws         *wsConn
-	audioSlice *mixerSlice
-	videoSlice *mixerSlice
-	closed     bool
-	closedCh   chan struct{}
+	userId          string
+	interactionName string
+	streamId        string // one stream Id shared by mixerSlices on a given pc
+	join            types.JoinPayload
+	i               *interaction
+	pc              *peerConn
+	ws              *wsConn
+	audioSlice      *mixerSlice
+	videoSlice      *mixerSlice
+	closed          bool
+	closedCh        chan struct{}
 	// processing
 	pipeline          *gst.Pipeline
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
@@ -38,18 +38,18 @@ type peerServer struct {
 
 func newPeerServer(
 	join types.JoinPayload,
-	r *room,
+	i *interaction,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	pipeline := gst.NewPipeline(join, r.filePrefix(join.UserId))
+	pipeline := gst.NewPipeline(join, i.filePrefix(join.UserId))
 
 	ps := &peerServer{
 		userId:            join.UserId,
-		roomId:            r.id,
+		interactionName:   i.name,
 		streamId:          uuid.New().String(),
 		join:              join,
-		r:                 r,
+		i:                 i,
 		pc:                pc,
 		ws:                ws,
 		closed:            false,
@@ -59,29 +59,29 @@ func newPeerServer(
 	}
 
 	// connect for further communication
-	r.connectPeerServer(ps)
-	if r.allUsersConnected() {
+	i.connectPeerServer(ps)
+	if i.allUsersConnected() {
 		// optim: update tracks from others (all are there) and share offer
 		ps.updateTracksAndShareOffer()
 	} else {
 		// ready to share offer, in(coming) tracks already prepared during PC initialization
 		ps.shareOffer()
 	}
-	// some events on pc needs API from ws or room
+	// some events on pc needs API from ws or interaction
 	pc.handleCallbacks(ps)
 	return ps
 }
 
 func (ps *peerServer) logError() *zerolog.Event {
-	return ps.r.logger.Error().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Error().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) logInfo() *zerolog.Event {
-	return ps.r.logger.Info().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Info().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) logDebug() *zerolog.Event {
-	return ps.r.logger.Debug().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Debug().Str("context", "signaling").Str("user", ps.userId)
 }
 
 func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
@@ -102,7 +102,7 @@ func (ps *peerServer) cleanOutTracks() {
 		}
 		sentTrackId := sender.Track().ID()
 		// if we have a RTPSender that doesn't map to an existing track remove and signal
-		_, ok := ps.r.mixer.sliceIndex[sentTrackId]
+		_, ok := ps.i.mixer.sliceIndex[sentTrackId]
 		if !ok {
 			if err := pc.RemoveTrack(sender); err != nil {
 				ps.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("remove_track_failed")
@@ -126,14 +126,14 @@ func (ps *peerServer) prepareOutTracks() bool {
 		}
 		sentTrackId := sender.Track().ID()
 		// if we have a RTPSender that doesn't map to an existing track remove and signal
-		_, ok := ps.r.mixer.sliceIndex[sentTrackId]
+		_, ok := ps.i.mixer.sliceIndex[sentTrackId]
 		if ok {
 			alreadySentIndex[sentTrackId] = true
 		}
 	}
 
 	// add all necessary track (not yet to the PeerConnection or not coming from same peer)
-	for id, s := range ps.r.mixer.sliceIndex {
+	for id, s := range ps.i.mixer.sliceIndex {
 		_, alreadySent := alreadySentIndex[id]
 
 		trackId := s.ID()
@@ -141,8 +141,8 @@ func (ps *peerServer) prepareOutTracks() bool {
 		if alreadySent {
 			// don't double send
 			ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_dup_track_to_pc_skipped")
-		} else if ps.r.size != 1 && s.fromPs.userId == userId {
-			// don't send own tracks, except when room size is 1 (room then acts as a mirror)
+		} else if ps.i.size != 1 && s.fromPs.userId == userId {
+			// don't send own tracks, except when interaction size is 1 (interaction then acts as a mirror)
 			ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_own_track_to_pc_skipped")
 		} else {
 			sender, err := pc.AddTrack(s.output)
@@ -222,7 +222,7 @@ func (ps *peerServer) close(cause string) {
 		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
 	}
 	// cleanup anyway
-	ps.r.disconnectUser(ps.userId)
+	ps.i.disconnectUser(ps.userId)
 }
 
 func (ps *peerServer) controlFx(payload controlPayload) {
@@ -264,7 +264,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 
 		for {
 			select {
-			case <-ps.r.endCh:
+			case <-ps.i.endCh:
 				return
 			case <-ps.closedCh:
 				return
@@ -281,13 +281,13 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 
 func (ps *peerServer) loop() {
 
-	// sends "ending" message before rooms does end
+	// sends "ending" message before interaction does end
 	go func() {
-		<-ps.r.waitForAllCh
+		<-ps.i.waitForAllCh
 		select {
-		case <-time.After(time.Duration(ps.r.endingDelay()) * time.Second):
+		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
-			ps.logInfo().Str("context", "peer").Msg("room_ending_sent")
+			ps.logInfo().Str("context", "peer").Msg("interaction_ending_sent")
 			ps.ws.send("ending")
 		case <-ps.closedCh:
 			// user might have disconnected
@@ -295,12 +295,12 @@ func (ps *peerServer) loop() {
 		}
 	}()
 
-	// wait for room end
+	// wait for interaction end
 	go func() {
 		select {
-		case <-ps.r.endCh:
-			ps.ws.sendWithPayload("files", ps.r.files()) // peer could have left (ws closed) but room is still running
-			ps.close("room ended")
+		case <-ps.i.endCh:
+			ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
+			ps.close("interaction ended")
 		case <-ps.closedCh:
 			// user might have disconnected
 			return
@@ -408,27 +408,27 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	}
 
 	userId := joinPayload.UserId
-	roomId := joinPayload.RoomId
 	namespace := joinPayload.Namespace
+	interactionName := joinPayload.Name
 
-	r, err := roomStoreSingleton.join(joinPayload)
+	r, err := interactionStoreSingleton.join(joinPayload)
 	if err != nil {
-		// joinRoom err is meaningful to client
+		// joinInteraction err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
-		log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("join failed")
+		log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("join failed")
 		return
 	}
 
 	pc, err := newPeerConn(joinPayload, r)
 	if err != nil {
 		ws.send("error-peer-connection")
-		log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("create_pc_failed")
+		log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("create_pc_failed")
 		return
 	}
 
 	ps := newPeerServer(joinPayload, r, pc, ws)
 
-	log.Info().Str("context", "peer").Str("namespace", namespace).Str("room", roomId).Str("user", userId).Msg("peer_server_started")
+	log.Info().Str("context", "peer").Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("peer_server_started")
 
 	ps.loop() // blocking
 }

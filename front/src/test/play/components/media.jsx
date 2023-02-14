@@ -58,7 +58,7 @@ export default () => {
             duration: duration,
             recordingMode: record ? "muxed" : "none",
             size: 1,
-            roomId: randomId(),
+            interactionName: randomId(),
             userId: randomId(),
             gpu: true,
             videoFormat: "H264",

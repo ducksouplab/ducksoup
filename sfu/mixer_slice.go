@@ -25,7 +25,7 @@ const (
 type mixerSlice struct {
 	sync.Mutex
 	fromPs       *peerServer
-	r            *room
+	i            *interaction
 	kind         string
 	streamConfig sfuStream
 	// webrtc
@@ -90,7 +90,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 
 	slice = &mixerSlice{
 		fromPs:       ps,
-		r:            ps.r,
+		i:            ps.i,
 		kind:         kind,
 		streamConfig: streamConfig,
 		// webrtc
@@ -114,15 +114,15 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 }
 
 func (s *mixerSlice) logError() *zerolog.Event {
-	return s.r.logger.Error().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.i.logger.Error().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logInfo() *zerolog.Event {
-	return s.r.logger.Info().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.i.logger.Info().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 func (s *mixerSlice) logDebug() *zerolog.Event {
-	return s.r.logger.Debug().Str("context", "track").Str("user", s.fromPs.userId)
+	return s.i.logger.Debug().Str("context", "track").Str("user", s.fromPs.userId)
 }
 
 // Same ID as output track
@@ -181,7 +181,7 @@ func (s *mixerSlice) stop() {
 }
 
 func (s *mixerSlice) loop() {
-	pipeline, room, userId := s.fromPs.pipeline, s.fromPs.r, s.fromPs.userId
+	pipeline, interaction, userId := s.fromPs.pipeline, s.fromPs.i, s.fromPs.userId
 
 	// returns a callback to push buffer to
 	pipeline.BindTrack(s.kind, s)
@@ -189,7 +189,7 @@ func (s *mixerSlice) loop() {
 		pipeline.Start()
 		s.initializeOptimalRates()
 		// save file references
-		room.addFiles(userId, pipeline.OutputFiles())
+		interaction.addFiles(userId, pipeline.OutputFiles())
 	}
 	go s.runTickers()
 	// go s.runReceiverListener()
@@ -202,7 +202,7 @@ func (s *mixerSlice) loop() {
 	buf := make([]byte, config.Common.MTU)
 	for {
 		select {
-		case <-room.endCh:
+		case <-interaction.endCh:
 			// trial is over, no need to trigger signaling on every closing track
 			return
 		case <-s.fromPs.closedCh:

@@ -1,18 +1,18 @@
 package sfu
 
 func Inspect() interface{} {
-	return roomStoreSingleton.inspect()
+	return interactionStoreSingleton.inspect()
 }
 
-func (rs *roomStore) inspect() interface{} {
-	rs.Lock()
-	defer rs.Unlock()
+func (is *interactionStore) inspect() interface{} {
+	is.Lock()
+	defer is.Unlock()
 
 	report := make(map[string]interface{})
-	for _, room := range rs.index {
-		mixerReport := room.mixer.inspect()
+	for _, interaction := range is.index {
+		mixerReport := interaction.mixer.inspect()
 		if mixerReport != nil {
-			report[room.qualifiedId] = mixerReport
+			report[interaction.id] = mixerReport
 		}
 	}
 	if len(report) > 0 {
