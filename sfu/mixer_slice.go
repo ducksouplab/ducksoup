@@ -24,9 +24,10 @@ const (
 
 type mixerSlice struct {
 	sync.Mutex
-	fromPs *peerServer
-	r      *room
-	kind   string
+	fromPs       *peerServer
+	r            *room
+	kind         string
+	streamConfig sfuStream
 	// webrtc
 	input    *webrtc.TrackRemote
 	output   *webrtc.TrackLocalStaticRTP
@@ -37,7 +38,6 @@ type mixerSlice struct {
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
 	optimalBitrate        uint64
-	maxBitrate            uint64
 	encoderTicker         *time.Ticker
 	// stats
 	statsTicker   *time.Ticker
@@ -70,14 +70,15 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
 	// - a streamId shared among peerServer tracks (audio/video)
 	// newId := uuid.New().String()
-	kind := remoteTrack.Kind().String()
-	if kind != "audio" && kind != "video" {
-		return nil, errors.New("invalid kind")
-	}
 
-	maxBitrate := config.Video.MaxBitrate
-	if kind == "audio" {
-		maxBitrate = config.Audio.MaxBitrate
+	kind := remoteTrack.Kind().String()
+	var streamConfig sfuStream
+	if kind == "video" {
+		streamConfig = config.Video
+	} else if kind == "audio" {
+		streamConfig = config.Audio
+	} else {
+		return nil, errors.New("invalid kind")
 	}
 
 	newId := remoteTrack.ID()
@@ -88,9 +89,10 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	}
 
 	slice = &mixerSlice{
-		fromPs: ps,
-		r:      ps.r,
-		kind:   kind,
+		fromPs:       ps,
+		r:            ps.r,
+		kind:         kind,
+		streamConfig: streamConfig,
 		// webrtc
 		input:    remoteTrack,
 		output:   localTrack,
@@ -101,7 +103,6 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		// controller
 		senderControllerIndex: map[string]*senderController{},
 		encoderTicker:         time.NewTicker(encoderPeriod * time.Millisecond),
-		maxBitrate:            maxBitrate,
 		// stats
 		statsTicker: time.NewTicker(statsPeriod * time.Millisecond),
 		lastStats:   time.Now(),
@@ -186,6 +187,8 @@ func (s *mixerSlice) loop() {
 	pipeline.BindTrack(s.kind, s)
 	if pipeline.IsReady() {
 		pipeline.Start()
+		s.initializeOptimalRates()
+		// save file references
 		room.addFiles(userId, pipeline.OutputFiles())
 	}
 	go s.runTickers()
@@ -196,7 +199,7 @@ func (s *mixerSlice) loop() {
 		s.stop()
 	}()
 
-	buf := make([]byte, defaultMTU)
+	buf := make([]byte, config.Common.MTU)
 	for {
 		select {
 		case <-room.endCh:
@@ -215,6 +218,16 @@ func (s *mixerSlice) loop() {
 			go s.scanInput(buf, i)
 		}
 	}
+}
+
+func (s *mixerSlice) initializeOptimalRates() {
+	// pipeline is started once (either by the audio or video slice) but both
+	// media types need to be initialized*
+	s.pipeline.SetEncodingRate("audio", config.Audio.DefaultBitrate)
+	s.pipeline.SetEncodingRate("video", config.Video.DefaultBitrate)
+	// log
+	s.logInfo().Uint64("value", config.Audio.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("audio_target_bitrate_initialized")
+	s.logInfo().Uint64("value", config.Video.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("video_target_bitrate_initialized")
 }
 
 func (s *mixerSlice) updateOptimalRate(newPotentialRate uint64) {
@@ -242,7 +255,7 @@ func (s *mixerSlice) runTickers() {
 					diff := helpers.AbsPercentageDiff(s.optimalBitrate, newPotentialRate)
 					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
 					diffIsBigEnough := diff > diffThreshold
-					diffToMax := diff > 0 && (newPotentialRate == s.maxBitrate)
+					diffToMax := diff > 0 && (newPotentialRate == s.streamConfig.MaxBitrate)
 					if diffIsBigEnough || diffToMax {
 						go s.updateOptimalRate(newPotentialRate)
 					}

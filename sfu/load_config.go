@@ -9,6 +9,9 @@ import (
 )
 
 type sfuConfig struct {
+	Common struct {
+		MTU uint64 `yaml:"mtu"`
+	}
 	Audio sfuStream
 	Video sfuStream
 }

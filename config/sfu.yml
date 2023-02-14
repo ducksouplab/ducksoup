@@ -1,8 +1,10 @@
+common:
+  mtu: 1280
 audio:
   defaultBitrate: 48000
   minBitrate: 16000
   maxBitrate: 64000
 video:
-  defaultBitrate: 400000
+  defaultBitrate: 600000
   minBitrate: 200000
   maxBitrate: 1200000

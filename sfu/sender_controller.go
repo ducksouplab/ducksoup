@@ -35,10 +35,6 @@ func newSenderController(pc *peerConn, slice *mixerSlice, sender *webrtc.RTPSend
 	params := sender.GetParameters()
 	kind := slice.output.Kind().String()
 	ssrc := params.Encodings[0].SSRC
-	streamConfig := config.Video
-	if kind == "audio" {
-		streamConfig = config.Audio
-	}
 
 	return &senderController{
 		slice:          slice,
@@ -48,9 +44,9 @@ func newSenderController(pc *peerConn, slice *mixerSlice, sender *webrtc.RTPSend
 		kind:           kind,
 		sender:         sender,
 		ccEstimator:    pc.ccEstimator,
-		optimalBitrate: streamConfig.DefaultBitrate,
-		maxBitrate:     streamConfig.MaxBitrate,
-		minBitrate:     streamConfig.MinBitrate,
+		optimalBitrate: slice.streamConfig.DefaultBitrate,
+		maxBitrate:     slice.streamConfig.MaxBitrate,
+		minBitrate:     slice.streamConfig.MinBitrate,
 	}
 }
 

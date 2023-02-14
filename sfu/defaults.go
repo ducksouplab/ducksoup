@@ -1,10 +1,7 @@
 package sfu
 
 const (
-	defaultMTU = 1500
-
-	// works better than VP8 due to vp8 muxer unable to handle stream caps modification (size for instance) and thus
-	// requiring decoding and reencoding stream with fixed caps
+	// H264 preferred as default due to nvenc
 	defaultVideoFormat   = "H264"
 	defaultRecordingMode = "muxed"
 
