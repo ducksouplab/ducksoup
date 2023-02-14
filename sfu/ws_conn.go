@@ -136,7 +136,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	err = json.Unmarshal([]byte(m.Payload), &join)
 	// restrict to authorized values
 	join.Namespace = parseString(join.Namespace)
-	join.Name = parseString(join.Name)
+	join.InteractionName = parseString(join.InteractionName)
 	join.UserId = parseString(join.UserId)
 	join.VideoFormat = parseVideoFormat(join)
 	join.RecordingMode = parseRecordingMode(join)
@@ -147,7 +147,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	join.Origin = origin
 
 	// bind fields
-	ws.interactionName = join.Name
+	ws.interactionName = join.InteractionName
 	ws.userId = join.UserId
 	ws.namespace = join.Namespace
 

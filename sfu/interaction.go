@@ -56,7 +56,7 @@ type interaction struct {
 // private and not guarded by mutex locks, since called by other guarded methods
 
 func generateId(join types.JoinPayload) string {
-	return join.Origin + "#" + join.Namespace + "#" + join.Name
+	return join.Origin + "#" + join.Namespace + "#" + join.InteractionName
 }
 
 func newInteraction(id string, join types.JoinPayload) *interaction {
@@ -100,7 +100,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		randomId:            helpers.RandomHexString(12),
 		namespace:           join.Namespace,
 		id:                  id,
-		name:                join.Name,
+		name:                join.InteractionName,
 		size:                size,
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
@@ -111,7 +111,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	i.logger = log.With().
 		Str("context", "interaction").
 		Str("namespace", join.Namespace).
-		Str("interaction", join.Name).
+		Str("interaction", join.InteractionName).
 		Logger().
 		Hook(i)
 

@@ -55,13 +55,13 @@ func (is *interactionStore) join(join types.JoinPayload) (*interaction, error) {
 			// new user joined existing interaction
 			r.connectedIndex[userId] = true
 			r.joinedCountIndex[userId] = 1
-			log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.Name).Str("user", userId).Interface("payload", join).Msg("peer_joined")
+			log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 			return r, nil
 		}
 	} else {
 		newInteraction := newInteraction(id, join)
-		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.Name).Str("user", userId).Str("id", id).Str("origin", join.Origin).Msg("interaction_created")
-		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.Name).Str("user", userId).Interface("payload", join).Msg("peer_joined")
+		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Str("id", id).Str("origin", join.Origin).Msg("interaction_created")
+		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		interactionStoreSingleton.index[id] = newInteraction
 		return newInteraction, nil
 	}

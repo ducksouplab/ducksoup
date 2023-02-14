@@ -6,13 +6,13 @@ import (
 	"github.com/ducksouplab/ducksoup/types"
 )
 
-func newJoinPayload(origin, name, userId, namespace string, size int) types.JoinPayload {
+func newJoinPayload(origin, interactionName, userId, namespace string, size int) types.JoinPayload {
 	return types.JoinPayload{
-		Origin:    origin,
-		Name:      name,
-		UserId:    userId,
-		Namespace: namespace,
-		Size:      size,
+		Origin:          origin,
+		InteractionName: interactionName,
+		UserId:          userId,
+		Namespace:       namespace,
+		Size:            size,
 	}
 }
 

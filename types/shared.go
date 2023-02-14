@@ -1,9 +1,9 @@
 package types
 
 type JoinPayload struct {
-	Name     string `json:"name"`
-	UserId   string `json:"userId"`
-	Duration int    `json:"duration"`
+	InteractionName string `json:"interactionName"`
+	UserId          string `json:"userId"`
+	Duration        int    `json:"duration"`
 	// optional
 	Namespace     string `json:"namespace"`
 	VideoFormat   string `json:"videoFormat"`

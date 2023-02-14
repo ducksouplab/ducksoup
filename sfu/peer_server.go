@@ -409,7 +409,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 
 	userId := joinPayload.UserId
 	namespace := joinPayload.Namespace
-	interactionName := joinPayload.Name
+	interactionName := joinPayload.InteractionName
 
 	r, err := interactionStoreSingleton.join(joinPayload)
 	if err != nil {
