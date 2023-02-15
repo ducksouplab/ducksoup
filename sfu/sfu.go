@@ -45,6 +45,6 @@ func (s *mixerSlice) inspect() interface{} {
 		s.input.Kind().String(),
 		s.inputBitrate / 1000,
 		s.outputBitrate / 1000,
-		s.optimalBitrate / 1000,
+		s.targetBitrate / 1000,
 	}
 }

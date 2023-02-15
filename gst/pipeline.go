@@ -35,6 +35,8 @@ type Pipeline struct {
 	stoppedCount int
 	// log
 	logger zerolog.Logger
+	// API
+	ReadyCh chan struct{}
 }
 
 func fileName(namespace string, prefix string, suffix string) string {
@@ -111,6 +113,7 @@ func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
 		videoOptions: videoOptions,
 		audioOptions: audioOptions,
 		stoppedCount: 0,
+		ReadyCh:      make(chan struct{}),
 		logger:       logger,
 	}
 
@@ -148,16 +151,20 @@ func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
 	//C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
-func (p *Pipeline) BindTrack(kind string, t types.TrackWriter) {
+func (p *Pipeline) BindTrackAutoStart(kind string, t types.TrackWriter) {
 	if kind == "audio" {
 		p.audioOutput = t
 	} else {
 		p.videoOutput = t
 	}
+	p.updateReady()
 }
 
-func (p *Pipeline) IsReady() bool {
-	return p.audioOutput != nil && p.videoOutput != nil
+func (p *Pipeline) updateReady() {
+	if p.audioOutput != nil && p.videoOutput != nil {
+		close(p.ReadyCh)
+		p.Start()
+	}
 }
 
 func (p *Pipeline) Start() {

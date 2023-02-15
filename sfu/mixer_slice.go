@@ -37,7 +37,7 @@ type mixerSlice struct {
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
-	optimalBitrate        uint64
+	targetBitrate         uint64
 	encoderTicker         *time.Ticker
 	// stats
 	statsTicker   *time.Ticker
@@ -183,22 +183,23 @@ func (s *mixerSlice) stop() {
 func (s *mixerSlice) loop() {
 	pipeline, interaction, userId := s.fromPs.pipeline, s.fromPs.i, s.fromPs.userId
 
-	// returns a callback to push buffer to
-	pipeline.BindTrack(s.kind, s)
-	if pipeline.IsReady() {
-		pipeline.Start()
-		s.initializeOptimalRates()
-		// save file references
-		interaction.addFiles(userId, pipeline.OutputFiles())
-	}
+	// gives pipeline a track to write to
+	pipeline.BindTrackAutoStart(s.kind, s)
+	// wait for audio and video
+	<-pipeline.ReadyCh
+
+	s.initializeBitrates()
+	interaction.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go s.runTickers()
 	// go s.runReceiverListener()
 
+	// prepare loop end
 	defer func() {
 		s.logInfo().Str("track", s.ID()).Str("kind", s.kind).Msg("out_track_stopped")
 		s.stop()
 	}()
 
+	// loop start
 	buf := make([]byte, config.Common.MTU)
 	for {
 		select {
@@ -220,7 +221,7 @@ func (s *mixerSlice) loop() {
 	}
 }
 
-func (s *mixerSlice) initializeOptimalRates() {
+func (s *mixerSlice) initializeBitrates() {
 	// pipeline is started once (either by the audio or video slice) but both
 	// media types need to be initialized*
 	s.pipeline.SetEncodingRate("audio", config.Audio.DefaultBitrate)
@@ -230,9 +231,9 @@ func (s *mixerSlice) initializeOptimalRates() {
 	s.logInfo().Uint64("value", config.Video.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("video_target_bitrate_initialized")
 }
 
-func (s *mixerSlice) updateOptimalRate(newPotentialRate uint64) {
+func (s *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
 	s.Lock()
-	s.optimalBitrate = newPotentialRate
+	s.targetBitrate = newPotentialRate
 	s.Unlock()
 	s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
 	// format and log
@@ -252,12 +253,12 @@ func (s *mixerSlice) runTickers() {
 				newPotentialRate := minUint64(rates)
 				if s.pipeline != nil && newPotentialRate > 0 {
 					// skip updating previous value and encoding rate too often
-					diff := helpers.AbsPercentageDiff(s.optimalBitrate, newPotentialRate)
+					diff := helpers.AbsPercentageDiff(s.targetBitrate, newPotentialRate)
 					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
 					diffIsBigEnough := diff > diffThreshold
 					diffToMax := diff > 0 && (newPotentialRate == s.streamConfig.MaxBitrate)
 					if diffIsBigEnough || diffToMax {
-						go s.updateOptimalRate(newPotentialRate)
+						go s.updateTargetBitrates(newPotentialRate)
 					}
 				}
 			}
@@ -279,7 +280,7 @@ func (s *mixerSlice) runTickers() {
 			// log
 			displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
 			displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
-			displayOutputTargetBitrateKbs := uint64(s.optimalBitrate / 1000)
+			displayOutputTargetBitrateKbs := uint64(s.targetBitrate / 1000)
 
 			inputMsg := fmt.Sprintf("%s_in_bitrate", s.output.Kind().String())
 			outputMsg := fmt.Sprintf("%s_out_bitrate", s.output.Kind().String())
