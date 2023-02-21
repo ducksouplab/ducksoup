@@ -54,6 +54,7 @@ Where:
     - `"error-join"` (no payload) when `peerOptions` (see below) are incorrect
     - `"error-duplicate"` (no payload) when a user with same `userId` (see `peerOptions` below) is already connected
     - `"error-full"` (no payload) when the videoconference interaction is full
+    - `"error-aborted"` (no payload) when other peers have not joined the room after too long (timeout)
     - `"error` with more information in payload
     - `"stats"` (payload contains bandwidth usage information) periodically triggered (fired only when `stats` is set to true)
   - `stats` (boolean, defaults to false) to enable `"stats"` messages sent to client callback (please note that stats are polled every second)
@@ -513,6 +514,7 @@ Messages from server (Go) to client (JS):
 - kind `error-full` when interaction limit has been reached and user can't enter interaction
 - kind `error-duplicate` when same user is already in interaction
 - kind `error-join` when `peerOptions` passed to DuckSoup player are incorrect
+- kind `error-aborted` when other peers have not joined the room after too long (timeout)
 - kind `error-peer-connection` when server-side peer connection can't be established
 
 ### Code within a Docker container

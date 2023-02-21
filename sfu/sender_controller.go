@@ -19,7 +19,7 @@ const (
 
 type senderController struct {
 	sync.Mutex
-	slice          *mixerSlice
+	ms             *mixerSlice
 	fromPs         *peerServer
 	toUserId       string
 	ssrc           webrtc.SSRC
@@ -31,35 +31,35 @@ type senderController struct {
 	minBitrate     uint64
 }
 
-func newSenderController(pc *peerConn, slice *mixerSlice, sender *webrtc.RTPSender) *senderController {
+func newSenderController(pc *peerConn, ms *mixerSlice, sender *webrtc.RTPSender) *senderController {
 	params := sender.GetParameters()
-	kind := slice.output.Kind().String()
+	kind := ms.output.Kind().String()
 	ssrc := params.Encodings[0].SSRC
 
 	return &senderController{
-		slice:          slice,
-		fromPs:         slice.fromPs,
+		ms:             ms,
+		fromPs:         ms.fromPs,
 		toUserId:       pc.userId,
 		ssrc:           ssrc,
 		kind:           kind,
 		sender:         sender,
 		ccEstimator:    pc.ccEstimator,
-		optimalBitrate: slice.streamConfig.DefaultBitrate,
-		maxBitrate:     slice.streamConfig.MaxBitrate,
-		minBitrate:     slice.streamConfig.MinBitrate,
+		optimalBitrate: ms.streamConfig.DefaultBitrate,
+		maxBitrate:     ms.streamConfig.MaxBitrate,
+		minBitrate:     ms.streamConfig.MinBitrate,
 	}
 }
 
 func (sc *senderController) logError() *zerolog.Event {
-	return sc.slice.logError().Str("context", "track").Str("toUser", sc.toUserId)
+	return sc.ms.logError().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
 func (sc *senderController) logInfo() *zerolog.Event {
-	return sc.slice.logInfo().Str("context", "track").Str("toUser", sc.toUserId)
+	return sc.ms.logInfo().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
 func (sc *senderController) logDebug() *zerolog.Event {
-	return sc.slice.logDebug().Str("context", "track").Str("toUser", sc.toUserId)
+	return sc.ms.logDebug().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
 func (sc *senderController) capRate(in uint64) uint64 {
@@ -97,6 +97,8 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 func (sc *senderController) loop() {
 	estimateWithGCCEnv := helpers.Getenv("DS_GCC") == "true"
 	go sc.loopReadRTCP(estimateWithGCCEnv)
+
+	<-sc.ms.i.startCh
 	if sc.kind == "video" && estimateWithGCCEnv {
 		go sc.loopGCC()
 	}
@@ -104,10 +106,15 @@ func (sc *senderController) loop() {
 
 func (sc *senderController) loopGCC() {
 	ticker := time.NewTicker(gccPeriod * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-sc.slice.endCh:
-			ticker.Stop()
+		case <-sc.ms.i.endCh:
+			// TODO FIX it could happen that addSender have triggered this loop without the slice
+			// to have actually started
+			return
+		case <-sc.ms.endCh:
 			return
 		case <-ticker.C:
 			// update optimal video bitrate, leaving room for audio
@@ -121,7 +128,7 @@ func (sc *senderController) loopGCC() {
 func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 	for {
 		select {
-		case <-sc.slice.endCh:
+		case <-sc.ms.endCh:
 			return
 		default:
 			packets, _, err := sc.sender.ReadRTCP()
@@ -140,14 +147,14 @@ func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 				for _, packet := range packets {
 					switch packet.(type) {
 					case *rtcp.PictureLossIndication:
-						sc.slice.fromPs.pc.throttledPLIRequest("PLI from other peer")
+						sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
 					}
 				}
 			} else {
 				for _, packet := range packets {
 					switch rtcpPacket := packet.(type) {
 					case *rtcp.PictureLossIndication:
-						sc.slice.fromPs.pc.throttledPLIRequest("PLI from other peer")
+						sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
 					case *rtcp.ReceiverEstimatedMaximumBitrate:
 						sc.logDebug().Msgf("%T %+v", packet, packet)
 						// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))

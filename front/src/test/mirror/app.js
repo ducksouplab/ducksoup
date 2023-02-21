@@ -60,7 +60,7 @@ const start = async ({
     const interactionName = isMirror ? randomId() : iName;
     const userId = isMirror ? randomId() : uId;
     const size = isMirror ? 1 : parseInt(s, 10);
-    const namespace = isMirror ? "mirror" : "interaction";
+    const namespace = isMirror ? "test_mirror" : "test_interaction";
     // parse
     const width = parseIntWithFallback(w, 800);
     const height = parseIntWithFallback(h, 600);

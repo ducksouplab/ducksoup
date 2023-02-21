@@ -23,6 +23,7 @@ func RunStatsServer(ws *websocket.Conn) {
 	defer ws.Close()
 
 	ticker := time.NewTicker(period * time.Millisecond)
+	defer ticker.Stop()
 
 	for range ticker.C {
 		payload := sfu.Inspect()

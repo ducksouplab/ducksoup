@@ -19,6 +19,7 @@ const (
 	TracksPerPeer   = 2
 	DefaultDuration = 30
 	MaxDuration     = 1200
+	AbortLimit      = 10
 	Ending          = 15
 )
 
@@ -32,14 +33,15 @@ type interaction struct {
 	joinedCountIndex    map[string]int         // per user id
 	filesIndex          map[string][]string    // per user id, contains media file names
 	running             bool
+	started             bool // changed once to show if interaction has been aborted or not
 	deleted             bool
 	createdAt           time.Time
 	startedAt           time.Time
 	inTracksReadyCount  int
 	outTracksReadyCount int
 	// channels (safe)
-	waitForAllCh chan struct{}
-	endCh        chan struct{}
+	startCh chan struct{}
+	endCh   chan struct{}
 	// other (written only during initialization)
 	id           string // origin+namespace+name, used for indexing in interactionStore
 	randomId     string // random internal id
@@ -51,6 +53,9 @@ type interaction struct {
 	ssrcs        []uint32
 	// log
 	logger zerolog.Logger
+	// internals
+	abortTimer    *time.Timer
+	gracefulTimer *time.Timer
 }
 
 // private and not guarded by mutex locks, since called by other guarded methods
@@ -92,7 +97,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		deleted:             false,
 		connectedIndex:      connectedIndex,
 		joinedCountIndex:    joinedCountIndex,
-		waitForAllCh:        make(chan struct{}),
+		startCh:             make(chan struct{}),
 		endCh:               make(chan struct{}),
 		createdAt:           time.Now(),
 		inTracksReadyCount:  0,
@@ -105,6 +110,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		duration:            duration,
 		neededTracks:        size * TracksPerPeer,
 		ssrcs:               []uint32{},
+		abortTimer:          time.NewTimer(time.Duration(AbortLimit) * time.Second),
 	}
 	i.mixer = newMixer(i)
 	// log (call Run hook whenever logging)
@@ -115,6 +121,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		Logger().
 		Hook(i)
 
+	go i.abortCountdown()
 	return i
 }
 
@@ -122,7 +129,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	sinceCreation := time.Since(i.createdAt).Round(time.Millisecond).String()
 	e.Str("sinceCreation", sinceCreation)
-	if !i.startedAt.IsZero() {
+	if i.started {
 		sinceStart := time.Since(i.startedAt).Round(time.Millisecond).String()
 		e.Str("sinceStart", sinceStart)
 	}
@@ -156,26 +163,59 @@ func (i *interaction) filePrefix(userId string) string {
 		"-c-" + fmt.Sprint(connectionCount)
 }
 
-func (i *interaction) countdown() {
-	// blocking "end" event and delete
-	endTimer := time.NewTimer(time.Duration(i.duration) * time.Second)
-	<-endTimer.C
-
+func (i *interaction) start() {
 	i.Lock()
-	i.running = false
-	i.Unlock()
+	defer i.Unlock()
+	// do start
+	close(i.startCh)
+	i.abortTimer.Stop()
+	i.started = true
+	i.running = true
+	i.logger.Info().Msg("interaction_started")
+	i.startedAt = time.Now()
+	// send start to all peers
+	for _, ps := range i.peerServerIndex {
+		go ps.ws.send("start")
+	}
+	go i.gracefulCountdown()
+}
 
-	i.logger.Info().Msg("interaction_ended")
+func (i *interaction) stop(graceful bool) {
 	// listened by peerServers, mixer, mixerTracks
 	close(i.endCh)
+	if graceful {
+		i.logger.Info().Msg("interaction_end")
+	} else {
+		i.logger.Info().Msg("interaction_aborted")
+	}
+	i.running = false
 
 	<-time.After(3000 * time.Millisecond)
 	// most likely already deleted, see disconnectUser
 	// except if interaction was empty before turning to i.running=false
+	i.unguardedDelete()
+}
+
+// ends room if not enough user have connected after a waiting limit
+func (i *interaction) abortCountdown() {
+	// wait then check if interaction is running, if not, abort
+	<-i.abortTimer.C
+
 	i.Lock()
-	if !i.deleted {
-		i.unguardedDelete()
+	if !i.running {
+		i.stop(false)
 	}
+	i.Unlock()
+}
+
+// ends room when its duration has been reached
+func (i *interaction) gracefulCountdown() {
+	// blocking "end" event and delete
+	i.gracefulTimer = time.NewTimer(time.Duration(i.duration) * time.Second)
+	<-i.gracefulTimer.C
+
+	i.Lock()
+	i.stop(true)
 	i.Unlock()
 }
 
@@ -183,9 +223,10 @@ func (i *interaction) countdown() {
 
 func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *webrtc.TrackRemote) {
 	i.Lock()
-	defer i.Unlock()
+	isAlreadyReady := i.inTracksReadyCount == i.neededTracks
+	i.Unlock()
 
-	if i.inTracksReadyCount == i.neededTracks {
+	if isAlreadyReady {
 		// reconnection case, then send start only once (check for "audio" for instance)
 		if remoteTrack.Kind().String() == "audio" {
 			go fromPs.ws.send("start")
@@ -193,21 +234,14 @@ func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *web
 		return
 	}
 
+	i.Lock()
 	i.inTracksReadyCount++
 	i.logger.Info().Int("count", i.inTracksReadyCount).Msg("in_track_added_to_interaction")
+	isReadyNow := i.inTracksReadyCount == i.neededTracks
+	i.Unlock()
 
-	if i.inTracksReadyCount == i.neededTracks {
-		// do start
-		close(i.waitForAllCh)
-		i.running = true
-		i.logger.Info().Msg("interaction_started")
-		i.startedAt = time.Now()
-		// send start to all peers
-		for _, ps := range i.peerServerIndex {
-			go ps.ws.send("start")
-		}
-		go i.countdown()
-		return
+	if isReadyNow {
+		i.start()
 	}
 }
 
@@ -255,6 +289,9 @@ func (i *interaction) connectPeerServer(ps *peerServer) {
 
 // should be called by another method that locked the interaction (mutex)
 func (i *interaction) unguardedDelete() {
+	if i.deleted {
+		return
+	}
 	i.deleted = true
 	interactionStoreSingleton.delete(i)
 	i.logger.Info().Msg("interaction_deleted")
@@ -325,9 +362,11 @@ func (i *interaction) endingDelay() (delay int) {
 func (i *interaction) readRemoteTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
-		case <-i.waitForAllCh:
-			// trial is over, no need to trigger signaling on every closing track
+		case <-i.startCh:
 			return true
+		case <-i.endCh:
+			// interaction is over before starting
+			return false
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
@@ -363,8 +402,8 @@ func (i *interaction) runMixerSliceFromRemote(
 		// trigger signaling if needed
 		signalingNeeded := i.incOutTracksReadyCount()
 		if signalingNeeded {
-			// TODO FIX, CAUTION without this timeout, some tracks are not sent to peers,
-			<-time.After(500 * time.Millisecond)
+			// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
+			<-time.After(2000 * time.Millisecond)
 			go i.mixer.managedGlobalSignaling("out_tracks_ready", true)
 		}
 		// blocking until interaction ends or user disconnects

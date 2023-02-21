@@ -60,6 +60,7 @@ func newPeerServer(
 
 	// connect for further communication
 	i.connectPeerServer(ps)
+	ws.connectPeerServer(ps)
 	if i.allUsersConnected() {
 		// optim: update tracks from others (all are there) and share offer
 		ps.updateTracksAndShareOffer()
@@ -84,11 +85,11 @@ func (ps *peerServer) logDebug() *zerolog.Event {
 	return ps.i.logger.Debug().Str("context", "signaling").Str("user", ps.userId)
 }
 
-func (ps *peerServer) setMixerSlice(kind string, slice *mixerSlice) {
+func (ps *peerServer) setMixerSlice(kind string, ms *mixerSlice) {
 	if kind == "audio" {
-		ps.audioSlice = slice
+		ps.audioSlice = ms
 	} else if kind == "video" {
-		ps.videoSlice = slice
+		ps.videoSlice = ms
 	}
 }
 
@@ -216,7 +217,7 @@ func (ps *peerServer) close(cause string) {
 		// listened by mixerSlices
 		close(ps.closedCh)
 		// clean up bound components
-		ps.pc.Close()
+		go ps.pc.Close() // TODO fix/check -> may block
 		ps.ws.Close()
 
 		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
@@ -283,7 +284,7 @@ func (ps *peerServer) loop() {
 
 	// sends "ending" message before interaction does end
 	go func() {
-		<-ps.i.waitForAllCh
+		<-ps.i.startCh
 		select {
 		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
@@ -299,8 +300,13 @@ func (ps *peerServer) loop() {
 	go func() {
 		select {
 		case <-ps.i.endCh:
-			ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
-			ps.close("interaction ended")
+			if ps.i.started {
+				ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
+				ps.close("interaction_ended")
+			} else {
+				ps.ws.send("error-aborted")
+				ps.close("interaction_aborted")
+			}
 		case <-ps.closedCh:
 			// user might have disconnected
 			return

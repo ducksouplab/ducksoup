@@ -9,10 +9,10 @@ func (is *interactionStore) inspect() interface{} {
 	defer is.Unlock()
 
 	report := make(map[string]interface{})
-	for _, interaction := range is.index {
-		mixerReport := interaction.mixer.inspect()
+	for _, i := range is.index { // i is an interaction, not an index
+		mixerReport := i.mixer.inspect()
 		if mixerReport != nil {
-			report[interaction.id] = mixerReport
+			report[i.id] = mixerReport
 		}
 	}
 	if len(report) > 0 {

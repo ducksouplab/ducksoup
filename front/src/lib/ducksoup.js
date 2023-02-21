@@ -37,7 +37,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("[DuckSoup] v1.5.22");
+    console.log("[DuckSoup] v1.5.24");
 
     const ua = navigator.userAgent;
     const containsChrome = ua.indexOf("Chrome") > -1;
@@ -275,6 +275,7 @@ class DuckSoup {
         return typeof name === "string" && typeof property === "string" && typeof value === "number" && durationValid;
     }
 
+    // send local event to js that has embedded the player
     _sendEvent(event, force) {
         if (this._callback && (this._running || force)) {
             const message = typeof event === "string" ? { kind: event } : event;
@@ -323,12 +324,14 @@ class DuckSoup {
         this._ws = ws;
 
         ws.onclose = (event) => {
+            console.log("[DuckSoup] ws.onclose ", event);
             this._sendEvent("closed");
             this._stopRTC();
             if (this._statsIntervalId) clearInterval(this._statsIntervalId);
         };
 
         ws.onerror = (event) => {
+            console.log("[DuckSoup] ws.onerror ", event);
             this._sendEvent({ kind: "error", payload: event.data });
             this.stop(4000); // used as error
         };
@@ -375,6 +378,11 @@ class DuckSoup {
                 //     track.enabled = true;
                 // });
                 this._sendEvent({ kind: "start" }, true); // force with true since player is not already running
+                // Getting peerconnection stats is needed either for stats or debug option
+                if (this._stats || this._logLevel >= 1) {
+                    console.log(`[DuckSoup] start stats`);
+                    this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
+                }
             } else if (message.kind === "ending") {
                 this._sendEvent({ kind: "ending" });
             } else if (message.kind === "files") {
@@ -463,11 +471,6 @@ class DuckSoup {
                 console.error("[DuckSoup] ws can't connect (after 10 seconds)");  
             }
         }, 10000);
-
-        // Getting peerconnection stats is needed either for stats or debug option
-        if (this._stats || this._logLevel >= 1) {
-            this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
-        }
     }
 
     async _updateStats() {

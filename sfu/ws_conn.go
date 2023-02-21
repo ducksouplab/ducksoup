@@ -25,6 +25,7 @@ type wsConn struct {
 	userId          string
 	interactionName string
 	namespace       string
+	ps              *peerServer
 }
 
 type messageOut struct {
@@ -108,7 +109,7 @@ func parseFrameRate(join types.JoinPayload) (frameRate int) {
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
-	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", ""}
+	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", "", nil}
 }
 
 func (ws *wsConn) logError() *zerolog.Event {
@@ -154,14 +155,27 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	return
 }
 
+func (ws *wsConn) connectPeerServer(ps *peerServer) {
+	ws.Lock()
+	defer ws.Unlock()
+
+	ws.ps = ps
+}
+
+func (ws *wsConn) write(m *messageOut) (err error) {
+	if err := ws.Conn.WriteJSON(m); err != nil {
+		ws.ps.close("ws_error")
+		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("ws_write_failed")
+	}
+	return
+}
+
 func (ws *wsConn) send(text string) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
 	m := &messageOut{Kind: text}
-	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("json_write_failed")
-	}
+	err = ws.write(m)
 	return
 }
 
@@ -173,8 +187,6 @@ func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) 
 		Kind:    kind,
 		Payload: payload,
 	}
-	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("json_write_with_payload_failed")
-	}
+	err = ws.write(m)
 	return
 }

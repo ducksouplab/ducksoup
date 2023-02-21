@@ -38,9 +38,7 @@ type mixerSlice struct {
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
 	targetBitrate         uint64
-	encoderTicker         *time.Ticker
 	// stats
-	statsTicker   *time.Ticker
 	lastStats     time.Time
 	inputBits     uint64
 	outputBits    uint64
@@ -64,7 +62,7 @@ func minUint64(v []uint64) (min uint64) {
 	return
 }
 
-func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (slice *mixerSlice, err error) {
+func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (ms *mixerSlice, err error) {
 	// create a new mixerSlice with:
 	// - the same codec format as the incoming/remote one
 	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
@@ -88,7 +86,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		return
 	}
 
-	slice = &mixerSlice{
+	ms = &mixerSlice{
 		fromPs:       ps,
 		i:            ps.i,
 		kind:         kind,
@@ -102,10 +100,8 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 		// controller
 		senderControllerIndex: map[string]*senderController{},
-		encoderTicker:         time.NewTicker(encoderPeriod * time.Millisecond),
 		// stats
-		statsTicker: time.NewTicker(statsPeriod * time.Millisecond),
-		lastStats:   time.Now(),
+		lastStats: time.Now(),
 		// status
 		endCh: make(chan struct{}),
 	}
@@ -175,13 +171,12 @@ func (s *mixerSlice) Write(buf []byte) (err error) {
 
 func (s *mixerSlice) stop() {
 	s.pipeline.Stop()
-	s.statsTicker.Stop()
-	s.encoderTicker.Stop()
 	close(s.endCh)
+	s.logInfo().Str("track", s.ID()).Str("kind", s.kind).Msg("out_track_stopped")
 }
 
 func (s *mixerSlice) loop() {
-	pipeline, interaction, userId := s.fromPs.pipeline, s.fromPs.i, s.fromPs.userId
+	pipeline, i, userId := s.fromPs.pipeline, s.fromPs.i, s.fromPs.userId
 
 	// gives pipeline a track to write to
 	pipeline.BindTrackAutoStart(s.kind, s)
@@ -189,36 +184,33 @@ func (s *mixerSlice) loop() {
 	<-pipeline.ReadyCh
 
 	s.initializeBitrates()
-	interaction.addFiles(userId, pipeline.OutputFiles()) // for reference
+	i.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go s.runTickers()
 	// go s.runReceiverListener()
 
-	// prepare loop end
-	defer func() {
-		s.logInfo().Str("track", s.ID()).Str("kind", s.kind).Msg("out_track_stopped")
-		s.stop()
-	}()
-
 	// loop start
 	buf := make([]byte, config.Common.MTU)
+pushToPipeline:
 	for {
 		select {
-		case <-interaction.endCh:
+		case <-i.endCh:
 			// trial is over, no need to trigger signaling on every closing track
-			return
+			break pushToPipeline
 		case <-s.fromPs.closedCh:
 			// peer may quit early (for instance page refresh), other peers need to be updated
-			return
+			break pushToPipeline
 		default:
-			i, _, err := s.input.Read(buf)
+			n, _, err := s.input.Read(buf)
 			if err != nil {
-				return
+				break pushToPipeline
 			}
-			s.pipeline.PushRTP(s.kind, buf[:i])
+			s.pipeline.PushRTP(s.kind, buf[:n])
 			// for stats
-			go s.scanInput(buf, i)
+			go s.scanInput(buf, n)
 		}
 	}
+	// loop end
+	s.stop()
 }
 
 func (s *mixerSlice) initializeBitrates() {
@@ -244,21 +236,28 @@ func (s *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
 func (s *mixerSlice) runTickers() {
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
-		for range s.encoderTicker.C {
-			if len(s.senderControllerIndex) > 0 {
-				rates := []uint64{}
-				for _, sc := range s.senderControllerIndex {
-					rates = append(rates, sc.optimalBitrate)
-				}
-				newPotentialRate := minUint64(rates)
-				if s.pipeline != nil && newPotentialRate > 0 {
-					// skip updating previous value and encoding rate too often
-					diff := helpers.AbsPercentageDiff(s.targetBitrate, newPotentialRate)
-					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
-					diffIsBigEnough := diff > diffThreshold
-					diffToMax := diff > 0 && (newPotentialRate == s.streamConfig.MaxBitrate)
-					if diffIsBigEnough || diffToMax {
-						go s.updateTargetBitrates(newPotentialRate)
+		encoderTicker := time.NewTicker(encoderPeriod * time.Millisecond)
+		defer encoderTicker.Stop()
+		for {
+			select {
+			case <-s.endCh:
+				return
+			case <-encoderTicker.C:
+				if len(s.senderControllerIndex) > 0 {
+					rates := []uint64{}
+					for _, sc := range s.senderControllerIndex {
+						rates = append(rates, sc.optimalBitrate)
+					}
+					newPotentialRate := minUint64(rates)
+					if s.pipeline != nil && newPotentialRate > 0 {
+						// skip updating previous value and encoding rate too often
+						diff := helpers.AbsPercentageDiff(s.targetBitrate, newPotentialRate)
+						// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
+						diffIsBigEnough := diff > diffThreshold
+						diffToMax := diff > 0 && (newPotentialRate == s.streamConfig.MaxBitrate)
+						if diffIsBigEnough || diffToMax {
+							go s.updateTargetBitrates(newPotentialRate)
+						}
 					}
 				}
 			}
@@ -266,27 +265,34 @@ func (s *mixerSlice) runTickers() {
 	}()
 
 	go func() {
-		for tickTime := range s.statsTicker.C {
-			s.Lock()
-			elapsed := tickTime.Sub(s.lastStats).Seconds()
-			// update bitrates
-			s.inputBitrate = s.inputBits / uint64(elapsed)
-			s.outputBitrate = s.outputBits / uint64(elapsed)
-			// reset cumulative bits and lastStats
-			s.inputBits = 0
-			s.outputBits = 0
-			s.lastStats = tickTime
-			s.Unlock()
-			// log
-			displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
-			displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
-			displayOutputTargetBitrateKbs := uint64(s.targetBitrate / 1000)
+		statsTicker := time.NewTicker(statsPeriod * time.Millisecond)
+		defer statsTicker.Stop()
+		for {
+			select {
+			case <-s.endCh:
+				return
+			case tickTime := <-statsTicker.C:
+				s.Lock()
+				elapsed := tickTime.Sub(s.lastStats).Seconds()
+				// update bitrates
+				s.inputBitrate = s.inputBits / uint64(elapsed)
+				s.outputBitrate = s.outputBits / uint64(elapsed)
+				// reset cumulative bits and lastStats
+				s.inputBits = 0
+				s.outputBits = 0
+				s.lastStats = tickTime
+				s.Unlock()
+				// log
+				displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
+				displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
+				displayOutputTargetBitrateKbs := uint64(s.targetBitrate / 1000)
 
-			inputMsg := fmt.Sprintf("%s_in_bitrate", s.output.Kind().String())
-			outputMsg := fmt.Sprintf("%s_out_bitrate", s.output.Kind().String())
+				inputMsg := fmt.Sprintf("%s_in_bitrate", s.output.Kind().String())
+				outputMsg := fmt.Sprintf("%s_out_bitrate", s.output.Kind().String())
 
-			s.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
-			s.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
+				s.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
+				s.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
+			}
 		}
 	}()
 }

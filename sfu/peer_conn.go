@@ -158,10 +158,10 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				pc.logError().Err(err).Msg("peer connection state failed")
+				pc.logError().Err(err).Msg("peer_connection_state_failed")
 			}
 		case webrtc.PeerConnectionStateClosed:
-			ps.close("PeerConnection closed")
+			ps.close("peer_connection_closed")
 		}
 	})
 
@@ -185,6 +185,7 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 
 	// Debug: send periodic PLIs
 	// ticker := time.NewTicker(2 * time.Second)
+	// // defer ticker stop?
 	// go func() {
 	// 	for range ticker.C {
 	// 		pc.forcedPLIRequest()

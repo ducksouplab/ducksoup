@@ -64,9 +64,9 @@ func TestJoinInteraction(t *testing.T) {
 		joinPayload2 := newJoinPayload("https://origin", "interaction-re", "user-2", "mirror", 2)
 		joinPayload2bis := newJoinPayload("https://origin", "interaction-re", "user-2", "mirror", 2)
 
-		interaction, _ := interactionStoreSingleton.join(joinPayload1)
+		i, _ := interactionStoreSingleton.join(joinPayload1)
 		interactionStoreSingleton.join(joinPayload2)
-		interaction.disconnectUser(joinPayload2.UserId)
+		i.disconnectUser(joinPayload2.UserId)
 
 		_, err := interactionStoreSingleton.join(joinPayload2bis)
 
@@ -80,9 +80,9 @@ func TestJoinInteraction(t *testing.T) {
 		joinPayload2 := newJoinPayload("https://origin", "interaction", "user-2", "mirror", 2)
 		joinPayloadReuse := newJoinPayload("https://origin", "interaction", "user-3", "mirror", 2)
 
-		interaction, _ := interactionStoreSingleton.join(joinPayload1)
+		i, _ := interactionStoreSingleton.join(joinPayload1)
 		interactionStoreSingleton.join(joinPayload2)
-		interactionStoreSingleton.delete(interaction)
+		interactionStoreSingleton.delete(i)
 
 		_, err := interactionStoreSingleton.join(joinPayloadReuse)
 		if err != nil {
@@ -94,11 +94,11 @@ func TestJoinInteraction(t *testing.T) {
 		joinPayload1 := newJoinPayload("https://origin1", "interaction", "user-1", "mirror", 2)
 		joinPayload2 := newJoinPayload("https://origin2", "interaction", "user-2", "mirror", 2)
 
-		origin1Interaction, _ := interactionStoreSingleton.join(joinPayload1)
-		origin2Interaction, _ := interactionStoreSingleton.join(joinPayload2)
+		iOrigin1, _ := interactionStoreSingleton.join(joinPayload1)
+		iOrigin2, _ := interactionStoreSingleton.join(joinPayload2)
 
-		origin1InteractionCount := origin1Interaction.userCount()
-		origin2InteractionCount := origin2Interaction.userCount()
+		origin1InteractionCount := iOrigin1.userCount()
+		origin2InteractionCount := iOrigin2.userCount()
 
 		if origin1InteractionCount != 1 || origin2InteractionCount != 1 {
 			t.Error("interaction origin clash")

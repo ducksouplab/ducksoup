@@ -22,25 +22,25 @@ func newMixer(i *interaction) *mixer {
 	}
 }
 
-func (m *mixer) logError() *zerolog.Event {
-	return m.i.logger.Error().Str("context", "signaling")
-}
+// func (m *mixer) logError() *zerolog.Event {
+// 	return m.i.logger.Error().Str("context", "signaling")
+// }
 
 func (m *mixer) logInfo() *zerolog.Event {
 	return m.i.logger.Info().Str("context", "signaling")
 }
 
-func (m *mixer) logDebug() *zerolog.Event {
-	return m.i.logger.Debug().Str("context", "signaling")
-}
+// func (m *mixer) logDebug() *zerolog.Event {
+// 	return m.i.logger.Debug().Str("context", "signaling")
+// }
 
 // Add to list of tracks
-func (m *mixer) indexMixerSlice(slice *mixerSlice) {
+func (m *mixer) indexMixerSlice(ms *mixerSlice) {
 	m.Lock()
 	defer m.Unlock()
 
-	m.sliceIndex[slice.ID()] = slice
-	m.logInfo().Str("track", slice.ID()).Str("from", slice.fromPs.userId).Str("kind", slice.kind).Msg("out_track_indexed")
+	m.sliceIndex[ms.ID()] = ms
+	m.logInfo().Str("track", ms.ID()).Str("from", ms.fromPs.userId).Str("kind", ms.kind).Msg("out_track_indexed")
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
