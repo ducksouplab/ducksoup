@@ -133,15 +133,15 @@ The following methods are available on a DuckSoup player:
 
 ### Front-ends
 
-If DuckSoup is running and accessible for instance at http://localhost:8000, there are a few available test front-ends:
+If DuckSoup is running and accessible for instance at http://localhost:8100, there are a few available test front-ends:
 
-- http://localhost:8000/test/play/ one user reflection with live UX for effects
-- http://localhost:8000/test/mirror/ one user reflection with peerOptions control and debug information
-- http://localhost:8000/test/interaction/ choose a user name, interaction name and size and open in multiple tabs (same number as interaction size)
+- http://localhost:8100/test/play/ one user reflection with live UX for effects
+- http://localhost:8100/test/mirror/ one user reflection with peerOptions control and debug information
+- http://localhost:8100/test/interaction/ choose a user name, interaction name and size and open in multiple tabs (same number as interaction size)
 
 A stats page displaying raw information about current interactions and bandwidth stats is accessible at (currently under work):
 
-- http://localhost:8000/stats/
+- http://localhost:8100/stats/
 
 ## DuckSoup server
 
@@ -196,9 +196,9 @@ When changing settings (either as environment variables or defined in `config/*.
 Security related settings and settings defining how DuckSoup is run on host are controlled by environment variables:
 
 - `DS_ENV=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller) + print logs to Stdout
-- `DS_PORT=9000` (defaults to 8000) to set port listen by server
+- `DS_PORT=8000` (defaults to 8100) to set port listen by server
 - `DS_WEB_PREFIX=/path` (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
-- `DS_ORIGINS=https://origin1,https://origin2:8080` (defaults to none) declares comma separated allowed origins for WebSocket connections
+- `DS_ORIGINS=https://origin1,https://origin2:8180` (defaults to none) declares comma separated allowed origins for WebSocket connections
 - `DS_TEST_LOGIN` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_TEST_PASSWORD` (defaults to "ducksoup") to protect test pages with HTTP authentitcation
 - `DS_STATS_LOGIN` (defaults to "ducksoup") to protect stats pages with HTTP authentitcation
@@ -577,14 +577,14 @@ mkdir data log
 chown -R deploy:deploy data log
 ```
 
-Run by binding to port *8008* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
+Run by binding to port *8101* (as an example), setting user and environment variables, mounting volumes and removing the container when stopped:
 
 ```
 docker run --name ducksoup_1 \
-  -p 8008:8000 \
+  -p 8101:8100 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
-  -e DS_ORIGINS=http://localhost:8008 \
+  -e DS_ORIGINS=http://localhost:8101 \
   -v $(pwd)/plugins:/app/plugins:ro \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/log:/app/log \
@@ -630,11 +630,9 @@ Here are a few considerations regarding Docker and NVIDIA:
 ```
 docker run --name ducksoup_gpu_1 \
   --gpus all \
-  -p 8008:8000 \
   -u $(id deploy -u):$(id deploy -g) \
   -e GST_DEBUG=2 \
   -e DS_NVCODEC=true \
-  -e DS_ORIGINS=http://localhost:8008 \
   -v $(pwd)/plugins:/app/plugins:ro \
   -v $(pwd)/data:/app/data \
   --rm \

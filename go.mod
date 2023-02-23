@@ -1,6 +1,6 @@
 module github.com/ducksouplab/ducksoup
 
-go 1.17
+go 1.20
 
 require (
 	github.com/evanw/esbuild v0.17.10

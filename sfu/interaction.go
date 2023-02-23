@@ -157,7 +157,7 @@ func (i *interaction) filePrefix(userId string) string {
 	// if several files need to be synchronized
 	return "i-" + i.randomId +
 		"-a-" + time.Now().Format("20060102-150405.000") +
-		"-ns-" + i.namespace +
+		"-s-" + i.namespace +
 		"-n-" + i.name +
 		"-u-" + userId +
 		"-c-" + fmt.Sprint(connectionCount)

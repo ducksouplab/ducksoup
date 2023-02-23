@@ -29,8 +29,8 @@ type wsConn struct {
 }
 
 type messageOut struct {
-	Kind    string      `json:"kind"`
-	Payload interface{} `json:"payload"`
+	Kind    string `json:"kind"`
+	Payload any    `json:"payload"`
 }
 
 type messageIn struct {
@@ -179,7 +179,7 @@ func (ws *wsConn) send(text string) (err error) {
 	return
 }
 
-func (ws *wsConn) sendWithPayload(kind string, payload interface{}) (err error) {
+func (ws *wsConn) sendWithPayload(kind string, payload any) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 

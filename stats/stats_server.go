@@ -12,8 +12,8 @@ const (
 )
 
 type messageOut struct {
-	Kind    string      `json:"kind"`
-	Payload interface{} `json:"payload"`
+	Kind    string `json:"kind"`
+	Payload any    `json:"payload"`
 }
 
 // API

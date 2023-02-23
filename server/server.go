@@ -44,7 +44,7 @@ func init() {
 		allowedOrigins = append(allowedOrigins, strings.Split(envOriginsEnv, ",")...)
 	}
 	if helpers.Getenv("DS_ENV") == "DEV" {
-		allowedOrigins = append(allowedOrigins, "https://localhost:8000", "http://localhost:8000")
+		allowedOrigins = append(allowedOrigins, "https://localhost:8100", "http://localhost:8180")
 	}
 
 	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
@@ -141,7 +141,7 @@ func ListenAndServe() {
 	// port
 	port = os.Getenv("DS_PORT")
 	if len(port) < 2 {
-		port = "8000"
+		port = "8100"
 	}
 
 	server := &http.Server{

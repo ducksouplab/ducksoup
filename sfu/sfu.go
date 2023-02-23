@@ -1,14 +1,14 @@
 package sfu
 
-func Inspect() interface{} {
+func Inspect() any {
 	return interactionStoreSingleton.inspect()
 }
 
-func (is *interactionStore) inspect() interface{} {
+func (is *interactionStore) inspect() any {
 	is.Lock()
 	defer is.Unlock()
 
-	report := make(map[string]interface{})
+	report := make(map[string]any)
 	for _, i := range is.index { // i is an interaction, not an index
 		mixerReport := i.mixer.inspect()
 		if mixerReport != nil {
@@ -21,8 +21,8 @@ func (is *interactionStore) inspect() interface{} {
 	return nil
 }
 
-func (m *mixer) inspect() interface{} {
-	report := make(map[string]interface{})
+func (m *mixer) inspect() any {
+	report := make(map[string]any)
 	for _, slice := range m.sliceIndex {
 		report[slice.ID()] = slice.inspect()
 	}
@@ -32,7 +32,7 @@ func (m *mixer) inspect() interface{} {
 	return nil
 }
 
-func (s *mixerSlice) inspect() interface{} {
+func (s *mixerSlice) inspect() any {
 	// capitalize for JSON export
 	return struct {
 		From      string
