@@ -8,12 +8,12 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.5.1
-	github.com/pion/ice/v2 v2.3.0
+	github.com/pion/ice/v2 v2.3.1
 	github.com/pion/interceptor v0.1.12
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.7.13
 	github.com/pion/sdp/v3 v3.0.6
-	github.com/pion/webrtc/v3 v3.1.55
+	github.com/pion/webrtc/v3 v3.1.56
 	github.com/rs/zerolog v1.29.0
 	gopkg.in/yaml.v2 v2.4.0
 )
