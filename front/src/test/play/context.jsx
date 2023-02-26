@@ -1,5 +1,5 @@
-import { createContext } from 'react';
-import { randomId } from './helpers';
+import { createContext } from "react";
+import { randomId } from "./helpers";
 
 const Context = createContext();
 
@@ -21,21 +21,24 @@ const initializeState = () => {
   const serialized = localStorage.getItem("state-v01");
   let saved;
   if (serialized !== null) saved = JSON.parse(serialized);
-  return {...DEFAULT_STATE, ...saved};
-}
+  return { ...DEFAULT_STATE, ...saved };
+};
 
 export const initialState = initializeState();
 
 const saveAndReturn = (state) => {
   const { enabledFilters } = state;
-  setTimeout(() => localStorage.setItem("state-v01", JSON.stringify({ enabledFilters })), 10);
+  setTimeout(
+    () => localStorage.setItem("state-v01", JSON.stringify({ enabledFilters })),
+    10
+  );
   return state;
-}
+};
 
 const newFilterInstance = (template) => {
   // deep copy with JSON API to avoid clashes of subobjects (controls)
-  // when using same filter several times 
-  const newFilter = JSON.parse(JSON.stringify(template)); 
+  // when using same filter several times
+  const newFilter = JSON.parse(JSON.stringify(template));
   newFilter.id = randomId();
   if (newFilter.controls) {
     for (let i = 0; i < newFilter.controls.length; i++) {
@@ -43,24 +46,33 @@ const newFilterInstance = (template) => {
     }
   }
   return newFilter;
-}
+};
 
-const groupBy = (xs, key) => xs.reduce(function(rv, x) {
+const groupBy = (xs, key) =>
+  xs.reduce(function (rv, x) {
     (rv[x[key]] = rv[x[key]] || []).push(x);
     return rv;
-}, {});
+  }, {});
 
 export const reducer = (state, action) => {
   switch (action.type) {
     case "newControlValue": {
       const { id, gst, kind, value } = action.payload;
       if (state.ducksoup) {
-        state.ducksoup.polyControlFx(id, gst, kind, value, INTERPOLATION_DURATION);
+        state.ducksoup.polyControlFx(
+          id,
+          gst,
+          kind,
+          value,
+          INTERPOLATION_DURATION
+        );
       }
       // ugly in place edit
       const filterToUpdate = state.enabledFilters.find((f) => f.id === id);
       if (filterToUpdate) {
-        const controlToUpdate = filterToUpdate.controls.find((c) => c.gst === gst);
+        const controlToUpdate = filterToUpdate.controls.find(
+          (c) => c.gst === gst
+        );
         if (controlToUpdate) {
           controlToUpdate.current = value;
         }
@@ -69,17 +81,24 @@ export const reducer = (state, action) => {
     }
     case "addFilter": {
       if (state.flatFilters) {
-        const toAdd = state.flatFilters.find((f) => f.display === action.payload);
+        const toAdd = state.flatFilters.find(
+          (f) => f.display === action.payload
+        );
         if (toAdd) {
           // important: clone and assign an id
           const newFilter = newFilterInstance(toAdd);
-          return saveAndReturn({ ...state, enabledFilters: [...state.enabledFilters, newFilter] });
+          return saveAndReturn({
+            ...state,
+            enabledFilters: [...state.enabledFilters, newFilter],
+          });
         }
       }
       return state;
     }
     case "removeFilter": {
-      const newFilters = state.enabledFilters.filter((f) => f.id !== action.payload);
+      const newFilters = state.enabledFilters.filter(
+        (f) => f.id !== action.payload
+      );
       return saveAndReturn({ ...state, enabledFilters: newFilters });
     }
     case "start":
@@ -88,7 +107,7 @@ export const reducer = (state, action) => {
       return { ...state, record: !state.record };
     case "setDuration":
       let newDuration = action.payload;
-      if(isNaN(newDuration)) {
+      if (isNaN(newDuration)) {
         newDuration = DEFAULT_DURATION;
       } else if (newDuration < 1) {
         newDuration = 1;
@@ -104,8 +123,12 @@ export const reducer = (state, action) => {
     case "attachPlayer":
       return { ...state, ducksoup: action.payload };
     case "setFilters":
-      const flatAudioFilters = action.payload.filter(({ type }) => type === "audio");
-      const flatVideoFilters = action.payload.filter(({ type }) => type === "video");
+      const flatAudioFilters = action.payload.filter(
+        ({ type }) => type === "audio"
+      );
+      const flatVideoFilters = action.payload.filter(
+        ({ type }) => type === "video"
+      );
       return {
         ...state,
         flatFilters: action.payload,
@@ -115,6 +138,6 @@ export const reducer = (state, action) => {
     default:
       return state;
   }
-}
+};
 
 export default Context;
