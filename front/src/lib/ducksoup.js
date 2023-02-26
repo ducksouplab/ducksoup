@@ -22,9 +22,6 @@ const DEFAULT_RTC_CONFIG = {
       urls: "stun:stun.l.google.com:19302",
     },
     {
-      urls: "stun:stun3.l.google.com:19302",
-    },
-    {
       urls: "stun:stun.stunprotocol.org:3478",
     },
   ],

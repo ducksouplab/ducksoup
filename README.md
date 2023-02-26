@@ -643,4 +643,4 @@ docker run --name ducksoup_gpu_1 \
 
 Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene) in particular.
 
-The following STUN servers are used by the project: stun.l.google.com:19302, stun3.l.google.com:19302 and stun.stunprotocol.org:3478.
+The following STUN servers are used by the project: stun.l.google.com:19302 and stun.stunprotocol.org:3478.
