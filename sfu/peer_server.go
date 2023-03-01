@@ -63,10 +63,10 @@ func newPeerServer(
 	ws.connectPeerServer(ps)
 	if i.allUsersConnected() {
 		// optim: update tracks from others (all are there) and share offer
-		ps.updateTracksAndShareOffer()
+		ps.updateTracksAndShareOffer("initial_offer_room_incomplete")
 	} else {
 		// ready to share offer, in(coming) tracks already prepared during PC initialization
-		ps.shareOffer()
+		ps.shareOffer("initial_offer_room_incomplete", false)
 	}
 	// some events on pc needs API from ws or interaction
 	pc.handleCallbacks(ps)
@@ -163,18 +163,22 @@ func (ps *peerServer) prepareOutTracks() bool {
 	return true
 }
 
-func (ps *peerServer) shareOffer() bool {
+func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	userId := ps.userId
 	pc := ps.pc
 
-	ps.logInfo().Str("user", userId).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
+	ps.logInfo().Str("user", userId).Str("cause", cause).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
 
 	if pc.PendingLocalDescription() != nil {
 		ps.logError().Str("user", userId).Msg("pending_local_description_blocks_offer")
 		return false
 	}
 
-	offer, err := pc.CreateOffer(nil)
+	options := &webrtc.OfferOptions{}
+	if iceRestart {
+		options.ICERestart = true
+	}
+	offer, err := pc.CreateOffer(options)
 	if err != nil {
 		ps.logError().Str("user", userId).Msg("create_offer_failed")
 		return false
@@ -199,12 +203,12 @@ func (ps *peerServer) shareOffer() bool {
 	return true
 }
 
-func (ps *peerServer) updateTracksAndShareOffer() bool {
+func (ps *peerServer) updateTracksAndShareOffer(cause string) bool {
 	ps.cleanOutTracks()
 	if state := ps.prepareOutTracks(); !state {
 		return state
 	}
-	if state := ps.shareOffer(); !state {
+	if state := ps.shareOffer(cause, false); !state {
 		return state
 	}
 	return true
@@ -350,7 +354,10 @@ func (ps *peerServer) loop() {
 			}
 			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("set_remote_description")
 		case "client_negotiation_needed":
-			go ps.i.mixer.managedGlobalSignaling("client_negotiation_needed", false)
+			ps.shareOffer("client_negotiation_needed", false)
+			// previously for all: go ps.i.mixer.managedSignalingForEveryone("client_negotiation_needed", false)
+		case "client_ice_connection_state_disconnected":
+			ps.shareOffer("client_ice_connection_state_disconnected", true)
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {

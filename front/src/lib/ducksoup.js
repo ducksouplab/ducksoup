@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.26");
+  console.log("[DuckSoup] v1.5.27");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -521,10 +521,7 @@ class DuckSoup {
         };
 
         pc.oniceconnectionstatechange = () => {
-          this._send(
-            "client_ice_connection_state_changed",
-            pc.iceConnectionState.toString()
-          );
+          this._send("client_ice_connection_state_" + pc.iceConnectionState.toString());
           console.log("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
         };
 

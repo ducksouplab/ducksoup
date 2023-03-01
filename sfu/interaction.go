@@ -325,7 +325,7 @@ func (i *interaction) disconnectUser(userId string) {
 		delete(i.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		i.connectedIndex[userId] = false
-		go i.mixer.managedGlobalSignaling("user_disconnected", false)
+		go i.mixer.managedSignalingForEveryone("user_disconnected", false)
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
@@ -383,7 +383,7 @@ func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				i.logger.Error().Err(err).Msg("read_remote_till_all_ready_failed")
+				i.logger.Error().Err(err).Msg("loop_till_all_ready_failed")
 				return false
 			}
 		}
@@ -417,7 +417,7 @@ func (i *interaction) runMixerSliceFromRemote(
 		if signalingNeeded {
 			// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
 			<-time.After(1000 * time.Millisecond)
-			go i.mixer.managedGlobalSignaling("out_tracks_ready", true)
+			go i.mixer.managedSignalingForEveryone("out_tracks_ready", true)
 		}
 		// blocking until interaction ends or user disconnects
 		slice.loop()

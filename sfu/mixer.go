@@ -55,13 +55,13 @@ func (m *mixer) removeMixerSlice(ms *mixerSlice) {
 // - clean unused tracks on peer connections (other user has disconnected)
 // - add tracks from other ushers
 // - share offer with client
-func (m *mixer) updateSignaling() bool {
+func (m *mixer) updateSignaling(cause string) bool {
 	// lock for peerServerIndex
 	m.i.Lock()
 	defer m.i.Unlock()
 
 	for _, ps := range m.i.peerServerIndex {
-		if !ps.updateTracksAndShareOffer() {
+		if !ps.updateTracksAndShareOffer(cause) {
 			return false
 		}
 	}
@@ -69,7 +69,7 @@ func (m *mixer) updateSignaling() bool {
 }
 
 // Update each PeerConnection so that it is getting all the expected media tracks
-func (m *mixer) managedGlobalSignaling(cause string, withPLI bool) {
+func (m *mixer) managedSignalingForEveryone(cause string, withPLI bool) {
 	m.Lock()
 
 	defer func() {
@@ -79,16 +79,16 @@ func (m *mixer) managedGlobalSignaling(cause string, withPLI bool) {
 		}
 	}()
 
-	m.logInfo().Str("cause", cause).Msg("signaling_update_requested")
+	m.logInfo().Str("cause", cause).Msg("managed_signaling_for_everyone_requested")
 
 	if !m.i.deleted {
-		ok := m.updateSignaling()
+		ok := m.updateSignaling(cause)
 		if ok {
 			return
 		} else {
 			go func() {
 				time.Sleep(time.Second * 2)
-				m.managedGlobalSignaling(cause+"_restart_with_delay", withPLI)
+				m.managedSignalingForEveryone(cause+"_restart_with_delay", withPLI)
 			}()
 			return
 		}

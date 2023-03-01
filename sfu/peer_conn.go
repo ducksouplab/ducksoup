@@ -150,9 +150,9 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	})
 
 	// if PeerConnection is closed remove it from global list
-	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		pc.logInfo().Str("value", p.String()).Msg("connection_state_changed")
-		switch p {
+	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+		pc.logInfo().Str("value", s.String()).Msg("connection_state_changed")
+		switch s {
 		case webrtc.PeerConnectionStateFailed:
 			ps.close("peer_connection_failed")
 		case webrtc.PeerConnectionStateClosed:
@@ -164,12 +164,16 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 
 	// for logging
 
-	pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		pc.logInfo().Str("value", state.String()).Msg("signaling_state_changed")
+	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
+		pc.logInfo().Str("value", s.String()).Msg("signaling_state_changed")
 	})
 
-	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
-		pc.logInfo().Str("value", state.String()).Msg("ice_connection_state_changed")
+	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
+		pc.logInfo().Str("value", s.String()).Msg("ice_connection_state_changed")
+		switch s {
+		case webrtc.ICEConnectionStateDisconnected:
+			ps.shareOffer("ice_connection_state_disconnected", true)
+		}
 	})
 
 	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
@@ -177,8 +181,8 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		pc.logInfo().Msg("negotiation_needed")
-		go ps.i.mixer.managedGlobalSignaling("negotiation_needed", false)
+		ps.shareOffer("negotiation_needed", false)
+		// TODO check if this would be better: go ps.i.mixer.managedSignalingForEveryone("negotiation_needed", false)
 	})
 
 	// Debug: send periodic PLIs
