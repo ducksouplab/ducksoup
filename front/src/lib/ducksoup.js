@@ -22,7 +22,7 @@ const DEFAULT_RTC_CONFIG = {
       urls: "stun:stun.l.google.com:19302",
     },
     {
-      urls: "stun:stun.stunprotocol.org:3478",
+      urls: "stun:stun3.l.google.com:19302",
     },
   ],
 };
@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.25");
+  console.log("[DuckSoup] v1.5.26");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -268,7 +268,10 @@ class DuckSoup {
   }
 
   stop(code = 1000) {
-    if (this._ws) this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    if (this._ws) {
+      this._send("stop"); // will stop server ressources faster that _stopRTC
+      this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    }
     this._stopRTC();
   }
 
@@ -360,8 +363,7 @@ class DuckSoup {
     this._pc = pc;
 
     // Add local tracks before signaling
-    let stream;
-    stream = await navigator.mediaDevices.getUserMedia(this._constraints);
+    const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
     stream.getTracks().forEach((track) => {
       // implement a mute-like behavior (with `enabled`) until the interaction does start
       // see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/enabled
@@ -510,12 +512,20 @@ class DuckSoup {
           // console.log("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
         };
 
+        pc.onnegotiationneeded = () => {
+          this._send(
+            "client_negotiation_needed",
+            pc.signalingState
+          );
+          console.log("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
+        };
+
         pc.oniceconnectionstatechange = () => {
           this._send(
             "client_ice_connection_state_changed",
             pc.iceConnectionState.toString()
           );
-          // console.log("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
+          console.log("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
         };
 
         pc.onicegatheringstatechange = () => {
@@ -524,11 +534,6 @@ class DuckSoup {
             pc.iceGatheringState.toString()
           );
           // console.log("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
-        };
-
-        pc.onnegotiationneeded = () => {
-          this._send("client_negotiation_needed");
-          // console.log("[DuckSoup] onnegotiationneeded:");
         };
 
         pc.onicecandidateerror = (e) => {

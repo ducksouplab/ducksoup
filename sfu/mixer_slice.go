@@ -45,7 +45,7 @@ type mixerSlice struct {
 	inputBitrate  uint64
 	outputBitrate uint64
 	// status
-	endCh chan struct{} // stop processing when track is removed
+	doneCh chan struct{} // stop processing when track is removed
 }
 
 // helpers
@@ -103,41 +103,45 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		// stats
 		lastStats: time.Now(),
 		// status
-		endCh: make(chan struct{}),
+		doneCh: make(chan struct{}),
 	}
 
 	return
 }
 
-func (s *mixerSlice) logError() *zerolog.Event {
-	return s.i.logger.Error().Str("context", "track").Str("user", s.fromPs.userId)
+func (ms *mixerSlice) done() chan struct{} {
+	return ms.doneCh
 }
 
-func (s *mixerSlice) logInfo() *zerolog.Event {
-	return s.i.logger.Info().Str("context", "track").Str("user", s.fromPs.userId)
+func (ms *mixerSlice) logError() *zerolog.Event {
+	return ms.i.logger.Error().Str("context", "track").Str("user", ms.fromPs.userId)
 }
 
-func (s *mixerSlice) logDebug() *zerolog.Event {
-	return s.i.logger.Debug().Str("context", "track").Str("user", s.fromPs.userId)
+func (ms *mixerSlice) logInfo() *zerolog.Event {
+	return ms.i.logger.Info().Str("context", "track").Str("user", ms.fromPs.userId)
+}
+
+func (ms *mixerSlice) logDebug() *zerolog.Event {
+	return ms.i.logger.Debug().Str("context", "track").Str("user", ms.fromPs.userId)
 }
 
 // Same ID as output track
-func (s *mixerSlice) ID() string {
-	return s.output.ID()
+func (ms *mixerSlice) ID() string {
+	return ms.output.ID()
 }
 
-func (s *mixerSlice) addSender(pc *peerConn, sender *webrtc.RTPSender) {
+func (ms *mixerSlice) addSender(pc *peerConn, sender *webrtc.RTPSender) {
 	params := sender.GetParameters()
 
 	toUserId := pc.userId
 	if len(params.Encodings) == 1 {
-		sc := newSenderController(pc, s, sender)
-		s.Lock()
-		s.senderControllerIndex[toUserId] = sc
-		s.Unlock()
+		sc := newSenderController(pc, ms, sender)
+		ms.Lock()
+		ms.senderControllerIndex[toUserId] = sc
+		ms.Unlock()
 		go sc.loop()
 	} else {
-		s.logError().Str("toUser", toUserId).Str("cause", "wrong number of encoding parameters").Msg("add_sender_failed")
+		ms.logError().Str("toUser", toUserId).Str("cause", "wrong number of encoding parameters").Msg("add_sender_failed")
 	}
 }
 
@@ -152,111 +156,108 @@ func (l *mixerSlice) scanInput(buf []byte, n int) {
 	l.Unlock()
 }
 
-func (s *mixerSlice) Write(buf []byte) (err error) {
+func (ms *mixerSlice) Write(buf []byte) (err error) {
 	packet := &rtp.Packet{}
 	packet.Unmarshal(buf)
-	err = s.output.WriteRTP(packet)
+	err = ms.output.WriteRTP(packet)
 
 	if err == nil {
 		go func() {
 			outputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
-			s.Lock()
-			s.outputBits += uint64(outputBits)
-			s.Unlock()
+			ms.Lock()
+			ms.outputBits += uint64(outputBits)
+			ms.Unlock()
 		}()
 	}
 
 	return
 }
 
-func (s *mixerSlice) stop() {
-	s.pipeline.Stop()
-	close(s.endCh)
-	s.logInfo().Str("track", s.ID()).Str("kind", s.kind).Msg("out_track_stopped")
+func (ms *mixerSlice) close() {
+	ms.pipeline.Stop()
+	close(ms.doneCh)
+	ms.logInfo().Str("track", ms.ID()).Str("kind", ms.kind).Msg("out_track_stopped")
 }
 
-func (s *mixerSlice) loop() {
-	pipeline, i, userId := s.fromPs.pipeline, s.fromPs.i, s.fromPs.userId
+func (ms *mixerSlice) loop() {
+	defer ms.close()
+
+	pipeline, i, userId := ms.fromPs.pipeline, ms.fromPs.i, ms.fromPs.userId
 
 	// gives pipeline a track to write to
-	pipeline.BindTrackAutoStart(s.kind, s)
+	pipeline.BindTrackAutoStart(ms.kind, ms)
 	// wait for audio and video
 	<-pipeline.ReadyCh
 
-	s.initializeBitrates()
+	ms.initializeBitrates()
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
-	go s.runTickers()
-	// go s.runReceiverListener()
+	go ms.runTickers()
+	// go ms.runReceiverListener()
 
 	// loop start
 	buf := make([]byte, config.Common.MTU)
 pushToPipeline:
 	for {
 		select {
-		case <-i.endCh:
-			// trial is over, no need to trigger signaling on every closing track
-			break pushToPipeline
-		case <-s.fromPs.closedCh:
-			// peer may quit early (for instance page refresh), other peers need to be updated
+		case <-ms.fromPs.done():
+			// interaction OR peer is done
 			break pushToPipeline
 		default:
-			n, _, err := s.input.Read(buf)
+			n, _, err := ms.input.Read(buf)
 			if err != nil {
 				break pushToPipeline
 			}
-			s.pipeline.PushRTP(s.kind, buf[:n])
+			ms.pipeline.PushRTP(ms.kind, buf[:n])
 			// for stats
-			go s.scanInput(buf, n)
+			go ms.scanInput(buf, n)
 		}
 	}
-	// loop end
-	s.stop()
 }
 
-func (s *mixerSlice) initializeBitrates() {
+func (ms *mixerSlice) initializeBitrates() {
 	// pipeline is started once (either by the audio or video slice) but both
 	// media types need to be initialized*
-	s.pipeline.SetEncodingRate("audio", config.Audio.DefaultBitrate)
-	s.pipeline.SetEncodingRate("video", config.Video.DefaultBitrate)
+	ms.pipeline.SetEncodingRate("audio", config.Audio.DefaultBitrate)
+	ms.pipeline.SetEncodingRate("video", config.Video.DefaultBitrate)
 	// log
-	s.logInfo().Uint64("value", config.Audio.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("audio_target_bitrate_initialized")
-	s.logInfo().Uint64("value", config.Video.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("video_target_bitrate_initialized")
+	ms.logInfo().Uint64("value", config.Audio.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("audio_target_bitrate_initialized")
+	ms.logInfo().Uint64("value", config.Video.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("video_target_bitrate_initialized")
 }
 
-func (s *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
-	s.Lock()
-	s.targetBitrate = newPotentialRate
-	s.Unlock()
-	s.pipeline.SetEncodingRate(s.kind, newPotentialRate)
+func (ms *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
+	ms.Lock()
+	ms.targetBitrate = newPotentialRate
+	ms.Unlock()
+	ms.pipeline.SetEncodingRate(ms.kind, newPotentialRate)
 	// format and log
-	msg := fmt.Sprintf("%s_target_bitrate_updated", s.kind)
-	s.logInfo().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
+	ms.logInfo().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
 }
 
-func (s *mixerSlice) runTickers() {
+func (ms *mixerSlice) runTickers() {
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
 		encoderTicker := time.NewTicker(encoderPeriod * time.Millisecond)
 		defer encoderTicker.Stop()
 		for {
 			select {
-			case <-s.endCh:
+			case <-ms.done():
 				return
 			case <-encoderTicker.C:
-				if len(s.senderControllerIndex) > 0 {
+				if len(ms.senderControllerIndex) > 0 {
 					rates := []uint64{}
-					for _, sc := range s.senderControllerIndex {
+					for _, sc := range ms.senderControllerIndex {
 						rates = append(rates, sc.optimalBitrate)
 					}
 					newPotentialRate := minUint64(rates)
-					if s.pipeline != nil && newPotentialRate > 0 {
+					if ms.pipeline != nil && newPotentialRate > 0 {
 						// skip updating previous value and encoding rate too often
-						diff := helpers.AbsPercentageDiff(s.targetBitrate, newPotentialRate)
+						diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
 						// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
 						diffIsBigEnough := diff > diffThreshold
-						diffToMax := diff > 0 && (newPotentialRate == s.streamConfig.MaxBitrate)
+						diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
 						if diffIsBigEnough || diffToMax {
-							go s.updateTargetBitrates(newPotentialRate)
+							go ms.updateTargetBitrates(newPotentialRate)
 						}
 					}
 				}
@@ -269,55 +270,55 @@ func (s *mixerSlice) runTickers() {
 		defer statsTicker.Stop()
 		for {
 			select {
-			case <-s.endCh:
+			case <-ms.done():
 				return
 			case tickTime := <-statsTicker.C:
-				s.Lock()
-				elapsed := tickTime.Sub(s.lastStats).Seconds()
+				ms.Lock()
+				elapsed := tickTime.Sub(ms.lastStats).Seconds()
 				// update bitrates
-				s.inputBitrate = s.inputBits / uint64(elapsed)
-				s.outputBitrate = s.outputBits / uint64(elapsed)
+				ms.inputBitrate = ms.inputBits / uint64(elapsed)
+				ms.outputBitrate = ms.outputBits / uint64(elapsed)
 				// reset cumulative bits and lastStats
-				s.inputBits = 0
-				s.outputBits = 0
-				s.lastStats = tickTime
-				s.Unlock()
+				ms.inputBits = 0
+				ms.outputBits = 0
+				ms.lastStats = tickTime
+				ms.Unlock()
 				// log
-				displayInputBitrateKbs := uint64(s.inputBitrate / 1000)
-				displayOutputBitrateKbs := uint64(s.outputBitrate / 1000)
-				displayOutputTargetBitrateKbs := uint64(s.targetBitrate / 1000)
+				displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)
+				displayOutputBitrateKbs := uint64(ms.outputBitrate / 1000)
+				displayOutputTargetBitrateKbs := uint64(ms.targetBitrate / 1000)
 
-				inputMsg := fmt.Sprintf("%s_in_bitrate", s.output.Kind().String())
-				outputMsg := fmt.Sprintf("%s_out_bitrate", s.output.Kind().String())
+				inputMsg := fmt.Sprintf("%s_in_bitrate", ms.output.Kind().String())
+				outputMsg := fmt.Sprintf("%s_out_bitrate", ms.output.Kind().String())
 
-				s.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
-				s.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
+				ms.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
+				ms.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
 			}
 		}
 	}()
 }
 
-// func (s *mixerSlice) runReceiverListener() {
+// func (ms *mixerSlice) runReceiverListener() {
 // 	buf := make([]byte, defaultMTU)
 
 // 	for {
 // 		select {
-// 		case <-s.endCh:
+// 		case <-ms.done():
 // 			return
 // 		default:
-// 			i, _, err := s.receiver.Read(buf)
+// 			i, _, err := ms.receiver.Read(buf)
 // 			if err != nil {
 // 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					s.logError().Err(err).Msg("read_received_rtcp_failed")
+// 					ms.logError().Err(err).Msg("read_received_rtcp_failed")
 // 				}
 // 				return
 // 			}
 // 			// TODO: send to rtpjitterbuffer sink_rtcp
-// 			//s.pipeline.PushRTCP(s.kind, buf[:i])
+// 			//ms.pipeline.PushRTCP(ms.kind, buf[:i])
 
 // 			packets, err := rtcp.Unmarshal(buf[:i])
 // 			if err != nil {
-// 				s.logError().Err(err).Msg("unmarshal_received_rtcp_failed")
+// 				ms.logError().Err(err).Msg("unmarshal_received_rtcp_failed")
 // 				continue
 // 			}
 
@@ -329,7 +330,7 @@ func (s *mixerSlice) runTickers() {
 // 				// case *rtcp.ReceiverEstimatedMaximumBitrate:
 // 				// 	log.Println(rtcpPacket)
 // 				default:
-// 					//s.logInfo().Msgf("%T %+v", rtcpPacket, rtcpPacket)
+// 					//ms.logInfo().Msgf("%T %+v", rtcpPacket, rtcpPacket)
 // 				}
 // 			}
 // 		}

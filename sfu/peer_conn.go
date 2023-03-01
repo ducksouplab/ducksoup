@@ -48,7 +48,7 @@ func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerCo
 				URLs: []string{"stun:stun.l.google.com:19302"},
 			},
 			{
-				URLs: []string{"stun:stun.stunprotocol.org:3478"},
+				URLs: []string{"stun:stun3.l.google.com:19302"},
 			},
 		},
 	}
@@ -154,11 +154,11 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		pc.logInfo().Str("value", p.String()).Msg("connection_state_changed")
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
-			if err := pc.Close(); err != nil {
-				pc.logError().Err(err).Msg("peer_connection_state_failed")
-			}
+			ps.close("peer_connection_failed")
 		case webrtc.PeerConnectionStateClosed:
 			ps.close("peer_connection_closed")
+		case webrtc.PeerConnectionStateDisconnected:
+			ps.close("peer_connection_disconnected")
 		}
 	})
 
@@ -178,6 +178,7 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 
 	pc.OnNegotiationNeeded(func() {
 		pc.logInfo().Msg("negotiation_needed")
+		go ps.i.mixer.managedGlobalSignaling("negotiation_needed", false)
 	})
 
 	// Debug: send periodic PLIs

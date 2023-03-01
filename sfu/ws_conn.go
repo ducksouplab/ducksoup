@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"sync"
 	"time"
@@ -116,21 +115,19 @@ func (ws *wsConn) logError() *zerolog.Event {
 	return log.Error().Str("context", "peer").Str("namespace", ws.namespace).Str("interaction", ws.interactionName).Str("user", ws.userId)
 }
 
-func (ws *wsConn) read() (m messageIn, err error) {
-	err = ws.ReadJSON(&m)
-
-	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-		ws.logError().Err(err).Msg("read_json_failed")
-	}
-	return
-}
-
+// peer server has not been created yet
 func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	var m messageIn
 
 	// First message must be a join
 	err = ws.ReadJSON(&m)
-	if err != nil || m.Kind != "join" {
+	if err != nil {
+		// no need to ws.send an error if we can't read
+		return
+	} else if m.Kind != "join" {
+		// we don't use send method since it may try to close not created peer server
+		m := &messageOut{Kind: "error-join"}
+		ws.WriteJSON(m)
 		return
 	}
 
@@ -162,10 +159,12 @@ func (ws *wsConn) connectPeerServer(ps *peerServer) {
 	ws.ps = ps
 }
 
-func (ws *wsConn) write(m *messageOut) (err error) {
-	if err := ws.Conn.WriteJSON(m); err != nil {
-		ws.ps.close("ws_error")
-		ws.logError().Err(err).Str("out", fmt.Sprintf("%+v", m)).Msg("ws_write_failed")
+func (ws *wsConn) receive() (m messageIn, err error) {
+	err = ws.ReadJSON(&m)
+
+	if err != nil && websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		ws.ps.close("ws_read_error")
+		ws.logError().Err(err).Msg("read_json_failed")
 	}
 	return
 }
@@ -175,7 +174,10 @@ func (ws *wsConn) send(text string) (err error) {
 	defer ws.Unlock()
 
 	m := &messageOut{Kind: text}
-	err = ws.write(m)
+
+	if err = ws.WriteJSON(m); err != nil {
+		ws.ps.close("ws_write_error")
+	}
 	return
 }
 
@@ -187,6 +189,9 @@ func (ws *wsConn) sendWithPayload(kind string, payload any) (err error) {
 		Kind:    kind,
 		Payload: payload,
 	}
-	err = ws.write(m)
+
+	if err = ws.WriteJSON(m); err != nil {
+		ws.ps.close("ws_write_error")
+	}
 	return
 }

@@ -44,10 +44,10 @@ func (m *mixer) indexMixerSlice(ms *mixerSlice) {
 }
 
 // Remove from list of tracks and fire renegotation for all PeerConnections
-func (m *mixer) removeMixerSlice(s *mixerSlice) {
+func (m *mixer) removeMixerSlice(ms *mixerSlice) {
 	m.Lock()
-	delete(m.sliceIndex, s.ID())
-	s.logInfo().Str("track", s.ID()).Str("from", s.fromPs.userId).Str("kind", s.kind).Msg("out_track_unindexed")
+	delete(m.sliceIndex, ms.ID())
+	ms.logInfo().Str("track", ms.ID()).Str("from", ms.fromPs.userId).Str("kind", ms.kind).Msg("out_track_unindexed")
 	m.Unlock()
 }
 
@@ -93,7 +93,6 @@ func (m *mixer) managedGlobalSignaling(cause string, withPLI bool) {
 			return
 		}
 	}
-
 }
 
 // sends a keyframe to all PeerConnections, used everytime a new user joins the call

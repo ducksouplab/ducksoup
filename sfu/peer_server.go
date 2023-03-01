@@ -30,7 +30,7 @@ type peerServer struct {
 	audioSlice      *mixerSlice
 	videoSlice      *mixerSlice
 	closed          bool
-	closedCh        chan struct{}
+	doneCh          chan struct{}
 	// processing
 	pipeline          *gst.Pipeline
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
@@ -53,7 +53,7 @@ func newPeerServer(
 		pc:                pc,
 		ws:                ws,
 		closed:            false,
-		closedCh:          make(chan struct{}),
+		doneCh:            make(chan struct{}),
 		pipeline:          pipeline,
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 	}
@@ -71,6 +71,10 @@ func newPeerServer(
 	// some events on pc needs API from ws or interaction
 	pc.handleCallbacks(ps)
 	return ps
+}
+
+func (ps *peerServer) done() chan struct{} {
+	return ps.doneCh
 }
 
 func (ps *peerServer) logError() *zerolog.Event {
@@ -211,11 +215,11 @@ func (ps *peerServer) close(cause string) {
 	defer ps.Unlock()
 
 	if !ps.closed {
-		// ps.closed check ensure closedCh is not closed twice
+		// ps.closed check ensure doneCh is not closed twice
 		ps.closed = true
 
 		// listened by mixerSlices
-		close(ps.closedCh)
+		close(ps.doneCh)
 		// clean up bound components
 		go ps.pc.Close() // TODO fix/check -> may block
 		ps.ws.Close()
@@ -265,9 +269,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 
 		for {
 			select {
-			case <-ps.i.endCh:
-				return
-			case <-ps.closedCh:
+			case <-ps.done():
 				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
@@ -281,42 +283,40 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 }
 
 func (ps *peerServer) loop() {
-
-	// sends "ending" message before interaction does end
+	// wait for interaction end
 	go func() {
-		<-ps.i.startCh
 		select {
-		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
-			// user might have reconnected and this ps could be
-			ps.logInfo().Str("context", "peer").Msg("interaction_ending_sent")
-			ps.ws.send("ending")
-		case <-ps.closedCh:
+		case <-ps.i.aborted():
+			ps.ws.send("error-aborted")
+			ps.close("interaction_aborted")
+			return
+		case <-ps.i.done():
+			ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
+			ps.close("interaction_ended")
+			return
+		case <-ps.done():
 			// user might have disconnected
 			return
 		}
 	}()
 
-	// wait for interaction end
+	// sends "ending" message before interaction does end
 	go func() {
+		<-ps.i.ready()
 		select {
-		case <-ps.i.endCh:
-			if ps.i.started {
-				ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
-				ps.close("interaction_ended")
-			} else {
-				ps.ws.send("error-aborted")
-				ps.close("interaction_aborted")
-			}
-		case <-ps.closedCh:
+		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
+			// user might have reconnected and this ps could be
+			ps.logInfo().Str("context", "peer").Msg("interaction_ending_sent")
+			ps.ws.send("ending")
+		case <-ps.done():
 			// user might have disconnected
 			return
 		}
 	}()
 
 	for {
-		m, err := ps.ws.read()
+		m, err := ps.ws.receive()
 		if err != nil {
-			ps.close(err.Error())
 			return
 		}
 
@@ -349,6 +349,8 @@ func (ps *peerServer) loop() {
 				return
 			}
 			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("set_remote_description")
+		case "client_negotiation_needed":
+			go ps.i.mixer.managedGlobalSignaling("client_negotiation_needed", false)
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
@@ -376,6 +378,8 @@ func (ps *peerServer) loop() {
 			}
 		case "client_video_resolution_updated":
 			ps.logDebug().Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
+		case "stop":
+			ps.close("client_stop_request")
 		default:
 			if strings.HasPrefix(m.Kind, "client_") {
 				if strings.Contains(m.Kind, "count") {

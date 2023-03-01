@@ -40,8 +40,9 @@ type interaction struct {
 	inTracksReadyCount  int
 	outTracksReadyCount int
 	// channels (safe)
-	startCh chan struct{}
-	endCh   chan struct{}
+	readyCh   chan struct{}
+	abortedCh chan struct{}
+	doneCh    chan struct{}
 	// other (written only during initialization)
 	id           string // origin+namespace+name, used for indexing in interactionStore
 	randomId     string // random internal id
@@ -97,8 +98,9 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		deleted:             false,
 		connectedIndex:      connectedIndex,
 		joinedCountIndex:    joinedCountIndex,
-		startCh:             make(chan struct{}),
-		endCh:               make(chan struct{}),
+		readyCh:             make(chan struct{}),
+		abortedCh:           make(chan struct{}),
+		doneCh:              make(chan struct{}),
 		createdAt:           time.Now(),
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
@@ -123,6 +125,18 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 
 	go i.abortCountdown()
 	return i
+}
+
+func (i *interaction) ready() chan struct{} {
+	return i.readyCh
+}
+
+func (i *interaction) aborted() chan struct{} {
+	return i.abortedCh
+}
+
+func (i *interaction) done() chan struct{} {
+	return i.doneCh
 }
 
 // Run: implement log Hook interface
@@ -167,7 +181,7 @@ func (i *interaction) start() {
 	i.Lock()
 	defer i.Unlock()
 	// do start
-	close(i.startCh)
+	close(i.readyCh)
 	i.abortTimer.Stop()
 	i.started = true
 	i.running = true
@@ -182,7 +196,7 @@ func (i *interaction) start() {
 
 func (i *interaction) stop(graceful bool) {
 	// listened by peerServers, mixer, mixerTracks
-	close(i.endCh)
+	close(i.doneCh)
 	if graceful {
 		i.logger.Info().Msg("interaction_end")
 	} else {
@@ -358,14 +372,13 @@ func (i *interaction) endingDelay() (delay int) {
 	return
 }
 
-// return false if an error ends the waiting
-func (i *interaction) readRemoteTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
+// return false if an error ends the waiting, discards RTP till ready
+func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
-		case <-i.startCh:
+		case <-i.ready():
 			return true
-		case <-i.endCh:
-			// interaction is over before starting
+		case <-i.aborted():
 			return false
 		default:
 			_, _, err := remoteTrack.ReadRTP()
@@ -396,14 +409,14 @@ func (i *interaction) runMixerSliceFromRemote(
 	ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 	// wait for all peers to connect
-	ok := i.readRemoteTillAllReady(remoteTrack)
+	ok := i.loopTillAllReady(remoteTrack)
 
 	if ok {
 		// trigger signaling if needed
 		signalingNeeded := i.incOutTracksReadyCount()
 		if signalingNeeded {
 			// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
-			<-time.After(2000 * time.Millisecond)
+			<-time.After(1000 * time.Millisecond)
 			go i.mixer.managedGlobalSignaling("out_tracks_ready", true)
 		}
 		// blocking until interaction ends or user disconnects

@@ -486,6 +486,19 @@ Each peerConn has several tracks:
 - remote: 2 (audio and video) client->server tracks
 - local: 2*(n-1) server->client tracks for an interaction of size n (peers don't receive back their own streams)
 
+When an interaction is done (only if aborted or successfully ended), the following resources are released too:
+
+- mixer, mixerSlices, senderControllers
+- peerServer, peerConn, wsConn
+
+There are several ways a peerServer may end:
+
+- the room is done
+- an error occured on wsConn
+- the peer connection has been closed
+
+When releasing resources related to a peer, it's possible to test only for the peerServer to be done, since the room being done implies peerServers to be done.
+
 ### Step by step description of a run
 
 Here is an overview of what is happening from connecting to videoconferencing:
@@ -643,4 +656,4 @@ docker run --name ducksoup_gpu_1 \
 
 Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene) in particular.
 
-The following STUN servers are used by the project: stun.l.google.com:19302 and stun.stunprotocol.org:3478.
+The following STUN servers are used by the project: stun.l.google.com:19302 and stun:stun3.l.google.com:19302 (previously stun.stunprotocol.org:3478).

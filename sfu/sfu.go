@@ -32,7 +32,7 @@ func (m *mixer) inspect() any {
 	return nil
 }
 
-func (s *mixerSlice) inspect() any {
+func (ms *mixerSlice) inspect() any {
 	// capitalize for JSON export
 	return struct {
 		From      string
@@ -41,10 +41,10 @@ func (s *mixerSlice) inspect() any {
 		OutputKbs uint64
 		TargetKbs uint64
 	}{
-		s.fromPs.userId,
-		s.input.Kind().String(),
-		s.inputBitrate / 1000,
-		s.outputBitrate / 1000,
-		s.targetBitrate / 1000,
+		ms.fromPs.userId,
+		ms.input.Kind().String(),
+		ms.inputBitrate / 1000,
+		ms.outputBitrate / 1000,
+		ms.targetBitrate / 1000,
 	}
 }

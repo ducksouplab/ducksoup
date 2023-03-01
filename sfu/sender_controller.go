@@ -98,7 +98,7 @@ func (sc *senderController) loop() {
 	estimateWithGCCEnv := helpers.Getenv("DS_GCC") == "true"
 	go sc.loopReadRTCP(estimateWithGCCEnv)
 
-	<-sc.ms.i.startCh
+	<-sc.ms.i.ready()
 	if sc.kind == "video" && estimateWithGCCEnv {
 		go sc.loopGCC()
 	}
@@ -110,25 +110,23 @@ func (sc *senderController) loopGCC() {
 
 	for {
 		select {
-		case <-sc.ms.i.endCh:
+		case <-sc.ms.done():
 			// TODO FIX it could happen that addSender have triggered this loop without the slice
 			// to have actually started
-			return
-		case <-sc.ms.endCh:
 			return
 		case <-ticker.C:
 			// update optimal video bitrate, leaving room for audio
 			sc.Lock()
 			sc.optimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()) - config.Audio.MaxBitrate)
 			sc.Unlock()
-			sc.logInfo().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
+			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}
 	}
 }
 func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 	for {
 		select {
-		case <-sc.ms.endCh:
+		case <-sc.ms.done():
 			return
 		default:
 			packets, _, err := sc.sender.ReadRTCP()
