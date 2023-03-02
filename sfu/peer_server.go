@@ -325,22 +325,22 @@ func (ps *peerServer) loop() {
 		}
 
 		switch m.Kind {
-		case "client_candidate":
+		case "client_ice_candidate":
 			if ps.pc.RemoteDescription() == nil {
 				ps.pc.logError().Msg("remote_description_should_come_first")
 			}
 
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_candidate_failed")
+				ps.logError().Err(err).Msg("unmarshal_ice_candidate_failed")
 				return
 			}
 
 			if err := ps.pc.AddICECandidate(candidate); err != nil {
-				ps.logError().Err(err).Msg("add_candidate_failed")
+				ps.logError().Err(err).Msg("add_ice_candidate_failed")
 				return
 			}
-			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_candidate_added")
+			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_ice_candidate_added")
 		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {

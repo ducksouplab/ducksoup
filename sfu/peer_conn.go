@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -168,6 +169,10 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		pc.logInfo().Str("value", s.String()).Msg("signaling_state_changed")
 	})
 
+	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
+		pc.logInfo().Str("value", fmt.Sprintf("%+v", c)).Msg("ice_candidate")
+	})
+
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
 		pc.logInfo().Str("value", s.String()).Msg("ice_connection_state_changed")
 		switch s {
@@ -176,13 +181,17 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		}
 	})
 
-	pc.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-		pc.logInfo().Str("value", state.String()).Msg("ice_gathering_state_changed")
+	pc.OnICEGatheringStateChange(func(s webrtc.ICEGathererState) {
+		pc.logInfo().Str("value", s.String()).Msg("ice_gathering_state_changed")
 	})
 
 	pc.OnNegotiationNeeded(func() {
 		ps.shareOffer("negotiation_needed", false)
 		// TODO check if this would be better: go ps.i.mixer.managedSignalingForEveryone("negotiation_needed", false)
+	})
+
+	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
+		pc.logInfo().Str("value", s.String()).Msg("signaling_state_changed")
 	})
 
 	// Debug: send periodic PLIs

@@ -461,7 +461,7 @@ class DuckSoup {
 
       pc.onicecandidate = (e) => {
         if (!e.candidate) return;
-        this._send("client_candidate", e.candidate);
+        this._send("client_ice_candidate", e.candidate);
       };
 
       pc.ontrack = (event) => {
