@@ -354,10 +354,10 @@ func (ps *peerServer) loop() {
 			}
 			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("set_remote_description")
 		case "client_negotiation_needed":
-			ps.shareOffer("client_negotiation_needed", false)
+			ps.shareOffer(m.Kind, false)
 			// previously for all: go ps.i.mixer.managedSignalingForEveryone("client_negotiation_needed", false)
 		case "client_ice_connection_state_disconnected":
-			ps.shareOffer("client_ice_connection_state_disconnected", true)
+			ps.shareOffer(m.Kind, true)
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
@@ -385,6 +385,8 @@ func (ps *peerServer) loop() {
 			}
 		case "client_video_resolution_updated":
 			ps.logDebug().Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
+		case "client_selected_candidate_pair":
+			ps.logDebug().Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
 		case "stop":
 			ps.close("client_stop_request")
 		default:

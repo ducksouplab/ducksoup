@@ -124,6 +124,11 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 	return pc.i.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
 }
 
+func (pc *peerConn) printSelectedCandidatePair() string {
+	candidatePair, _ := pc.SCTP().Transport().ICETransport().GetSelectedCandidatePair()
+	return fmt.Sprintf("%+v", candidatePair)
+}
+
 // pc callbacks trigger actions handled by ws or interaction or pc itself
 func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	// trickle ICE. Emit server candidate to client
@@ -152,7 +157,6 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 
 	// if PeerConnection is closed remove it from global list
 	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		pc.logInfo().Str("value", s.String()).Msg("connection_state_changed")
 		switch s {
 		case webrtc.PeerConnectionStateFailed:
 			ps.close("peer_connection_failed")
@@ -160,38 +164,48 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 			ps.close("peer_connection_closed")
 		case webrtc.PeerConnectionStateDisconnected:
 			ps.close("peer_connection_disconnected")
+		case webrtc.PeerConnectionStateConnected:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("peer_connection_state_connected")
+		default:
+			pc.logDebug().Msg("connection_state_" + s.String())
 		}
 	})
 
 	// for logging
 
 	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
-		pc.logInfo().Str("value", s.String()).Msg("signaling_state_changed")
+		switch s {
+		case webrtc.SignalingStateStable:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("signaling_state_stable")
+		default:
+			pc.logDebug().Msg("signaling_state_" + s.String())
+		}
 	})
 
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		pc.logInfo().Str("value", fmt.Sprintf("%+v", c)).Msg("ice_candidate")
+		pc.logDebug().Str("value", fmt.Sprintf("%+v", c)).Msg("ice_candidate")
 	})
 
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
-		pc.logInfo().Str("value", s.String()).Msg("ice_connection_state_changed")
 		switch s {
 		case webrtc.ICEConnectionStateDisconnected:
 			ps.shareOffer("ice_connection_state_disconnected", true)
+		case webrtc.ICEConnectionStateConnected:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_connected")
+		case webrtc.ICEConnectionStateCompleted:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_completed")
+		default:
+			pc.logDebug().Msg("ice_connection_state_" + s.String())
 		}
 	})
 
 	pc.OnICEGatheringStateChange(func(s webrtc.ICEGathererState) {
-		pc.logInfo().Str("value", s.String()).Msg("ice_gathering_state_changed")
+		pc.logDebug().Str("value", s.String()).Msg("ice_gathering_state_changed")
 	})
 
 	pc.OnNegotiationNeeded(func() {
 		ps.shareOffer("negotiation_needed", false)
 		// TODO check if this would be better: go ps.i.mixer.managedSignalingForEveryone("negotiation_needed", false)
-	})
-
-	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
-		pc.logInfo().Str("value", s.String()).Msg("signaling_state_changed")
 	})
 
 	// Debug: send periodic PLIs
