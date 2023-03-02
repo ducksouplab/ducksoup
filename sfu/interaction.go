@@ -325,7 +325,11 @@ func (i *interaction) disconnectUser(userId string) {
 		delete(i.peerServerIndex, userId)
 		// mark disconnected, but keep track of her
 		i.connectedIndex[userId] = false
-		go i.mixer.managedSignalingForEveryone("user_disconnected", false)
+
+		// prevent useless signaling when aborting/ending room
+		if i.deleted {
+			go i.mixer.managedSignalingForEveryone("user_disconnected", false)
+		}
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
