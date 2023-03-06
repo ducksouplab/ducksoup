@@ -13,6 +13,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -51,7 +52,7 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 		panic("Unhandled audioCodec assign")
 	}
 	// choose videoCodec
-	nvcodec := nvcodecEnv && join.GPU
+	nvcodec := env.NVCodec && join.GPU
 	switch join.VideoFormat {
 	case "VP8":
 		videoOptions = config.VP8
@@ -67,7 +68,7 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 	}
 	// set env and join dependent options
 	videoOptions.nvcodec = nvcodec
-	videoOptions.Overlay = join.Overlay || forceOverlayEnv
+	videoOptions.Overlay = join.Overlay || env.ForceOverlay
 	// complete with Fx
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)

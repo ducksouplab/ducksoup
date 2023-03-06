@@ -167,10 +167,10 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	userId := ps.userId
 	pc := ps.pc
 
-	ps.logInfo().Str("user", userId).Str("cause", cause).Str("current_state", pc.SignalingState().String()).Msg("offer_update_requested")
+	ps.logInfo().Str("user", userId).Str("cause", cause).Str("current_state", pc.SignalingState().String()).Msg("server_create_offer_requested")
 
 	if pc.PendingLocalDescription() != nil {
-		ps.logError().Str("user", userId).Msg("pending_local_description_blocks_offer")
+		ps.logError().Str("user", userId).Msg("server_pending_local_description_blocking_offer")
 		return false
 	}
 
@@ -180,15 +180,15 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	}
 	offer, err := pc.CreateOffer(options)
 	if err != nil {
-		ps.logError().Str("user", userId).Msg("create_offer_failed")
+		ps.logError().Str("user", userId).Msg("server_create_offer_failed")
 		return false
 	}
 
 	if err = pc.SetLocalDescription(offer); err != nil {
-		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("set_local_description_failed")
+		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("server_set_local_description_failed")
 		return false
 	} else {
-		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("set_local_description")
+		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("server_set_local_description")
 	}
 
 	offerString, err := json.Marshal(offer)
@@ -332,27 +332,27 @@ func (ps *peerServer) loop() {
 
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_ice_candidate_failed")
+				ps.logError().Err(err).Msg("unmarshal_client_ice_candidate_failed")
 				return
 			}
 
 			if err := ps.pc.AddICECandidate(candidate); err != nil {
-				ps.logError().Err(err).Msg("add_ice_candidate_failed")
+				ps.logError().Err(err).Msg("server_add_client_ice_candidate_failed")
 				return
 			}
-			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("client_ice_candidate_added")
+			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("server_add_client_ice_candidate")
 		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_answer_failed")
+				ps.logError().Err(err).Msg("unmarshal_client_answer_failed")
 				return
 			}
 
 			if err := ps.pc.SetRemoteDescription(answer); err != nil {
-				ps.logError().Err(err).Msg("set_remote_description_failed")
+				ps.logError().Err(err).Msg("server_set_remote_description_failed")
 				return
 			}
-			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("set_remote_description")
+			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("server_set_remote_description")
 		case "client_negotiation_needed":
 			ps.shareOffer(m.Kind, false)
 			// previously for all: go ps.i.mixer.managedSignalingForEveryone("client_negotiation_needed", false)
@@ -361,7 +361,7 @@ func (ps *peerServer) loop() {
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_control_failed")
+				ps.logError().Err(err).Msg("unmarshal_client_control_failed")
 			} else {
 				go func() {
 					ps.controlFx(payload)
@@ -370,7 +370,7 @@ func (ps *peerServer) loop() {
 		case "client_polycontrol":
 			payload := polyControlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_polycontrol_failed")
+				ps.logError().Err(err).Msg("unmarshal_client_polycontrol_failed")
 			} else {
 				go func() {
 					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
@@ -422,7 +422,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
 		ws.send("error-join")
-		log.Error().Str("context", "signaling").Err(err).Msg("join payload corrupted")
+		log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
 		return
 	}
 
@@ -434,7 +434,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	if err != nil {
 		// joinInteraction err is meaningful to client
 		ws.send(fmt.Sprintf("error-%s", err))
-		log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("join failed")
+		log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("join_failed")
 		return
 	}
 

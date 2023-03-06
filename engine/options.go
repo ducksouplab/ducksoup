@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/store"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
@@ -16,7 +15,6 @@ import (
 	"github.com/pion/interceptor/pkg/report"
 	"github.com/pion/interceptor/pkg/twcc"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
@@ -34,7 +32,7 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 		return err
 	}
 
-	if helpers.Getenv("DS_GCC") == "true" {
+	if env.GCC {
 		// keep configurations here in that order
 		if err := configureEstimator(interceptorRegistry, estimatorCh); err != nil {
 			return err
@@ -48,7 +46,7 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 		return err
 	}
 
-	if helpers.Getenv("DS_GEN_TWCC") == "true" {
+	if env.GenerateTWCC {
 		if err := configureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
 			return err
 		}
@@ -62,7 +60,7 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 		return err
 	}
 
-	if helpers.Getenv("DS_LOG_LEVEL") == "4" {
+	if env.LogLevel == 4 {
 		if err := configurePacketDump(interceptorRegistry); err != nil {
 			return err
 		}
@@ -289,18 +287,18 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 // 	return res
 // }
 
-func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
-	var twcc rtp.TransportCCExtension
-	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
-	twcc.Unmarshal(ext)
+// func formatReceivedRTP(pkt *rtp.Packet, attributes interceptor.Attributes) string {
+// 	var twcc rtp.TransportCCExtension
+// 	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
+// 	twcc.Unmarshal(ext)
 
-	return fmt.Sprintf("[RTP] #%v now:%v ssrc:%v size:%v",
-		twcc.TransportSequence,
-		time.Now().Format("15:04:05.99999999"),
-		pkt.SSRC,
-		pkt.MarshalSize(),
-	)
-}
+// 	return fmt.Sprintf("[RTP] #%v now:%v ssrc:%v size:%v",
+// 		twcc.TransportSequence,
+// 		time.Now().Format("15:04:05.99999999"),
+// 		pkt.SSRC,
+// 		pkt.MarshalSize(),
+// 	)
+// }
 
 // used by RTCP log interceptors
 type logWriteCloser struct{}
@@ -311,7 +309,7 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 		msg := string(p)
 		if strings.HasPrefix(msg, "[TWCC]") {
 			ssrcMatch := ssrcRegexp.FindStringSubmatch(msg)
-			// trace level to respect DS_LOG_LEVEL setting
+			// trace level to respect DUCKSOUP_LOG_LEVEL setting
 			if len(ssrcMatch) > 0 {
 				// remove ssrc from string and add it as a log prop
 				msg = ssrcRegexp.ReplaceAllString(msg, "")

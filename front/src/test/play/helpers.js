@@ -8,7 +8,7 @@ const randomId = () => randomLengthString() + randomLengthString();
 const getSignalingUrl = () => {
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
-  // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
+  // depending on DUCKSOUP_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
   const pathPrefix = pathPrefixhMatch[1];
   return `${wsProtocol}://${window.location.host}${pathPrefix}ws`;
 };

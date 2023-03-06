@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/rs/zerolog/log"
 )
 
 // Open file relatively to project
 func Open(name string) (*os.File, error) {
-	path := fmt.Sprintf(rootEnv+"%s", name)
+	path := fmt.Sprintf(env.ProjectRoot+"%s", name)
 	return os.Open(path)
 }
 
 func ReadFile(name string) string {
 	var output string
-	path := fmt.Sprintf(rootEnv+"%s", name)
+	path := fmt.Sprintf(env.ProjectRoot+"%s", name)
 	f, err := os.Open(path)
 
 	if err != nil {

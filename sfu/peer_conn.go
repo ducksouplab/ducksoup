@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ducksouplab/ducksoup/engine"
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/rtcp"
@@ -43,15 +44,13 @@ func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerCo
 		return
 	}
 	// configure and create a new RTCPeerConnection
-	config := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
-			},
-			{
-				URLs: []string{"stun:stun3.l.google.com:19302"},
-			},
-		},
+	config := webrtc.Configuration{}
+	if len(env.ICEServers) > 0 {
+		iceServers := []webrtc.ICEServer{}
+		for _, url := range env.ICEServers {
+			iceServers = append(iceServers, webrtc.ICEServer{URLs: []string{url}})
+		}
+		config.ICEServers = iceServers
 	}
 	ppc, err = api.NewPeerConnection(config)
 	// Wait until our Bandwidth Estimator has been created
@@ -132,19 +131,21 @@ func (pc *peerConn) printSelectedCandidatePair() string {
 // pc callbacks trigger actions handled by ws or interaction or pc itself
 func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	// trickle ICE. Emit server candidate to client
-	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
-		if i == nil {
+	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
+		if c == nil {
+			// gathering is finished
 			// see https://pkg.go.dev/github.com/pion/webrtc/v3#PeerConnection.OnICECandidate
 			return
 		}
+		pc.logDebug().Str("value", fmt.Sprintf("%+v", c)).Msg("server_ice_candidate")
 
-		candidateString, err := json.Marshal(i.ToJSON())
+		candidateBytes, err := json.Marshal(c.ToJSON())
 		if err != nil {
-			pc.logError().Err(err).Msg("marshal_candidate_failed")
+			pc.logError().Err(err).Msg("marshal_server_ice_candidate_failed")
 			return
 		}
 
-		ps.ws.sendWithPayload("candidate", string(candidateString))
+		ps.ws.sendWithPayload("candidate", string(candidateBytes))
 	})
 
 	pc.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -159,16 +160,13 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		switch s {
 		case webrtc.PeerConnectionStateFailed:
-			ps.close("peer_connection_failed")
+			ps.close("pc_failed")
 		case webrtc.PeerConnectionStateClosed:
-			ps.close("peer_connection_closed")
+			ps.close("pc_closed")
 		case webrtc.PeerConnectionStateDisconnected:
-			ps.close("peer_connection_disconnected")
-		case webrtc.PeerConnectionStateConnected:
-			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("peer_connection_state_connected")
-		default:
-			pc.logDebug().Msg("connection_state_" + s.String())
+			ps.close("pc_disconnected")
 		}
+		pc.logDebug().Msg("server_connection_state_" + s.String())
 	})
 
 	// for logging
@@ -176,35 +174,27 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
 		switch s {
 		case webrtc.SignalingStateStable:
-			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("signaling_state_stable")
+			ps.logDebug().Str("value", pc.printSelectedCandidatePair()).Msg("server_selected_candidate_pair")
 		default:
-			pc.logDebug().Msg("signaling_state_" + s.String())
 		}
-	})
-
-	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		pc.logDebug().Str("value", fmt.Sprintf("%+v", c)).Msg("ice_candidate")
+		pc.logDebug().Msg("server_signaling_state_" + s.String())
 	})
 
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
 		switch s {
 		case webrtc.ICEConnectionStateDisconnected:
-			ps.shareOffer("ice_connection_state_disconnected", true)
-		case webrtc.ICEConnectionStateConnected:
-			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_connected")
-		case webrtc.ICEConnectionStateCompleted:
-			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_completed")
+			ps.shareOffer("server_ice_disconnected", true)
 		default:
-			pc.logDebug().Msg("ice_connection_state_" + s.String())
 		}
+		pc.logDebug().Msg("server_ice_connection_state_" + s.String())
 	})
 
 	pc.OnICEGatheringStateChange(func(s webrtc.ICEGathererState) {
-		pc.logDebug().Str("value", s.String()).Msg("ice_gathering_state_changed")
+		pc.logDebug().Msg("server_ice_gathering_state_" + s.String())
 	})
 
 	pc.OnNegotiationNeeded(func() {
-		ps.shareOffer("negotiation_needed", false)
+		ps.shareOffer("server_negotiation_needed", false)
 		// TODO check if this would be better: go ps.i.mixer.managedSignalingForEveryone("negotiation_needed", false)
 	})
 
@@ -225,12 +215,12 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error
 		},
 	})
 	if err != nil {
-		pc.logError().Err(err).Str("context", "track").Msg("send_pli_failed")
+		pc.logError().Err(err).Str("context", "track").Msg("server_send_pli_failed")
 	} else {
 		pc.Lock()
 		pc.lastPLI = time.Now()
 		pc.Unlock()
-		pc.logInfo().Str("context", "track").Str("cause", cause).Msg("pli_sent")
+		pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_sent")
 	}
 	return
 }
@@ -257,7 +247,7 @@ func (pc *peerConn) throttledPLIRequest(cause string) {
 			durationSinceLastPLI := time.Since(pc.lastPLI)
 			if durationSinceLastPLI < pc.pliMinInterval {
 				// throttle: don't send too many PLIs
-				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("pli_skipped")
+				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_skipped")
 			} else {
 				go pc.writePLI(track, cause)
 			}

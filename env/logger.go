@@ -1,10 +1,9 @@
-package helpers
+package env
 
 import (
 	"io"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -13,36 +12,23 @@ const (
 	timeFormat = "20060102-150405.000"
 )
 
-// used by file.go
-var rootEnv string
-
-func init() {
-	// CAUTION: other init functions in "helpers" package may be called before this
-	if os.Getenv("DS_ENV") == "DEV" {
-		if err := godotenv.Load(".env"); err != nil {
-			log.Fatal().Err(err)
-		}
-	}
-
-	// used by file.go
-	rootEnv = GetenvOr("DS_TEST_ROOT", ".") + "/"
-
+// CAUTION relying on LogLevel package variable does not work (?) that's why we pass it as a parameter
+func configureLogger(logLevel int) {
 	// zerolog defaults
 	zerolog.TimeFieldFormat = timeFormat
-	if Getenv("DS_ENV") == "DEV" {
+	if Mode == "DEV" {
 		log.Logger = log.With().Caller().Logger()
 	}
 
 	// manage multi log output
 	var writers []io.Writer
 	// stdout writer
-	if Getenv("DS_ENV") == "DEV" || Getenv("DS_LOG_STDOUT") == "true" {
+	if Mode == "DEV" || LogStdout {
 		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
 	}
 	// file writer
-	logFileEnv := Getenv("DS_LOG_FILE")
-	if logFileEnv != "" {
-		fileWriter, fileErr := os.OpenFile(logFileEnv, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	if LogFile != "" {
+		fileWriter, fileErr := os.OpenFile(LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if fileErr != nil {
 			log.Error().Str("context", "init").Msg("error opening log file")
 		} else {
@@ -57,23 +43,21 @@ func init() {
 		log.Logger = log.Output(multi)
 	}
 	// set level
-	levelEnv := Getenv("DS_LOG_LEVEL")
-	zeroLevel := convertLevel(Getenv("DS_LOG_LEVEL"))
+	zeroLevel := convertLevel(logLevel)
 	zerolog.SetGlobalLevel(zeroLevel)
-	log.Info().Str("context", "init").Str("level", levelEnv).Msg("logger_configured")
 }
 
-func convertLevel(dsLevel string) zerolog.Level {
+func convertLevel(dsLevel int) zerolog.Level {
 	switch dsLevel {
-	case "0":
+	case 0:
 		return zerolog.Disabled
-	case "1":
+	case 1:
 		return zerolog.ErrorLevel
-	case "2":
+	case 2:
 		return zerolog.InfoLevel
-	case "3":
+	case 3:
 		return zerolog.DebugLevel
-	case "4":
+	case 4:
 		return zerolog.TraceLevel
 	default:
 		return zerolog.DebugLevel

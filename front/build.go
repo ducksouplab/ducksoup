@@ -1,7 +1,7 @@
 package front
 
 import (
-	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/zerolog/log"
 )
@@ -12,10 +12,10 @@ var (
 )
 
 func init() {
-	if helpers.Getenv("DS_ENV") == "DEV" {
+	if env.Mode == "DEV" {
 		developmentMode = true
 	}
-	if helpers.Getenv("DS_ENV") == "BUILD_FRONT" {
+	if env.Mode == "BUILD_FRONT" {
 		cmdBuildMode = true
 	}
 }

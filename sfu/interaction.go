@@ -181,8 +181,8 @@ func (i *interaction) start() {
 	i.Lock()
 	defer i.Unlock()
 	// do start
-	close(i.readyCh)
 	i.abortTimer.Stop()
+	close(i.readyCh)
 	i.started = true
 	i.running = true
 	i.logger.Info().Msg("interaction_started")
@@ -334,6 +334,7 @@ func (i *interaction) disconnectUser(userId string) {
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
 		if i.connectedUserCount() == 0 && !i.running && !i.deleted {
+			i.abortTimer.Stop()
 			i.unguardedDelete()
 		}
 	}

@@ -15,7 +15,7 @@ const looseJSONParse = (str) => {
 const start = () => {
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const pathPrefixhMatch = /(.*)stats/.exec(window.location.pathname);
-  // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
+  // depending on DUCKSOUP_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
   const pathPrefix = pathPrefixhMatch[1];
   const signalingUrl = `${wsProtocol}://${window.location.host}${pathPrefix}ws?type=stats`;
   const ws = new WebSocket(signalingUrl);

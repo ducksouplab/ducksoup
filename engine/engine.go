@@ -5,8 +5,8 @@ package engine
 import (
 	"regexp"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
-	_ "github.com/ducksouplab/ducksoup/helpers" // rely on helpers logger init side-effect
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
@@ -185,6 +185,10 @@ func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
 	// enhance them
 	if err := configureAPIOptions(m, i, estimatorCh); err != nil {
 		log.Error().Err(err).Str("context", "peer").Msg("engine can't register interceptors")
+	}
+
+	if len(env.PublicIP) > 0 {
+		s.SetNAT1To1IPs([]string{env.PublicIP}, webrtc.ICECandidateTypeHost)
 	}
 
 	return webrtc.NewAPI(

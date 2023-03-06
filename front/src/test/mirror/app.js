@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Init signalingURL with default value
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
-  // depending on DS_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
+  // depending on DUCKSOUP_WEB_PREFIX, signaling endpoint may be located at /ws or /prefix/ws
   const pathPrefix = pathPrefixhMatch[1];
   document.getElementById(
     "input-signaling-url"

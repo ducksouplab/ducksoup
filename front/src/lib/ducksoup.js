@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.27");
+  console.log("[DuckSoup] v1.5.28");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -415,6 +415,7 @@ class DuckSoup {
         this._send("client_answer", answer);
       } else if (message.kind === "candidate") {
         const candidate = looseJSONParse(message.payload);
+        console.log("[DuckSoup] server candidate:", candidate);
         try {
           pc.addIceCandidate(candidate);
         } catch (error) {

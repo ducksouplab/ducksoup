@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
@@ -95,11 +95,10 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 }
 
 func (sc *senderController) loop() {
-	estimateWithGCCEnv := helpers.Getenv("DS_GCC") == "true"
-	go sc.loopReadRTCP(estimateWithGCCEnv)
+	go sc.loopReadRTCP(env.GCC)
 
 	<-sc.ms.i.ready()
-	if sc.kind == "video" && estimateWithGCCEnv {
+	if sc.kind == "video" && env.GCC {
 		go sc.loopGCC()
 	}
 }

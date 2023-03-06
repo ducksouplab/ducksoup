@@ -4,12 +4,10 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"flag"
-	"fmt"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/sfu"
 	"github.com/ducksouplab/ducksoup/stats"
@@ -19,45 +17,16 @@ import (
 )
 
 var (
-	port           string
-	allowedOrigins = []string{}
-	webPrefix      string
-	testLogin      string
-	testPassword   string
-	statsLogin     string
-	statsPassword  string
-	cert           = flag.String("cert", "", "cert file")
-	key            = flag.String("key", "", "key file")
-	upgrader       = websocket.Upgrader{
+	cert     = flag.String("cert", "", "cert file")
+	key      = flag.String("key", "", "key file")
+	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			log.Info().Str("context", "peer").Str("origin", origin).Msg("websocket_upgraded")
-			return helpers.Contains(allowedOrigins, origin)
+			return helpers.Contains(env.AllowedWSOrigins, origin)
 		},
 	}
 )
-
-func init() {
-	// environment variables use
-	envOriginsEnv := helpers.Getenv("DS_ORIGINS")
-	if len(envOriginsEnv) > 0 {
-		allowedOrigins = append(allowedOrigins, strings.Split(envOriginsEnv, ",")...)
-	}
-	if helpers.Getenv("DS_ENV") == "DEV" {
-		allowedOrigins = append(allowedOrigins, "https://localhost:8100", "http://localhost:8180")
-	}
-
-	// web prefix, for instance "/path" if DuckSoup is reachable at https://host/path
-	webPrefix = helpers.GetenvOr("DS_WEB_PREFIX", "")
-	// basic Auth
-	testLogin = helpers.GetenvOr("DS_TEST_LOGIN", "ducksoup")
-	testPassword = helpers.GetenvOr("DS_TEST_PASSWORD", "ducksoup")
-	statsLogin = helpers.GetenvOr("DS_STATS_LOGIN", "ducksoup")
-	statsPassword = helpers.GetenvOr("DS_STATS_PASSWORD", "ducksoup")
-
-	// log
-	log.Info().Str("context", "init").Str("origins", fmt.Sprintf("%v", allowedOrigins)).Msg("websocket_origins_allowed")
-}
 
 // handle incoming websockets
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +82,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 // API
 
 func ListenAndServe() {
+	webPrefix := env.WebPrefix
 	// parse the flags passed to program
 	flag.Parse()
 
@@ -126,7 +96,7 @@ func ListenAndServe() {
 
 	// test pages with basic auth
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
-	testRouter.Use(basicAuthWith(testLogin, testPassword))
+	testRouter.Use(basicAuthWith(env.TestLogin, env.TestPassword))
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/interaction/").Handler(http.StripPrefix(webPrefix+"/test/interaction/", http.FileServer(http.Dir("./front/static/pages/test/interaction/"))))
 	testRouter.PathPrefix("/play/").Handler(http.StripPrefix(webPrefix+"/test/play/", http.FileServer(http.Dir("./front/static/pages/test/play/"))))
@@ -134,29 +104,23 @@ func ListenAndServe() {
 	// stats pages with basic auth
 	if config.GenerateStats {
 		statsRouter := router.PathPrefix(webPrefix + "/stats").Subrouter()
-		statsRouter.Use(basicAuthWith(statsLogin, statsPassword))
+		statsRouter.Use(basicAuthWith(env.TestLogin, env.TestPassword))
 		statsRouter.PathPrefix("/").Handler(http.StripPrefix(webPrefix+"/stats/", http.FileServer(http.Dir("./front/static/pages/stats/"))))
-	}
-
-	// port
-	port = os.Getenv("DS_PORT")
-	if len(port) < 2 {
-		port = "8100"
 	}
 
 	server := &http.Server{
 		Handler:      router,
-		Addr:         ":" + port,
+		Addr:         ":" + env.Port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
 	// start HTTP server
 	if *key != "" && *cert != "" {
-		log.Info().Str("context", "init").Str("port", port).Msg("https_server_started")
+		log.Info().Str("context", "init").Str("port", env.Port).Msg("https_server_started")
 		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
 	} else {
-		log.Info().Str("context", "init").Str("port", port).Msg("http_server_started")
+		log.Info().Str("context", "init").Str("port", env.Port).Msg("http_server_started")
 		log.Fatal().Err(server.ListenAndServe()) // blocking
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/front"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
@@ -15,24 +16,19 @@ var (
 )
 
 func init() {
-
-	if helpers.Getenv("DS_ENV") == "BUILD_FRONT" {
+	if env.Mode == "BUILD_FRONT" {
 		cmdBuildMode = true
 	}
 
 	helpers.EnsureDir("./data")
 
-	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_NVCODEC", "false"))).Msg("DS_NVCODEC")
-	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_GEN_TWCC", "false"))).Msg("DS_GEN_TWCC")
-	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_GCC", "false"))).Msg("DS_GCC")
-	log.Info().Str("context", "app").Str("value", fmt.Sprintf("%s", helpers.GetenvOr("DS_FORCE_OVERLAY", "false"))).Msg("DS_FORCE_OVERLAY")
 }
 
 func main() {
-	// always build front (in watch mode or not, depending on DS_ENV value, see front/build.go)
+	// always build front (in watch mode or not, depending on env.Mode value, see front/build.go)
 	front.Build()
 
-	// run ducksoup only if not in BUILD_FRONT DS_ENV
+	// run ducksoup only if not in BUILD_FRONT env.Mode
 	if !cmdBuildMode {
 		defer func() {
 			if r := recover(); r != nil {

@@ -4,7 +4,7 @@
   "main": "app.jsx",
   "license": "MIT",
   "scripts": {
-    "dev": "go build && DS_ENV=DEV GST_DEBUG=2,videodecoder:1 ./ducksoup",
+    "dev": "go build && DUCKSOUP_MODE=DEV GST_DEBUG=2,videodecoder:1 ./ducksoup",
     "deps": "go get -t -u ./... && go mod tidy"
   },
   "dependencies": {

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
@@ -20,15 +20,10 @@ const GstLevelError = 1
 const GstLevelWarning = 2
 
 var (
-	enableLogTracking                                bool
 	idRegexp, idsRegexp, frameRegexp, trackingRegexp *regexp.Regexp
 )
 
 func init() {
-	enableLogTracking = false
-	if helpers.Getenv("DS_GST_ENABLE_TRACKING") == "true" {
-		enableLogTracking = true
-	}
 	idRegexp = regexp.MustCompile(`user-id: (.*?),`)
 	idsRegexp = regexp.MustCompile(`n-(.*?)-r-(.*?)-u-(.*?)$`)
 	frameRegexp = regexp.MustCompile(`frame: (.*?),`)
@@ -102,7 +97,7 @@ func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char
 	from := "GStreamer:" + C.GoString(cFile) + ":" + C.GoString(cFunction) + ":" + strconv.Itoa(int(line))
 	msg := C.GoString(cMsg)
 
-	if enableLogTracking && level == GstLevelWarning {
+	if env.GSTTracking && level == GstLevelWarning {
 		match := idRegexp.FindStringSubmatch(msg)
 		if len(match) > 0 {
 			idsMatch := idsRegexp.FindStringSubmatch(match[1])

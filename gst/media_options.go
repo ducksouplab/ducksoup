@@ -9,7 +9,7 @@ import (
 type mediaOptions struct {
 	// calculated property
 	SkipFixedCaps bool
-	// live property depending on Join (and DS_NVCODEC), not used within template
+	// live property depending on Join (and DUCKSOUP_NVCODEC), not used within template
 	nvcodec bool
 	Overlay bool
 	// properties depending on yml definitions
