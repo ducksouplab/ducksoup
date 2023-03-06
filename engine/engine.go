@@ -184,11 +184,12 @@ func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
 
 	// enhance them
 	if err := configureAPIOptions(m, i, estimatorCh); err != nil {
-		log.Error().Err(err).Str("context", "peer").Msg("engine can't register interceptors")
+		log.Error().Err(err).Str("context", "peer").Msg("configure_api_failed")
 	}
 
 	if len(env.PublicIP) > 0 {
 		s.SetNAT1To1IPs([]string{env.PublicIP}, webrtc.ICECandidateTypeHost)
+		log.Info().Str("context", "peer").Str("IP", env.PublicIP).Msg("set_host_candidate")
 	}
 
 	return webrtc.NewAPI(

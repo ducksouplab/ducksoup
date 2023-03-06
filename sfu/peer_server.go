@@ -184,12 +184,18 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 		return false
 	}
 
+	// channel that will be closed when the gathering of local candidates is complete
+	// needed especially when using DUCKSOUP_PUBLIC_IP as a host candidate
+	gatherComplete := webrtc.GatheringCompletePromise(ps.pc.PeerConnection)
+
 	if err = pc.SetLocalDescription(offer); err != nil {
 		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("server_set_local_description_failed")
 		return false
 	} else {
 		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("server_set_local_description")
 	}
+
+	<-gatherComplete
 
 	offerString, err := json.Marshal(offer)
 	if err != nil {

@@ -1,7 +1,6 @@
 package env
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -24,7 +23,7 @@ func getenvOr(key, fallback string) string {
 }
 
 func init() {
-	Mode = os.Getenv("DUCKSOUP_MODE")
+	Mode = getenvOr("DUCKSOUP_MODE", "PROD")
 	// CAUTION: other init functions in "helpers" package may be called before this
 	if Mode == "DEV" {
 		if err := godotenv.Load(".env"); err != nil {
@@ -87,21 +86,6 @@ func init() {
 	} else { // default
 		ICEServers = []string{"stun:stun.l.google.com:19302"}
 	}
-
-	// log
-	log.Info().Str("context", "env").Str("value", Mode).Msg("DUCKSOUP_MODE")
-	log.Info().Str("context", "env").Str("value", Port).Msg("DUCKSOUP_PORT")
-	log.Info().Str("context", "env").Str("value", WebPrefix).Msg("DUCKSOUP_WEB_PREFIX")
-	log.Info().Str("context", "env").Str("value", PublicIP).Msg("DUCKSOUP_PUBLIC_IP")
-	log.Info().Str("context", "env").Str("value", fmt.Sprintf("%v", AllowedWSOrigins)).Msg("DUCKSOUP_ALLOWED_WS_ORIGINS")
-	log.Info().Str("context", "env").Bool("value", NVCodec).Msg("DUCKSOUP_NVCODEC")
-	log.Info().Str("context", "env").Bool("value", GenerateTWCC).Msg("DUCKSOUP_GENERATE_TWCC")
-	log.Info().Str("context", "env").Bool("value", GCC).Msg("DUCKSOUP_GCC")
-	log.Info().Str("context", "env").Bool("value", GSTTracking).Msg("DUCKSOUP_GST_TRACKING")
-	log.Info().Str("context", "env").Int("value", LogLevel).Msg("DUCKSOUP_LOG_LEVEL")
-	log.Info().Str("context", "env").Str("value", LogFile).Msg("DUCKSOUP_LOG_FILE")
-	log.Info().Str("context", "env").Bool("value", ForceOverlay).Msg("DUCKSOUP_FORCE_OVERLAY")
-	log.Info().Str("context", "env").Str("value", fmt.Sprintf("%v", ICEServers)).Msg("DUCKSOUP_ICE_SERVERS")
 
 	// other global configuration
 	configureLogger(LogLevel)
