@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	if env.Mode == "BUILD_FRONT" {
+	if env.Mode == "FRONT_BUILD" {
 		cmdBuildMode = true
 	}
 
@@ -28,7 +28,7 @@ func main() {
 	// always build front (in watch mode or not, depending on env.Mode value, see front/build.go)
 	front.Build()
 
-	// run ducksoup only if not in BUILD_FRONT env.Mode
+	// run ducksoup only if not in FRONT_BUILD env.Mode
 	if !cmdBuildMode {
 		defer func() {
 			if r := recover(); r != nil {

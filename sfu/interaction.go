@@ -421,7 +421,7 @@ func (i *interaction) runMixerSliceFromRemote(
 		signalingNeeded := i.incOutTracksReadyCount()
 		if signalingNeeded {
 			// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
-			<-time.After(1000 * time.Millisecond)
+			<-time.After(2000 * time.Millisecond)
 			go i.mixer.managedSignalingForEveryone("out_tracks_ready", true)
 		}
 		// blocking until interaction ends or user disconnects

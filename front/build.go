@@ -15,7 +15,7 @@ func init() {
 	if env.Mode == "DEV" {
 		developmentMode = true
 	}
-	if env.Mode == "BUILD_FRONT" {
+	if env.Mode == "FRONT_BUILD" {
 		cmdBuildMode = true
 	}
 }

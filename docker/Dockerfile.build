@@ -58,7 +58,7 @@ COPY front/src ./front/src
 # Build DuckSoup front
 COPY package.json .
 RUN yarn
-RUN DUCKSOUP_MODE=BUILD_FRONT ./ducksoup
+RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
 FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.0 AS final
