@@ -38,7 +38,7 @@ RUN go mod download
 # DuckSoup go source
 COPY main.go .
 COPY engine ./engine
-COPY env ./enenvgine
+COPY env ./env
 COPY front/build.go ./front/build.go
 COPY gst ./gst
 COPY helpers ./helpers
