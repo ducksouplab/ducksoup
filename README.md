@@ -416,7 +416,7 @@ go build && GST_DEBUG=2,videodecoder:1 DUCKSOUP_NVCODEC=true DUCKSOUP_MODE=DEV .
 The following shortcut build and run DuckSoup with useful development settings:
 
 ```
-yarn dev
+make dev
 ```
 
 To serve with TLS in a local setup, you may consider [mkcert](https://github.com/FiloSottile/mkcert) to generate certificates. With mkcert installed:
@@ -526,10 +526,12 @@ If you want to disable dlib compilation within the vscode Docker container, chan
 
 ### Run tests
 
-Launch the custom script:
+Launch with:
 
 ```
-./test
+make test
+# verbose
+make testv
 ```
 
 It triggers tests in the project subfolders, setting appropriate environment variables for specific test behavior.
@@ -539,6 +541,8 @@ It triggers tests in the project subfolders, setting appropriate environment var
 ```
 go get -t -u ./...
 go mod tidy
+# or use Makefile
+make deps
 ```
 
 ## Using Docker
