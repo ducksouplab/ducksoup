@@ -165,6 +165,8 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 			ps.close("pc_closed")
 		case webrtc.PeerConnectionStateDisconnected:
 			ps.close("pc_disconnected")
+		case webrtc.PeerConnectionStateConnected:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("peer_connection_state_connected")
 		}
 		pc.logDebug().Msg("server_connection_state_" + s.String())
 	})
@@ -172,21 +174,21 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	// for logging
 
 	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
-		switch s {
-		case webrtc.SignalingStateStable:
-			ps.logDebug().Str("value", pc.printSelectedCandidatePair()).Msg("server_selected_candidate_pair")
-		default:
-		}
 		pc.logDebug().Msg("server_signaling_state_" + s.String())
 	})
 
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
 		switch s {
 		case webrtc.ICEConnectionStateDisconnected:
+			ps.logDebug().Msg("ice_connection_state_connected")
 			ps.shareOffer("server_ice_disconnected", true)
+		case webrtc.ICEConnectionStateConnected:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_connected")
+		case webrtc.ICEConnectionStateCompleted:
+			ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_completed")
 		default:
+			pc.logDebug().Msg("ice_connection_state_" + s.String())
 		}
-		pc.logDebug().Msg("server_ice_connection_state_" + s.String())
 	})
 
 	pc.OnICEGatheringStateChange(func(s webrtc.ICEGathererState) {
