@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/sequencing"
 	"github.com/ducksouplab/ducksoup/types"
@@ -184,9 +185,14 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 		return false
 	}
 
-	// channel that will be closed when the gathering of local candidates is complete
-	// needed especially when using DUCKSOUP_PUBLIC_IP as a host candidate
-	gatherComplete := webrtc.GatheringCompletePromise(ps.pc.PeerConnection)
+	var gatherComplete <-chan struct{}
+	// if we rely on a public IP, we need to gather candidates when creating the offer
+	waitForCandidatesGathering := len(env.PublicIP) > 0
+	if waitForCandidatesGathering {
+		// channel that will be closed when the gathering of local candidates is complete
+		// needed especially when using DUCKSOUP_PUBLIC_IP as a host candidate
+		gatherComplete = webrtc.GatheringCompletePromise(ps.pc.PeerConnection)
+	}
 
 	if err = pc.SetLocalDescription(offer); err != nil {
 		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("server_set_local_description_failed")
@@ -195,8 +201,13 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("server_set_local_description")
 	}
 
-	<-gatherComplete
-	offer = *ps.pc.LocalDescription()
+	// override offer if we had to wait for candidates gathering
+	if waitForCandidatesGathering {
+		ps.logDebug().Str("user", userId).Msg("server_candidates_gathering_waiting")
+		<-gatherComplete
+		ps.logDebug().Str("user", userId).Msg("server_candidates_gathering_complete")
+		offer = *ps.pc.LocalDescription()
+	}
 
 	offerString, err := json.Marshal(offer)
 	if err != nil {
