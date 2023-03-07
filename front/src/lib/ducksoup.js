@@ -403,7 +403,9 @@ class DuckSoup {
 
       if (message.kind === "offer") {
         const offer = looseJSONParse(message.payload);
-        console.debug(`[DuckSoup] server offer sdp (length ${message.payload.length}):\n${offer.sdp}`);
+        console.debug(
+          `[DuckSoup] server offer sdp (length ${message.payload.length}):\n${offer.sdp}`
+        );
 
         pc.setRemoteDescription(offer);
         // console.log("[DuckSoup] offer: ", offer);
@@ -422,19 +424,6 @@ class DuckSoup {
       } else if (message.kind === "start") {
         // set encoding parameters
         rampBitrate(pc);
-        // add listeners on first sender (likely the same info to be shared for audio and video)
-        const firstSender = pc.getSenders()[0];
-        if (firstSender) {
-          const { iceTransport } = firstSender.transport;
-          if (iceTransport && this._logLevel >= 2) {
-            // initial pair
-            this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
-            // change
-            iceTransport.addEventListener("selectedcandidatepairchange", () => {
-              this._debugCandidatePair(iceTransport.getSelectedCandidatePair());
-            });
-          }
-        }
         // unmute
         // stream.getTracks().forEach((track) => {
         //     track.enabled = true;
@@ -461,6 +450,7 @@ class DuckSoup {
       pc.onicecandidate = (e) => {
         if (!e.candidate) return;
         this._send("client_ice_candidate", e.candidate);
+        console.debug("[DuckSoup] client candidate:", e.candidate);
       };
 
       pc.ontrack = (event) => {
@@ -512,16 +502,27 @@ class DuckSoup {
         };
 
         pc.onnegotiationneeded = () => {
-          this._send(
-            "client_negotiation_needed",
-            pc.signalingState
-          );
+          this._send("client_negotiation_needed", pc.signalingState);
           console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
         };
 
         pc.oniceconnectionstatechange = () => {
-          this._send("client_ice_connection_state_" + pc.iceConnectionState.toString());
-          console.debug("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
+          const state = pc.iceConnectionState;
+          this._send("client_ice_connection_state_" + state);
+          if (state === "connected") {
+            // add listeners on first sender (likely the same info to be shared for audio and video)
+            const firstSender = pc.getSenders()[0];
+            if (firstSender) {
+              const { iceTransport } = firstSender.transport;
+              if (iceTransport && this._logLevel >= 2) {
+                const pair = iceTransport.getSelectedCandidatePair();
+                this._debugCandidatePair(pair);
+                console.debug(
+                  `[DuckSoup] selected candidate pair: client=${pair.local.candidate} server=${pair.remote.candidate}`
+                );
+              }
+            }
+          }
         };
 
         pc.onicegatheringstatechange = () => {
