@@ -196,6 +196,7 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	}
 
 	<-gatherComplete
+	offer = *ps.pc.LocalDescription()
 
 	offerString, err := json.Marshal(offer)
 	if err != nil {

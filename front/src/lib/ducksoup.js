@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.29");
+  console.log("[DuckSoup] v1.5.30");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -201,8 +201,8 @@ class DuckSoup {
   // API
 
   constructor(embedOptions, peerOptions) {
-    console.log("[DuckSoup] embedOptions: ", embedOptions);
-    console.log("[DuckSoup] peerOptions: ", peerOptions);
+    console.debug("[DuckSoup] embedOptions: ", embedOptions);
+    console.debug("[DuckSoup] peerOptions: ", peerOptions);
 
     const err = optionsFirstError(embedOptions, peerOptions);
     if (err) throw new Error(err);
@@ -403,9 +403,7 @@ class DuckSoup {
 
       if (message.kind === "offer") {
         const offer = looseJSONParse(message.payload);
-        console.log(
-          "[DuckSoup] offer (length: " + message.payload.length + ")"
-        );
+        console.debug(`[DuckSoup] server offer sdp (length ${message.payload.length}):\n${offer.sdp}`);
 
         pc.setRemoteDescription(offer);
         // console.log("[DuckSoup] offer: ", offer);
@@ -415,7 +413,7 @@ class DuckSoup {
         this._send("client_answer", answer);
       } else if (message.kind === "candidate") {
         const candidate = looseJSONParse(message.payload);
-        console.log("[DuckSoup] server candidate:", candidate);
+        console.debug("[DuckSoup] server candidate:", candidate);
         try {
           pc.addIceCandidate(candidate);
         } catch (error) {
@@ -466,7 +464,7 @@ class DuckSoup {
       };
 
       pc.ontrack = (event) => {
-        console.log(
+        console.debug(
           `[DuckSoup] on track (while connection state is ${pc.connectionState})`
         );
         if (this._mountEl) {
@@ -502,7 +500,7 @@ class DuckSoup {
       if (this._logLevel >= 2) {
         pc.onconnectionstatechange = () => {
           this._send("client_connection_state_changed", pc.connectionState);
-          // console.log("[DuckSoup] onconnectionstatechange:", pc.connectionState);
+          // console.debug("[DuckSoup] onconnectionstatechange:", pc.connectionState);
         };
 
         pc.onsignalingstatechange = () => {
@@ -510,7 +508,7 @@ class DuckSoup {
             "client_signaling_state_changed",
             pc.signalingState.toString()
           );
-          // console.log("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
+          // console.debug("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
         };
 
         pc.onnegotiationneeded = () => {
@@ -518,12 +516,12 @@ class DuckSoup {
             "client_negotiation_needed",
             pc.signalingState
           );
-          console.log("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
+          console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
         };
 
         pc.oniceconnectionstatechange = () => {
           this._send("client_ice_connection_state_" + pc.iceConnectionState.toString());
-          console.log("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
+          console.debug("[DuckSoup] oniceconnectionstatechange:", pc.iceConnectionState.toString());
         };
 
         pc.onicegatheringstatechange = () => {
@@ -531,7 +529,7 @@ class DuckSoup {
             "client_ice_gathering_state_changed",
             pc.iceGatheringState.toString()
           );
-          // console.log("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
+          // console.debug("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
         };
 
         pc.onicecandidateerror = (e) => {
@@ -539,7 +537,7 @@ class DuckSoup {
             "client_ice_candidate_failed",
             `${e.url}#${e.errorCode}: ${e.errorText}`
           );
-          // console.log("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
+          // console.debug("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
         };
       }
     };
@@ -612,7 +610,7 @@ class DuckSoup {
               `${newKeyFramesEncoded}`
             );
             this._info.keyFramesEncoded = newKeyFramesEncoded;
-            //console.log("[DuckSoup] encoded KFs", newKeyFramesEncoded);
+            //console.debug("[DuckSoup] encoded KFs", newKeyFramesEncoded);
           }
         }
         if (report.type === "inbound-rtp" && report.kind === "video") {
@@ -627,7 +625,7 @@ class DuckSoup {
               `${newKeyFramesDecoded}`
             );
             this._info.keyFramesDecoded = newKeyFramesDecoded;
-            //console.log("[DuckSoup] decoded KFs", newKeyFramesDecoded);
+            //console.debug("[DuckSoup] decoded KFs", newKeyFramesDecoded);
           }
         }
       });

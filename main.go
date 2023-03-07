@@ -25,7 +25,7 @@ func init() {
 }
 
 func logState() {
-	log.Info().Str("context", "init").Str("version", "v1.5.29").Msg("app_started")
+	log.Info().Str("context", "init").Str("version", "v1.5.30").Msg("app_started")
 	log.Info().Str("context", "init").Str("value", env.Mode).Msg("DUCKSOUP_MODE")
 	log.Info().Str("context", "init").Str("value", env.Port).Msg("DUCKSOUP_PORT")
 	log.Info().Str("context", "init").Str("value", env.WebPrefix).Msg("DUCKSOUP_WEB_PREFIX")
