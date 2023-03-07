@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.0 AS builder
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.1 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -61,7 +61,7 @@ RUN yarn
 RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.0 AS final
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.1 AS final
 
 RUN apt-get update && apt-get upgrade -y
 

@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.0
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.1
 
 RUN apt-get update && apt-get upgrade -y
 
