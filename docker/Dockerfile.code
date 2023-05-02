@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.1
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.2
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential git
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.20.1.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="000a5b1fca4f75895f78befeb2eecf10bfff3c428597f3f1e69133b63b911b02"
+ENV GO_ARCHIVE=go1.20.3.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="979694c2c25c735755bf26f4f45e19e64e4811d661dd07b8c010f7a8e18adfca"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
