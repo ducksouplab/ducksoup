@@ -382,7 +382,6 @@ func (ps *peerServer) loop() {
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				ps.logError().Err(err).Msg("unmarshal_client_control_failed")
 			} else {
-				ps.logInfo().Str(">", fmt.Sprintf("%+v", payload)).Msg(">>>>>>>>>>>>>>>>>>>")
 				payload.fromUserId = ps.userId
 				if targetPs, ok := ps.i.peerServerIndex[payload.UserId]; ok { // control other ps in same interaction
 					go targetPs.controlFx(payload)
