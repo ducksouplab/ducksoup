@@ -50,7 +50,8 @@ func init() {
 		NVCodec = true
 	}
 	// uints
-	LogLevel, err := strconv.Atoi(os.Getenv("DUCKSOUP_LOG_LEVEL"))
+	var err error
+	LogLevel, err = strconv.Atoi(os.Getenv("DUCKSOUP_LOG_LEVEL"))
 
 	if err != nil {
 		LogLevel = 3
