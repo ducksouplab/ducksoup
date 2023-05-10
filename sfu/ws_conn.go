@@ -38,10 +38,13 @@ type messageIn struct {
 }
 
 type controlPayload struct {
+	UserId   string  `json:"userId"`
 	Name     string  `json:"name"`
 	Property string  `json:"property"`
 	Value    float32 `json:"value"`
 	Duration int     `json:"duration"`
+	// not from unmarshalling
+	fromUserId string
 }
 
 type polyControlPayload struct {
@@ -49,7 +52,6 @@ type polyControlPayload struct {
 	Property string `json:"property"`
 	Kind     string `json:"kind"`
 	Value    string `json:"value"`
-	Duration int    `json:"duration"`
 }
 
 // remove special characters like / . *

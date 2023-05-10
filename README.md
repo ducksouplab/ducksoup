@@ -123,11 +123,12 @@ Instantiation is an async operation : `const dsPlayer = await DuckSoup.render(mo
 
 The following methods are available on a DuckSoup player:
 
-- `controlFx(effectName, property, value, transitionDuration)` to update the property of the effect named in `peerOptions#audioFx`. For instance with an `audioFx` of `"element property1=1.0 name=fx"`:
+- `controlFx(effectName, property, value, transitionDuration, userId)` to update the property of the effect named in `peerOptions#audioFx`. For instance with an `audioFx` of `"element property1=1.0 name=fx"`:
   - `effectName` (string) is `fx`
   - `property` (string) is `property1`
   - `value` (float) sets a new value, for instance `1.1`
   - `transitionDuration` (integer counting ms, defaults to 0, expect better results for 200 and above) is the optional duration of the interpolation between the old and new values
+  - `userId` (optional, if not set defaults to self peer/user) is used to control a property on an effect applied to another user in the same interaction
 - `stop()` to stop media streams and close communication with server. Note that players are running for a limited duration (set by `peerOptions#duration` which is capped server-side) and most of the time you don't need to use this method
 - `log(kind, payload)` to generate a server-side log (`kind` and `payload` will be stringified, `payload` is optional)
 
@@ -268,9 +269,9 @@ Depending on `DUCKSOUP_LOG_LEVEL`, here are the generated logs (the default valu
 
 - `0` no log
 - `1` errors (and GStreamer warnings)
-- `2` server related info and above
-- `3` client related info, in/out/encoding bitrates info and above
-- `4` debug logs (including TWCC reports) and above
+- `2` server info and above
+- `3` server debug, in/out/encoding bitrates, client info and above
+- `4` trace logs (including TWCC reports) and above
 
 Please note that while we rely on zerolog, we don't use the same semantics regarding levels, their index and meaning.
 

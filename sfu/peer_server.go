@@ -262,6 +262,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 	}
 
 	ps.logInfo().
+		Str("from", payload.fromUserId).
 		Str("context", "track").
 		Str("name", payload.Name).
 		Str("property", payload.Property).
@@ -381,9 +382,13 @@ func (ps *peerServer) loop() {
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
 				ps.logError().Err(err).Msg("unmarshal_client_control_failed")
 			} else {
-				go func() {
-					ps.controlFx(payload)
-				}()
+				ps.logInfo().Str(">", fmt.Sprintf("%+v", payload)).Msg(">>>>>>>>>>>>>>>>>>>")
+				payload.fromUserId = ps.userId
+				if targetPs, ok := ps.i.peerServerIndex[payload.UserId]; ok { // control other ps in same interaction
+					go targetPs.controlFx(payload)
+				} else { // default case: control self ps
+					go ps.controlFx(payload)
+				}
 			}
 		case "client_polycontrol":
 			payload := polyControlPayload{}
@@ -397,7 +402,6 @@ func (ps *peerServer) loop() {
 						Str("name", payload.Name).
 						Str("property", payload.Property).
 						Str("value", payload.Value).
-						Int("duration", payload.Duration).
 						Msg("client_fx_control")
 				}()
 			}

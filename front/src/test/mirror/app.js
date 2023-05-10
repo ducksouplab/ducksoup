@@ -161,6 +161,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       settings[key] = formData.get(key);
     }
     start(settings);
+    // additional form filling for /test/interaction page
+    targetAudioFx = document.getElementById("input-audio-user-id");
+    targetVideoFx = document.getElementById("input-video-user-id");
+    if(targetAudioFx) targetAudioFx.value = settings.userId;
+    if(targetVideoFx) targetVideoFx.value = settings.userId;
   });
 
   document.getElementById("stop").addEventListener("click", () => {
@@ -185,7 +190,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           e.target.querySelector("[name='duration']").value,
           10
         );
-        state.ducksoup.controlFx(type + "_fx", property, value, duration);
+        const userIdEl = e.target.querySelector("[name='userId']");
+        console.log(",,,", userIdEl)
+        if (userIdEl) {
+          state.ducksoup.controlFx(type + "_fx", property, value, duration, userIdEl.value);
+        } else {
+          state.ducksoup.controlFx(type + "_fx", property, value, duration);
+        }
       }
     });
   }

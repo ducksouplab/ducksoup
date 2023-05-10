@@ -21,7 +21,6 @@ func init() {
 	}
 
 	helpers.EnsureDir("./data")
-
 }
 
 func logState() {

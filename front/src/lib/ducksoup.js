@@ -251,13 +251,14 @@ class DuckSoup {
     };
   }
 
-  controlFx(name, property, value, duration) {
-    if (!this._checkControl(name, property, value, duration)) return;
+  controlFx(name, property, value, duration, userId) {
+    if (!this._checkControl(name, property, value, duration, userId)) return;
     this._send("client_control", {
       name,
       property,
       value,
       ...(duration && { duration }),
+      ...(userId && { userId }),
     });
   }
 
@@ -318,14 +319,17 @@ class DuckSoup {
     }
   }
 
-  _checkControl(name, property, value, duration) {
+  _checkControl(name, property, value, duration, userId) {
     const durationValid =
       typeof duration === "undefined" || typeof duration === "number";
+    const userIdValid =
+      typeof userId === "undefined" || typeof userId === "string";
     return (
       typeof name === "string" &&
       typeof property === "string" &&
       typeof value === "number" &&
-      durationValid
+      durationValid &&
+      userIdValid
     );
   }
 
