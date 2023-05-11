@@ -37,6 +37,6 @@ func NewLinearInterpolator(initialValue float32, finalValue float32, durationMs 
 }
 
 func (t *LinearInterpolator) Stop() {
-	close(t.C)
 	t.ticker.Stop()
+	close(t.C)
 }

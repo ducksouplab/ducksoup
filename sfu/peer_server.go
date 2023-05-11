@@ -253,14 +253,6 @@ func (ps *peerServer) close(cause string) {
 }
 
 func (ps *peerServer) controlFx(payload controlPayload) {
-	interpolatorId := payload.Name + payload.Property
-	interpolator := ps.interpolatorIndex[interpolatorId]
-
-	if interpolator != nil {
-		// an interpolation is already running for this pipeline, effect and property
-		interpolator.Stop()
-	}
-
 	ps.logInfo().
 		Str("from", payload.fromUserId).
 		Str("context", "track").
@@ -273,33 +265,40 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 	duration := payload.Duration
 	if duration == 0 {
 		ps.pipeline.SetFxProp(payload.Name, payload.Property, payload.Value)
-	} else {
-		if duration > maxInterpolatorDuration {
-			duration = maxInterpolatorDuration
-		}
-		oldValue := ps.pipeline.GetFxProp(payload.Name, payload.Property)
-		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
+		return
+	}
+	if duration > maxInterpolatorDuration {
+		duration = maxInterpolatorDuration
+	}
 
+	interpolatorId := payload.Name + payload.Property
+
+	ps.Lock()
+	interpolator := ps.interpolatorIndex[interpolatorId]
+	if interpolator != nil {
+		// an interpolation is already running for this pipeline, effect and property
+		interpolator.Stop()
+	}
+	oldValue := ps.pipeline.GetFxProp(payload.Name, payload.Property)
+	newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
+	ps.interpolatorIndex[interpolatorId] = newInterpolator
+	ps.Unlock()
+
+	defer func() {
 		ps.Lock()
-		ps.interpolatorIndex[interpolatorId] = newInterpolator
+		delete(ps.interpolatorIndex, interpolatorId)
 		ps.Unlock()
+	}()
 
-		defer func() {
-			ps.Lock()
-			delete(ps.interpolatorIndex, interpolatorId)
-			ps.Unlock()
-		}()
-
-		for {
-			select {
-			case <-ps.done():
+	for {
+		select {
+		case <-ps.done():
+			return
+		case currentValue, more := <-newInterpolator.C:
+			if more {
+				ps.pipeline.SetFxProp(payload.Name, payload.Property, currentValue)
+			} else {
 				return
-			case currentValue, more := <-newInterpolator.C:
-				if more {
-					ps.pipeline.SetFxProp(payload.Name, payload.Property, currentValue)
-				} else {
-					return
-				}
 			}
 		}
 	}

@@ -40,6 +40,28 @@ const parseIntWithFallback = (raw, fallback) => {
   return isNaN(parsed) ? fallback : parsed;
 };
 
+const parseControlFxSequence = (properties, values, durations) => {
+  let sequence = properties.map((p, i) => ({ property: p, value: values[i], duration: durations[i] }));
+  sequence = sequence.filter(({duration}) => !!duration);
+  sequence = sequence.map((fx) => {
+    if (fx.property.length == 0 || isNaN(fx.value)) return {...fx, onlyWait: true};
+    return fx;
+  });
+  return sequence;
+};
+
+const playControlFxSequence = (type, sequence) => {
+  const next = sequence.shift();
+  if (typeof next === "undefined") return;
+
+  setTimeout(() => {
+    if(!next.onlyWait) {
+      state.ducksoup.controlFx(type, next.property, next.value, next.duration);
+    }
+    playControlFxSequence(type, sequence); // sequence has been shifted
+  }, next.duration);
+};
+
 const start = async ({
   signalingUrl,
   isMirror: im,
@@ -161,7 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       settings[key] = formData.get(key);
     }
     start(settings);
-    // additional form filling for /test/interaction page
+    // additional form filling for /test/interaction/ page
     targetAudioFx = document.getElementById("input-audio-user-id");
     targetVideoFx = document.getElementById("input-video-user-id");
     if(targetAudioFx) targetAudioFx.value = settings.userId;
@@ -175,6 +197,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     hide(".show-when-running");
   });
 
+  // /test/mirror/ control fx
+  const sequenceFxForms = document.querySelectorAll("form.fx-sequence");
+
+  for (const form of sequenceFxForms) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (state.ducksoup) {
+        const type = e.target.querySelector("[name='type']").value;
+        const properties = [...e.target.querySelectorAll("[name='property[]']")].map(el => el.value);
+        const values = [...e.target.querySelectorAll("[name='value[]']")].map(el => parseFloat(el.value));
+        const durations = [...e.target.querySelectorAll("[name='duration[]']")].map(el => parseInt(el.value, 10));
+        const sequence = parseControlFxSequence(properties, values, durations);
+        playControlFxSequence(type, sequence);
+      }
+    });
+  }
+
+  // /test/interaction/ control fx
   const fxForms = document.querySelectorAll("form.fx");
 
   for (let i = 0; i < fxForms.length; i++) {
@@ -191,7 +231,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           10
         );
         const userIdEl = e.target.querySelector("[name='userId']");
-        console.log(",,,", userIdEl)
         if (userIdEl) {
           state.ducksoup.controlFx(type + "_fx", property, value, duration, userIdEl.value);
         } else {

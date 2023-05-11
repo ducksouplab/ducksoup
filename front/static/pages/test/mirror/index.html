@@ -25,25 +25,67 @@
               <small>property</small>
             </div>
             <div class="col-3">
-              <small>value</small>
+              <small>float value</small>
             </div>
             <div class="col-3">
               <small>transition</small>
             </div>
           </div>
-          <div class="mb-3">
-            <form class="fx">
-              <input type="hidden" name="type" value="audio">
+          <form class="fx-sequence">
+            <input type="hidden" name="type" value="audio_fx">
+            <div class="mb-3">
               <div class="row g-2">
                 <div class="col-3">
-                  <input type="text" class="form-control" name="property">
+                  <input type="text" class="form-control" name="property[]">
                 </div>
                 <div class="col-3">
-                  <input type="text" class="form-control" name="value">
+                  <input type="text" class="form-control" name="value[]">
                 </div>
                 <div class="col-4">
                   <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
                     <span class="input-group-text">ms</span>
                   </div>
                 </div>
@@ -51,93 +93,75 @@
                   <button type="submit" class="btn btn-outline-secondary">Send</button>
                 </div>
               </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="audio">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="audio">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="audio">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-          </div>
+            </div>
+          </form>
           <p>Update Video FX</p>
           <div class="row">
             <div class="col-3">
               <small>property</small>
             </div>
             <div class="col-3">
-              <small>value</small>
+              <small>float value</small>
             </div>
             <div class="col-3">
               <small>transition</small>
             </div>
           </div>
-          <div class="mb-3">
-            <form class="fx">
-              <input type="hidden" name="type" value="video">
+          <form class="fx-sequence">
+            <input type="hidden" name="type" value="video_fx">
+            <div class="mb-3">
               <div class="row g-2">
                 <div class="col-3">
-                  <input type="text" class="form-control" name="property">
+                  <input type="text" class="form-control" name="property[]">
                 </div>
                 <div class="col-3">
-                  <input type="text" class="form-control" name="value">
+                  <input type="text" class="form-control" name="value[]">
                 </div>
                 <div class="col-4">
                   <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
+                    <span class="input-group-text">ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-2">
+                <div class="col-3">
+                  <input type="text" class="form-control" name="property[]">
+                </div>
+                <div class="col-3">
+                  <input type="text" class="form-control" name="value[]">
+                </div>
+                <div class="col-4">
+                  <div class="input-group">
+                    <input type="test" class="form-control" name="duration[]" value="">
                     <span class="input-group-text">ms</span>
                   </div>
                 </div>
@@ -145,68 +169,8 @@
                   <button type="submit" class="btn btn-outline-secondary">Send</button>
                 </div>
               </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="video">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="video">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-            <form class="fx">
-              <input type="hidden" name="type" value="video">
-              <div class="row g-2">
-                <div class="col-3">
-                  <input type="text" class="form-control" name="property">
-                </div>
-                <div class="col-3">
-                  <input type="text" class="form-control" name="value">
-                </div>
-                <div class="col-4">
-                  <div class="input-group">
-                    <input type="test" class="form-control" name="duration" value="1000">
-                    <span class="input-group-text">ms</span>
-                  </div>
-                </div>
-                <div class="col-2">
-                  <button type="submit" class="btn btn-outline-secondary">Send</button>
-                </div>
-              </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
         <form id="settings">
           <input type="hidden" name="isMirror" value="true">
