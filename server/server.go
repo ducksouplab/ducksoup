@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"flag"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/ducksouplab/ducksoup/env"
@@ -22,7 +23,6 @@ var (
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			log.Info().Str("context", "peer").Str("origin", origin).Msg("websocket_upgraded")
 			return helpers.Contains(env.AllowedWSOrigins, origin)
 		},
 	}
@@ -36,6 +36,9 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Str("context", "peer").Err(err).Msg("upgrade_websocket_failed")
 		return
 	}
+	origin := r.Header.Get("Origin")
+	href, _ := url.QueryUnescape(r.FormValue("href"))
+	log.Info().Str("context", "peer").Str("origin", origin).Str("href", href).Msg("websocket_upgraded")
 
 	if r.FormValue("type") == "stats" {
 		// special path: ws for stats
@@ -44,7 +47,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// main path: ws for peer signaling
-		sfu.RunPeerServer(r.Header.Get("Origin"), unsafeConn) // blocking
+		sfu.RunPeerServer(origin, unsafeConn) // blocking
 	}
 }
 

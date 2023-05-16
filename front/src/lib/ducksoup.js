@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.30");
+  console.log("[DuckSoup] v1.5.31");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -384,7 +384,8 @@ class DuckSoup {
     this._stream = stream;
 
     // Signaling
-    const ws = new WebSocket(this._signalingUrl);
+    const { href } = window.location;  
+    const ws = new WebSocket(this._signalingUrl + '?href=' + encodeURI(href));
 
     this._ws = ws;
 

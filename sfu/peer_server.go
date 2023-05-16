@@ -440,12 +440,14 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	defer ws.Close()
 
 	// first message must be a join request
+	log.Info().Str("context", "peer").Msg("peer_server_waiting_for_join_payload")
 	joinPayload, err := ws.readJoin(origin)
 	if err != nil {
 		ws.send("error-join")
 		log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
 		return
 	}
+	log.Info().Str("context", "peer").Msg("peer_server_join_payload_ok")
 
 	userId := joinPayload.UserId
 	namespace := joinPayload.Namespace
