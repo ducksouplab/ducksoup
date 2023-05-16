@@ -19,7 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const maxWaitingForJoin = 5 * time.Second
+const maxWaitingForJoin = 10 * time.Second
 
 type peerServer struct {
 	sync.Mutex
