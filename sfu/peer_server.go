@@ -448,7 +448,6 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 	go func() {
 		joinPayload, err := ws.readJoin(origin)
 		if err != nil {
-			ws.send("error-join")
 			log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
 			return
 		}
