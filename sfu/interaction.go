@@ -1,6 +1,7 @@
 package sfu
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -149,18 +150,54 @@ func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	}
 }
 
-func (i *interaction) userCount() int {
-	return len(i.connectedIndex)
+func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
+	i.Lock()
+	defer i.Unlock()
+
+	userId := join.UserId
+	connected, ok := i.connectedIndex[userId]
+	if ok {
+		// ok -> same user has previously connected
+		if connected {
+			// user is currently connected (second browser tab or device) -> forbidden
+			return "error", errors.New("duplicate")
+		} else {
+			// reconnects (for instance: page reload)
+			i.connectedIndex[userId] = true
+			i.joinedCountIndex[userId]++
+			return "reconnection", nil
+		}
+	} else if len(i.connectedIndex) == i.size { // length of users that have connected (even if aren't still)
+		// interaction limit reached
+		return "error", errors.New("full")
+	} else {
+		// new user joined existing interaction: normal path! (2)
+		i.connectedIndex[userId] = true
+		i.joinedCountIndex[userId] = 1
+		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")
+		return "existing-interaction", nil
+	}
 }
 
-func (i *interaction) connectedUserCount() (count int) {
-	return len(i.peerServerIndex)
+func (i *interaction) unguardedConnectedUserCount() (count int) {
+	// don't rely on i.peerServerIndex, which is useful only after i.connectPeerServer(ps)
+	// then prefer connectedIndex
+
+	for _, isConnected := range i.connectedIndex {
+		if isConnected {
+			count++
+		}
+	}
+	return
 }
 
 // users are connected but some out tracks may still be in the process of
 // being attached and (not) ready (yet)
 func (i *interaction) allUsersConnected() bool {
-	return i.connectedUserCount() == i.size
+	i.Lock()
+	defer i.Unlock()
+
+	return i.unguardedConnectedUserCount() == i.size
 }
 
 func (i *interaction) filePrefix(userId string) string {
@@ -333,7 +370,7 @@ func (i *interaction) disconnectUser(userId string) {
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
-		if i.connectedUserCount() == 0 && !i.running && !i.deleted {
+		if i.unguardedConnectedUserCount() == 0 && !i.running && !i.deleted {
 			i.abortTimer.Stop()
 			i.unguardedDelete()
 		}

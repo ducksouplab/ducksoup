@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.31");
+  console.log("[DuckSoup] v1.5.32");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -404,12 +404,13 @@ class DuckSoup {
 
     ws.onmessage = async (event) => {
       //console.log("[DuckSoup] ws.onmessage ", event);
-      let message = looseJSONParse(event.data);
+      const message = looseJSONParse(event.data);
+      const { kind, payload } = message;
 
-      if (message.kind === "offer") {
-        const offer = looseJSONParse(message.payload);
+      if (kind === "offer") {
+        const offer = looseJSONParse(payload);
         console.debug(
-          `[DuckSoup] server offer sdp (length ${message.payload.length}):\n${offer.sdp}`
+          `[DuckSoup] server offer sdp (length ${payload.length}):\n${offer.sdp}`
         );
 
         pc.setRemoteDescription(offer);
@@ -418,15 +419,15 @@ class DuckSoup {
         answer.sdp = processSDP(answer.sdp);
         pc.setLocalDescription(answer);
         this._send("client_answer", answer);
-      } else if (message.kind === "candidate") {
-        const candidate = looseJSONParse(message.payload);
+      } else if (kind === "candidate") {
+        const candidate = looseJSONParse(payload);
         console.debug("[DuckSoup] server candidate:", candidate);
         try {
           pc.addIceCandidate(candidate);
         } catch (error) {
           console.error(error);
         }
-      } else if (message.kind === "start") {
+      } else if (kind === "start") {
         // set encoding parameters
         rampBitrate(pc);
         // unmute
@@ -439,13 +440,15 @@ class DuckSoup {
           console.log(`[DuckSoup] start stats`);
           this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
         }
-      } else if (message.kind === "ending") {
+      } else if (kind === "ending") {
         this._callback({ kind: "ending" });
-      } else if (message.kind === "files") {
+      } else if (kind === "files") {
         this._callback(message);
-      } else if (message.kind.startsWith("error")) {
+      } else if (kind.startsWith("error")) {
         this._callback(message);
         this.stop(4000);
+      } if (kind === "joined") {
+        this._callback(message);
       }
     };
 

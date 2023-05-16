@@ -150,7 +150,6 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	ws.interactionName = join.InteractionName
 	ws.userId = join.UserId
 	ws.namespace = join.Namespace
-
 	return
 }
 

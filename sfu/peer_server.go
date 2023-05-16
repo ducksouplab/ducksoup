@@ -19,6 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const maxWaitingForJoin = 5 * time.Second
+
 type peerServer struct {
 	sync.Mutex
 	userId          string
@@ -441,36 +443,50 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 
 	// first message must be a join request
 	log.Info().Str("context", "peer").Msg("peer_server_waiting_for_join_payload")
-	joinPayload, err := ws.readJoin(origin)
-	if err != nil {
-		ws.send("error-join")
-		log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
+
+	joinCh := make(chan types.JoinPayload)
+	go func() {
+		joinPayload, err := ws.readJoin(origin)
+		if err != nil {
+			ws.send("error-join")
+			log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
+			return
+		}
+		log.Info().Str("context", "peer").Msg("peer_server_join_payload_ok")
+		joinCh <- joinPayload
+	}()
+
+	select {
+	case <-time.After(maxWaitingForJoin):
+		log.Error().Str("context", "signaling").Msg("join_payload_too_late")
+		ws.Close()
+	case joinPayload := <-joinCh:
+		// user might have disconnected
+		userId := joinPayload.UserId
+		namespace := joinPayload.Namespace
+		interactionName := joinPayload.InteractionName
+
+		r, msg, err := interactionStoreSingleton.join(joinPayload)
+		if err != nil {
+			// joinInteraction err is meaningful to client
+			ws.send(fmt.Sprintf("error-%s", err))
+			log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("join_failed")
+			return
+		}
+		ws.sendWithPayload("joined", msg)
+
+		pc, err := newPeerConn(joinPayload, r)
+		if err != nil {
+			ws.send("error-peer-connection")
+			log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("create_pc_failed")
+			return
+		}
+
+		ps := newPeerServer(joinPayload, r, pc, ws)
+
+		log.Info().Str("context", "peer").Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("peer_server_started")
+
+		ps.loop() // blocking
 		return
 	}
-	log.Info().Str("context", "peer").Msg("peer_server_join_payload_ok")
-
-	userId := joinPayload.UserId
-	namespace := joinPayload.Namespace
-	interactionName := joinPayload.InteractionName
-
-	r, err := interactionStoreSingleton.join(joinPayload)
-	if err != nil {
-		// joinInteraction err is meaningful to client
-		ws.send(fmt.Sprintf("error-%s", err))
-		log.Error().Str("context", "signaling").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("join_failed")
-		return
-	}
-
-	pc, err := newPeerConn(joinPayload, r)
-	if err != nil {
-		ws.send("error-peer-connection")
-		log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("create_pc_failed")
-		return
-	}
-
-	ps := newPeerServer(joinPayload, r, pc, ws)
-
-	log.Info().Str("context", "peer").Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("peer_server_started")
-
-	ps.loop() // blocking
 }
