@@ -317,6 +317,7 @@ func (ps *peerServer) loop() {
 			return
 		case <-ps.i.done():
 			ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
+			ps.ws.send("end")
 			ps.close("interaction_ended")
 			return
 		case <-ps.done():

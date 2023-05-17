@@ -237,7 +237,7 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
-			if p.videoOptions.nvcodec == true {
+			if p.videoOptions.nvcodec {
 				// https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
 				prop = "max-bitrate"
 			}
@@ -292,5 +292,10 @@ func (p *Pipeline) SetFxPolyProp(name string, prop string, kind string, value st
 			cValue := C.ulong(v)
 			C.gstSetPropUint64(p.cPipeline, cName, cProp, cValue)
 		}
+	case "string":
+		cValue := C.CString(value)
+		defer C.free(unsafe.Pointer(cValue))
+
+		C.gstSetPropString(p.cPipeline, cName, cProp, cValue)
 	}
 }

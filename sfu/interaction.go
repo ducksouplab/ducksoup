@@ -50,7 +50,7 @@ type interaction struct {
 	namespace    string
 	name         string // public name
 	size         int
-	duration     int
+	duration     time.Duration
 	neededTracks int
 	ssrcs        []uint32
 	// log
@@ -68,11 +68,11 @@ func generateId(join types.JoinPayload) string {
 
 func newInteraction(id string, join types.JoinPayload) *interaction {
 	// process duration
-	duration := join.Duration
-	if duration < 1 {
-		duration = DefaultDuration
-	} else if duration > MaxDuration {
-		duration = MaxDuration
+	durationInSeconds := join.Duration
+	if durationInSeconds < 1 {
+		durationInSeconds = DefaultDuration
+	} else if durationInSeconds > MaxDuration {
+		durationInSeconds = MaxDuration
 	}
 
 	// process size
@@ -110,7 +110,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		id:                  id,
 		name:                join.InteractionName,
 		size:                size,
-		duration:            duration,
+		duration:            time.Duration(durationInSeconds) * time.Second,
 		neededTracks:        size * TracksPerPeer,
 		ssrcs:               []uint32{},
 		abortTimer:          time.NewTimer(time.Duration(AbortLimit) * time.Second),
@@ -226,7 +226,7 @@ func (i *interaction) start() {
 	i.startedAt = time.Now()
 	// send start to all peers
 	for _, ps := range i.peerServerIndex {
-		go ps.ws.send("start")
+		go ps.ws.sendWithPayload("start", i.remainingSeconds())
 	}
 	go i.gracefulCountdown()
 }
@@ -262,7 +262,7 @@ func (i *interaction) abortCountdown() {
 // ends room when its duration has been reached
 func (i *interaction) gracefulCountdown() {
 	// blocking "end" event and delete
-	i.gracefulTimer = time.NewTimer(time.Duration(i.duration) * time.Second)
+	i.gracefulTimer = time.NewTimer(i.duration)
 	<-i.gracefulTimer.C
 
 	i.Lock()
@@ -280,7 +280,7 @@ func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *web
 	if isAlreadyReady {
 		// reconnection case, then send start only once (check for "audio" for instance)
 		if remoteTrack.Kind().String() == "audio" {
-			go fromPs.ws.send("start")
+			go fromPs.ws.sendWithPayload("start", i.remainingSeconds())
 		}
 		return
 	}
@@ -400,13 +400,18 @@ func (i *interaction) files() map[string][]string {
 	return i.filesIndex
 }
 
+func (i *interaction) remainingSeconds() int {
+	elapsed := time.Since(i.startedAt)
+	return int(i.duration.Seconds() - elapsed.Seconds())
+}
+
 func (i *interaction) endingDelay() (delay int) {
 	i.RLock()
 	defer i.RUnlock()
 
 	elapsed := time.Since(i.startedAt)
 
-	remaining := i.duration - int(elapsed.Seconds())
+	remaining := int(i.duration.Seconds() - elapsed.Seconds())
 	delay = remaining - Ending
 	if delay < 1 {
 		delay = 1

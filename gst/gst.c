@@ -197,7 +197,6 @@ void gstStartPipeline(GstElement *pipeline)
     // gst_object_unref(audio_rtcp_pad);
     // gst_object_unref(video_rtcp_pad);
 
-
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
 
@@ -332,6 +331,20 @@ guint64 gstGetPropUint64(GstElement *pipeline, char *name, char *prop) {
 }
 
 void gstSetPropUint64(GstElement *pipeline, char *name, char *prop, guint64 value)
+{
+    GstElement* el;
+
+    el = gst_bin_get_by_name(GST_BIN(pipeline), name);
+    
+    if(el) {
+        g_object_set(el, prop, value, NULL);
+        gst_object_unref(el);
+    }
+}
+
+// char* get/set
+
+void gstSetPropString(GstElement *pipeline, char *name, char *prop, char *value)
 {
     GstElement* el;
 

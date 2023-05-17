@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.32");
+  console.log("[DuckSoup] v1.5.34");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -269,6 +269,7 @@ class DuckSoup {
   }
 
   stop(code = 1000) {
+    if (this.stopped) return;
     if (this._ws) {
       this._send("stop"); // will stop server ressources faster that _stopRTC
       this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
@@ -352,6 +353,7 @@ class DuckSoup {
     if (this._pc) {
       this._pc.close();
     }
+    this.stopped = true;
   }
 
   _debugCandidatePair(pair) {
@@ -390,20 +392,20 @@ class DuckSoup {
     this._ws = ws;
 
     ws.onclose = (event) => {
-      console.log("[DuckSoup] ws.onclose ", event);
-      this._callback("closed");
+      console.debug("[DuckSoup] ws.onclose ", event);
+      this._callback({ kind: "closed" });
       this._stopRTC();
       if (this._statsIntervalId) clearInterval(this._statsIntervalId);
     };
 
     ws.onerror = (event) => {
-      console.log("[DuckSoup] ws.onerror ", event);
+      console.debug("[DuckSoup] ws.onerror ", event);
       this._callback({ kind: "error", payload: event.data });
       this.stop(4000); // used as error
     };
 
     ws.onmessage = async (event) => {
-      //console.log("[DuckSoup] ws.onmessage ", event);
+      //console.debug("[DuckSoup] ws.onmessage ", event);
       const message = looseJSONParse(event.data);
       const { kind, payload } = message;
 
@@ -414,7 +416,7 @@ class DuckSoup {
         );
 
         pc.setRemoteDescription(offer);
-        // console.log("[DuckSoup] offer: ", offer);
+        // console.debug("[DuckSoup] offer: ", offer);
         const answer = await pc.createAnswer();
         answer.sdp = processSDP(answer.sdp);
         pc.setLocalDescription(answer);
@@ -434,20 +436,17 @@ class DuckSoup {
         // stream.getTracks().forEach((track) => {
         //     track.enabled = true;
         // });
-        this._callback({ kind: "start" }, true); // force with true since player is not already running
+        this._callback(message, true); // force with true since player is not already running
         // Getting peerconnection stats is needed either for stats or debug option
         if (this._stats || this._logLevel >= 1) {
-          console.log(`[DuckSoup] start stats`);
+          console.debug(`[DuckSoup] start stats`);
           this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
         }
-      } else if (kind === "ending") {
-        this._callback({ kind: "ending" });
-      } else if (kind === "files") {
-        this._callback(message);
       } else if (kind.startsWith("error")) {
         this._callback(message);
         this.stop(4000);
-      } if (kind === "joined") {
+      } if (["joined", "ending", "files", "end"].includes(kind)) {
+        // just forward
         this._callback(message);
       }
     };

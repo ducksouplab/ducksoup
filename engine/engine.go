@@ -21,6 +21,11 @@ type sfuConfig struct {
 	}
 }
 
+const (
+	portMin = 32768
+	portMax = 60999
+)
+
 var (
 	defaultBitrate    uint64
 	videoRTCPFeedback []webrtc.RTCPFeedback
@@ -158,6 +163,7 @@ func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
+	s.SetEphemeralUDPPortRange(portMin, portMax)
 
 	// initialize media engine
 	m := &webrtc.MediaEngine{}

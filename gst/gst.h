@@ -27,6 +27,7 @@ gint gstGetPropInt(GstElement *pipeline, char *elName, char *elProp);
 void gstSetPropInt(GstElement *pipeline, char *elName, char *elProp, gint elValue);
 guint64 gstGetPropUint64(GstElement *pipeline, char *name, char *prop);
 void gstSetPropUint64(GstElement *pipeline, char *name, char *prop, guint64 value);
+void gstSetPropString(GstElement *pipeline, char *name, char *prop, char *value);
 
 // void gstPushRTCPBuffer(char *name, GstElement *pipeline, void *buffer, int len);
 
