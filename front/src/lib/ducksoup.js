@@ -328,7 +328,7 @@ class DuckSoup {
     return (
       typeof name === "string" &&
       typeof property === "string" &&
-      typeof value === "number" &&
+      (typeof value === "number" || typeof value === "string") &&
       durationValid &&
       userIdValid
     );
