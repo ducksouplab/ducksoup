@@ -10,10 +10,7 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/interceptor/pkg/gcc"
-	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/interceptor/pkg/packetdump"
-	"github.com/pion/interceptor/pkg/report"
-	"github.com/pion/interceptor/pkg/twcc"
 	"github.com/pion/rtcp"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
@@ -24,11 +21,11 @@ import (
 // adapted from https://github.com/pion/webrtc/blob/v3.1.2/interceptor.go
 func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
 
-	if err := configureNack(mediaEngine, interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureNack(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
-	if err := configureRTCPReports(interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureRTCPReports(interceptorRegistry); err != nil {
 		return err
 	}
 
@@ -42,12 +39,12 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 		estimatorCh <- nil
 	}
 
-	if err := configureTWCCHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
 		return err
 	}
 
 	if env.GenerateTWCC {
-		if err := configureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+		if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
 			return err
 		}
 	}
@@ -87,80 +84,6 @@ func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 	}
 
 	i.Add(congestionController)
-	return nil
-}
-
-// ConfigureRTCPReports will setup everything necessary for generating Sender and Receiver Reports
-func configureRTCPReports(i *interceptor.Registry) error {
-	receiver, err := report.NewReceiverInterceptor()
-	if err != nil {
-		return err
-	}
-
-	sender, err := report.NewSenderInterceptor()
-	if err != nil {
-		return err
-	}
-
-	i.Add(receiver)
-	i.Add(sender)
-	return nil
-}
-
-// ConfigureNack will setup everything necessary for handling generating/responding to nack messages.
-func configureNack(m *webrtc.MediaEngine, i *interceptor.Registry) error {
-	generator, err := nack.NewGeneratorInterceptor()
-	if err != nil {
-		return err
-	}
-
-	responder, err := nack.NewResponderInterceptor()
-	if err != nil {
-		return err
-	}
-
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack"}, webrtc.RTPCodecTypeVideo)
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: "nack", Parameter: "pli"}, webrtc.RTPCodecTypeVideo)
-	i.Add(responder)
-	i.Add(generator)
-	return nil
-}
-
-// ConfigureTWCCHeaderExtensionSender will setup everything necessary for adding
-// a TWCC header extension to outgoing RTP packets. This will allow the remote peer to generate TWCC reports.
-func configureTWCCHeaderExtension(m *webrtc.MediaEngine, i *interceptor.Registry) error {
-	if err := m.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo,
-	); err != nil {
-		return err
-	}
-
-	if err := m.RegisterHeaderExtension(
-		webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio,
-	); err != nil {
-		return err
-	}
-
-	headerInterceptor, err := twcc.NewHeaderExtensionInterceptor()
-	if err != nil {
-		return err
-	}
-
-	i.Add(headerInterceptor)
-	return nil
-}
-
-// ConfigureTWCCSender will setup everything necessary for generating TWCC reports.
-func configureTWCCSender(m *webrtc.MediaEngine, i *interceptor.Registry) error {
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
-	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
-
-	generator, err := twcc.NewSenderInterceptor()
-	if err != nil {
-		return err
-	}
-
-	i.Add(generator)
 	return nil
 }
 
