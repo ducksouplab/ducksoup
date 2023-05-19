@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	DefaultSize     = 2
-	MaxSize         = 8
-	TracksPerPeer   = 2
-	DefaultDuration = 30
-	MaxDuration     = 1200
-	AbortLimit      = 10
-	Ending          = 15
+	DefaultSize              = 2
+	MaxSize                  = 8
+	TracksPerPeer            = 2
+	DefaultDurationInSeconds = 30
+	MaxDurationInSeconds     = 1200
+	AbortLimitInSeconds      = 10
+	EndingInSeconds          = 15
 )
 
 // interaction holds all the resources of a given experiment, accepting an exact number of *size* attendees
@@ -70,9 +70,9 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	// process duration
 	durationInSeconds := join.Duration
 	if durationInSeconds < 1 {
-		durationInSeconds = DefaultDuration
-	} else if durationInSeconds > MaxDuration {
-		durationInSeconds = MaxDuration
+		durationInSeconds = DefaultDurationInSeconds
+	} else if durationInSeconds > MaxDurationInSeconds {
+		durationInSeconds = MaxDurationInSeconds
 	}
 
 	// process size
@@ -113,7 +113,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		duration:            time.Duration(durationInSeconds) * time.Second,
 		neededTracks:        size * TracksPerPeer,
 		ssrcs:               []uint32{},
-		abortTimer:          time.NewTimer(time.Duration(AbortLimit) * time.Second),
+		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
 	}
 	i.mixer = newMixer(i)
 	// log (call Run hook whenever logging)
@@ -254,9 +254,9 @@ func (i *interaction) abortCountdown() {
 
 	i.Lock()
 	if !i.running {
+		i.Unlock()
 		i.stop(false)
 	}
-	i.Unlock()
 }
 
 // ends room when its duration has been reached
@@ -264,10 +264,9 @@ func (i *interaction) gracefulCountdown() {
 	// blocking "end" event and delete
 	i.gracefulTimer = time.NewTimer(i.duration)
 	<-i.gracefulTimer.C
+	i.logger.Info().Msg("graceful_countdown_reached")
 
-	i.Lock()
 	i.stop(true)
-	i.Unlock()
 }
 
 // API read-write
@@ -412,7 +411,7 @@ func (i *interaction) endingDelay() (delay int) {
 	elapsed := time.Since(i.startedAt)
 
 	remaining := int(i.duration.Seconds() - elapsed.Seconds())
-	delay = remaining - Ending
+	delay = remaining - EndingInSeconds
 	if delay < 1 {
 		delay = 1
 	}
