@@ -34,6 +34,18 @@ type peerConn struct {
 	ccEstimator    cc.BandwidthEstimator
 }
 
+func (pc *peerConn) logError() *zerolog.Event {
+	return pc.i.logger.Error().Str("user", pc.userId)
+}
+
+func (pc *peerConn) logInfo() *zerolog.Event {
+	return pc.i.logger.Info().Str("user", pc.userId)
+}
+
+func (pc *peerConn) logDebug() *zerolog.Event {
+	return pc.i.logger.Debug().Str("user", pc.userId)
+}
+
 // API
 
 func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
@@ -64,7 +76,7 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		pc.logError().Err(err).Msg("add_audio_transceiver_failed")
+		pc.logError().Str("context", "track").Err(err).Msg("add_audio_transceiver_failed")
 		return
 	}
 
@@ -73,7 +85,7 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 	if err != nil {
-		pc.logError().Err(err).Msg("add_video_transceiver_failed")
+		pc.logError().Str("context", "track").Err(err).Msg("add_video_transceiver_failed")
 		return
 	}
 
@@ -81,7 +93,7 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 	if join.VideoFormat == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
-			pc.logError().Err(err).Msg("set_codec_preferences_failed")
+			pc.logError().Str("context", "track").Err(err).Msg("set_codec_preferences_failed")
 			return
 		}
 	}
@@ -111,18 +123,6 @@ func newPeerConn(join types.JoinPayload, i *interaction) (pc *peerConn, err erro
 	return
 }
 
-func (pc *peerConn) logError() *zerolog.Event {
-	return pc.i.logger.Error().Str("context", "signaling").Str("user", pc.userId)
-}
-
-func (pc *peerConn) logInfo() *zerolog.Event {
-	return pc.i.logger.Info().Str("context", "signaling").Str("user", pc.userId)
-}
-
-func (pc *peerConn) logDebug() *zerolog.Event {
-	return pc.i.logger.Debug().Str("context", "signaling").Str("user", pc.userId)
-}
-
 func (pc *peerConn) printSelectedCandidatePair() string {
 	candidatePair, _ := pc.SCTP().Transport().ICETransport().GetSelectedCandidatePair()
 	return fmt.Sprintf("%+v", candidatePair)
@@ -137,11 +137,11 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 			// see https://pkg.go.dev/github.com/pion/webrtc/v3#PeerConnection.OnICECandidate
 			return
 		}
-		pc.logDebug().Str("value", fmt.Sprintf("%+v", c)).Msg("server_ice_candidate")
+		pc.logDebug().Str("context", "signaling").Str("value", fmt.Sprintf("%+v", c)).Msg("server_ice_candidate")
 
 		candidateBytes, err := json.Marshal(c.ToJSON())
 		if err != nil {
-			pc.logError().Err(err).Msg("marshal_server_ice_candidate_failed")
+			pc.logError().Str("context", "signaling").Err(err).Msg("marshal_server_ice_candidate_failed")
 			return
 		}
 
@@ -169,30 +169,30 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 			// case webrtc.PeerConnectionStateConnected:
 			// 	ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("peer_connection_state_connected")
 		}
-		pc.logDebug().Msg("server_connection_state_" + s.String())
+		pc.logDebug().Str("context", "peer").Msg("server_connection_state_" + s.String())
 	})
 
 	// for logging
 
 	pc.OnSignalingStateChange(func(s webrtc.SignalingState) {
-		pc.logDebug().Msg("server_signaling_state_" + s.String())
+		pc.logDebug().Str("context", "signaling").Msg("server_signaling_state_" + s.String())
 	})
 
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) {
-		pc.logDebug().Msg("ice_connection_state_" + s.String())
+		pc.logDebug().Str("context", "signaling").Msg("ice_connection_state_" + s.String())
 		switch s {
 		case webrtc.ICEConnectionStateDisconnected:
 			ps.shareOffer("server_ice_disconnected", true)
 		case webrtc.ICEConnectionStateConnected:
-			ps.logDebug().Str("value", pc.printSelectedCandidatePair()).Msg("selected_candidate_pair")
+			ps.logDebug().Str("context", "signaling").Str("value", pc.printSelectedCandidatePair()).Msg("selected_candidate_pair")
 		// case webrtc.ICEConnectionStateCompleted:
-		// 	ps.logDebug().Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_completed")
+		// 	ps.logDebug().Str("context", "signaling").Str("selected_candidate_pair", pc.printSelectedCandidatePair()).Msg("ice_connection_state_completed")
 		default:
 		}
 	})
 
 	pc.OnICEGatheringStateChange(func(s webrtc.ICEGathererState) {
-		pc.logDebug().Msg("server_ice_gathering_state_" + s.String())
+		pc.logDebug().Str("context", "signaling").Msg("server_ice_gathering_state_" + s.String())
 	})
 
 	pc.OnNegotiationNeeded(func() {

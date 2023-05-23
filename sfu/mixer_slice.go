@@ -62,12 +62,12 @@ func minUint64(v []uint64) (min uint64) {
 	return
 }
 
+// Creates a new mixerSlice with:
+// - the same codec format as the incoming/remote one
+// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
+// - a streamId shared among peerServer tracks (audio/video)
+// newId := uuid.New().String()
 func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (ms *mixerSlice, err error) {
-	// create a new mixerSlice with:
-	// - the same codec format as the incoming/remote one
-	// - a unique server-side trackId, but won't be reused in the browser, see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/id
-	// - a streamId shared among peerServer tracks (audio/video)
-	// newId := uuid.New().String()
 
 	kind := remoteTrack.Kind().String()
 	var streamConfig sfuStream
@@ -76,13 +76,16 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	} else if kind == "audio" {
 		streamConfig = config.Audio
 	} else {
-		return nil, errors.New("invalid kind")
+		err := errors.New("invalid kind")
+		ms.logError().Str("context", "track").Err(err).Msg("new_mixer_slice_failed")
+		return nil, err
 	}
 
 	newId := remoteTrack.ID()
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, newId, ps.streamId)
 
 	if err != nil {
+		ms.logError().Str("context", "track").Err(err).Msg("new_mixer_slice_failed")
 		return
 	}
 

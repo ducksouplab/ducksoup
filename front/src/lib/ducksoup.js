@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.34");
+  console.log("[DuckSoup] v1.5.35");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
@@ -299,14 +299,16 @@ class DuckSoup {
   // Inner methods
 
   _send(kind, payload) {
-    const message = { kind };
-    // conditionnally add and possiblty format payload
-    if (!!payload) {
-      const payloadStr =
-        typeof payload === "string" ? payload : JSON.stringify(payload);
-      message.payload = payloadStr;
+    if (this._ws.readyState === 1) { // the connection is open and ready to communicate
+      const message = { kind };
+      // conditionnally add and possiblty format payload
+      if (!!payload) {
+        const payloadStr =
+          typeof payload === "string" ? payload : JSON.stringify(payload);
+        message.payload = payloadStr;
+      }
+      this._ws.send(JSON.stringify(message));
     }
-    this._ws.send(JSON.stringify(message));
   }
 
   async _initialize() {

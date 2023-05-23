@@ -22,17 +22,9 @@ func newMixer(i *interaction) *mixer {
 	}
 }
 
-// func (m *mixer) logError() *zerolog.Event {
-// 	return m.i.logger.Error().Str("context", "signaling")
-// }
-
 func (m *mixer) logInfo() *zerolog.Event {
 	return m.i.logger.Info().Str("context", "signaling")
 }
-
-// func (m *mixer) logDebug() *zerolog.Event {
-// 	return m.i.logger.Debug().Str("context", "signaling")
-// }
 
 // Add to list of tracks
 func (m *mixer) indexMixerSlice(ms *mixerSlice) {
@@ -57,8 +49,8 @@ func (m *mixer) removeMixerSlice(ms *mixerSlice) {
 // - share offer with client
 func (m *mixer) updateSignaling(cause string) bool {
 	// lock for peerServerIndex
-	m.i.Lock()
-	defer m.i.Unlock()
+	m.i.RLock()
+	defer m.i.RUnlock()
 
 	for _, ps := range m.i.peerServerIndex {
 		if !ps.updateTracksAndShareOffer(cause) {

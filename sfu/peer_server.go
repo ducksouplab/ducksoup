@@ -81,15 +81,15 @@ func (ps *peerServer) done() chan struct{} {
 }
 
 func (ps *peerServer) logError() *zerolog.Event {
-	return ps.i.logger.Error().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Error().Str("user", ps.userId)
 }
 
 func (ps *peerServer) logInfo() *zerolog.Event {
-	return ps.i.logger.Info().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Info().Str("user", ps.userId)
 }
 
 func (ps *peerServer) logDebug() *zerolog.Event {
-	return ps.i.logger.Debug().Str("context", "signaling").Str("user", ps.userId)
+	return ps.i.logger.Debug().Str("user", ps.userId)
 }
 
 func (ps *peerServer) setMixerSlice(kind string, ms *mixerSlice) {
@@ -113,9 +113,9 @@ func (ps *peerServer) cleanOutTracks() {
 		_, ok := ps.i.mixer.sliceIndex[sentTrackId]
 		if !ok {
 			if err := pc.RemoveTrack(sender); err != nil {
-				ps.logError().Err(err).Str("user", userId).Str("track", sentTrackId).Msg("remove_track_failed")
+				ps.logError().Str("context", "signaling").Err(err).Str("user", userId).Str("track", sentTrackId).Msg("remove_track_failed")
 			} else {
-				ps.logInfo().Str("user", userId).Str("track", sentTrackId).Msg("track_removed")
+				ps.logInfo().Str("context", "signaling").Str("user", userId).Str("track", sentTrackId).Msg("track_removed")
 			}
 		}
 	}
@@ -155,7 +155,7 @@ func (ps *peerServer) prepareOutTracks() bool {
 		} else {
 			sender, err := pc.AddTrack(s.output)
 			if err != nil {
-				ps.logError().Err(err).Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_out_track_to_pc_failed")
+				ps.logError().Str("context", "signaling").Err(err).Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("add_out_track_to_pc_failed")
 				return false
 			} else {
 				ps.logInfo().Str("user", userId).Str("from", fromId).Str("track", trackId).Msg("out_track_added_to_pc")
@@ -173,7 +173,7 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	ps.logInfo().Str("user", userId).Str("cause", cause).Str("current_state", pc.SignalingState().String()).Msg("server_create_offer_requested")
 
 	if pc.PendingLocalDescription() != nil {
-		ps.logError().Str("user", userId).Msg("server_pending_local_description_blocking_offer")
+		ps.logError().Str("context", "signaling").Str("user", userId).Msg("server_pending_local_description_blocking_offer")
 		return false
 	}
 
@@ -183,7 +183,7 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	}
 	offer, err := pc.CreateOffer(options)
 	if err != nil {
-		ps.logError().Str("user", userId).Msg("server_create_offer_failed")
+		ps.logError().Str("context", "signaling").Str("user", userId).Msg("server_create_offer_failed")
 		return false
 	}
 
@@ -197,23 +197,23 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 	}
 
 	if err = pc.SetLocalDescription(offer); err != nil {
-		ps.logError().Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("server_set_local_description_failed")
+		ps.logError().Str("context", "signaling").Str("user", userId).Str("sdp", offer.SDP).Err(err).Msg("server_set_local_description_failed")
 		return false
 	} else {
-		ps.logDebug().Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("server_set_local_description")
+		ps.logDebug().Str("context", "signaling").Str("user", userId).Str("offer", fmt.Sprintf("%v", offer)).Msg("server_set_local_description")
 	}
 
 	// override offer if we had to wait for candidates gathering
 	if waitForCandidatesGathering {
-		ps.logDebug().Str("user", userId).Msg("server_candidates_gathering_waiting")
+		ps.logDebug().Str("context", "signaling").Str("user", userId).Msg("server_candidates_gathering_waiting")
 		<-gatherComplete
-		ps.logDebug().Str("user", userId).Msg("server_candidates_gathering_complete")
+		ps.logDebug().Str("context", "signaling").Str("user", userId).Msg("server_candidates_gathering_complete")
 		offer = *ps.pc.LocalDescription()
 	}
 
 	offerString, err := json.Marshal(offer)
 	if err != nil {
-		ps.logError().Str("user", userId).Err(err).Msg("marshal_offer_failed")
+		ps.logError().Str("context", "signaling").Str("user", userId).Err(err).Msg("marshal_offer_failed")
 		return false
 	}
 
@@ -256,8 +256,8 @@ func (ps *peerServer) close(cause string) {
 
 func (ps *peerServer) controlFx(payload controlPayload) {
 	ps.logInfo().
-		Str("from", payload.fromUserId).
 		Str("context", "track").
+		Str("from", payload.fromUserId).
 		Str("name", payload.Name).
 		Str("property", payload.Property).
 		Float32("value", payload.Value).
@@ -349,41 +349,43 @@ func (ps *peerServer) loop() {
 		switch m.Kind {
 		case "client_ice_candidate":
 			if ps.pc.RemoteDescription() == nil {
-				ps.pc.logError().Msg("remote_description_should_come_first")
+				ps.pc.logError().Str("context", "signaling").Msg("remote_description_should_come_first")
 			}
 
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(m.Payload), &candidate); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_client_ice_candidate_failed")
+				ps.logError().Str("context", "signaling").Err(err).Msg("unmarshal_client_ice_candidate_failed")
 				return
 			}
 
 			if err := ps.pc.AddICECandidate(candidate); err != nil {
-				ps.logError().Err(err).Msg("server_add_client_ice_candidate_failed")
+				ps.logError().Str("context", "signaling").Err(err).Msg("server_add_client_ice_candidate_failed")
 				return
 			}
-			ps.logDebug().Str("value", fmt.Sprintf("%+v", candidate)).Msg("server_add_client_ice_candidate")
+			ps.logDebug().Str("context", "signaling").Str("value", fmt.Sprintf("%+v", candidate)).Msg("server_add_client_ice_candidate")
 		case "client_answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(m.Payload), &answer); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_client_answer_failed")
+				ps.logError().Str("context", "signaling").Err(err).Msg("unmarshal_client_answer_failed")
 				return
 			}
 
 			if err := ps.pc.SetRemoteDescription(answer); err != nil {
-				ps.logError().Err(err).Msg("server_set_remote_description_failed")
+				ps.logError().Str("context", "signaling").Err(err).Msg("server_set_remote_description_failed")
 				return
 			}
-			ps.logDebug().Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("server_set_remote_description")
+			ps.logDebug().Str("context", "signaling").Str("user", ps.userId).Str("answer", fmt.Sprintf("%v", answer)).Msg("server_set_remote_description")
 		case "client_negotiation_needed":
 			ps.shareOffer(m.Kind, false)
 			// previously for all: go ps.i.mixer.managedSignalingForEveryone("client_negotiation_needed", false)
 		case "client_ice_connection_state_disconnected":
 			ps.shareOffer(m.Kind, true)
+		case "client_selected_candidate_pair":
+			ps.logDebug().Str("context", "signaling").Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
 		case "client_control":
 			payload := controlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_client_control_failed")
+				ps.logError().Str("context", "peer").Err(err).Msg("unmarshal_client_control_failed")
 			} else {
 				payload.fromUserId = ps.userId
 				if targetPs, ok := ps.i.peerServerIndex[payload.UserId]; ok { // control other ps in same interaction
@@ -395,7 +397,7 @@ func (ps *peerServer) loop() {
 		case "client_polycontrol":
 			payload := polyControlPayload{}
 			if err := json.Unmarshal([]byte(m.Payload), &payload); err != nil {
-				ps.logError().Err(err).Msg("unmarshal_client_polycontrol_failed")
+				ps.logError().Str("context", "peer").Err(err).Msg("unmarshal_client_polycontrol_failed")
 			} else {
 				go func() {
 					ps.pipeline.SetFxPolyProp(payload.Name, payload.Property, payload.Kind, payload.Value)
@@ -408,9 +410,7 @@ func (ps *peerServer) loop() {
 				}()
 			}
 		case "client_video_resolution_updated":
-			ps.logDebug().Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
-		case "client_selected_candidate_pair":
-			ps.logDebug().Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
+			ps.logDebug().Str("context", "track").Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
 		case "stop":
 			ps.close("client_stop_request")
 		default:
@@ -421,7 +421,7 @@ func (ps *peerServer) loop() {
 						ps.logDebug().Str("context", "track").Str("source", "client").Int64("value", count).Msg(m.Kind)
 					}
 				} else {
-					ps.logDebug().Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
+					ps.logDebug().Str("context", "peer").Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
 				}
 			} else if strings.HasPrefix(m.Kind, "ext_") {
 				ps.logDebug().
@@ -452,7 +452,7 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 			log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
 			return
 		}
-		log.Info().Str("context", "peer").Msg("peer_server_join_payload_ok")
+		log.Info().Str("context", "peer").Msg("join_payload_ok")
 		joinCh <- joinPayload
 	}()
 
@@ -487,6 +487,5 @@ func RunPeerServer(origin string, unsafeConn *websocket.Conn) {
 		log.Info().Str("context", "peer").Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("peer_server_started")
 
 		ps.loop() // blocking
-		return
 	}
 }

@@ -118,7 +118,6 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	i.mixer = newMixer(i)
 	// log (call Run hook whenever logging)
 	i.logger = log.With().
-		Str("context", "interaction").
 		Str("namespace", join.Namespace).
 		Str("interaction", join.InteractionName).
 		Logger().
@@ -126,6 +125,16 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 
 	go i.abortCountdown()
 	return i
+}
+
+// Run: implement log Hook interface
+func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+	sinceCreation := time.Since(i.createdAt).Round(time.Millisecond).String()
+	e.Str("sinceCreation", sinceCreation)
+	if i.started {
+		sinceStart := time.Since(i.startedAt).Round(time.Millisecond).String()
+		e.Str("sinceStart", sinceStart)
+	}
 }
 
 func (i *interaction) ready() chan struct{} {
@@ -138,16 +147,6 @@ func (i *interaction) aborted() chan struct{} {
 
 func (i *interaction) done() chan struct{} {
 	return i.doneCh
-}
-
-// Run: implement log Hook interface
-func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	sinceCreation := time.Since(i.createdAt).Round(time.Millisecond).String()
-	e.Str("sinceCreation", sinceCreation)
-	if i.started {
-		sinceStart := time.Since(i.startedAt).Round(time.Millisecond).String()
-		e.Str("sinceStart", sinceStart)
-	}
 }
 
 func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
@@ -194,8 +193,8 @@ func (i *interaction) unguardedConnectedUserCount() (count int) {
 // users are connected but some out tracks may still be in the process of
 // being attached and (not) ready (yet)
 func (i *interaction) allUsersConnected() bool {
-	i.Lock()
-	defer i.Unlock()
+	i.RLock()
+	defer i.RUnlock()
 
 	return i.unguardedConnectedUserCount() == i.size
 }
@@ -222,7 +221,7 @@ func (i *interaction) start() {
 	close(i.readyCh)
 	i.started = true
 	i.running = true
-	i.logger.Info().Msg("interaction_started")
+	i.logger.Info().Str("context", "interaction").Msg("interaction_started")
 	i.startedAt = time.Now()
 	// send start to all peers
 	for _, ps := range i.peerServerIndex {
@@ -235,9 +234,9 @@ func (i *interaction) stop(graceful bool) {
 	// listened by peerServers, mixer, mixerTracks
 	close(i.doneCh)
 	if graceful {
-		i.logger.Info().Msg("interaction_end")
+		i.logger.Info().Str("context", "interaction").Msg("interaction_end")
 	} else {
-		i.logger.Info().Msg("interaction_aborted")
+		i.logger.Info().Str("context", "interaction").Msg("interaction_aborted")
 	}
 	i.running = false
 
@@ -252,9 +251,9 @@ func (i *interaction) abortCountdown() {
 	// wait then check if interaction is running, if not, abort
 	<-i.abortTimer.C
 
-	i.Lock()
+	i.RLock()
 	if !i.running {
-		i.Unlock()
+		i.RUnlock()
 		i.stop(false)
 	}
 }
@@ -264,7 +263,7 @@ func (i *interaction) gracefulCountdown() {
 	// blocking "end" event and delete
 	i.gracefulTimer = time.NewTimer(i.duration)
 	<-i.gracefulTimer.C
-	i.logger.Info().Msg("graceful_countdown_reached")
+	i.logger.Info().Str("context", "interaction").Msg("graceful_countdown_reached")
 
 	i.stop(true)
 }
@@ -286,7 +285,7 @@ func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *web
 
 	i.Lock()
 	i.inTracksReadyCount++
-	i.logger.Info().Int("count", i.inTracksReadyCount).Msg("in_track_added_to_interaction")
+	i.logger.Info().Str("context", "interaction").Int("count", i.inTracksReadyCount).Msg("in_track_added_to_interaction")
 	isReadyNow := i.inTracksReadyCount == i.neededTracks
 	i.Unlock()
 
@@ -344,7 +343,7 @@ func (i *interaction) unguardedDelete() {
 	}
 	i.deleted = true
 	interactionStoreSingleton.delete(i)
-	i.logger.Info().Msg("interaction_deleted")
+	i.logger.Info().Str("context", "interaction").Msg("interaction_deleted")
 	// cleanup
 	for _, ssrc := range i.ssrcs {
 		store.RemoveFromSSRCIndex(ssrc)
@@ -429,7 +428,7 @@ func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 		default:
 			_, _, err := remoteTrack.ReadRTP()
 			if err != nil {
-				i.logger.Error().Err(err).Msg("loop_till_all_ready_failed")
+				i.logger.Error().Str("context", "track").Err(err).Msg("loop_till_all_ready_failed")
 				return false
 			}
 		}
@@ -446,29 +445,28 @@ func (i *interaction) runMixerSliceFromRemote(
 
 	// prepare slice
 	slice, err := newMixerSlice(ps, remoteTrack, receiver)
-	if err != nil {
-		i.logger.Error().Err(err).Msg("new_mixer_slice_failed")
-	}
-	// index to be searchable by track id
-	i.mixer.indexMixerSlice(slice)
-	// needed to relay control fx events between peer server and output track
-	ps.setMixerSlice(remoteTrack.Kind().String(), slice)
+	if err == nil {
+		// index to be searchable by track id
+		i.mixer.indexMixerSlice(slice)
+		// needed to relay control fx events between peer server and output track
+		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
-	// wait for all peers to connect
-	ok := i.loopTillAllReady(remoteTrack)
+		// wait for all peers to connect
+		ok := i.loopTillAllReady(remoteTrack)
 
-	if ok {
-		// trigger signaling if needed
-		signalingNeeded := i.incOutTracksReadyCount()
-		if signalingNeeded {
-			// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
-			<-time.After(2000 * time.Millisecond)
-			go i.mixer.managedSignalingForEveryone("out_tracks_ready", true)
+		if ok {
+			// trigger signaling if needed
+			signalingNeeded := i.incOutTracksReadyCount()
+			if signalingNeeded {
+				// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
+				<-time.After(2000 * time.Millisecond)
+				go i.mixer.managedSignalingForEveryone("out_tracks_ready", true)
+			}
+			// blocking until interaction ends or user disconnects
+			slice.loop()
+			// track has ended
+			i.mixer.removeMixerSlice(slice)
+			i.decOutTracksReadyCount()
 		}
-		// blocking until interaction ends or user disconnects
-		slice.loop()
-		// track has ended
-		i.mixer.removeMixerSlice(slice)
-		i.decOutTracksReadyCount()
 	}
 }
