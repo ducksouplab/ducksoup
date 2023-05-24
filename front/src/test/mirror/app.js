@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[DuckSoup test] v1.5.21");
+  console.log("[DuckSoup test] v1.5.22");
 });
 
 let state;
@@ -18,6 +18,12 @@ const processMozza = (videoFx) => {
   output = output.replace(/shape-model=([^\s]+)/, "shape-model=plugins/$1.dat");
   return output;
 };
+
+const processMozzaDeform = (property, value) => {
+  if (property !== "deform") return value;
+  if (value.includes("/")) return value;
+  return `plugins/${value}.dfm`;
+}
 
 const hide = (selector) => {
   const targets = document.querySelectorAll(selector);
@@ -197,7 +203,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     hide(".show-when-running");
   });
 
-  // /test/mirror/ control fx
+  // /test/mirror/ control sequence fx
   const sequenceFxForms = document.querySelectorAll("form.fx-sequence");
 
   for (const form of sequenceFxForms) {
@@ -213,6 +219,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  // /test/mirror/ control string fx
+  const stringFxForm = document.querySelector("form.fx-string");
+
+  stringFxForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (state.ducksoup) {
+      const type = e.target.querySelector("[name='type']").value;
+      const property = e.target.querySelector("[name='property']").value;
+      let value = e.target.querySelector("[name='value']").value;
+      value = processMozzaDeform(property, value);
+      state.ducksoup.polyControlFx(type, property, "string", value);
+    }
+  });
 
   // /test/interaction/ control fx
   const fxForms = document.querySelectorAll("form.fx");
