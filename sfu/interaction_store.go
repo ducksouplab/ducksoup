@@ -37,7 +37,7 @@ func (is *interactionStore) join(join types.JoinPayload) (*interaction, string, 
 		msg, err := i.join(join)
 		return i, msg, err
 	} else {
-		// new user creates and joins interaction: normal path! (1)
+		// new user creates interaction
 		newInteraction := newInteraction(interactionId, join)
 		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Str("id", interactionId).Str("origin", join.Origin).Msg("interaction_created")
 		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")

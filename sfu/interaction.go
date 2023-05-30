@@ -170,7 +170,7 @@ func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
 		// interaction limit reached
 		return "error", errors.New("full")
 	} else {
-		// new user joined existing interaction: normal path! (2)
+		// new user joined existing interaction: normal path
 		i.connectedIndex[userId] = true
 		i.joinedCountIndex[userId] = 1
 		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")

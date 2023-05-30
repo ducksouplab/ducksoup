@@ -47,7 +47,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// main path: ws for peer signaling
-		sfu.RunPeerServer(origin, unsafeConn) // blocking
+		sfu.RunPeerServer(origin, href, unsafeConn) // blocking
 	}
 }
 
