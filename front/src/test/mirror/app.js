@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[DuckSoup test] v1.5.22");
+  console.log("[DuckSoup test] v1.5.23");
 });
 
 let state;
@@ -221,9 +221,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // /test/mirror/ control string fx
-  const stringFxForm = document.querySelector("form.fx-string");
-
-  stringFxForm.addEventListener("submit", (e) => {
+  document.querySelector("form.fx-string")?.addEventListener("submit", (e) => {
     e.preventDefault();
     if (state.ducksoup) {
       const type = e.target.querySelector("[name='type']").value;
