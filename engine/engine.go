@@ -18,6 +18,8 @@ import (
 type sfuConfig struct {
 	Video struct {
 		DefaultBitrate uint64 `yaml:"defaultBitrate"`
+		MinBitrate     uint64 `yaml:"minBitrate"`
+		MaxBitrate     uint64 `yaml:"maxBitrate"`
 	}
 }
 
@@ -28,6 +30,8 @@ const (
 
 var (
 	defaultBitrate    uint64
+	minBitrate        uint64
+	maxBitrate        uint64
 	videoRTCPFeedback []webrtc.RTCPFeedback
 	// exported
 	OpusCodecs []webrtc.RTPCodecParameters
@@ -53,6 +57,8 @@ func init() {
 		log.Fatal().Err(err)
 	}
 	defaultBitrate = c.Video.DefaultBitrate
+	minBitrate = c.Video.MinBitrate
+	maxBitrate = c.Video.MaxBitrate
 
 	// other shared vars
 	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)

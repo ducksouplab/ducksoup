@@ -19,6 +19,7 @@ void go_debug_log(
     gpointer data
 ) {
     // printf("MyLogFunc: [Level:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
+
     goDebugLog(level, (char*)file, (char*)function, line, (char*)gst_debug_message_get(message));
 }
 

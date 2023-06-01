@@ -73,7 +73,11 @@ func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 	// Passing `nil` means we use the default Estimation Algorithm which is Google Congestion Control.
 	// You can use the other ones that Pion provides, or write your own!
 	congestionController, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
-		return gcc.NewSendSideBWE(gcc.SendSideBWEInitialBitrate(int(defaultBitrate)))
+		return gcc.NewSendSideBWE(
+			gcc.SendSideBWEInitialBitrate(int(defaultBitrate)),
+			gcc.SendSideBWEMaxBitrate(int(maxBitrate)),
+			gcc.SendSideBWEMinBitrate(int(minBitrate)),
+		)
 	})
 	congestionController.OnNewPeerConnection(func(id string, ccEstimator cc.BandwidthEstimator) {
 		estimatorCh <- ccEstimator
