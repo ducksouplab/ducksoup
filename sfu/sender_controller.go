@@ -19,16 +19,15 @@ const (
 
 type senderController struct {
 	sync.Mutex
-	ms             *mixerSlice
-	fromPs         *peerServer
-	toUserId       string
-	ssrc           webrtc.SSRC
-	kind           string
-	sender         *webrtc.RTPSender
-	ccEstimator    cc.BandwidthEstimator
-	optimalBitrate uint64
-	maxBitrate     uint64
-	minBitrate     uint64
+	ms                 *mixerSlice
+	fromPs             *peerServer
+	toUserId           string
+	ssrc               webrtc.SSRC
+	kind               string
+	sender             *webrtc.RTPSender
+	ccEstimator        cc.BandwidthEstimator
+	ccOptimalBitrate   uint64
+	lossOptimalBitrate uint64
 }
 
 func newSenderController(pc *peerConn, ms *mixerSlice, sender *webrtc.RTPSender) *senderController {
@@ -37,16 +36,13 @@ func newSenderController(pc *peerConn, ms *mixerSlice, sender *webrtc.RTPSender)
 	ssrc := params.Encodings[0].SSRC
 
 	return &senderController{
-		ms:             ms,
-		fromPs:         ms.fromPs,
-		toUserId:       pc.userId,
-		ssrc:           ssrc,
-		kind:           kind,
-		sender:         sender,
-		ccEstimator:    pc.ccEstimator,
-		optimalBitrate: ms.streamConfig.DefaultBitrate,
-		maxBitrate:     ms.streamConfig.MaxBitrate,
-		minBitrate:     ms.streamConfig.MinBitrate,
+		ms:          ms,
+		fromPs:      ms.fromPs,
+		toUserId:    pc.userId,
+		ssrc:        ssrc,
+		kind:        kind,
+		sender:      sender,
+		ccEstimator: pc.ccEstimator,
 	}
 }
 
@@ -63,10 +59,10 @@ func (sc *senderController) logDebug() *zerolog.Event {
 }
 
 func (sc *senderController) capRate(in uint64) uint64 {
-	if in > sc.maxBitrate {
-		return sc.maxBitrate
-	} else if in < sc.minBitrate {
-		return sc.minBitrate
+	if in > sc.ms.streamConfig.MaxBitrate {
+		return sc.ms.streamConfig.MaxBitrate
+	} else if in < sc.ms.streamConfig.MinBitrate {
+		return sc.ms.streamConfig.MinBitrate
 	}
 	return in
 }
@@ -78,7 +74,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	defer sc.Unlock()
 
 	var newOptimalBitrate uint64
-	prevOptimalBitrate := sc.optimalBitrate
+	prevOptimalBitrate := sc.lossOptimalBitrate
 
 	if loss < 5 {
 		// loss < 0.02, multiply by 1.05
@@ -91,11 +87,11 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 		newOptimalBitrate = prevOptimalBitrate
 	}
 
-	sc.optimalBitrate = sc.capRate(newOptimalBitrate)
+	sc.lossOptimalBitrate = sc.capRate(newOptimalBitrate)
 }
 
 func (sc *senderController) loop() {
-	go sc.loopReadRTCP(env.GCC)
+	go sc.loopReadRTCP()
 
 	<-sc.ms.i.ready()
 	if sc.kind == "video" && env.GCC {
@@ -116,13 +112,13 @@ func (sc *senderController) loopGCC() {
 		case <-ticker.C:
 			// update optimal video bitrate, leaving room for audio
 			sc.Lock()
-			sc.optimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()) - config.Audio.MaxBitrate)
+			sc.ccOptimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()) - config.Audio.MaxBitrate)
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}
 	}
 }
-func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
+func (sc *senderController) loopReadRTCP() {
 	for {
 		select {
 		case <-sc.ms.done():
@@ -138,34 +134,23 @@ func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 				}
 			}
 
-			if estimateWithGCC {
-				// RR are not needed, only forward PLIs
-				for _, packet := range packets {
-					switch packet.(type) {
-					case *rtcp.PictureLossIndication:
-						sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
-					}
-				}
-			} else {
-				for _, packet := range packets {
-					switch rtcpPacket := packet.(type) {
-					case *rtcp.PictureLossIndication:
-						sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
-					case *rtcp.ReceiverEstimatedMaximumBitrate:
-						sc.logDebug().Msgf("%T %+v", packet, packet)
-						// disabled due to TWCC
-						// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
-					case *rtcp.ReceiverReport:
-						// sc.logDebug().Msgf("%T %+v", packet, packet)
-						for _, r := range rtcpPacket.Reports {
-							if r.SSRC == uint32(sc.ssrc) {
-								sc.updateRateFromLoss(r.FractionLost)
-							}
+			for _, packet := range packets {
+				switch rtcpPacket := packet.(type) {
+				case *rtcp.PictureLossIndication:
+					sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
+				case *rtcp.ReceiverEstimatedMaximumBitrate:
+					sc.logDebug().Msgf("%T %+v", packet, packet)
+					// disabled due to TWCC
+					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
+				case *rtcp.ReceiverReport:
+					// sc.logDebug().Msgf("%T %+v", packet, packet)
+					for _, r := range rtcpPacket.Reports {
+						if r.SSRC == uint32(sc.ssrc) {
+							sc.updateRateFromLoss(r.FractionLost)
 						}
 					}
 				}
 			}
-
 		}
 	}
 }

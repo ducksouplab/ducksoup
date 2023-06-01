@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// adapted from https://github.com/pion/webrtc/blob/v3.1.2/interceptor.go
+// adapted from https://github.com/pion/webrtc/blob/v3.2.8/interceptor.go
 func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
 
 	if err := webrtc.ConfigureNack(mediaEngine, interceptorRegistry); err != nil {

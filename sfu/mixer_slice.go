@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/sequencing"
@@ -249,7 +250,11 @@ func (ms *mixerSlice) runTickers() {
 				if len(ms.senderControllerIndex) > 0 {
 					rates := []uint64{}
 					for _, sc := range ms.senderControllerIndex {
-						rates = append(rates, sc.optimalBitrate)
+						if env.GCC {
+							rates = append(rates, sc.ccOptimalBitrate)
+						} else {
+							rates = append(rates, sc.lossOptimalBitrate)
+						}
 					}
 					newPotentialRate := minUint64(rates)
 					if ms.pipeline != nil && newPotentialRate > 0 {
