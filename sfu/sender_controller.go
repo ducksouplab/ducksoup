@@ -13,10 +13,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	gccPeriod = 1000
-)
-
 type senderController struct {
 	sync.Mutex
 	ms             *mixerSlice
@@ -104,7 +100,7 @@ func (sc *senderController) loop() {
 }
 
 func (sc *senderController) loopGCC() {
-	ticker := time.NewTicker(gccPeriod * time.Millisecond)
+	ticker := time.NewTicker(time.Duration(config.Common.EncoderControlPeriod) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {

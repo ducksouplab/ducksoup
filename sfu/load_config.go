@@ -10,7 +10,8 @@ import (
 
 type sfuConfig struct {
 	Common struct {
-		MTU uint64 `yaml:"mtu"`
+		MTU                  uint64 `yaml:"mtu"`
+		EncoderControlPeriod uint64 `yaml:"encoderControlPeriod"`
 	}
 	Audio sfuStream
 	Video sfuStream
