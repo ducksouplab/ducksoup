@@ -17,7 +17,6 @@ import (
 const (
 	defaultInterpolatorStep = 30
 	maxInterpolatorDuration = 5000
-	encoderPeriod           = 1250
 	statsPeriod             = 3000
 	diffThreshold           = 10
 )
@@ -240,7 +239,7 @@ func (ms *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
 func (ms *mixerSlice) runTickers() {
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
-		encoderTicker := time.NewTicker(encoderPeriod * time.Millisecond)
+		encoderTicker := time.NewTicker(time.Duration(config.Common.EncoderControlPeriod) * time.Millisecond)
 		defer encoderTicker.Stop()
 		for {
 			select {

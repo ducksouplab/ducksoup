@@ -13,6 +13,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	gccPeriod = 1000
+)
+
 type senderController struct {
 	sync.Mutex
 	ms             *mixerSlice
@@ -100,7 +104,7 @@ func (sc *senderController) loop() {
 }
 
 func (sc *senderController) loopGCC() {
-	ticker := time.NewTicker(time.Duration(config.Common.EncoderControlPeriod) * time.Millisecond)
+	ticker := time.NewTicker(gccPeriod * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -134,9 +138,8 @@ func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 				}
 			}
 
-			// if bandwidth estimation is done with TWCC+GCC, REMB won't work and RR are not needed
 			if estimateWithGCC {
-				// only forward PLIs
+				// RR are not needed, only forward PLIs
 				for _, packet := range packets {
 					switch packet.(type) {
 					case *rtcp.PictureLossIndication:
@@ -150,6 +153,7 @@ func (sc *senderController) loopReadRTCP(estimateWithGCC bool) {
 						sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
 					case *rtcp.ReceiverEstimatedMaximumBitrate:
 						sc.logDebug().Msgf("%T %+v", packet, packet)
+						// disabled due to TWCC
 						// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 					case *rtcp.ReceiverReport:
 						// sc.logDebug().Msgf("%T %+v", packet, packet)
