@@ -192,7 +192,8 @@ func (ms *mixerSlice) loop() {
 	// wait for audio and video
 	<-pipeline.ReadyCh
 
-	ms.initializeBitrates()
+	// TODO not sure what's best, initializeBitrates or not
+	//ms.initializeBitrates()
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go ms.runTickers()
 	// go ms.runReceiverListener()
@@ -235,6 +236,16 @@ func (ms *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
 	ms.logInfo().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+}
+
+func (ms *mixerSlice) checkOutputBitrate() {
+	if ms.kind == "video" {
+		ms.Lock()
+		if ms.outputBitrate < ms.streamConfig.MinBitrate {
+			ms.fromPs.pc.throttledPLIRequest("output_bitrate_is_too_low")
+		}
+		ms.Unlock()
+	}
 }
 
 func (ms *mixerSlice) runTickers() {
@@ -290,6 +301,8 @@ func (ms *mixerSlice) runTickers() {
 				ms.outputBits = 0
 				ms.lastStats = tickTime
 				ms.Unlock()
+				// may send a PLI if too low
+				ms.checkOutputBitrate()
 				// log
 				displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)
 				displayOutputBitrateKbs := uint64(ms.outputBitrate / 1000)

@@ -199,15 +199,6 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		ps.shareOffer("server_negotiation_needed", false)
 		// TODO check if this would be better: go ps.i.mixer.managedSignalingForEveryone("negotiation_needed", false)
 	})
-
-	// Debug: send periodic PLIs
-	// ticker := time.NewTicker(2 * time.Second)
-	// // defer ticker stop?
-	// go func() {
-	// 	for range ticker.C {
-	// 		pc.forcedPLIRequest()
-	// 	}
-	// }()
 }
 
 func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error) {
@@ -226,18 +217,6 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error
 	}
 	return
 }
-
-// func (pc *peerConn) forcedPLIRequest() {
-// 	pc.Lock()
-// 	defer pc.Unlock()
-
-// 	for _, receiver := range pc.GetReceivers() {
-// 		track := receiver.Track()
-// 		if track != nil && track.Kind().String() == "video" {
-// 			pc.writePLI(track)
-// 		}
-// 	}
-// }
 
 func (pc *peerConn) throttledPLIRequest(cause string) {
 	pc.Lock()

@@ -88,6 +88,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	}
 
 	sc.lossOptimalBitrate = sc.capRate(newOptimalBitrate)
+	sc.logInfo().Int("value", int(sc.lossOptimalBitrate)).Msg("loss_opitmal_bitrate_updated")
 }
 
 func (sc *senderController) loop() {
@@ -110,9 +111,11 @@ func (sc *senderController) loopGCC() {
 			// to have actually started
 			return
 		case <-ticker.C:
-			// update optimal video bitrate, leaving room for audio
 			sc.Lock()
-			sc.ccOptimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()) - config.Audio.MaxBitrate)
+			// update optimal video bitrate
+			// we could leave room for audio and subtracting - config.Audio.MaxBitrate
+			sc.ccOptimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()))
+			sc.logInfo().Int("value", int(sc.ccOptimalBitrate)).Msg("cc_opitmal_bitrate_updated")
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}
@@ -137,7 +140,7 @@ func (sc *senderController) loopReadRTCP() {
 			for _, packet := range packets {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.ms.fromPs.pc.throttledPLIRequest("PLI from other peer")
+					sc.ms.fromPs.pc.throttledPLIRequest("forward_from_receiving_peer")
 				case *rtcp.ReceiverEstimatedMaximumBitrate:
 					sc.logDebug().Msgf("%T %+v", packet, packet)
 					// disabled due to TWCC
