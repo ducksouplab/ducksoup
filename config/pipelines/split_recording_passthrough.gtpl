@@ -8,23 +8,23 @@ mpegtsmux name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.Fil
 audio_src. !
 {{.Audio.Rtp.Caps}} ! 
 tee name=tee_audio ! 
-queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+queue ! 
 {{.Audio.Rtp.JitterBuffer}} ! 
 {{.Audio.Rtp.Depay}} !
 dry_audio_recorder.
 
 tee_audio. ! 
-queue max-size-buffers=0 max-size-bytes=0 ! 
+queue ! 
 audio_sink.
 
 video_src. !
 {{.Video.Rtp.Caps}} ! 
 tee name=tee_video ! 
-queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+queue ! 
 {{.Video.Rtp.JitterBuffer}} ! 
 {{.Video.Rtp.Depay}} ! 
 dry_video_recorder.
 
 tee_video. ! 
-queue max-size-buffers=0 max-size-bytes=0 ! 
+queue ! 
 video_sink.

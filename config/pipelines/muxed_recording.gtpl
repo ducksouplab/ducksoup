@@ -15,11 +15,11 @@ audio_src. !
     {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     tee name=tee_audio_in ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     dry_recorder.
 
     tee_audio_in. ! 
-    queue max-size-buffers=0 max-size-bytes=0 ! 
+    queue ! 
     {{.Audio.Decoder}} !
     audioconvert !
     audio/x-raw,channels=1 !
@@ -27,33 +27,33 @@ audio_src. !
     audioconvert ! 
     {{.Audio.EncodeWith "audio_encoder_wet" .Namespace .FilePrefix}} ! 
     tee name=tee_audio_out ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     wet_recorder.
 
     tee_audio_out. ! 
-    queue max-size-buffers=0 max-size-bytes=0 ! 
+    queue ! 
     {{.Audio.Rtp.Pay}} !
     audio_sink.
 {{else}}
     tee name=tee_audio_in ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     {{/* audio stream has to be written to two files if there is a video fx*/}}
     {{if .Video.Fx }}
         tee name=tee_audio_out !
-        queue max-size-buffers=0 max-size-bytes=0 ! 
+        queue ! 
         dry_recorder.
 
         tee_audio_out. !
-        queue max-size-buffers=0 max-size-bytes=0 !
+        queue ! 
         wet_recorder.
     {{else}}
         dry_recorder.
     {{end}}
 
     tee_audio_in. ! 
-    queue max-size-buffers=0 max-size-bytes=0 ! 
+    queue ! 
     audio_sink.
 {{end}}
 
@@ -66,33 +66,33 @@ video_src. !
     {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
 
     tee name=tee_video_in ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
     dry_recorder.
 
     tee_video_in. ! 
-    queue max-size-buffers=0 max-size-bytes=0 ! 
+    queue ! 
     videoconvert ! 
     {{.Video.Fx}} !
     {{if .Video.Overlay }}
         timeoverlay ! 
     {{end}}
 
-    queue max-size-time=75000000 ! 
+    queue ! 
     {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
 
     tee name=tee_video_out ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     wet_recorder.
 
     tee_video_out. ! 
-    queue max-size-buffers=0 max-size-bytes=0 min-threshold-bytes=1280 ! 
+    queue ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.
 {{else}}
     tee name=tee_video_in ! 
-    queue max-size-buffers=0 max-size-bytes=0 max-size-time=5000000000 ! 
+    queue ! 
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
 
@@ -108,17 +108,17 @@ video_src. !
     {{/* video stream has to be written to two files if there is an aufio fx*/}}
     {{if .Audio.Fx }}
         tee name=tee_video_out !
-        queue max-size-buffers=0 max-size-bytes=0 ! 
+        queue ! 
         dry_recorder.
 
         tee_video_out. !
-        queue max-size-buffers=0 max-size-bytes=0 !
+        queue ! 
         wet_recorder.
     {{else}}
         dry_recorder.
     {{end}}
 
     tee_video_in. ! 
-    queue max-size-buffers=0 max-size-bytes=0 ! 
+    queue ! 
     video_sink.
 {{end}}

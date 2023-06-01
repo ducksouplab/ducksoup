@@ -35,7 +35,7 @@ video_src. !
     {{end}}
     {{.Video.CapFormatOnly}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
-    queue max-size-buffers=0 max-size-bytes=0 min-threshold-bytes=1280 ! 
+    queue ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.
 {{else}}

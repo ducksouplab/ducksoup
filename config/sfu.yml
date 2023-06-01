@@ -1,5 +1,6 @@
 common:
-  mtu: 1280
+  mtu: 1460
+  encoderControlPeriod: 1000
 audio:
   defaultBitrate: 48000
   minBitrate: 16000
