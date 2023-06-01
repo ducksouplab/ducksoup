@@ -3,7 +3,7 @@ common:
   encoderControlPeriod: 2250
 audio:
   defaultBitrate: 48000
-  minBitrate: 16000
+  minBitrate: 32000
   maxBitrate: 64000
 video:
   defaultBitrate: 600000

@@ -261,7 +261,7 @@ func (ms *mixerSlice) runTickers() {
 				if len(ms.senderControllerIndex) > 0 {
 					rates := []uint64{}
 					for _, sc := range ms.senderControllerIndex {
-						if env.GCC {
+						if env.GCC && ms.kind == "video" {
 							rates = append(rates, sc.ccOptimalBitrate)
 						} else {
 							rates = append(rates, sc.lossOptimalBitrate)
@@ -302,7 +302,7 @@ func (ms *mixerSlice) runTickers() {
 				ms.lastStats = tickTime
 				ms.Unlock()
 				// may send a PLI if too low
-				ms.checkOutputBitrate()
+				//ms.checkOutputBitrate()
 				// log
 				displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)
 				displayOutputBitrateKbs := uint64(ms.outputBitrate / 1000)
