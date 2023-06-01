@@ -1,8 +1,8 @@
 common:
   mtu: 1460
-  encoderControlPeriod: 2250
+  encoderControlPeriod: 4250
 audio:
-  defaultBitrate: 48000
+  defaultBitrate: 64000
   minBitrate: 32000
   maxBitrate: 64000
 video:

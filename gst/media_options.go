@@ -10,7 +10,8 @@ type mediaOptions struct {
 	// calculated property
 	SkipFixedCaps bool
 	// live property depending on Join (and DUCKSOUP_NVCODEC), not used within template
-	nvcodec bool
+	nvCodec bool
+	nvCuda  bool
 	Overlay bool
 	// properties depending on yml definitions
 	Fx      string
@@ -47,7 +48,7 @@ func (mo mediaOptions) EncodeWith(name, nameSpace, filePrefix string) (output st
 }
 
 func (mo mediaOptions) CapFormatOnly() string {
-	if mo.nvcodec {
+	if mo.nvCuda {
 		return strings.Replace(mo.Cap.Format, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
 		return strings.Replace(mo.Cap.Format, "{{.Convert}}", "videoconvert", -1)
@@ -55,7 +56,7 @@ func (mo mediaOptions) CapFormatOnly() string {
 }
 
 func (mo mediaOptions) CapFormatRateScale(width, height, frameRate int) (output string) {
-	if mo.nvcodec {
+	if mo.nvCuda {
 		output = strings.Replace(mo.Cap.FormatRateScale, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
 		output = strings.Replace(mo.Cap.FormatRateScale, "{{.Convert}}", "videoconvert ! videoscale", -1)

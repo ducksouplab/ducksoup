@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ForceOverlay, GCC, GSTTracking, GenerateTWCC, LogStdout, NVCodec bool
+var ForceOverlay, GCC, GSTTracking, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
 var LogFile, Mode, Port, ProjectRoot, PublicIP, TestLogin, TestPassword, WebPrefix string
 var AllowedWSOrigins, ICEServers []string
@@ -46,8 +46,14 @@ func init() {
 	if strings.ToLower(os.Getenv("DUCKSOUP_LOG_STDOUT")) == "true" {
 		LogStdout = true
 	}
+	if strings.ToLower(os.Getenv("DUCKSOUP_NO_RECORDING")) == "true" {
+		NoRecording = true
+	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_NVCODEC")) == "true" {
 		NVCodec = true
+	}
+	if strings.ToLower(os.Getenv("DUCKSOUP_NVCUDA")) == "true" {
+		NVCuda = true
 	}
 	// uints
 	var err error

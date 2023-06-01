@@ -52,13 +52,14 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 		panic("Unhandled audioCodec assign")
 	}
 	// choose videoCodec
-	nvcodec := env.NVCodec && join.GPU
+	nvCodec := env.NVCodec && join.GPU
+	nvCuda := env.NVCuda && join.GPU
 	switch join.VideoFormat {
 	case "VP8":
 		videoOptions = config.VP8
 		videoOptions.SkipFixedCaps = true
 	case "H264":
-		if nvcodec {
+		if nvCodec {
 			videoOptions = config.NV264
 		} else {
 			videoOptions = config.X264
@@ -67,7 +68,8 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 		panic("Unhandled format " + join.VideoFormat)
 	}
 	// set env and join dependent options
-	videoOptions.nvcodec = nvcodec
+	videoOptions.nvCodec = nvCodec
+	videoOptions.nvCuda = nvCuda
 	videoOptions.Overlay = join.Overlay || env.ForceOverlay
 	// complete with Fx
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
@@ -237,7 +239,7 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
-			if p.videoOptions.nvcodec {
+			if p.videoOptions.nvCodec {
 				// https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
 				prop = "max-bitrate"
 			}

@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 )
 
@@ -38,12 +39,16 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 	// render pipeline from template
 	var buf bytes.Buffer
 	templater := muxedRecordingTemplater
-	if join.RecordingMode == "split" {
-		templater = splitRecordingTemplater
-	} else if join.RecordingMode == "passthrough" {
-		templater = passthroughTemplater
-	} else if join.RecordingMode == "none" {
+	if env.NoRecording {
 		templater = noRecordingTemplater
+	} else {
+		if join.RecordingMode == "split" {
+			templater = splitRecordingTemplater
+		} else if join.RecordingMode == "passthrough" {
+			templater = passthroughTemplater
+		} else if join.RecordingMode == "none" {
+			templater = noRecordingTemplater
+		}
 	}
 	if err := templater.Execute(&buf, data); err != nil {
 		panic(err)

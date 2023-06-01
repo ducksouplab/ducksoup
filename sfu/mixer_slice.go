@@ -148,13 +148,15 @@ func (ms *mixerSlice) addSender(pc *peerConn, sender *webrtc.RTPSender) {
 	}
 }
 
-func (l *mixerSlice) scanInput(buf []byte, n int) {
-	packet := &rtp.Packet{}
-	packet.Unmarshal(buf)
+func (l *mixerSlice) updateInputBits(n int) {
+	// previously func (l *mixerSlice) scanInput(buf []byte, n int)
+	// packet := &rtp.Packet{}
+	// packet.Unmarshal(buf)
+
+	// estimation (x8 for bytes) not taking int account headers
+	// it seems using MarshalSize (like for outputBits below) does not give the right numbers due to packet 0-padding (so there's not need Unmarshalling bug)
 
 	l.Lock()
-	// estimation (x8 for bytes) not taking int account headers
-	// it seems using MarshalSize (like for outputBits below) does not give the right numbers due to packet 0-padding
 	l.inputBits += uint64(n) * 8
 	l.Unlock()
 }
@@ -213,7 +215,7 @@ pushToPipeline:
 			}
 			ms.pipeline.PushRTP(ms.kind, buf[:n])
 			// for stats
-			go ms.scanInput(buf, n)
+			go ms.updateInputBits(n)
 		}
 	}
 }
@@ -267,7 +269,10 @@ func (ms *mixerSlice) runTickers() {
 							rates = append(rates, sc.lossOptimalBitrate)
 						}
 					}
+					// no need to encode more than 3 times more than the inputBitrate
+					rates = append(rates, 3*ms.inputBitrate)
 					newPotentialRate := minUint64(rates)
+
 					if ms.pipeline != nil && newPotentialRate > 0 {
 						// skip updating previous value and encoding rate too often
 						diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
@@ -301,7 +306,7 @@ func (ms *mixerSlice) runTickers() {
 				ms.outputBits = 0
 				ms.lastStats = tickTime
 				ms.Unlock()
-				// may send a PLI if too low
+				// may send a PLI if too low -> disabled since does not solve the encoding crash
 				//ms.checkOutputBitrate()
 				// log
 				displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)

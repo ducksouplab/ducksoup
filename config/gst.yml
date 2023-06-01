@@ -24,7 +24,7 @@ vp8:
   rtp:
     caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
     pay: rtpvp8pay min-ptime=30000000
-    depay: rtpvp8depay wait-for-keyframe=true
+    depay: rtpvp8depay
   decoder: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encoder: >-
     vp8enc name={{.Name}} deadline=1 cpu-used=4 end-usage=1
@@ -35,9 +35,9 @@ x264:
   encoding: "H264"
   rtp:
     caps: application/x-rtp,encoding-name=H264
-    pay: rtph264pay config-interval=-1 min-ptime=30000000
+    pay: rtph264pay
     depay: >-
-      rtph264depay wait-for-keyframe=true !
+      rtph264depay !
       h264parse
   decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encoder: >-
@@ -52,9 +52,9 @@ nv264:
   encoding: "H264"
   rtp:
     caps: application/x-rtp,encoding-name=H264
-    pay: rtph264pay config-interval=-1 min-ptime=30000000
+    pay: rtph264pay
     depay: >-
-      rtph264depay wait-for-keyframe=true !
+      rtph264depay !
       h264parse
   decoder: nvh264sldec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encoder: >-

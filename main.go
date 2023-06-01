@@ -31,12 +31,14 @@ func logState() {
 	log.Info().Str("context", "init").Str("value", env.PublicIP).Msg("DUCKSOUP_PUBLIC_IP")
 	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.AllowedWSOrigins)).Msg("DUCKSOUP_ALLOWED_WS_ORIGINS")
 	log.Info().Str("context", "init").Bool("value", env.NVCodec).Msg("DUCKSOUP_NVCODEC")
+	log.Info().Str("context", "init").Bool("value", env.NVCuda).Msg("DUCKSOUP_NVCUDA")
 	log.Info().Str("context", "init").Bool("value", env.GenerateTWCC).Msg("DUCKSOUP_GENERATE_TWCC")
 	log.Info().Str("context", "init").Bool("value", env.GCC).Msg("DUCKSOUP_GCC")
 	log.Info().Str("context", "init").Bool("value", env.GSTTracking).Msg("DUCKSOUP_GST_TRACKING")
 	log.Info().Str("context", "init").Int("value", env.LogLevel).Msg("DUCKSOUP_LOG_LEVEL")
 	log.Info().Str("context", "init").Str("value", env.LogFile).Msg("DUCKSOUP_LOG_FILE")
 	log.Info().Str("context", "init").Bool("value", env.ForceOverlay).Msg("DUCKSOUP_FORCE_OVERLAY")
+	log.Info().Str("context", "init").Bool("value", env.NoRecording).Msg("DUCKSOUP_NO_RECORDING")
 	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.ICEServers)).Msg("DUCKSOUP_ICE_SERVERS")
 }
 
