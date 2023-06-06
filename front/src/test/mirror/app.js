@@ -78,7 +78,7 @@ const start = async ({
   recordingMode,
   width: w,
   height: h,
-  frameRate: fr,
+  framerate: fr,
   duration: d,
   audioFx: afx,
   videoFx: vfx,
@@ -96,7 +96,7 @@ const start = async ({
   // parse
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
-  const frameRate = parseIntWithFallback(fr, 30);
+  const framerate = parseIntWithFallback(fr, 30);
   const duration = parseIntWithFallback(d, 30);
   const gpu = !!g;
   const overlay = !!o;
@@ -114,7 +114,7 @@ const start = async ({
   const video = {
     ...(width && { width: { ideal: width } }),
     ...(height && { height: { ideal: height } }),
-    ...(frameRate && { frameRate: { ideal: frameRate } }),
+    ...(framerate && { framerate: { ideal: framerate } }),
     ...(vd && { deviceId: { ideal: vd } }),
   };
   const audio = {
@@ -136,7 +136,7 @@ const start = async ({
     audio,
     width,
     height,
-    frameRate,
+    framerate,
     audioFx,
     videoFx,
     gpu,

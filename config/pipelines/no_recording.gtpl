@@ -27,7 +27,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
     {{if .Video.Overlay }}

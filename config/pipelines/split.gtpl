@@ -4,12 +4,12 @@ appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
 opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-dry.ogg 
-matroskamux name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.mkv
+{{.Video.Muxer}} name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.mkv
 {{if .Audio.Fx }}
     opusparse name=wet_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-wet.ogg 
 {{end}}
 {{if .Video.Fx }}
-    matroskamux name=wet_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-wet.mkv
+    {{.Video.Muxer}} name=wet_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-wet.mkv
 {{end}}
 
 audio_src. !
@@ -55,7 +55,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
 
     tee name=tee_video_in ! 
     queue ! 
@@ -85,7 +85,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
     {{if .Video.Overlay }}
         timeoverlay ! 
     {{end}}

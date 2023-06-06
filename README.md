@@ -73,7 +73,7 @@ Where:
   - `size` (integer, defaults to 2) the number of participants (size == 1 for a mirror effect)
   - `width` (integer, defaults to 800) of the video stream
   - `height` (integer, defaults to 600) of the video stream
-  - `frameRate` (integer, defaults to 30) of the video stream
+  - `framerate` (integer, defaults to 30) of the video stream
   - `audioFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if an audio effect has to be applied
   - `videoFx` (string, see format in [Gstreamer effects](#gstreamer-effects)) if video effect has to be applied
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))

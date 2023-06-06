@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type gstConfig struct {
+type gstEnhancedConfig struct {
 	SharedAudioRTPJitterBuffer    string `yaml:"sharedAudioRTPJitterBuffer"`
 	SharedVideoRTPJitterBuffer    string `yaml:"sharedVideoRTPJitterBuffer"`
 	SharedVideoCapFormat          string `yaml:"sharedVideoCapFormat"`
@@ -21,8 +21,8 @@ type gstConfig struct {
 }
 
 // global state
-var config gstConfig
-var muxedRecordingTemplater, splitRecordingTemplater, passthroughTemplater, noRecordingTemplater *template.Template
+var gstConfig gstEnhancedConfig
+var muxedTemplater, splitTemplater, splitPassthroughTemplater, noRecordingTemplater *template.Template
 
 func init() {
 	// load config from yml file
@@ -32,27 +32,27 @@ func init() {
 	}
 	defer f.Close()
 	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&config)
+	err = decoder.Decode(&gstConfig)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
 
 	// complete codec with shared properties
-	config.Opus.addSharedAudioProperties()
-	config.VP8.addSharedVideoProperties()
-	config.X264.addSharedVideoProperties()
-	config.NV264.addSharedVideoProperties()
+	gstConfig.Opus.addSharedAudioProperties()
+	gstConfig.VP8.addSharedVideoProperties()
+	gstConfig.X264.addSharedVideoProperties()
+	gstConfig.NV264.addSharedVideoProperties()
 
 	// templates
-	muxedRecordingTemplater, err = template.New("muxedRecording").Parse(helpers.ReadFile("config/pipelines/muxed_recording.gtpl"))
+	muxedTemplater, err = template.New("muxed").Parse(helpers.ReadFile("config/pipelines/muxed.gtpl"))
 	if err != nil {
 		panic(err)
 	}
-	splitRecordingTemplater, err = template.New("splitRecording").Parse(helpers.ReadFile("config/pipelines/split_recording.gtpl"))
+	splitTemplater, err = template.New("splitRecording").Parse(helpers.ReadFile("config/pipelines/split.gtpl"))
 	if err != nil {
 		panic(err)
 	}
-	passthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/split_recording_passthrough.gtpl"))
+	splitPassthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/split_passthrough.gtpl"))
 	if err != nil {
 		panic(err)
 	}
@@ -62,5 +62,5 @@ func init() {
 	}
 
 	// log
-	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", config)).Msg("gstreamer_config_loaded")
+	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", gstConfig)).Msg("gstreamer_config_loaded")
 }

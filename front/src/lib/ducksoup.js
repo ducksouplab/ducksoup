@@ -4,7 +4,7 @@ const DEFAULT_CONSTRAINTS = {
   video: {
     width: { ideal: 800 },
     height: { ideal: 600 },
-    frameRate: { ideal: 30 },
+    framerate: { ideal: 30 },
     facingMode: { ideal: "user" },
   },
   audio: {
@@ -78,7 +78,7 @@ const parseJoinPayload = (peerOptions) => {
     height,
     audioFx,
     videoFx,
-    frameRate,
+    framerate,
     namespace,
     videoFormat,
     recordingMode,
@@ -89,7 +89,7 @@ const parseJoinPayload = (peerOptions) => {
   if (isNaN(size)) size = null;
   if (isNaN(width)) width = null;
   if (isNaN(height)) height = null;
-  if (isNaN(frameRate)) frameRate = null;
+  if (isNaN(framerate)) framerate = null;
   if (!gpu) gpu = null;
   if (!overlay) overlay = null;
 
@@ -102,7 +102,7 @@ const parseJoinPayload = (peerOptions) => {
     height,
     audioFx,
     videoFx,
-    frameRate,
+    framerate,
     namespace,
     videoFormat,
     recordingMode,

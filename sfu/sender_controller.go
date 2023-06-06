@@ -88,7 +88,7 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 	}
 
 	sc.lossOptimalBitrate = sc.capRate(newOptimalBitrate)
-	sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.lossOptimalBitrate)).Msg("loss_opitmal_bitrate_updated")
+	sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.lossOptimalBitrate)).Msg("loss_optimal_bitrate_updated")
 }
 
 func (sc *senderController) loop() {
@@ -115,7 +115,7 @@ func (sc *senderController) loopGCC() {
 			// update optimal video bitrate
 			// we could leave room for audio and subtracting - config.Audio.MaxBitrate
 			sc.ccOptimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()))
-			sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.ccOptimalBitrate)).Msg("cc_opitmal_bitrate_updated")
+			sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.ccOptimalBitrate)).Msg("cc_optimal_bitrate_updated")
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}

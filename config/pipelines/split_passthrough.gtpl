@@ -3,7 +3,7 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-dry.ogg 
-mpegtsmux name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.mts
+{{.Video.Muxer}} name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.mts
 
 audio_src. !
 {{.Audio.Rtp.Caps}} ! 

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
@@ -27,7 +28,7 @@ type mixerSlice struct {
 	fromPs       *peerServer
 	i            *interaction
 	kind         string
-	streamConfig sfuStream
+	streamConfig config.SFUStream
 	// webrtc
 	input    *webrtc.TrackRemote
 	output   *webrtc.TrackLocalStaticRTP
@@ -70,11 +71,11 @@ func minUint64(v []uint64) (min uint64) {
 func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) (ms *mixerSlice, err error) {
 
 	kind := remoteTrack.Kind().String()
-	var streamConfig sfuStream
+	var streamConfig config.SFUStream
 	if kind == "video" {
-		streamConfig = config.Video
+		streamConfig = config.SFU.Video
 	} else if kind == "audio" {
-		streamConfig = config.Audio
+		streamConfig = config.SFU.Audio
 	} else {
 		err := errors.New("invalid kind")
 		ms.logError().Str("context", "track").Err(err).Msg("new_mixer_slice_failed")
@@ -194,14 +195,12 @@ func (ms *mixerSlice) loop() {
 	// wait for audio and video
 	<-pipeline.ReadyCh
 
-	// TODO not sure what's best, initializeBitrates or not
-	//ms.initializeBitrates()
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go ms.runTickers()
 	// go ms.runReceiverListener()
 
 	// loop start
-	buf := make([]byte, config.Common.MTU)
+	buf := make([]byte, config.SFU.Common.MTU)
 pushToPipeline:
 	for {
 		select {
@@ -220,24 +219,14 @@ pushToPipeline:
 	}
 }
 
-func (ms *mixerSlice) initializeBitrates() {
-	// pipeline is started once (either by the audio or video slice) but both
-	// media types need to be initialized*
-	ms.pipeline.SetEncodingRate("audio", config.Audio.DefaultBitrate)
-	ms.pipeline.SetEncodingRate("video", config.Video.DefaultBitrate)
-	// log
-	ms.logInfo().Uint64("value", config.Audio.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("audio_target_bitrate_initialized")
-	ms.logInfo().Uint64("value", config.Video.DefaultBitrate/1000).Str("unit", "kbit/s").Msg("video_target_bitrate_initialized")
-}
-
-func (ms *mixerSlice) updateTargetBitrates(newPotentialRate uint64) {
+func (ms *mixerSlice) updateTargetBitrates(targetBitrate uint64) {
 	ms.Lock()
-	ms.targetBitrate = newPotentialRate
+	ms.targetBitrate = targetBitrate
 	ms.Unlock()
-	ms.pipeline.SetEncodingRate(ms.kind, newPotentialRate)
+	ms.pipeline.SetEncodingRate(ms.kind, targetBitrate)
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
-	ms.logInfo().Uint64("value", newPotentialRate/1000).Str("unit", "kbit/s").Msg(msg)
+	ms.logInfo().Uint64("value", targetBitrate/1000).Str("unit", "kbit/s").Msg(msg)
 }
 
 func (ms *mixerSlice) checkOutputBitrate() {
@@ -253,7 +242,7 @@ func (ms *mixerSlice) checkOutputBitrate() {
 func (ms *mixerSlice) runTickers() {
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
-		encoderTicker := time.NewTicker(time.Duration(config.Common.EncoderControlPeriod) * time.Millisecond)
+		encoderTicker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
 		defer encoderTicker.Stop()
 		for {
 			select {
@@ -269,8 +258,8 @@ func (ms *mixerSlice) runTickers() {
 							rates = append(rates, sc.lossOptimalBitrate)
 						}
 					}
-					// no need to encode more than 3 times more than the inputBitrate
-					rates = append(rates, 3*ms.inputBitrate)
+					// no need to encode more than 2 times more than the inputBitrate
+					rates = append(rates, 2*ms.inputBitrate)
 					newPotentialRate := minUint64(rates)
 
 					if ms.pipeline != nil && newPotentialRate > 0 {

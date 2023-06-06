@@ -8,5 +8,5 @@ const (
 	// video defaults
 	defaultWidth     = 800
 	defaultHeight    = 600
-	defaultFrameRate = 30
+	defaultFramerate = 30
 )

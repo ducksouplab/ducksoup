@@ -99,10 +99,10 @@ func parseHeight(join types.JoinPayload) (height int) {
 	return
 }
 
-func parseFrameRate(join types.JoinPayload) (frameRate int) {
-	frameRate = join.FrameRate
-	if frameRate == 0 {
-		frameRate = defaultFrameRate
+func parseFramerate(join types.JoinPayload) (framerate int) {
+	framerate = join.Framerate
+	if framerate == 0 {
+		framerate = defaultFramerate
 	}
 	return
 }
@@ -142,7 +142,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	join.RecordingMode = parseRecordingMode(join)
 	join.Width = parseWidth(join)
 	join.Height = parseHeight(join)
-	join.FrameRate = parseFrameRate(join)
+	join.Framerate = parseFramerate(join)
 	// add property
 	join.Origin = origin
 

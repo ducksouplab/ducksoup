@@ -1,4 +1,4 @@
-package sfu
+package config
 
 import (
 	"fmt"
@@ -8,22 +8,22 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type sfuConfig struct {
+type SFUConfig struct {
 	Common struct {
 		MTU                  uint64 `yaml:"mtu"`
 		EncoderControlPeriod uint64 `yaml:"encoderControlPeriod"`
 	}
-	Audio sfuStream
-	Video sfuStream
+	Audio SFUStream
+	Video SFUStream
 }
 
-type sfuStream struct {
+type SFUStream struct {
 	DefaultBitrate uint64 `yaml:"defaultBitrate"`
 	MinBitrate     uint64 `yaml:"minBitrate"`
 	MaxBitrate     uint64 `yaml:"maxBitrate"`
 }
 
-var config sfuConfig
+var SFU SFUConfig
 
 func init() {
 	f, err := helpers.Open("config/sfu.yml")
@@ -33,11 +33,11 @@ func init() {
 	defer f.Close()
 
 	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&config)
+	err = decoder.Decode(&SFU)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
 
 	// log
-	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", config)).Msg("sfu_config_loaded")
+	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", SFU)).Msg("sfu_config_loaded")
 }

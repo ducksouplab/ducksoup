@@ -3,16 +3,16 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
-matroskamux name=dry_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.mkv
+{{.Video.Muxer}} name=dry_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.mp4
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
-    matroskamux name=wet_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.mkv
+    {{.Video.Muxer}} name=wet_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.mp4
 {{end}}
 
 audio_src. !
 {{.Audio.Rtp.Caps}} ! 
+{{.Audio.Rtp.JitterBuffer}} ! 
 {{if .Audio.Fx}}
-    {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     tee name=tee_audio_in ! 
     queue ! 
@@ -37,7 +37,6 @@ audio_src. !
 {{else}}
     tee name=tee_audio_in ! 
     queue ! 
-    {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     {{/* audio stream has to be written to two files if there is a video fx*/}}
     {{if .Video.Fx }}
@@ -59,11 +58,11 @@ audio_src. !
 
 video_src. !
 {{.Video.Rtp.Caps}} ! 
+{{.Video.Rtp.JitterBuffer}} ! 
 {{if .Video.Fx}}
-    {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
 
     tee name=tee_video_in ! 
     queue ! 
@@ -93,12 +92,11 @@ video_src. !
 {{else}}
     tee name=tee_video_in ! 
     queue ! 
-    {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
 
     {{if not .Video.SkipFixedCaps}}
         {{.Video.Decoder}} !
-        {{.Video.CapFormatRateScale .Width .Height .FrameRate}} !
+        {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
         {{if .Video.Overlay }}
             timeoverlay ! 
         {{end}}

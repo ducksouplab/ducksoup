@@ -25,7 +25,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		FilePrefix string
 		Width      int
 		Height     int
-		FrameRate  int
+		Framerate  int
 	}{
 		videoOptions,
 		audioOptions,
@@ -33,19 +33,19 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		filePrefix,
 		join.Width,
 		join.Height,
-		join.FrameRate,
+		join.Framerate,
 	}
 
 	// render pipeline from template
 	var buf bytes.Buffer
-	templater := muxedRecordingTemplater
+	templater := muxedTemplater
 	if env.NoRecording {
 		templater = noRecordingTemplater
 	} else {
 		if join.RecordingMode == "split" {
-			templater = splitRecordingTemplater
+			templater = splitTemplater
 		} else if join.RecordingMode == "passthrough" {
-			templater = passthroughTemplater
+			templater = splitPassthroughTemplater
 		} else if join.RecordingMode == "none" {
 			templater = noRecordingTemplater
 		}

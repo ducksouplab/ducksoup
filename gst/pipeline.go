@@ -45,10 +45,10 @@ func fileName(namespace string, prefix string, suffix string) string {
 }
 
 func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions) {
-	audioOptions = config.Opus
+	audioOptions = gstConfig.Opus
 	// rely on the fact that assigning to a struct with only primitive values (string), is copying by value
 	// caution: don't extend codec type with non primitive values
-	if &audioOptions == &config.Opus {
+	if &audioOptions == &gstConfig.Opus {
 		panic("Unhandled audioCodec assign")
 	}
 	// choose videoCodec
@@ -56,13 +56,13 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 	nvCuda := env.NVCuda && join.GPU
 	switch join.VideoFormat {
 	case "VP8":
-		videoOptions = config.VP8
+		videoOptions = gstConfig.VP8
 		videoOptions.SkipFixedCaps = true
 	case "H264":
 		if nvCodec {
-			videoOptions = config.NV264
+			videoOptions = gstConfig.NV264
 		} else {
-			videoOptions = config.X264
+			videoOptions = gstConfig.X264
 		}
 	default:
 		panic("Unhandled format " + join.VideoFormat)
@@ -228,24 +228,23 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/opus/opusenc.html?gi-language=c#opusenc:bitrate
 	value := int(value64)
-	prop := "bitrate"
 	if kind == "audio" {
-		p.setPropInt("audio_encoder_wet", prop, value)
+		p.setPropInt("audio_encoder_wet", "bitrate", value)
 	} else {
-		names := []string{"video_encoder_dry", "video_encoder_wet"}
 		if p.join.VideoFormat == "VP8" {
 			// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
-			prop = "target-bitrate"
+			p.setPropInt("video_encoder_dry", "target-bitrate", value)
+			p.setPropInt("video_encoder_wet", "target-bitrate", value)
 		} else if p.join.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
+			p.setPropInt("video_encoder_dry", "bitrate", value)
+			p.setPropInt("video_encoder_wet", "bitrate", value)
 			if p.videoOptions.nvCodec {
 				// https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:max-bitrate
-				prop = "max-bitrate"
+				p.setPropInt("video_encoder_dry", "max-bitrate", value*280/256)
+				p.setPropInt("video_encoder_wet", "max-bitrate", value*280/256)
 			}
-		}
-		for _, n := range names {
-			p.setPropInt(n, prop, value)
 		}
 	}
 }

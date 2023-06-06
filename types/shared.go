@@ -13,7 +13,7 @@ type JoinPayload struct {
 	VideoFx       string `json:"videoFx"`
 	Width         int    `json:"width"`
 	Height        int    `json:"height"`
-	FrameRate     int    `json:"frameRate"`
+	Framerate     int    `json:"framerate"`
 	GPU           bool   `json:"gpu"`
 	Overlay       bool   `json:"overlay"`
 	// Not from JSON

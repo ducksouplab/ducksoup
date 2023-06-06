@@ -3,6 +3,8 @@ package gst
 import (
 	"strconv"
 	"strings"
+
+	"github.com/ducksouplab/ducksoup/config"
 )
 
 // capitalized props are accessible to template
@@ -14,10 +16,14 @@ type mediaOptions struct {
 	nvCuda  bool
 	Overlay bool
 	// properties depending on yml definitions
-	Fx      string
-	Decoder string
-	Encoder string
-	Cap     struct {
+	DefaultBitrate  uint64
+	DefaultKBitrate uint64
+	Fx              string
+	Muxer           string
+	Extension       string
+	Decoder         string
+	Encoder         string
+	Cap             struct {
 		Format          string // don't constraint width/height/framerate, but only properties that a plugin might have changed
 		FormatRateScale string // constraint width/height/framerate and more to ensure stability before muxer
 	}
@@ -30,13 +36,17 @@ type mediaOptions struct {
 }
 
 func (mo *mediaOptions) addSharedAudioProperties() {
-	mo.Rtp.JitterBuffer = config.SharedAudioRTPJitterBuffer
+	mo.Rtp.JitterBuffer = gstConfig.SharedAudioRTPJitterBuffer
+	mo.DefaultBitrate = config.SFU.Audio.DefaultBitrate
+	mo.DefaultKBitrate = config.SFU.Audio.DefaultBitrate / 1000
 }
 
 func (mo *mediaOptions) addSharedVideoProperties() {
-	mo.Rtp.JitterBuffer = config.SharedVideoRTPJitterBuffer
-	mo.Cap.Format = config.SharedVideoCapFormat
-	mo.Cap.FormatRateScale = config.SharedVideoCapFormatRateScale
+	mo.Rtp.JitterBuffer = gstConfig.SharedVideoRTPJitterBuffer
+	mo.Cap.Format = gstConfig.SharedVideoCapFormat
+	mo.Cap.FormatRateScale = gstConfig.SharedVideoCapFormatRateScale
+	mo.DefaultBitrate = config.SFU.Video.DefaultBitrate
+	mo.DefaultKBitrate = config.SFU.Video.DefaultBitrate / 1000
 }
 
 // template helpers
@@ -44,6 +54,8 @@ func (mo mediaOptions) EncodeWith(name, nameSpace, filePrefix string) (output st
 	output = strings.Replace(mo.Encoder, "{{.Name}}", name, -1)
 	output = strings.Replace(output, "{{.Namespace}}", nameSpace, -1)
 	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
+	output = strings.Replace(output, "{{.DefaultBitrate}}", strconv.FormatUint(mo.DefaultBitrate, 10), -1)
+	output = strings.Replace(output, "{{.DefaultKBitrate}}", strconv.FormatUint(mo.DefaultKBitrate, 10), -1)
 	return
 }
 
@@ -55,7 +67,7 @@ func (mo mediaOptions) CapFormatOnly() string {
 	}
 }
 
-func (mo mediaOptions) CapFormatRateScale(width, height, frameRate int) (output string) {
+func (mo mediaOptions) CapFormatRateScale(width, height, framerate int) (output string) {
 	if mo.nvCuda {
 		output = strings.Replace(mo.Cap.FormatRateScale, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
@@ -63,6 +75,6 @@ func (mo mediaOptions) CapFormatRateScale(width, height, frameRate int) (output 
 	}
 	output = strings.Replace(output, "{{.Width}}", ", width="+strconv.Itoa(width), -1)
 	output = strings.Replace(output, "{{.Height}}", ", height="+strconv.Itoa(height), -1)
-	output = strings.Replace(output, "{{.FrameRate}}", ", framerate="+strconv.Itoa(frameRate)+"/1", -1)
+	output = strings.Replace(output, "{{.Framerate}}", ", framerate="+strconv.Itoa(framerate)+"/1", -1)
 	return
 }

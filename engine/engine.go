@@ -5,23 +5,14 @@ package engine
 import (
 	"regexp"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
-	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/pion/ice/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v2"
 )
-
-type sfuConfig struct {
-	Video struct {
-		DefaultBitrate uint64 `yaml:"defaultBitrate"`
-		MinBitrate     uint64 `yaml:"minBitrate"`
-		MaxBitrate     uint64 `yaml:"maxBitrate"`
-	}
-}
 
 const (
 	portMin = 32768
@@ -44,21 +35,9 @@ var (
 
 func init() {
 	// get video default encoding bitrate
-	var c sfuConfig
-	f, err := helpers.Open("config/sfu.yml")
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	defer f.Close()
-
-	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&c)
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	defaultBitrate = c.Video.DefaultBitrate
-	minBitrate = c.Video.MinBitrate
-	maxBitrate = c.Video.MaxBitrate
+	defaultBitrate = config.SFU.Video.DefaultBitrate
+	minBitrate = config.SFU.Video.MinBitrate
+	maxBitrate = config.SFU.Video.MaxBitrate
 
 	// other shared vars
 	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)
