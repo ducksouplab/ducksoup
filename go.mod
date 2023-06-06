@@ -13,7 +13,7 @@ require (
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.7.13
 	github.com/pion/sdp/v3 v3.0.6
-	github.com/pion/webrtc/v3 v3.2.8
+	github.com/pion/webrtc/v3 v3.2.9
 	github.com/rs/zerolog v1.29.1
 	gopkg.in/yaml.v2 v2.4.0
 )
