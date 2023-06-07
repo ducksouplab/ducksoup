@@ -44,7 +44,7 @@ vp8:
     qos=true
 x264:
   encoding: "H264"
-  muxer: "matroskamux"
+  muxer: "mp4mux"
   extension: "mp4"
   rtp:
     caps: application/x-rtp,encoding-name=H264

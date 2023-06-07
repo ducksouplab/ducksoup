@@ -36,9 +36,11 @@ Check how to use cudaupload, cudadownload and where to put caps here: https://gs
 
 About muxers
 
-- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry or chroma-site) which does not play well with `matroskamux` (nor `webmmux`, `mp4mux`). One solution is to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded for it to work. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio), and costs more processing only when there is not FX (since with FX decoding/reencoding is needed anyway)
+- when bandwidth fluctuates (or when stream starts or ends), video caps may be changed (for instance regarding colorimetry, chroma-site or resolution) and that causes `matroskamux` to crash (but `mp4mux` is doing fine with it in GStreamer 1.22). That's why we prefer using `mp4mux` with H264
 
-- some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Indeed "avc3 is not officially supported, only use this format for smart encoding" is seen in https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/blob/discontinued-for-monorepo/gst/matroska/matroska-mux.c
+- but for VP8, `matroskamux` is needed, that's why need to constrained caps (and rely on `videoconvert` and the like to ensure caps) but it implies to be done on a video/x-raw stream, meaning the input video stream has to be decoded/capped/reencoded. It works but is consuming more computing resources. It's the current solution (note that decoding/reencoding is only needed for video, not for audio), and costs more processing only when there is not FX.
+
+- in short: prefer H264 to compute less
 
 About logging
 
@@ -83,3 +85,5 @@ From GStreamer 1.18 release notes (about nvh264sldec):
 Old
 
 - `nvh264dec` VS `avdec_h264`, to be investigated: when enabling TWCC in engine.go, `nvh264dec` crashes GStreamer (`failed to decode picture`). That's for the time being you use CPU H264 decoding even if GPU acceleration is requested (will be used only for encoding)
+
+- some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Indeed "avc3 is not officially supported, only use this format for smart encoding" is seen in https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/blob/discontinued-for-monorepo/gst/matroska/matroska-mux.c

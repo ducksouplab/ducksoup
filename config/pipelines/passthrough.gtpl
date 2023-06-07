@@ -8,23 +8,23 @@ opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace
 audio_src. !
 {{.Audio.Rtp.Caps}} ! 
 tee name=tee_audio ! 
-queue ! 
-{{.Audio.Rtp.JitterBuffer}} ! 
-{{.Audio.Rtp.Depay}} !
-dry_audio_recorder.
+  queue ! 
+  {{.Audio.Rtp.JitterBuffer}} ! 
+  {{.Audio.Rtp.Depay}} !
+  dry_audio_recorder.
 
 tee_audio. ! 
-queue ! 
-audio_sink.
+  queue ! 
+  audio_sink.
 
 video_src. !
 {{.Video.Rtp.Caps}} ! 
 tee name=tee_video ! 
-queue ! 
-{{.Video.Rtp.JitterBuffer}} ! 
-{{.Video.Rtp.Depay}} ! 
-dry_video_recorder.
+  queue ! 
+  {{.Video.Rtp.JitterBuffer}} ! 
+  {{.Video.Rtp.Depay}} ! 
+  dry_video_recorder.
 
 tee_video. ! 
-queue ! 
-video_sink.
+  queue ! 
+  video_sink.

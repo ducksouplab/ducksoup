@@ -63,17 +63,16 @@ video_src. !
 {{.Video.Rtp.JitterBuffer}} ! 
 {{if .Video.Fx}}
     {{.Video.Rtp.Depay}} ! 
-    h264timestamper !
+    {{.Video.Decoder}} !
+    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
 
     tee name=tee_video_in ! 
         queue ! 
+        {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
         dry_recorder.
 
     tee_video_in. ! 
         queue ! 
-        {{.Video.Decoder}} !
-        {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
-
         videoconvert ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
@@ -96,7 +95,15 @@ video_src. !
     tee name=tee_video_in ! 
         queue ! 
         {{.Video.Rtp.Depay}} ! 
-        h264timestamper !
+
+        {{if not .Video.SkipFixedCaps}}
+            {{.Video.Decoder}} !
+            {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
+            {{if .Video.Overlay }}
+                timeoverlay ! 
+            {{end}}
+            {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} ! 
+        {{end}}
         
         {{/* video stream has to be written to two files if there is an aufio fx*/}}
         {{if .Audio.Fx }}

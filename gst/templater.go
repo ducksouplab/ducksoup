@@ -39,6 +39,9 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 	// render pipeline from template
 	var buf bytes.Buffer
 	templater := muxedTemplater
+	if join.VideoFormat == "VP8" { // needs matroskamux which in turns needs fixed caps
+		templater = muxedReencTemplater
+	}
 	if env.NoRecording {
 		templater = noRecordingTemplater
 	} else {
