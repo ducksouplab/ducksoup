@@ -45,7 +45,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		if join.RecordingMode == "split" {
 			templater = splitTemplater
 		} else if join.RecordingMode == "passthrough" {
-			templater = splitPassthroughTemplater
+			templater = passthroughTemplater
 		} else if join.RecordingMode == "none" {
 			templater = noRecordingTemplater
 		}

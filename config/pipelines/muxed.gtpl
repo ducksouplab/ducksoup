@@ -3,10 +3,10 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
-{{.Video.Muxer}} name=dry_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.mp4
+{{.Video.Muxer}} name=dry_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.{{.Video.Extension}}
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
-    {{.Video.Muxer}} name=wet_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.mp4
+    {{.Video.Muxer}} name=wet_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !

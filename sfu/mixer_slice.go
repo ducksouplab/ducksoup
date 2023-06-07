@@ -264,7 +264,9 @@ func (ms *mixerSlice) runTickers() {
 
 					if ms.pipeline != nil && newPotentialRate > 0 {
 						// skip updating previous value and encoding rate too often
+						ms.Lock()
 						diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
+						ms.Unlock()
 						// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
 						diffIsBigEnough := diff > diffThreshold
 						diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
@@ -294,7 +296,6 @@ func (ms *mixerSlice) runTickers() {
 				ms.inputBits = 0
 				ms.outputBits = 0
 				ms.lastStats = tickTime
-				ms.Unlock()
 				// may send a PLI if too low -> disabled since does not solve the encoding crash
 				//ms.checkOutputBitrate()
 				// log
@@ -304,6 +305,7 @@ func (ms *mixerSlice) runTickers() {
 
 				inputMsg := fmt.Sprintf("%s_in_bitrate", ms.output.Kind().String())
 				outputMsg := fmt.Sprintf("%s_out_bitrate", ms.output.Kind().String())
+				ms.Unlock()
 
 				ms.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
 				ms.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)

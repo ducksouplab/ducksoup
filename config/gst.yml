@@ -1,5 +1,5 @@
-sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=150
-sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=150
+sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=400
+sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=400
 sharedVideoCapFormat: >-
   {{.Convert}} !
   video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1

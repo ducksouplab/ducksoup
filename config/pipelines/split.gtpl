@@ -4,12 +4,12 @@ appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
 opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-dry.ogg 
-{{.Video.Muxer}} name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.mkv
+{{.Video.Muxer}} name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
 {{if .Audio.Fx }}
     opusparse name=wet_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-wet.ogg 
 {{end}}
 {{if .Video.Fx }}
-    {{.Video.Muxer}} name=wet_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-wet.mkv
+    {{.Video.Muxer}} name=wet_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !

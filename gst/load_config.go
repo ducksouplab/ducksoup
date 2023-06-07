@@ -22,7 +22,7 @@ type gstEnhancedConfig struct {
 
 // global state
 var gstConfig gstEnhancedConfig
-var muxedTemplater, splitTemplater, splitPassthroughTemplater, noRecordingTemplater *template.Template
+var muxedTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater *template.Template
 
 func init() {
 	// load config from yml file
@@ -52,7 +52,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	splitPassthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/split_passthrough.gtpl"))
+	passthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/passthrough.gtpl"))
 	if err != nil {
 		panic(err)
 	}
