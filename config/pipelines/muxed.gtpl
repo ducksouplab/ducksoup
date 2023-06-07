@@ -77,7 +77,7 @@ video_src. !
         videoconvert ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
-            timeoverlay ! 
+            timeoverlay time-mode=1 ! 
         {{end}}
 
         queue ! 
