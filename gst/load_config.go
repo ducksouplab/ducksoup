@@ -10,14 +10,16 @@ import (
 )
 
 type gstEnhancedConfig struct {
-	SharedAudioRTPJitterBuffer    string `yaml:"sharedAudioRTPJitterBuffer"`
-	SharedVideoRTPJitterBuffer    string `yaml:"sharedVideoRTPJitterBuffer"`
-	SharedVideoCapFormat          string `yaml:"sharedVideoCapFormat"`
-	SharedVideoCapFormatRateScale string `yaml:"sharedVideoCapFormatRateScale"`
-	Opus                          mediaOptions
-	VP8                           mediaOptions `yaml:"vp8"`
-	X264                          mediaOptions
-	NV264                         mediaOptions `yaml:"nv264"`
+	SharedAudioRTPJitterBuffer                     string `yaml:"sharedAudioRTPJitterBuffer"`
+	SharedVideoRTPJitterBuffer                     string `yaml:"sharedVideoRTPJitterBuffer"`
+	SharedVideoFormat                              string `yaml:"sharedVideoFormat"`
+	SharedVideoConstraintFormat                    string `yaml:"sharedVideoConstraintFormat"`
+	SharedVideoConstraintFormatFramerate           string `yaml:"sharedVideoConstraintFormatFramerate"`
+	SharedVideoConstraintFormatFramerateResolution string `yaml:"sharedVideoConstraintFormatFramerateResolution"`
+	Opus                                           mediaOptions
+	VP8                                            mediaOptions `yaml:"vp8"`
+	X264                                           mediaOptions
+	NV264                                          mediaOptions `yaml:"nv264"`
 }
 
 // global state

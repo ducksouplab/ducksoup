@@ -274,14 +274,14 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 
 	duration := payload.Duration
 	if duration == 0 {
-		ps.pipeline.SetFxProp(payload.Name, payload.Property, payload.Value)
+		ps.pipeline.SetFxPropFloat(payload.Name, payload.Property, payload.Value)
 		ps.Unlock()
 		return
 	} else {
 		if duration > maxInterpolatorDuration {
 			duration = maxInterpolatorDuration
 		}
-		oldValue := ps.pipeline.GetFxProp(payload.Name, payload.Property)
+		oldValue := ps.pipeline.GetFxPropFloat(payload.Name, payload.Property)
 		newInterpolator := sequencing.NewLinearInterpolator(oldValue, payload.Value, duration, defaultInterpolatorStep)
 		ps.interpolatorIndex[interpolatorId] = newInterpolator
 		ps.Unlock()
@@ -298,7 +298,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
-					ps.pipeline.SetFxProp(payload.Name, payload.Property, currentValue)
+					ps.pipeline.SetFxPropFloat(payload.Name, payload.Property, currentValue)
 				} else {
 					return
 				}

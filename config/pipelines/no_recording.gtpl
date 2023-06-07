@@ -27,13 +27,13 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
+    {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
     videoconvert ! 
     {{.Video.Fx}} ! 
     {{if .Video.Overlay }}
         timeoverlay ! 
     {{end}}
-    {{.Video.CapFormatOnly}} !
+    {{.Video.ConstraintFormat}} !
     {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
     queue ! 
     {{.Video.Rtp.Pay}} ! 

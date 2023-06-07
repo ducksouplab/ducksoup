@@ -55,7 +55,7 @@ video_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
+    {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
 
     tee name=tee_video_in ! 
         queue ! 
@@ -69,7 +69,7 @@ video_src. !
         {{if .Video.Overlay }}
             timeoverlay ! 
         {{end}}
-        {{.Video.CapFormatOnly}} !
+        {{.Video.ConstraintFormat}} !
         {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} !
 
         tee name=tee_video_out ! 
@@ -86,7 +86,7 @@ video_src. !
         {{.Video.Rtp.JitterBuffer}} ! 
         {{.Video.Rtp.Depay}} ! 
         {{.Video.Decoder}} !
-        {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
+        {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
         {{if .Video.Overlay }}
             timeoverlay ! 
         {{end}}

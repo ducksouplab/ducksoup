@@ -72,7 +72,7 @@ video_src. !
     tee_video_in. ! 
         queue ! 
         {{.Video.Decoder}} !
-        {{.Video.CapFormatRateScale .Width .Height .Framerate}} !
+        {{.Video.ConstraintFormatFramerate .Framerate}} !
 
         videoconvert ! 
         {{.Video.Fx}} !
@@ -81,7 +81,7 @@ video_src. !
         {{end}}
 
         queue ! 
-        {{.Video.CapFormatOnly}} !
+        {{.Video.ConstraintFormat}} !
         {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
 
         tee name=tee_video_out ! 

@@ -223,7 +223,7 @@ func (ms *mixerSlice) updateTargetBitrates(targetBitrate uint64) {
 	ms.Lock()
 	ms.targetBitrate = targetBitrate
 	ms.Unlock()
-	ms.pipeline.SetEncodingRate(ms.kind, targetBitrate)
+	ms.pipeline.SetEncodingBitrate(ms.kind, targetBitrate)
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
 	ms.logInfo().Uint64("value", targetBitrate/1000).Str("unit", "kbit/s").Msg(msg)

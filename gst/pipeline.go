@@ -204,7 +204,6 @@ func (p *Pipeline) setPropInt(name string, prop string, value int) {
 	cName := C.CString(name)
 	cProp := C.CString(prop)
 	cValue := C.int(value)
-
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
@@ -216,14 +215,24 @@ func (p *Pipeline) setPropFloat(name string, prop string, value float32) {
 	cName := C.CString(name)
 	cProp := C.CString(prop)
 	cValue := C.float(value)
-
 	defer C.free(unsafe.Pointer(cName))
 	defer C.free(unsafe.Pointer(cProp))
 
 	C.gstSetPropFloat(p.cPipeline, cName, cProp, cValue)
 }
 
-func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
+func (p *Pipeline) setPropString(name, prop, value string) {
+	cName := C.CString(name)
+	cProp := C.CString(prop)
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProp))
+	defer C.free(unsafe.Pointer(cValue))
+
+	C.gstSetPropString(p.cPipeline, cName, cProp, cValue)
+}
+
+func (p *Pipeline) SetEncodingBitrate(kind string, value64 uint64) {
 	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/opus/opusenc.html?gi-language=c#opusenc:bitrate
@@ -249,12 +258,12 @@ func (p *Pipeline) SetEncodingRate(kind string, value64 uint64) {
 	}
 }
 
-func (p *Pipeline) SetFxProp(name string, prop string, value float32) {
+func (p *Pipeline) SetFxPropFloat(name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
 	p.setPropFloat("client_"+name, prop, value)
 }
 
-func (p *Pipeline) GetFxProp(name string, prop string) float32 {
+func (p *Pipeline) GetFxPropFloat(name string, prop string) float32 {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString("client_" + name)
 	cProp := C.CString(prop)

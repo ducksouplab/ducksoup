@@ -1,6 +1,7 @@
 package gst
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -23,11 +24,7 @@ type mediaOptions struct {
 	Extension       string
 	Decoder         string
 	Encoder         string
-	Cap             struct {
-		Format          string // don't constraint width/height/framerate, but only properties that a plugin might have changed
-		FormatRateScale string // constraint width/height/framerate and more to ensure stability before muxer
-	}
-	Rtp struct {
+	Rtp             struct {
 		Caps         string
 		Pay          string
 		Depay        string
@@ -36,15 +33,15 @@ type mediaOptions struct {
 }
 
 func (mo *mediaOptions) addSharedAudioProperties() {
+	// used in template or by template helpers
 	mo.Rtp.JitterBuffer = gstConfig.SharedAudioRTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Audio.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Audio.DefaultBitrate / 1000
 }
 
 func (mo *mediaOptions) addSharedVideoProperties() {
+	// used in template or by template helpers
 	mo.Rtp.JitterBuffer = gstConfig.SharedVideoRTPJitterBuffer
-	mo.Cap.Format = gstConfig.SharedVideoCapFormat
-	mo.Cap.FormatRateScale = gstConfig.SharedVideoCapFormatRateScale
 	mo.DefaultBitrate = config.SFU.Video.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Video.DefaultBitrate / 1000
 }
@@ -59,22 +56,47 @@ func (mo mediaOptions) EncodeWith(name, nameSpace, filePrefix string) (output st
 	return
 }
 
-func (mo mediaOptions) CapFormatOnly() string {
+func (mo mediaOptions) ConstraintFormat() (output string) {
+	output = strings.Replace(gstConfig.SharedVideoConstraintFormat, "{{.VideoFormat}}", gstConfig.SharedVideoFormat, -1)
 	if mo.nvCuda {
-		return strings.Replace(mo.Cap.Format, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
-		return strings.Replace(mo.Cap.Format, "{{.Convert}}", "videoconvert", -1)
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert", -1)
 	}
-}
-
-func (mo mediaOptions) CapFormatRateScale(width, height, framerate int) (output string) {
-	if mo.nvCuda {
-		output = strings.Replace(mo.Cap.FormatRateScale, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
-	} else {
-		output = strings.Replace(mo.Cap.FormatRateScale, "{{.Convert}}", "videoconvert ! videoscale", -1)
-	}
-	output = strings.Replace(output, "{{.Width}}", ", width="+strconv.Itoa(width), -1)
-	output = strings.Replace(output, "{{.Height}}", ", height="+strconv.Itoa(height), -1)
-	output = strings.Replace(output, "{{.Framerate}}", ", framerate="+strconv.Itoa(framerate)+"/1", -1)
 	return
 }
+
+func (mo mediaOptions) ConstraintFormatFramerate(framerate int) (output string) {
+	caps := fmt.Sprintf("%v,framerate=%v/1", gstConfig.SharedVideoFormat, framerate)
+	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
+	if mo.nvCuda {
+		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+	} else {
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
+	}
+	return
+}
+
+func (mo mediaOptions) ConstraintFormatFramerateResolution(framerate, width, height int) (output string) {
+	caps := fmt.Sprintf("%v,framerate=%v/1,width=%v,height=%v", gstConfig.SharedVideoFormat, framerate, width, height)
+	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
+	if mo.nvCuda {
+		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+	} else {
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
+	}
+	return
+}
+
+// func (mo mediaOptions) ConstraintFormatFramerateResolution(width, height, framerate int) (output string) {
+// 	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoCaps}}", gstConfig.SharedVideoFormat, -1)
+// 	output = strings.Replace(output, "{{.Width}}", ", width="+strconv.Itoa(width), -1)
+// 	output = strings.Replace(output, "{{.Height}}", ", height="+strconv.Itoa(height), -1)
+// 	output = strings.Replace(output, "{{.Framerate}}", ", framerate="+strconv.Itoa(framerate)+"/1", -1)
+// 	if mo.nvCuda {
+// 		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+// 	} else {
+// 		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
+// 	}
+// 	return
+// }

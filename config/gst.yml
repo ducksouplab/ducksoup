@@ -1,12 +1,17 @@
-sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=400
-sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=400
-sharedVideoCapFormat: >-
+sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=300
+sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=300
+sharedVideoFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
+sharedVideoConstraintFormat: >-
   {{.Convert}} !
-  video/x-raw, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
-sharedVideoCapFormatRateScale: >-
+  capsfilter caps={{.VideoFormat}}
+sharedVideoConstraintFormatFramerate: >-
   {{.Convert}} !
   videorate !
-  video/x-raw{{.Framerate}}{{.Width}}{{.Height}}, format=I420, colorimetry=bt601, chroma-site=jpeg, pixel-aspect-ratio=1/1
+  capsfilter caps={{.VideoFormatFramerate}} caps-change-mode=1
+sharedVideoConstraintFormatFramerateResolution: >-
+  {{.Convert}} !
+  videorate !
+  capsfilter caps={{.VideoFormatFramerateResolution}} caps-change-mode=1
 opus:
   encoding: "OPUS"
   rtp:
