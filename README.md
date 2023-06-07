@@ -271,7 +271,7 @@ Logs are managed with [zerolog](https://github.com/rs/zerolog):
 
 Depending on `DUCKSOUP_LOG_LEVEL`, here are the generated logs (the default value is `2`):
 
-- `0` no log
+- `0` fatal and panic logs
 - `1` errors (and GStreamer warnings)
 - `2` server info and above
 - `3` server debug, in/out/encoding bitrates, client info and above

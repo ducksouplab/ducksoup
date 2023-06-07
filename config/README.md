@@ -40,6 +40,10 @@ About muxers
 
 - some improvements on matroskamux (this this [issue](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/1657)) should help dealing with h264 (avc3) capped-changing streams, but in our latest tests if it does not crashes and do write correctly files, those files are a bit broken (missing initial keyframe and no way to navigate in file). Indeed "avc3 is not officially supported, only use this format for smart encoding" is seen in https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/blob/discontinued-for-monorepo/gst/matroska/matroska-mux.c
 
+About logging
+
+- we tried forwarding Gstreamer logs to the main app to have all logs at the same place, but in the end disabling the default logger with "gst_debug_remove_log_function(gst_debug_log_default)" hindered some crucial error logs, that's why we removed completely log forwarding
+
 Latest tests:
 
 - matroskamux + h264 + resolution change > KO

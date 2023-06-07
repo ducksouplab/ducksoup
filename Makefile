@@ -1,7 +1,9 @@
 dev:
-	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=3,videodecoder:1 ./ducksoup
+	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2,videodecoder:1 ./ducksoup
 run:
 	@go build && GST_DEBUG=2,videodecoder:1 ./ducksoup
+runlocal:
+	@go build && GST_DEBUG=2,videodecoder:1 DUCKSOUP_ALLOWED_WS_ORIGINS=http://localhost:8100 ./ducksoup
 frontbuild:
 	@go build && DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 deps:

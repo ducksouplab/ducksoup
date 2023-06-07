@@ -42,6 +42,7 @@ func configureLogger(logLevel int) {
 		multi := zerolog.MultiLevelWriter(writers...)
 		log.Logger = log.Output(multi)
 	}
+
 	// set level
 	zeroLevel := convertLevel(logLevel)
 	zerolog.SetGlobalLevel(zeroLevel)
@@ -50,7 +51,7 @@ func configureLogger(logLevel int) {
 func convertLevel(dsLevel int) zerolog.Level {
 	switch dsLevel {
 	case 0:
-		return zerolog.Disabled
+		return zerolog.FatalLevel
 	case 1:
 		return zerolog.ErrorLevel
 	case 2:

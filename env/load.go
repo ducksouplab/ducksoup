@@ -55,6 +55,7 @@ func init() {
 	if strings.ToLower(os.Getenv("DUCKSOUP_NVCUDA")) == "true" {
 		NVCuda = true
 	}
+
 	// uints
 	var err error
 	LogLevel, err = strconv.Atoi(os.Getenv("DUCKSOUP_LOG_LEVEL"))

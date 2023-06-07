@@ -8,21 +8,6 @@
 
 // Internals (snake_case)
 
-void go_debug_log(
-    GstDebugCategory * category,
-    GstDebugLevel level,
-    const gchar * file,
-    const gchar * function,
-    gint line,
-    GObject * object,
-    GstDebugMessage * message,
-    gpointer data
-) {
-    // printf("MyLogFunc: [Level:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
-
-    goDebugLog(level, (char*)file, (char*)function, line, (char*)gst_debug_message_get(message));
-}
-
 void stop_pipeline(GstElement* pipeline) {
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
@@ -141,8 +126,6 @@ GMainLoop *gstreamer_main_loop = NULL;
 
 void gstStartMainLoop(void)
 {
-    // use custom log
-    gst_debug_add_log_function(go_debug_log, NULL, NULL);
     // run loop
     gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(gstreamer_main_loop);
@@ -151,7 +134,6 @@ void gstStartMainLoop(void)
 GstElement *gstParsePipeline(char *pipelineStr, char *id)
 {    
     gst_init(NULL, NULL);
-    gst_debug_remove_log_function(gst_debug_log_default);
     gst_debug_set_active(TRUE);
 
     GError *error = NULL;

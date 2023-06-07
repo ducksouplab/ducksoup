@@ -118,12 +118,12 @@ func ListenAndServe() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	// start HTTP server
-	if *key != "" && *cert != "" {
-		log.Info().Str("context", "init").Str("port", env.Port).Msg("https_server_started")
-		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
-	} else {
+	// start server
+	if *key == "" || *cert == "" { // http
 		log.Info().Str("context", "init").Str("port", env.Port).Msg("http_server_started")
 		log.Fatal().Err(server.ListenAndServe()) // blocking
+	} else { // https
+		log.Info().Str("context", "init").Str("port", env.Port).Msg("https_server_started")
+		log.Fatal().Err(server.ListenAndServeTLS(*cert, *key)) // blocking
 	}
 }
