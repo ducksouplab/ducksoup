@@ -1,5 +1,7 @@
 dev:
-	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2,videodecoder:1 ./ducksoup
+	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2 ./ducksoup
+debug:
+	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=6 GST_DEBUG_FILE=log/gst.log ./ducksoup
 run:
 	@go build && GST_DEBUG=2,videodecoder:1 ./ducksoup
 runlocal:
