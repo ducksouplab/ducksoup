@@ -19,6 +19,8 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 
 	// shape template data
 	data := struct {
+		// fields available for interpolation in template file
+		Queue      queueConfig
 		Video      mediaOptions
 		Audio      mediaOptions
 		Namespace  string
@@ -27,6 +29,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		Height     int
 		Framerate  int
 	}{
+		gstConfig.Shared.Queue,
 		videoOptions,
 		audioOptions,
 		join.Namespace,

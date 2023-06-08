@@ -1,17 +1,26 @@
-sharedAudioRTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=300
-sharedVideoRTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=300
-sharedVideoFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
-sharedVideoConstraintFormat: >-
-  {{.Convert}} !
-  capsfilter caps={{.VideoFormat}}
-sharedVideoConstraintFormatFramerate: >-
-  {{.Convert}} !
-  videorate !
-  capsfilter caps={{.VideoFormatFramerate}} caps-change-mode=1
-sharedVideoConstraintFormatFramerateResolution: >-
-  {{.Convert}} !
-  videorate !
-  capsfilter caps={{.VideoFormatFramerateResolution}} caps-change-mode=1
+shared:
+  audio:
+    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=300
+  video:
+    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=300
+    rawFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
+    constraint:
+      format: >-
+        {{.Convert}} !
+        capsfilter caps={{.VideoFormat}}
+      formatFramerate: >-
+        {{.Convert}} !
+        videorate !
+        capsfilter caps={{.VideoFormatFramerate}} caps-change-mode=1
+      formatFramerateResolution: >-
+        {{.Convert}} !
+        videorate !
+        capsfilter caps={{.VideoFormatFramerateResolution}} caps-change-mode=1
+  queue:
+    base: queue
+    short: queue max-size-buffers=0 max-size-bytes=0 max-size-time=75000000
+    veryShort: queue max-size-buffers=1 leaky=2
+    long: queue max-size-buffers=0 max-size-bytes=0 max-size-time=3000000000 
 opus:
   encoding: "OPUS"
   rtp:

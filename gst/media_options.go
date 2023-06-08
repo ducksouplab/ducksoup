@@ -34,14 +34,14 @@ type mediaOptions struct {
 
 func (mo *mediaOptions) addSharedAudioProperties() {
 	// used in template or by template helpers
-	mo.Rtp.JitterBuffer = gstConfig.SharedAudioRTPJitterBuffer
+	mo.Rtp.JitterBuffer = gstConfig.Shared.Audio.RTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Audio.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Audio.DefaultBitrate / 1000
 }
 
 func (mo *mediaOptions) addSharedVideoProperties() {
 	// used in template or by template helpers
-	mo.Rtp.JitterBuffer = gstConfig.SharedVideoRTPJitterBuffer
+	mo.Rtp.JitterBuffer = gstConfig.Shared.Video.RTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Video.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Video.DefaultBitrate / 1000
 }
@@ -57,7 +57,7 @@ func (mo mediaOptions) EncodeWith(name, nameSpace, filePrefix string) (output st
 }
 
 func (mo mediaOptions) ConstraintFormat() (output string) {
-	output = strings.Replace(gstConfig.SharedVideoConstraintFormat, "{{.VideoFormat}}", gstConfig.SharedVideoFormat, -1)
+	output = strings.Replace(gstConfig.Shared.Video.Constraint.Format, "{{.VideoFormat}}", gstConfig.Shared.Video.RawFormat, -1)
 	if mo.nvCuda {
 		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
@@ -67,8 +67,8 @@ func (mo mediaOptions) ConstraintFormat() (output string) {
 }
 
 func (mo mediaOptions) ConstraintFormatFramerate(framerate int) (output string) {
-	caps := fmt.Sprintf("%v,framerate=%v/1", gstConfig.SharedVideoFormat, framerate)
-	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
+	caps := fmt.Sprintf("%v,framerate=%v/1", gstConfig.Shared.Video.RawFormat, framerate)
+	output = strings.Replace(gstConfig.Shared.Video.Constraint.FormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
 	if mo.nvCuda {
 		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {
@@ -78,8 +78,8 @@ func (mo mediaOptions) ConstraintFormatFramerate(framerate int) (output string) 
 }
 
 func (mo mediaOptions) ConstraintFormatFramerateResolution(framerate, width, height int) (output string) {
-	caps := fmt.Sprintf("%v,framerate=%v/1,width=%v,height=%v", gstConfig.SharedVideoFormat, framerate, width, height)
-	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
+	caps := fmt.Sprintf("%v,framerate=%v/1,width=%v,height=%v", gstConfig.Shared.Video.RawFormat, framerate, width, height)
+	output = strings.Replace(gstConfig.Shared.Video.Constraint.FormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
 	if mo.nvCuda {
 		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
 	} else {

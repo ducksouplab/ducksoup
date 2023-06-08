@@ -9,17 +9,33 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type queueConfig struct {
+	Base      string
+	Short     string
+	VeryShort string `yaml:"veryShort"`
+	Long      string
+}
+
 type gstEnhancedConfig struct {
-	SharedAudioRTPJitterBuffer                     string `yaml:"sharedAudioRTPJitterBuffer"`
-	SharedVideoRTPJitterBuffer                     string `yaml:"sharedVideoRTPJitterBuffer"`
-	SharedVideoFormat                              string `yaml:"sharedVideoFormat"`
-	SharedVideoConstraintFormat                    string `yaml:"sharedVideoConstraintFormat"`
-	SharedVideoConstraintFormatFramerate           string `yaml:"sharedVideoConstraintFormatFramerate"`
-	SharedVideoConstraintFormatFramerateResolution string `yaml:"sharedVideoConstraintFormatFramerateResolution"`
-	Opus                                           mediaOptions
-	VP8                                            mediaOptions `yaml:"vp8"`
-	X264                                           mediaOptions
-	NV264                                          mediaOptions `yaml:"nv264"`
+	Shared struct {
+		Audio struct {
+			RTPJitterBuffer string `yaml:"RTPJitterBuffer"`
+		}
+		Video struct {
+			RTPJitterBuffer string `yaml:"RTPJitterBuffer"`
+			RawFormat       string `yaml:"rawFormat"`
+			Constraint      struct {
+				Format                    string
+				FormatFramerate           string `yaml:"formatFramerate"`
+				FormatFramerateResolution string `yaml:"formatFramerateResolution"`
+			}
+		}
+		Queue queueConfig
+	}
+	Opus  mediaOptions
+	VP8   mediaOptions `yaml:"vp8"`
+	X264  mediaOptions
+	NV264 mediaOptions `yaml:"nv264"`
 }
 
 // global state

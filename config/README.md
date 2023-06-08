@@ -42,6 +42,8 @@ About muxers
 
 - in short: prefer H264 to compute less
 
+- mpegtsmux could be tried too
+
 About logging
 
 - we tried forwarding Gstreamer logs to the main app to have all logs at the same place, but in the end disabling the default logger with "gst_debug_remove_log_function(gst_debug_log_default)" hindered some crucial error logs, that's why we removed completely log forwarding
