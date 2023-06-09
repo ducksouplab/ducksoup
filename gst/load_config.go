@@ -10,10 +10,10 @@ import (
 )
 
 type queueConfig struct {
-	Base      string
-	Short     string
-	VeryShort string `yaml:"veryShort"`
-	Long      string
+	Base  string
+	Short string
+	Leaky string
+	Long  string
 }
 
 type gstEnhancedConfig struct {

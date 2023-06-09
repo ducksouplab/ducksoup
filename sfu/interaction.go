@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/store"
 	"github.com/ducksouplab/ducksoup/types"
@@ -89,9 +90,16 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	joinedCountIndex := make(map[string]int)
 	joinedCountIndex[join.UserId] = 1
 
-	// create folder for logs
-	helpers.EnsureDir("./data/" + join.Namespace)
-	helpers.EnsureDir("./data/" + join.Namespace + "/logs") // used by x264 mutipass cache
+	// create data folders
+	helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/recordings")
+	if env.GeneratePlots {
+		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/plots")
+	}
+	isAccelerated := join.GPU && env.NVCodec
+	if join.VideoFormat == "H264" && !isAccelerated {
+		// used by x264 mutipass cache
+		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/cache")
+	}
 
 	i := &interaction{
 		peerServerIndex:     make(map[string]*peerServer),
@@ -401,6 +409,10 @@ func (i *interaction) files() map[string][]string {
 func (i *interaction) remainingSeconds() int {
 	elapsed := time.Since(i.startedAt)
 	return int(i.duration.Seconds() - elapsed.Seconds())
+}
+
+func (i *interaction) elapsedMilliSeconds() int64 {
+	return time.Since(i.startedAt).Milliseconds()
 }
 
 func (i *interaction) endingDelay() (delay int) {

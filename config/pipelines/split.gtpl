@@ -3,13 +3,13 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
-opusparse name=dry_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-dry.ogg 
-{{.Video.Muxer}} name=dry_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
+opusparse name=dry_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.ogg 
+{{.Video.Muxer}} name=dry_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
 {{if .Audio.Fx }}
-    opusparse name=wet_audio_recorder ! oggmux ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-audio-wet.ogg 
+    opusparse name=wet_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-wet.ogg 
 {{end}}
 {{if .Video.Fx }}
-    {{.Video.Muxer}} name=wet_video_recorder ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-video-wet.{{.Video.Extension}}
+    {{.Video.Muxer}} name=wet_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !
@@ -28,7 +28,7 @@ audio_src. !
         audio/x-raw,channels=1 !
         {{.Audio.Fx}} ! 
         audioconvert ! 
-        {{.Audio.EncodeWith "audio_encoder_dry" .Namespace .FilePrefix}} !
+        {{.Audio.EncodeWith "audio_encoder_dry" .Folder .FilePrefix}} !
         tee name=tee_audio_out ! 
             queue ! 
             wet_audio_recorder.
@@ -59,7 +59,7 @@ video_src. !
 
     tee name=tee_video_in ! 
         queue ! 
-        {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} !
+        {{.Video.EncodeWith "video_encoder_dry" .Folder .FilePrefix}} !
         dry_video_recorder.
 
     tee_video_in. ! 
@@ -70,7 +70,7 @@ video_src. !
             timeoverlay ! 
         {{end}}
         {{.Video.ConstraintFormat}} !
-        {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} !
+        {{.Video.EncodeWith "video_encoder_wet" .Folder .FilePrefix}} !
 
         tee name=tee_video_out ! 
             queue ! 
@@ -90,7 +90,7 @@ video_src. !
         {{if .Video.Overlay }}
             timeoverlay ! 
         {{end}}
-        {{.Video.EncodeWith "video_encoder_dry" .Namespace .FilePrefix}} !
+        {{.Video.EncodeWith "video_encoder_dry" .Folder .FilePrefix}} !
         dry_video_recorder.
 
     tee_video_in. ! 

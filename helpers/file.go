@@ -41,6 +41,6 @@ func ReadFile(name string) string {
 
 func EnsureDir(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.Mkdir(path, 0775)
+		os.MkdirAll(path, 0775)
 	}
 }

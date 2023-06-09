@@ -70,7 +70,7 @@ x264:
   encoder: >-
     x264enc name={{.Name}} pass=17
     bitrate={{.DefaultKBitrate}}
-    multipass-cache-file=data/{{.Namespace}}/logs/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
+    multipass-cache-file={{.Folder}}/cache/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
     speed-preset=ultrafast
     tune=zerolatency 
     min-force-key-unit-interval=3000000000

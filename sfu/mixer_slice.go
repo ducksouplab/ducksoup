@@ -47,6 +47,8 @@ type mixerSlice struct {
 	outputBitrate uint64
 	// status
 	doneCh chan struct{} // stop processing when track is removed
+	// analysic
+	plot *mixerSlicePlot
 }
 
 // helpers
@@ -108,6 +110,8 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		lastStats: time.Now(),
 		// status
 		doneCh: make(chan struct{}),
+		// analysis
+		plot: newMixerSlicePlot(ps.join.DataFolder() + "/plots/bitrates"),
 	}
 
 	return
@@ -181,6 +185,7 @@ func (ms *mixerSlice) Write(buf []byte) (err error) {
 
 func (ms *mixerSlice) close() {
 	ms.pipeline.Stop()
+	ms.plot.save()
 	close(ms.doneCh)
 	ms.logInfo().Str("track", ms.ID()).Str("kind", ms.kind).Msg("out_track_stopped")
 }
@@ -272,6 +277,9 @@ func (ms *mixerSlice) runTickers() {
 						diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
 						if diffIsBigEnough || diffToMax {
 							go ms.updateTargetBitrates(newPotentialRate)
+							// plot
+							elapsed := float64(ms.i.elapsedMilliSeconds())
+							ms.plot.addTarget(elapsed, float64(newPotentialRate))
 						}
 					}
 				}
@@ -288,10 +296,15 @@ func (ms *mixerSlice) runTickers() {
 				return
 			case tickTime := <-statsTicker.C:
 				ms.Lock()
-				elapsed := tickTime.Sub(ms.lastStats).Seconds()
+				sinceLastTick := tickTime.Sub(ms.lastStats).Seconds()
 				// update bitrates
-				ms.inputBitrate = ms.inputBits / uint64(elapsed)
-				ms.outputBitrate = ms.outputBits / uint64(elapsed)
+				ms.inputBitrate = ms.inputBits / uint64(sinceLastTick)
+				ms.outputBitrate = ms.outputBits / uint64(sinceLastTick)
+				// plot
+				elapsed := float64(ms.i.elapsedMilliSeconds())
+				ms.plot.addInput(elapsed, float64(ms.inputBitrate))
+				ms.plot.addOutput(elapsed, float64(ms.outputBitrate))
+
 				// reset cumulative bits and lastStats
 				ms.inputBits = 0
 				ms.outputBits = 0

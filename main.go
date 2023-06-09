@@ -32,6 +32,7 @@ func logState() {
 	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.AllowedWSOrigins)).Msg("DUCKSOUP_ALLOWED_WS_ORIGINS")
 	log.Info().Str("context", "init").Bool("value", env.NVCodec).Msg("DUCKSOUP_NVCODEC")
 	log.Info().Str("context", "init").Bool("value", env.NVCuda).Msg("DUCKSOUP_NVCUDA")
+	log.Info().Str("context", "init").Bool("value", env.GeneratePlots).Msg("DUCKSOUP_GENERATE_PLOTS")
 	log.Info().Str("context", "init").Bool("value", env.GenerateTWCC).Msg("DUCKSOUP_GENERATE_TWCC")
 	log.Info().Str("context", "init").Bool("value", env.GCC).Msg("DUCKSOUP_GCC")
 	log.Info().Str("context", "init").Bool("value", env.GSTTracking).Msg("DUCKSOUP_GST_TRACKING")

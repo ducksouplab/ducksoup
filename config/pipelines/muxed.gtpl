@@ -3,10 +3,10 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
-{{.Video.Muxer}} name=dry_recorder ! {{.Queue.Base}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.{{.Video.Extension}}
+{{.Video.Muxer}} name=dry_recorder ! {{.Queue.Base}} ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
-    {{.Video.Muxer}} name=wet_recorder ! {{.Queue.Base}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.{{.Video.Extension}}
+    {{.Video.Muxer}} name=wet_recorder ! {{.Queue.Base}} ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !
@@ -26,7 +26,7 @@ audio_src. !
         audio/x-raw,channels=1 !
         {{.Audio.Fx}} ! 
         audioconvert ! 
-        {{.Audio.EncodeWith "audio_encoder_wet" .Namespace .FilePrefix}} ! 
+        {{.Audio.EncodeWith "audio_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_audio_out ! 
             {{.Queue.Base}} ! 
@@ -82,7 +82,7 @@ video_src. !
 
         {{.Queue.Base}} ! 
         {{.Video.ConstraintFormat}} !
-        {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
+        {{.Video.EncodeWith "video_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_video_out ! 
             {{.Queue.Base}} ! 

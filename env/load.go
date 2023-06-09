@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ForceOverlay, GCC, GSTTracking, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
+var ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
 var LogFile, Mode, Port, ProjectRoot, PublicIP, TestLogin, TestPassword, WebPrefix string
 var AllowedWSOrigins, ICEServers []string
@@ -39,6 +39,9 @@ func init() {
 	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_GST_TRACKING")) == "true" {
 		GSTTracking = true
+	}
+	if strings.ToLower(os.Getenv("DUCKSOUP_GENERATE_PLOTS")) == "true" {
+		GeneratePlots = true
 	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_GENERATE_TWCC")) == "true" {
 		GenerateTWCC = true

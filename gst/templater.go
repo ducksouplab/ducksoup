@@ -23,7 +23,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		Queue      queueConfig
 		Video      mediaOptions
 		Audio      mediaOptions
-		Namespace  string
+		Folder     string
 		FilePrefix string
 		Width      int
 		Height     int
@@ -32,7 +32,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		gstConfig.Shared.Queue,
 		videoOptions,
 		audioOptions,
-		join.Namespace,
+		join.DataFolder(),
 		filePrefix,
 		join.Width,
 		join.Height,
