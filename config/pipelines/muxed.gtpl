@@ -3,10 +3,10 @@ appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
 {{/* always record dry */}}
-{{.Video.Muxer}} name=dry_recorder ! {{.Queue.Long}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.{{.Video.Extension}}
+{{.Video.Muxer}} name=dry_recorder ! {{.Queue.Base}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-dry.{{.Video.Extension}}
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
-    {{.Video.Muxer}} name=wet_recorder ! {{.Queue.Long}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.{{.Video.Extension}}
+    {{.Video.Muxer}} name=wet_recorder ! {{.Queue.Base}} ! filesink location=data/{{.Namespace}}/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !
@@ -66,7 +66,7 @@ video_src. !
     h264timestamper !
 
     tee name=tee_video_in ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Leaky}} ! 
         dry_recorder.
 
     tee_video_in. ! 
@@ -75,13 +75,12 @@ video_src. !
         {{.Video.ConstraintFormatFramerate .Framerate}} !
 
         videoconvert ! 
-        {{.Queue.VeryShort}} ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
             timeoverlay time-mode=1 ! 
         {{end}}
 
-        {{.Queue.Short}} ! 
+        {{.Queue.Base}} ! 
         {{.Video.ConstraintFormat}} !
         {{.Video.EncodeWith "video_encoder_wet" .Namespace .FilePrefix}} ! 
 

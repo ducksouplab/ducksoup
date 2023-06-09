@@ -1,8 +1,8 @@
 shared:
   audio:
-    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=300
+    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=140
   video:
-    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=300
+    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=140
     rawFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
     constraint:
       format: >-
@@ -19,7 +19,7 @@ shared:
   queue:
     base: queue
     short: queue max-size-buffers=0 max-size-bytes=0 max-size-time=75000000
-    veryShort: queue max-size-buffers=1 leaky=2
+    leaky: queue leaky=2
     long: queue max-size-buffers=0 max-size-bytes=0 max-size-time=3000000000 
 opus:
   encoding: "OPUS"
