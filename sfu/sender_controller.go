@@ -26,8 +26,8 @@ type senderController struct {
 	kind               string
 	sender             *webrtc.RTPSender
 	ccEstimator        cc.BandwidthEstimator
-	ccOptimalBitrate   uint64
-	lossOptimalBitrate uint64
+	ccOptimalBitrate   int
+	lossOptimalBitrate int
 }
 
 func newSenderController(pc *peerConn, ms *mixerSlice, sender *webrtc.RTPSender) *senderController {
@@ -58,7 +58,7 @@ func (sc *senderController) logDebug() *zerolog.Event {
 	return sc.ms.logDebug().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
-func (sc *senderController) capRate(in uint64) uint64 {
+func (sc *senderController) capRate(in int) int {
 	if in > sc.ms.streamConfig.MaxBitrate {
 		return sc.ms.streamConfig.MaxBitrate
 	} else if in < sc.ms.streamConfig.MinBitrate {
@@ -69,11 +69,11 @@ func (sc *senderController) capRate(in uint64) uint64 {
 
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 // credits to https://github.com/jech/galene
-func (sc *senderController) updateRateFromLoss(loss uint8) {
+func (sc *senderController) updateRateFromLoss(loss int) {
 	sc.Lock()
 	defer sc.Unlock()
 
-	var newOptimalBitrate uint64
+	var newOptimalBitrate int
 	prevOptimalBitrate := sc.lossOptimalBitrate
 
 	if loss < 5 {
@@ -81,17 +81,16 @@ func (sc *senderController) updateRateFromLoss(loss uint8) {
 		newOptimalBitrate = prevOptimalBitrate * 269 / 256
 	} else if loss > 25 {
 		// loss > 0.1, multiply by (1 - loss/2)
-		newOptimalBitrate = prevOptimalBitrate * (512 - uint64(loss)) / 512
-		sc.logInfo().Int("value", int(loss)).Msg("loss_threshold_exceeded")
+		newOptimalBitrate = prevOptimalBitrate * (512 - loss) / 512
+		sc.logInfo().Int("value", loss).Msg("loss_threshold_exceeded")
 	} else {
 		newOptimalBitrate = prevOptimalBitrate
 	}
 
 	sc.lossOptimalBitrate = sc.capRate(newOptimalBitrate)
-	sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.lossOptimalBitrate)).Msg("loss_optimal_bitrate_updated")
+	sc.logInfo().Str("kind", sc.ms.kind).Int("value", sc.lossOptimalBitrate).Msg("loss_optimal_bitrate_updated")
 	// plot
-	elapsed := float64(sc.ms.i.elapsedMilliSeconds())
-	sc.ms.plot.addSenderLossOptimal(sc.toUserId, elapsed, float64(sc.lossOptimalBitrate))
+	sc.ms.plot.AddSenderLossOptimal(sc.toUserId, sc.lossOptimalBitrate)
 }
 
 func (sc *senderController) loop() {
@@ -109,7 +108,7 @@ func (sc *senderController) loopGCC() {
 
 	for {
 		select {
-		case <-sc.ms.done():
+		case <-sc.ms.Done():
 			// TODO FIX it could happen that addSender have triggered this loop without the slice
 			// to have actually started
 			return
@@ -117,11 +116,10 @@ func (sc *senderController) loopGCC() {
 			sc.Lock()
 			// update optimal video bitrate
 			// we could leave room for audio and subtracting - config.Audio.MaxBitrate
-			sc.ccOptimalBitrate = sc.capRate(uint64(sc.ccEstimator.GetTargetBitrate()))
-			sc.logInfo().Str("kind", sc.ms.kind).Int("value", int(sc.ccOptimalBitrate)).Msg("cc_optimal_bitrate_updated")
+			sc.ccOptimalBitrate = sc.capRate(sc.ccEstimator.GetTargetBitrate())
+			sc.logInfo().Str("kind", sc.ms.kind).Int("value", sc.ccOptimalBitrate).Msg("cc_optimal_bitrate_updated")
 			// plot
-			elapsed := float64(sc.ms.i.elapsedMilliSeconds())
-			sc.ms.plot.addSenderCCOptimal(sc.toUserId, elapsed, float64(sc.ccOptimalBitrate))
+			sc.ms.plot.AddSenderCCOptimal(sc.toUserId, sc.ccOptimalBitrate)
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}
@@ -130,7 +128,7 @@ func (sc *senderController) loopGCC() {
 func (sc *senderController) loopReadRTCP() {
 	for {
 		select {
-		case <-sc.ms.done():
+		case <-sc.ms.Done():
 			return
 		default:
 			packets, _, err := sc.sender.ReadRTCP()
@@ -155,7 +153,7 @@ func (sc *senderController) loopReadRTCP() {
 					// sc.logDebug().Msgf("%T %+v", packet, packet)
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(sc.ssrc) {
-							sc.updateRateFromLoss(r.FractionLost)
+							sc.updateRateFromLoss(int(r.FractionLost))
 						}
 					}
 				}

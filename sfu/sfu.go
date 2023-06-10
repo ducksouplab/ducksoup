@@ -37,9 +37,9 @@ func (ms *mixerSlice) inspect() any {
 	return struct {
 		From      string
 		Kind      string
-		IntputKbs uint64
-		OutputKbs uint64
-		TargetKbs uint64
+		IntputKbs int
+		OutputKbs int
+		TargetKbs int
 	}{
 		ms.fromPs.userId,
 		ms.input.Kind().String(),

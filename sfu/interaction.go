@@ -411,10 +411,6 @@ func (i *interaction) remainingSeconds() int {
 	return int(i.duration.Seconds() - elapsed.Seconds())
 }
 
-func (i *interaction) elapsedMilliSeconds() int64 {
-	return time.Since(i.startedAt).Milliseconds()
-}
-
 func (i *interaction) endingDelay() (delay int) {
 	i.RLock()
 	defer i.RUnlock()

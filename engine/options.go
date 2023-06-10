@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/store"
@@ -11,6 +12,7 @@ import (
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/interceptor/pkg/packetdump"
+	"github.com/pion/interceptor/pkg/twcc"
 	"github.com/pion/rtcp"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
@@ -19,19 +21,19 @@ import (
 )
 
 // adapted from https://github.com/pion/webrtc/blob/v3.2.8/interceptor.go
-func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
+func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
 
-	if err := webrtc.ConfigureNack(mediaEngine, interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureNack(m, r); err != nil {
 		return err
 	}
 
-	if err := webrtc.ConfigureRTCPReports(interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureRTCPReports(r); err != nil {
 		return err
 	}
 
 	if env.GCC {
 		// keep configurations here in that order
-		if err := configureEstimator(interceptorRegistry, estimatorCh); err != nil {
+		if err := configureEstimator(r, estimatorCh); err != nil {
 			return err
 		}
 	} else {
@@ -39,26 +41,26 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 		estimatorCh <- nil
 	}
 
-	if err := webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
+	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, r); err != nil {
 		return err
 	}
 
 	if env.GenerateTWCC {
-		if err := webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry); err != nil {
+		if err := configureTWCCSender(m, r); err != nil {
 			return err
 		}
 	}
 
-	if err := configureAbsSendTimeHeaderExtension(mediaEngine); err != nil {
+	if err := configureAbsSendTimeHeaderExtension(m); err != nil {
 		return err
 	}
 
-	if err := configureSDESHeaderExtension(mediaEngine, interceptorRegistry); err != nil {
+	if err := configureSDESHeaderExtension(m); err != nil {
 		return err
 	}
 
 	if env.LogLevel == 4 {
-		if err := configurePacketDump(interceptorRegistry); err != nil {
+		if err := configurePacketDump(r); err != nil {
 			return err
 		}
 	}
@@ -66,7 +68,7 @@ func configureAPIOptions(mediaEngine *webrtc.MediaEngine, interceptorRegistry *i
 	return nil
 }
 
-func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
+func configureEstimator(r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
 	// Create a Congestion Controller. This analyzes inbound and outbound data and provides
 	// suggestions on how much we should be sending.
 	//
@@ -74,9 +76,9 @@ func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 	// You can use the other ones that Pion provides, or write your own!
 	congestionController, err := cc.NewInterceptor(func() (cc.BandwidthEstimator, error) {
 		return gcc.NewSendSideBWE(
-			gcc.SendSideBWEInitialBitrate(int(defaultBitrate)),
-			gcc.SendSideBWEMaxBitrate(int(maxBitrate)),
-			gcc.SendSideBWEMinBitrate(int(minBitrate)),
+			gcc.SendSideBWEInitialBitrate(defaultBitrate),
+			gcc.SendSideBWEMaxBitrate(maxBitrate),
+			gcc.SendSideBWEMinBitrate(minBitrate),
 		)
 	})
 	congestionController.OnNewPeerConnection(func(id string, ccEstimator cc.BandwidthEstimator) {
@@ -87,7 +89,21 @@ func configureEstimator(i *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 		return err
 	}
 
-	i.Add(congestionController)
+	r.Add(congestionController)
+	return nil
+}
+
+// ConfigureTWCCSender will setup everything necessary for generating TWCC reports.
+func configureTWCCSender(m *webrtc.MediaEngine, r *interceptor.Registry) error {
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
+	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
+
+	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
+	if err != nil {
+		return err
+	}
+
+	r.Add(generator)
 	return nil
 }
 
@@ -109,7 +125,7 @@ func configureAbsSendTimeHeaderExtension(m *webrtc.MediaEngine) error {
 	return nil
 }
 
-func configureSDESHeaderExtension(m *webrtc.MediaEngine, i *interceptor.Registry) error {
+func configureSDESHeaderExtension(m *webrtc.MediaEngine) error {
 
 	if err := m.RegisterHeaderExtension(
 		webrtc.RTPHeaderExtensionCapability{URI: sdp.SDESMidURI},
@@ -142,7 +158,7 @@ func configureSDESHeaderExtension(m *webrtc.MediaEngine, i *interceptor.Registry
 	return nil
 }
 
-func configurePacketDump(i *interceptor.Registry) error {
+func configurePacketDump(r *interceptor.Registry) error {
 	dumper, err := packetdump.NewSenderInterceptor(
 		packetdump.RTCPFormatter(formatSentRTCP),
 		packetdump.RTCPWriter(&logWriteCloser{}),
@@ -153,7 +169,7 @@ func configurePacketDump(i *interceptor.Registry) error {
 		return err
 	}
 
-	i.Add(dumper)
+	r.Add(dumper)
 	return nil
 }
 

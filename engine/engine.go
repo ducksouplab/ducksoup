@@ -20,9 +20,9 @@ const (
 )
 
 var (
-	defaultBitrate    uint64
-	minBitrate        uint64
-	maxBitrate        uint64
+	defaultBitrate    int
+	minBitrate        int
+	maxBitrate        int
 	videoRTCPFeedback []webrtc.RTCPFeedback
 	// exported
 	OpusCodecs []webrtc.RTPCodecParameters

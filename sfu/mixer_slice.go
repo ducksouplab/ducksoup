@@ -10,6 +10,7 @@ import (
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/plot"
 	"github.com/ducksouplab/ducksoup/sequencing"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
@@ -18,8 +19,7 @@ import (
 
 const (
 	defaultInterpolatorStep = 30
-	maxInterpolatorDuration = 5000
-	statsPeriod             = 3000
+	statsPeriod             = 1000
 	diffThreshold           = 10
 )
 
@@ -38,22 +38,22 @@ type mixerSlice struct {
 	interpolatorIndex map[string]*sequencing.LinearInterpolator
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
-	targetBitrate         uint64
+	targetBitrate         int
 	// stats
 	lastStats     time.Time
-	inputBits     uint64
-	outputBits    uint64
-	inputBitrate  uint64
-	outputBitrate uint64
+	inputBits     int
+	outputBits    int
+	inputBitrate  int
+	outputBitrate int
 	// status
 	doneCh chan struct{} // stop processing when track is removed
 	// analysic
-	plot *mixerSlicePlot
+	plot *plot.BitratePlot
 }
 
 // helpers
 
-func minUint64(v []uint64) (min uint64) {
+func minInt(v []int) (min int) {
 	if len(v) > 0 {
 		min = v[0]
 	}
@@ -110,14 +110,14 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		lastStats: time.Now(),
 		// status
 		doneCh: make(chan struct{}),
-		// analysis
-		plot: newMixerSlicePlot(ps.join.DataFolder() + "/plots/bitrates"),
 	}
+	// analysis
+	ms.plot = plot.NewBitratePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
 
 	return
 }
 
-func (ms *mixerSlice) done() chan struct{} {
+func (ms *mixerSlice) Done() chan struct{} {
 	return ms.doneCh
 }
 
@@ -162,7 +162,7 @@ func (l *mixerSlice) updateInputBits(n int) {
 	// it seems using MarshalSize (like for outputBits below) does not give the right numbers due to packet 0-padding (so there's not need Unmarshalling bug)
 
 	l.Lock()
-	l.inputBits += uint64(n) * 8
+	l.inputBits += n * 8
 	l.Unlock()
 }
 
@@ -173,9 +173,9 @@ func (ms *mixerSlice) Write(buf []byte) (err error) {
 
 	if err == nil {
 		go func() {
-			outputBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
+			newBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
 			ms.Lock()
-			ms.outputBits += uint64(outputBits)
+			ms.outputBits += newBits
 			ms.Unlock()
 		}()
 	}
@@ -185,7 +185,6 @@ func (ms *mixerSlice) Write(buf []byte) (err error) {
 
 func (ms *mixerSlice) close() {
 	ms.pipeline.Stop()
-	ms.plot.save()
 	close(ms.doneCh)
 	ms.logInfo().Str("track", ms.ID()).Str("kind", ms.kind).Msg("out_track_stopped")
 }
@@ -203,6 +202,7 @@ func (ms *mixerSlice) loop() {
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go ms.runTickers()
 	// go ms.runReceiverListener()
+	go ms.plot.Loop()
 
 	// loop start
 	buf := make([]byte, config.SFU.Common.MTU)
@@ -224,14 +224,14 @@ pushToPipeline:
 	}
 }
 
-func (ms *mixerSlice) updateTargetBitrates(targetBitrate uint64) {
+func (ms *mixerSlice) updateTargetBitrates(targetBitrate int) {
 	ms.Lock()
 	ms.targetBitrate = targetBitrate
 	ms.Unlock()
 	ms.pipeline.SetEncodingBitrate(ms.kind, targetBitrate)
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
-	ms.logInfo().Uint64("value", targetBitrate/1000).Str("unit", "kbit/s").Msg(msg)
+	ms.logInfo().Int("value", targetBitrate/1000).Str("unit", "kbit/s").Msg(msg)
 }
 
 func (ms *mixerSlice) checkOutputBitrate() {
@@ -251,11 +251,11 @@ func (ms *mixerSlice) runTickers() {
 		defer encoderTicker.Stop()
 		for {
 			select {
-			case <-ms.done():
+			case <-ms.Done():
 				return
 			case <-encoderTicker.C:
 				if len(ms.senderControllerIndex) > 0 {
-					rates := []uint64{}
+					rates := []int{}
 					for _, sc := range ms.senderControllerIndex {
 						if env.GCC && ms.kind == "video" {
 							rates = append(rates, sc.ccOptimalBitrate)
@@ -265,7 +265,7 @@ func (ms *mixerSlice) runTickers() {
 					}
 					// no need to encode more than 2 times more than the inputBitrate
 					rates = append(rates, 2*ms.inputBitrate)
-					newPotentialRate := minUint64(rates)
+					newPotentialRate := minInt(rates)
 
 					if ms.pipeline != nil && newPotentialRate > 0 {
 						// skip updating previous value and encoding rate too often
@@ -278,8 +278,7 @@ func (ms *mixerSlice) runTickers() {
 						if diffIsBigEnough || diffToMax {
 							go ms.updateTargetBitrates(newPotentialRate)
 							// plot
-							elapsed := float64(ms.i.elapsedMilliSeconds())
-							ms.plot.addTarget(elapsed, float64(newPotentialRate))
+							ms.plot.AddTarget(newPotentialRate)
 						}
 					}
 				}
@@ -292,18 +291,20 @@ func (ms *mixerSlice) runTickers() {
 		defer statsTicker.Stop()
 		for {
 			select {
-			case <-ms.done():
+			case <-ms.Done():
 				return
 			case tickTime := <-statsTicker.C:
 				ms.Lock()
 				sinceLastTick := tickTime.Sub(ms.lastStats).Seconds()
+				if sinceLastTick == 0 {
+					break
+				}
 				// update bitrates
-				ms.inputBitrate = ms.inputBits / uint64(sinceLastTick)
-				ms.outputBitrate = ms.outputBits / uint64(sinceLastTick)
+				ms.inputBitrate = int(float64(ms.inputBits) / sinceLastTick)
+				ms.outputBitrate = int(float64(ms.outputBits) / sinceLastTick)
 				// plot
-				elapsed := float64(ms.i.elapsedMilliSeconds())
-				ms.plot.addInput(elapsed, float64(ms.inputBitrate))
-				ms.plot.addOutput(elapsed, float64(ms.outputBitrate))
+				ms.plot.AddInput(ms.inputBitrate)
+				ms.plot.AddOutput(ms.outputBitrate)
 
 				// reset cumulative bits and lastStats
 				ms.inputBits = 0

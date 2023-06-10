@@ -232,11 +232,10 @@ func (p *Pipeline) setPropString(name, prop, value string) {
 	C.gstSetPropString(p.cPipeline, cName, cProp, cValue)
 }
 
-func (p *Pipeline) SetEncodingBitrate(kind string, value64 uint64) {
+func (p *Pipeline) SetEncodingBitrate(kind string, value int) {
 	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/opus/opusenc.html?gi-language=c#opusenc:bitrate
-	value := int(value64)
 	if kind == "audio" {
 		p.setPropInt("audio_encoder_wet", "bitrate", value)
 	} else {

@@ -10,17 +10,17 @@ import (
 
 type SFUConfig struct {
 	Common struct {
-		MTU                  uint64 `yaml:"mtu"`
-		EncoderControlPeriod uint64 `yaml:"encoderControlPeriod"`
+		MTU                  int `yaml:"mtu"`
+		EncoderControlPeriod int `yaml:"encoderControlPeriod"`
 	}
 	Audio SFUStream
 	Video SFUStream
 }
 
 type SFUStream struct {
-	DefaultBitrate uint64 `yaml:"defaultBitrate"`
-	MinBitrate     uint64 `yaml:"minBitrate"`
-	MaxBitrate     uint64 `yaml:"maxBitrate"`
+	DefaultBitrate int `yaml:"defaultBitrate"`
+	MinBitrate     int `yaml:"minBitrate"`
+	MaxBitrate     int `yaml:"maxBitrate"`
 }
 
 var SFU SFUConfig

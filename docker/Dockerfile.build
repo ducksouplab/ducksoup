@@ -43,6 +43,7 @@ COPY env ./env
 COPY front/build.go ./front/build.go
 COPY gst ./gst
 COPY helpers ./helpers
+COPY plot ./plot
 COPY sequencing ./sequencing
 COPY server ./server
 COPY sfu ./sfu

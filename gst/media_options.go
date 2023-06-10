@@ -17,8 +17,8 @@ type mediaOptions struct {
 	nvCuda  bool
 	Overlay bool
 	// properties depending on yml definitions
-	DefaultBitrate  uint64
-	DefaultKBitrate uint64
+	DefaultBitrate  int
+	DefaultKBitrate int
 	Fx              string
 	Muxer           string
 	Extension       string
@@ -51,8 +51,8 @@ func (mo mediaOptions) EncodeWith(name, folder, filePrefix string) (output strin
 	output = strings.Replace(mo.Encoder, "{{.Name}}", name, -1)
 	output = strings.Replace(output, "{{.Folder}}", folder, -1)
 	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
-	output = strings.Replace(output, "{{.DefaultBitrate}}", strconv.FormatUint(mo.DefaultBitrate, 10), -1)
-	output = strings.Replace(output, "{{.DefaultKBitrate}}", strconv.FormatUint(mo.DefaultKBitrate, 10), -1)
+	output = strings.Replace(output, "{{.DefaultBitrate}}", strconv.Itoa(mo.DefaultBitrate), -1)
+	output = strings.Replace(output, "{{.DefaultKBitrate}}", strconv.Itoa(mo.DefaultKBitrate), -1)
 	return
 }
 

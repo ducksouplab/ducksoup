@@ -30,3 +30,7 @@ type TrackWriter interface {
 	ID() string
 	Write(buf []byte) error
 }
+
+type Terminable interface {
+	Done() chan struct{}
+}
