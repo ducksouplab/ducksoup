@@ -99,7 +99,9 @@ func (sc *senderController) updateRateFromLoss(loss int) {
 	sc.lossOptimalBitrate = sc.capRate(newOptimalBitrate)
 	sc.logInfo().Str("kind", sc.ms.kind).Int("value", sc.lossOptimalBitrate).Msg("loss_optimal_bitrate_updated")
 	// plot
-	sc.ms.plot.AddSenderLossOptimal(sc.toUserId, sc.lossOptimalBitrate)
+	if env.GeneratePlots {
+		sc.ms.plot.AddSenderLossOptimal(sc.toUserId, sc.lossOptimalBitrate)
+	}
 }
 
 func (sc *senderController) loop() {
@@ -129,7 +131,9 @@ func (sc *senderController) loopGCC() {
 			sc.ccOptimalBitrate = sc.capRate(sc.ccEstimator.GetTargetBitrate())
 			sc.logInfo().Str("kind", sc.ms.kind).Int("value", sc.ccOptimalBitrate).Msg("cc_optimal_bitrate_updated")
 			// plot
-			sc.ms.plot.AddSenderCCOptimal(sc.toUserId, sc.ccOptimalBitrate)
+			if env.GeneratePlots {
+				sc.ms.plot.AddSenderCCOptimal(sc.toUserId, sc.ccOptimalBitrate)
+			}
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
 		}
