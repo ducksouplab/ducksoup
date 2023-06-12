@@ -18,3 +18,5 @@ dockerbuild:
 	@docker build -f docker/Dockerfile.build -t ducksoup:latest . && docker tag ducksoup ducksouplab/ducksoup
 dockerpush:
 	@docker push ducksouplab/ducksoup:latest
+cleardata:
+	@rm -rf data

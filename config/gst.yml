@@ -1,8 +1,8 @@
 shared:
   audio:
-    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=140
+    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=200
   video:
-    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=140
+    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=200
     rawFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
     constraint:
       format: >-

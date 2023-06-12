@@ -4,7 +4,7 @@ const DEFAULT_CONSTRAINTS = {
   video: {
     width: { ideal: 800 },
     height: { ideal: 600 },
-    framerate: { ideal: 30 },
+    frameRate: { ideal: 30 },
     facingMode: { ideal: "user" },
   },
   audio: {
@@ -33,7 +33,7 @@ const MAX_AUDIO_BITRATE = 64000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.35");
+  console.log("[DuckSoup] v1.5.36");
 
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;

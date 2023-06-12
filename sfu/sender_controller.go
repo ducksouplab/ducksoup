@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/rtcp"
@@ -35,14 +36,22 @@ func newSenderController(pc *peerConn, ms *mixerSlice, sender *webrtc.RTPSender)
 	kind := ms.output.Kind().String()
 	ssrc := params.Encodings[0].SSRC
 
+	// loss-based bitrate estimation is done here
+	lossOptimalBitrate := config.SFU.Video.DefaultBitrate
+	if kind == "audio" {
+		lossOptimalBitrate = config.SFU.Audio.DefaultBitrate
+	}
+	// ccOptimalBitrate default value is set by ccEstimator
+
 	return &senderController{
-		ms:          ms,
-		fromPs:      ms.fromPs,
-		toUserId:    pc.userId,
-		ssrc:        ssrc,
-		kind:        kind,
-		sender:      sender,
-		ccEstimator: pc.ccEstimator,
+		ms:                 ms,
+		fromPs:             ms.fromPs,
+		toUserId:           pc.userId,
+		ssrc:               ssrc,
+		kind:               kind,
+		sender:             sender,
+		ccEstimator:        pc.ccEstimator,
+		lossOptimalBitrate: lossOptimalBitrate,
 	}
 }
 
@@ -98,6 +107,7 @@ func (sc *senderController) loop() {
 
 	<-sc.ms.i.ready()
 	if sc.kind == "video" && env.GCC {
+		// applying GCC only to video is an approximation since audio consumes less bandwidth
 		go sc.loopGCC()
 	}
 }

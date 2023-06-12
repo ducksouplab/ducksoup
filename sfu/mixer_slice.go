@@ -21,6 +21,7 @@ const (
 	defaultInterpolatorStep = 30
 	statsPeriod             = 1000
 	diffThreshold           = 10
+	inputToOutputMaxFactor  = 1.4
 )
 
 type mixerSlice struct {
@@ -112,7 +113,9 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		doneCh: make(chan struct{}),
 	}
 	// analysis
-	ms.plot = plot.NewBitratePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
+	if env.GeneratePlots {
+		ms.plot = plot.NewBitratePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
+	}
 
 	return
 }
@@ -202,7 +205,9 @@ func (ms *mixerSlice) loop() {
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
 	go ms.runTickers()
 	// go ms.runReceiverListener()
-	go ms.plot.Loop()
+	if env.GeneratePlots {
+		go ms.plot.Loop()
+	}
 
 	// loop start
 	buf := make([]byte, config.SFU.Common.MTU)
@@ -232,6 +237,10 @@ func (ms *mixerSlice) updateTargetBitrates(targetBitrate int) {
 	// format and log
 	msg := fmt.Sprintf("%s_target_bitrate_updated", ms.kind)
 	ms.logInfo().Int("value", targetBitrate/1000).Str("unit", "kbit/s").Msg(msg)
+	// plot
+	if env.GeneratePlots {
+		ms.plot.AddTarget(targetBitrate)
+	}
 }
 
 func (ms *mixerSlice) checkOutputBitrate() {
@@ -245,6 +254,9 @@ func (ms *mixerSlice) checkOutputBitrate() {
 }
 
 func (ms *mixerSlice) runTickers() {
+	// sleep a bit to be closer to latest update from sender controller,
+	// (if encoderControlPeriod is a multiple of gccPeriod)
+	time.Sleep(50 * time.Millisecond)
 	// update encoding bitrate on tick and according to minimum controller rate
 	go func() {
 		encoderTicker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
@@ -263,8 +275,9 @@ func (ms *mixerSlice) runTickers() {
 							rates = append(rates, sc.lossOptimalBitrate)
 						}
 					}
-					// no need to encode more than 2 times more than the inputBitrate
-					rates = append(rates, 2*ms.inputBitrate)
+					// no need to encode more than inputToOutputMaxFactor times the inputBitrate
+					inputDependentRate := int(inputToOutputMaxFactor * (float64(ms.inputBitrate)))
+					rates = append(rates, inputDependentRate)
 					newPotentialRate := minInt(rates)
 
 					if ms.pipeline != nil && newPotentialRate > 0 {
@@ -277,8 +290,6 @@ func (ms *mixerSlice) runTickers() {
 						diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
 						if diffIsBigEnough || diffToMax {
 							go ms.updateTargetBitrates(newPotentialRate)
-							// plot
-							ms.plot.AddTarget(newPotentialRate)
 						}
 					}
 				}
@@ -303,8 +314,10 @@ func (ms *mixerSlice) runTickers() {
 				ms.inputBitrate = int(float64(ms.inputBits) / sinceLastTick)
 				ms.outputBitrate = int(float64(ms.outputBits) / sinceLastTick)
 				// plot
-				ms.plot.AddInput(ms.inputBitrate)
-				ms.plot.AddOutput(ms.outputBitrate)
+				if env.GeneratePlots {
+					ms.plot.AddInput(ms.inputBitrate)
+					ms.plot.AddOutput(ms.outputBitrate)
+				}
 
 				// reset cumulative bits and lastStats
 				ms.inputBits = 0

@@ -414,6 +414,19 @@ func (ps *peerServer) loop() {
 			}
 		case "client_video_resolution_updated":
 			ps.logDebug().Str("context", "track").Str("source", "client").Str("value", m.Payload).Str("unit", "pixels").Msg(m.Kind)
+			if env.GeneratePlots {
+				ps.videoSlice.plot.AddResolution(m.Payload)
+			}
+		case "client_video_fps_updated":
+			ps.logDebug().Str("context", "track").Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
+			if env.GeneratePlots {
+				ps.videoSlice.plot.AddFramerate(m.Payload)
+			}
+		case "client_keyframe_encoded_count_updated":
+			ps.logDebug().Str("context", "track").Str("source", "client").Str("value", m.Payload).Msg(m.Kind)
+			if env.GeneratePlots {
+				ps.videoSlice.plot.AddKeyFrame()
+			}
 		case "stop":
 			ps.close("client_stop_request")
 		default:
