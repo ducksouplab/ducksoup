@@ -12,8 +12,8 @@ github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSV
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/evanw/esbuild v0.17.19 h1:JdzNCvfFEoUCXKHhdP326Vn2mhCu8PybXeBDHaSRyWo=
-github.com/evanw/esbuild v0.17.19/go.mod h1:iINY06rn799hi48UqEnaQvVfZWe6W9bET78LbvN8VWk=
+github.com/evanw/esbuild v0.18.1 h1:8JY3GpR8tB+udGLCSee8KkGu4d0KC3rI2rUHfJqKc6I=
+github.com/evanw/esbuild v0.18.1/go.mod h1:iINY06rn799hi48UqEnaQvVfZWe6W9bET78LbvN8VWk=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/go-fonts/dejavu v0.1.0 h1:JSajPXURYqpr+Cu8U9bt8K+XcACIHWqWrvWCKyeFmVQ=
