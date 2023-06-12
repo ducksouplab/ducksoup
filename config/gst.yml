@@ -70,9 +70,9 @@ x264:
   encoder: >-
     x264enc name={{.Name}} pass=17
     bitrate={{.DefaultKBitrate}}
+    pass=pass1
     multipass-cache-file={{.Folder}}/cache/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
     speed-preset=ultrafast
-    tune=zerolatency 
     min-force-key-unit-interval=3000000000
     qos=true !
     video/x-h264, profile=main ! 
