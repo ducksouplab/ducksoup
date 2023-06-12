@@ -118,7 +118,7 @@ func (p *BitratePlot) save() {
 	)
 	for toUserId, line := range p.senderCCOptimalLine {
 		p.createLinePoints(
-			"cc-optimal-output-"+toUserId,
+			"gcc-optimal-output-"+toUserId,
 			line,
 			1,
 			1,

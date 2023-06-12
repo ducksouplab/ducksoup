@@ -21,7 +21,10 @@ const (
 	defaultInterpolatorStep = 30
 	statsPeriod             = 1000
 	diffThreshold           = 10
-	inputToOutputMaxFactor  = 1.4
+	// when reducing inputToOutputMaxFactor, ensure the EncoderControlPeriod is not too low
+	// inputToOutputMaxFactor is only meant as a guard, and should not impact the output bitrate
+	// too much
+	inputToOutputMaxFactor = 2
 )
 
 type mixerSlice struct {
