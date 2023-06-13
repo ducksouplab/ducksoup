@@ -21,10 +21,11 @@ const (
 	defaultInterpolatorStep = 30
 	statsPeriod             = 1000
 	diffThreshold           = 10
+	// DISABLED: inputToOutputMaxFactor (too much artefact)
 	// when reducing inputToOutputMaxFactor, ensure the EncoderControlPeriod is not too low
 	// inputToOutputMaxFactor is only meant as a guard, and should not impact the output bitrate
 	// too much
-	inputToOutputMaxFactor = 2
+	// inputToOutputMaxFactor = 2
 )
 
 type mixerSlice struct {
@@ -278,9 +279,9 @@ func (ms *mixerSlice) runTickers() {
 							rates = append(rates, sc.lossOptimalBitrate)
 						}
 					}
-					// no need to encode more than inputToOutputMaxFactor times the inputBitrate
-					inputDependentRate := int(inputToOutputMaxFactor * (float64(ms.inputBitrate)))
-					rates = append(rates, inputDependentRate)
+					// DISABLED no need to encode more than inputToOutputMaxFactor times the inputBitrate
+					// inputDependentRate := int(inputToOutputMaxFactor * (float64(ms.inputBitrate)))
+					// rates = append(rates, inputDependentRate)
 					newPotentialRate := minInt(rates)
 
 					if ms.pipeline != nil && newPotentialRate > 0 {
