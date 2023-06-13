@@ -3,7 +3,6 @@ package engine
 import (
 	"time"
 
-	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
@@ -17,7 +16,6 @@ import (
 
 // adapted from https://github.com/pion/webrtc/blob/v3.2.8/interceptor.go
 func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
-
 	// order matters!
 	if env.LogLevel == 4 {
 		if err := configurePacketDump(r); err != nil {
@@ -31,6 +29,16 @@ func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimat
 
 	if err := webrtc.ConfigureRTCPReports(r); err != nil {
 		return err
+	}
+
+	if env.GCC {
+		// keep configurations here in that order
+		if err := configureEstimator(r, estimatorCh); err != nil {
+			return err
+		}
+	} else {
+		// needed not to block pc
+		estimatorCh <- nil
 	}
 
 	if err := webrtc.ConfigureTWCCHeaderExtensionSender(m, r); err != nil {
@@ -49,16 +57,6 @@ func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimat
 
 	if err := configureSDESHeaderExtension(m); err != nil {
 		return err
-	}
-
-	if env.GCC {
-		// keep configurations here in that order
-		if err := configureEstimator(r, estimatorCh); err != nil {
-			return err
-		}
-	} else {
-		// needed not to block pc
-		estimatorCh <- nil
 	}
 
 	return nil
@@ -92,16 +90,9 @@ func configureEstimator(r *interceptor.Registry, estimatorCh chan cc.BandwidthEs
 // ConfigureTWCCSender will setup everything necessary for generating TWCC reports.
 func configureTWCCSender(m *webrtc.MediaEngine, r *interceptor.Registry) error {
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
-	if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo); err != nil {
-		return err
-	}
-
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
-	if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio); err != nil {
-		return err
-	}
 
-	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(time.Duration(config.SFU.Common.TWCCInterval) * time.Millisecond))
+	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
 	if err != nil {
 		return err
 	}
@@ -162,16 +153,16 @@ func configureSDESHeaderExtension(m *webrtc.MediaEngine) error {
 }
 
 func configurePacketDump(r *interceptor.Registry) error {
-	rtcpDumperInterceptor, err := packetdump.NewSenderInterceptor(
-		packetdump.RTCPFormatter(rtcpFormatSent),
+	dumper, err := packetdump.NewSenderInterceptor(
+		packetdump.RTCPFormatter(formatSentRTCP),
 		packetdump.RTCPWriter(&logWriteCloser{}),
 		packetdump.RTPWriter(zerolog.Nop()),
 	)
+
 	if err != nil {
 		return err
 	}
 
-	r.Add(rtcpDumperInterceptor)
-
+	r.Add(dumper)
 	return nil
 }

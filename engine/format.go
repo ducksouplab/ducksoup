@@ -13,7 +13,7 @@ import (
 
 // used for packet dumps
 
-func rtcpFormatSent(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
+func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 	for _, pkt := range pkts {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerNack:
