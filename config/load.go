@@ -12,6 +12,7 @@ type SFUConfig struct {
 	Common struct {
 		MTU                  int `yaml:"mtu"`
 		EncoderControlPeriod int `yaml:"encoderControlPeriod"`
+		TWCCInterval         int `yaml:"twccInterval"`
 	}
 	Audio SFUStream
 	Video SFUStream

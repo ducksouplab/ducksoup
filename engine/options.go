@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/store"
 	"github.com/pion/interceptor"
@@ -22,6 +23,12 @@ import (
 
 // adapted from https://github.com/pion/webrtc/blob/v3.2.8/interceptor.go
 func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
+	// order matters!
+	if env.LogLevel == 4 {
+		if err := configurePacketDump(r); err != nil {
+			return err
+		}
+	}
 
 	if err := webrtc.ConfigureNack(m, r); err != nil {
 		return err
@@ -59,12 +66,6 @@ func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimat
 		return err
 	}
 
-	if env.LogLevel == 4 {
-		if err := configurePacketDump(r); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -98,7 +99,7 @@ func configureTWCCSender(m *webrtc.MediaEngine, r *interceptor.Registry) error {
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
 
-	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
+	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(time.Duration(config.SFU.Common.TWCCInterval) * time.Millisecond))
 	if err != nil {
 		return err
 	}
@@ -211,13 +212,13 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 				lost,
 			)
 
-			// case *rtcp.ReceiverReport:
-			// 	res += "[RR sent] reports: "
-			// 	for _, report := range rtcpPacket.Reports {
-			// 		res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
-			// 	}
-			// default:
-			// 	res += fmt.Sprintf("[%T sent]", rtcpPacket)
+		case *rtcp.ReceiverReport:
+			res += "[RR sent] reports: "
+			for _, report := range rtcpPacket.Reports {
+				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
+			}
+		default:
+			res += fmt.Sprintf("[%T sent] %+v", rtcpPacket, rtcpPacket)
 		}
 	}
 	return res
