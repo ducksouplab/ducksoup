@@ -55,7 +55,7 @@ func rtcpFormatSent(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
 			}
 		default:
-			res += fmt.Sprintf("[%T sent]", rtcpPacket)
+			res += fmt.Sprintf("[%T sent] %+v", rtcpPacket, rtcpPacket)
 		}
 	}
 	return res

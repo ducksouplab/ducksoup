@@ -1,6 +1,7 @@
 common:
   mtu: 1460
   encoderControlPeriod: 5000
+  twccInterval: 30
 audio:
   defaultBitrate: 64000
   minBitrate: 32000
