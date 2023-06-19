@@ -23,7 +23,6 @@ tee name=tee_video !
   queue ! 
   {{.Video.Rtp.JitterBuffer}} ! 
   {{.Video.Rtp.Depay}} ! 
-  h264timestamper !
   dry_video_recorder.
 
 tee_video. ! 

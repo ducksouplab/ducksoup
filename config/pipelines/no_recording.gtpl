@@ -13,7 +13,7 @@ audio_src. !
     audio/x-raw,channels=1 !
     {{.Audio.Fx}} ! 
     audioconvert !  
-    {{.Audio.EncodeWith "audio_encoder_wet" .Folder .FilePrefix}} ! 
+    {{.Audio.EncodeWithCache "audio_encoder_wet" .Folder .FilePrefix}} ! 
     {{.Audio.Rtp.Pay}} !
     audio_sink.
 {{else}}
@@ -34,7 +34,7 @@ video_src. !
         timeoverlay ! 
     {{end}}
     {{.Video.ConstraintFormat}} !
-    {{.Video.EncodeWith "video_encoder_wet" .Folder .FilePrefix}} ! 
+    {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
     queue ! 
     {{.Video.Rtp.Pay}} ! 
     video_sink.

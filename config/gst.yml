@@ -29,14 +29,13 @@ opus:
     depay: >-
       rtpopusdepay !
       opusparse
-  decoder: decodebin
+  decoder: opusdec
   encoder: >-
     opusenc name={{.Name}}
     bitrate={{.DefaultBitrate}}
     audio-type=2048
     bitrate-type=1
-    perfect-timestamp=true !
-    opusparse
+    perfect-timestamp=false
 vp8:
   encoding: "VP8"
   muxer: "matroskamux"
@@ -65,13 +64,14 @@ x264:
     pay: rtph264pay
     depay: >-
       rtph264depay !
-      h264parse
+      h264parse !
+      h264timestamper
   decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
   encoder: >-
     x264enc name={{.Name}} pass=17
     bitrate={{.DefaultKBitrate}}
     pass=pass1
-    multipass-cache-file={{.Folder}}/cache/{{.FilePrefix}}.x264_pass.{{.Name}}.log 
+    multipass-cache-file={{.Folder}}/cache/{{.FilePrefix}}.{{.Name}}.x264_pass.log 
     speed-preset=ultrafast
     min-force-key-unit-interval=3000000000
     qos=true !
@@ -86,7 +86,8 @@ nv264:
     pay: rtph264pay
     depay: >-
       rtph264depay !
-      h264parse
+      h264parse !
+      h264timestamper
   decoder: nvh264sldec qos=true
   encoder: >-
     nvh264enc name={{.Name}}

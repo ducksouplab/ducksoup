@@ -95,9 +95,8 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	if env.GeneratePlots {
 		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/plots")
 	}
-	isAccelerated := join.GPU && env.NVCodec
-	if join.VideoFormat == "H264" && !isAccelerated {
-		// used by x264 mutipass cache
+	if join.VideoFormat == "H264" {
+		// used by x264 mutipass cache or muxer
 		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/cache")
 	}
 

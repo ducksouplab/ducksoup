@@ -26,7 +26,7 @@ audio_src. !
         audio/x-raw,channels=1 !
         {{.Audio.Fx}} ! 
         audioconvert ! 
-        {{.Audio.EncodeWith "audio_encoder_wet" .Folder .FilePrefix}} ! 
+        {{.Audio.EncodeWithCache "audio_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_audio_out ! 
             queue ! 
@@ -68,7 +68,7 @@ video_src. !
 
     tee name=tee_video_in ! 
         queue ! 
-        {{.Video.EncodeWith "video_encoder_dry" .Folder .FilePrefix}} ! 
+        {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
         dry_recorder.
 
     tee_video_in. ! 
@@ -81,7 +81,7 @@ video_src. !
 
         queue ! 
         {{.Video.ConstraintFormat}} !
-        {{.Video.EncodeWith "video_encoder_wet" .Folder .FilePrefix}} ! 
+        {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_video_out ! 
             queue ! 
@@ -102,7 +102,7 @@ video_src. !
             {{if .Video.Overlay }}
                 timeoverlay ! 
             {{end}}
-            {{.Video.EncodeWith "video_encoder_dry" .Folder .FilePrefix}} ! 
+            {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
         {{end}}
         
         {{/* video stream has to be written to two files if there is an aufio fx*/}}

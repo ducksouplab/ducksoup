@@ -47,12 +47,17 @@ func (mo *mediaOptions) addSharedVideoProperties() {
 }
 
 // template helpers
-func (mo mediaOptions) EncodeWith(name, folder, filePrefix string) (output string) {
+func (mo mediaOptions) EncodeWith(name string) (output string) {
 	output = strings.Replace(mo.Encoder, "{{.Name}}", name, -1)
-	output = strings.Replace(output, "{{.Folder}}", folder, -1)
-	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
 	output = strings.Replace(output, "{{.DefaultBitrate}}", strconv.Itoa(mo.DefaultBitrate), -1)
 	output = strings.Replace(output, "{{.DefaultKBitrate}}", strconv.Itoa(mo.DefaultKBitrate), -1)
+	return
+}
+
+func (mo mediaOptions) EncodeWithCache(name, folder, filePrefix string) (output string) {
+	output = mo.EncodeWith(name)
+	output = strings.Replace(output, "{{.Folder}}", folder, -1)
+	output = strings.Replace(output, "{{.FilePrefix}}", filePrefix, -1)
 	return
 }
 
