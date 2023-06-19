@@ -15,10 +15,10 @@ import (
 )
 
 // adapted from https://github.com/pion/webrtc/blob/v3.2.8/interceptor.go
-func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator) error {
+func configureAPIOptions(m *webrtc.MediaEngine, r *interceptor.Registry, estimatorCh chan cc.BandwidthEstimator, logger zerolog.Logger) error {
 	// order matters!
 	if env.LogLevel == 4 {
-		if err := configurePacketDump(r); err != nil {
+		if err := configurePacketDump(r, logger); err != nil {
 			return err
 		}
 	}
@@ -152,10 +152,10 @@ func configureSDESHeaderExtension(m *webrtc.MediaEngine) error {
 	return nil
 }
 
-func configurePacketDump(r *interceptor.Registry) error {
+func configurePacketDump(r *interceptor.Registry, logger zerolog.Logger) error {
 	dumper, err := packetdump.NewSenderInterceptor(
 		packetdump.RTCPFormatter(formatSentRTCP),
-		packetdump.RTCPWriter(&logWriteCloser{}),
+		packetdump.RTCPWriter(&logWriteCloser{logger: logger}),
 		packetdump.RTPWriter(zerolog.Nop()),
 	)
 

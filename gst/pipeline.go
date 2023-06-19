@@ -17,7 +17,6 @@ import (
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
@@ -75,9 +74,6 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
 
-	log.Info().Str("context", "pipeline").Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
-	log.Info().Str("context", "pipeline").Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
-
 	return
 }
 
@@ -88,24 +84,24 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func NewPipeline(join types.JoinPayload, filePrefix string) *Pipeline {
+func NewPipeline(join types.JoinPayload, filePrefix string, logger zerolog.Logger) *Pipeline {
+	id := uuid.New().String()
+	logger = logger.With().
+		Str("context", "pipeline").
+		Str("user", join.UserId).
+		Str("pipeline", id).
+		Logger()
 
 	videoOptions, audioOptions := getOptions(join)
+	logger.Info().Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
+	logger.Info().Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
+
 	pipelineStr := newPipelineDef(join, filePrefix, videoOptions, audioOptions)
-	id := uuid.New().String()
 
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
 	defer C.free(unsafe.Pointer(cPipelineStr))
 	defer C.free(unsafe.Pointer(cId))
-
-	logger := log.With().
-		Str("context", "pipeline").
-		Str("namespace", join.Namespace).
-		Str("interaction", join.InteractionName).
-		Str("user", join.UserId).
-		Str("pipeline", id).
-		Logger()
 
 	p := &Pipeline{
 		mu:           sync.Mutex{},

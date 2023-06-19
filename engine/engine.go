@@ -11,7 +11,7 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/webrtc/v3"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -144,7 +144,7 @@ func init() {
 // APIs are used to create peer connections, possible codecs are set once for all (at API level)
 // but preferred codecs for a given track are set at transceiver level
 // currently NewWebRTCAPI (rather than pion default one) prevents a freeze/lag observed after ~20 seconds
-func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
+func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator, logger zerolog.Logger) (*webrtc.API, error) {
 	s := webrtc.SettingEngine{}
 	s.SetSRTPReplayProtectionWindow(512)
 	s.SetICEMulticastDNSMode(ice.MulticastDNSModeDisabled)
@@ -174,13 +174,13 @@ func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator) (*webrtc.API, error) {
 	i := &interceptor.Registry{}
 
 	// enhance them
-	if err := configureAPIOptions(m, i, estimatorCh); err != nil {
-		log.Error().Err(err).Str("context", "peer").Msg("configure_api_failed")
+	if err := configureAPIOptions(m, i, estimatorCh, logger); err != nil {
+		logger.Error().Err(err).Str("context", "peer").Msg("configure_api_failed")
 	}
 
 	if len(env.PublicIP) > 0 {
 		s.SetNAT1To1IPs([]string{env.PublicIP}, webrtc.ICECandidateTypeHost)
-		log.Info().Str("context", "peer").Str("IP", env.PublicIP).Msg("set_host_candidate")
+		logger.Info().Str("context", "peer").Str("IP", env.PublicIP).Msg("set_host_candidate")
 	}
 
 	return webrtc.NewAPI(

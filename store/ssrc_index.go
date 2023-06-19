@@ -3,7 +3,7 @@ package store
 import (
 	"sync"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -15,6 +15,7 @@ type ssrcLog struct {
 	Namespace   string
 	Interaction string
 	User        string
+	logger      zerolog.Logger
 }
 
 type ssrcIndex struct {
@@ -30,12 +31,12 @@ func newIdsIndex() *ssrcIndex {
 	return &ssrcIndex{sync.Mutex{}, make(map[uint32]*ssrcLog)}
 }
 
-func AddToSSRCIndex(ssrc uint32, kind, namespace, interaction, user string) {
+func AddToSSRCIndex(ssrc uint32, kind, namespace, interaction, user string, logger zerolog.Logger) {
 	ssrcIndexSingleton.Lock()
 	defer ssrcIndexSingleton.Unlock()
 
 	if _, ok := ssrcIndexSingleton.index[ssrc]; ok {
-		log.Error().
+		logger.Error().
 			Str("context", "interaction").
 			Str("namespace", namespace).
 			Str("interaction", interaction).

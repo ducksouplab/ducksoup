@@ -8,7 +8,7 @@ import (
 	"github.com/ducksouplab/ducksoup/store"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 // used for packet dumps
@@ -82,7 +82,9 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 // }
 
 // used by RTCP log interceptors
-type logWriteCloser struct{}
+type logWriteCloser struct {
+	logger zerolog.Logger
+}
 
 func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 	n = len(p)
@@ -106,7 +108,7 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 							// don't log empty counts
 							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil && count != 0 {
 								if lost, err := strconv.ParseUint(lostMatch[1], 10, 64); err == nil {
-									log.Logger.Trace().
+									wc.logger.Trace().
 										Str("context", "track").
 										Str("ssrc", ssrcMatch[1]).
 										Str("namespace", ssrcLog.Namespace).
@@ -122,7 +124,7 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 				}
 			}
 		} else {
-			log.Logger.Trace().Msg(msg)
+			wc.logger.Trace().Msg(msg)
 		}
 	}
 	return

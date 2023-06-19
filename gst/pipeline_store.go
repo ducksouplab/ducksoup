@@ -2,8 +2,6 @@ package gst
 
 import (
 	"sync"
-
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -45,7 +43,7 @@ func (ps *pipelineStore) delete(id string) {
 
 	p, ok := ps.index[id]
 	if ok {
-		log.Info().Str("context", "pipeline").Str("namespace", p.join.Namespace).Str("interaction", p.join.InteractionName).Str("user", p.join.UserId).Str("pipeline", id).Msg("pipeline_deleted")
+		p.logger.Info().Msg("pipeline_deleted")
 	}
 
 	delete(ps.index, id)

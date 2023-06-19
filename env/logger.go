@@ -8,14 +8,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	timeFormat = "20060102-150405.000"
-)
-
 // CAUTION relying on LogLevel package variable does not work (?) that's why we pass it as a parameter
-func configureLogger(logLevel int) {
+func configureGlobalLogger(logLevel int) {
 	// zerolog defaults
-	zerolog.TimeFieldFormat = timeFormat
+	zerolog.TimeFieldFormat = TimeFormat
 	if Mode == "DEV" {
 		log.Logger = log.With().Caller().Logger()
 	}
@@ -24,7 +20,7 @@ func configureLogger(logLevel int) {
 	var writers []io.Writer
 	// stdout writer
 	if Mode == "DEV" || LogStdout {
-		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat})
+		writers = append(writers, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: TimeFormat})
 	}
 	// file writer
 	if LogFile != "" {

@@ -48,7 +48,7 @@ func newPeerServer(
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	pipeline := gst.NewPipeline(join, i.filePrefix(join.UserId))
+	pipeline := gst.NewPipeline(join, i.filePrefix(join.UserId), i.logger)
 
 	ps := &peerServer{
 		userId:            join.UserId,
@@ -76,6 +76,9 @@ func newPeerServer(
 	}
 	// some events on pc needs API from ws or interaction
 	pc.handleCallbacks(ps)
+
+	i.logger.Info().Str("context", "peer").Str("user", ps.userId).Msg("peer_server_started")
+
 	return ps
 }
 
@@ -482,7 +485,7 @@ func RunPeerServer(origin, href string, unsafeConn *websocket.Conn) {
 		namespace := joinPayload.Namespace
 		interactionName := joinPayload.InteractionName
 
-		r, msg, err := interactionStoreSingleton.join(joinPayload)
+		i, msg, err := interactionStoreSingleton.join(joinPayload)
 		if err != nil {
 			// joinInteraction err is meaningful to client
 			ws.send(fmt.Sprintf("error-%s", err))
@@ -491,17 +494,16 @@ func RunPeerServer(origin, href string, unsafeConn *websocket.Conn) {
 		}
 		ws.sendWithPayload("joined", msg)
 
-		pc, err := newPeerConn(joinPayload, r)
+		pc, err := newPeerConn(joinPayload, i)
+
 		if err != nil {
 			ws.send("error-peer-connection")
-			log.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("create_pc_failed")
+			i.logger.Error().Str("context", "peer").Err(err).Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("create_pc_failed")
 			return
 		}
 
-		ps := newPeerServer(joinPayload, r, pc, ws)
-
-		log.Info().Str("context", "peer").Str("namespace", namespace).Str("interaction", interactionName).Str("user", userId).Msg("peer_server_started")
-
+		ps := newPeerServer(joinPayload, i, pc, ws)
+		ws.setLogger(i.logger)
 		ps.loop() // blocking
 	}
 }

@@ -3,6 +3,7 @@ package sfu
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -67,6 +68,35 @@ func generateId(join types.JoinPayload) string {
 	return join.Origin + "#" + join.Namespace + "#" + join.InteractionName
 }
 
+func (i *interaction) setLogger() {
+	var logger zerolog.Logger
+
+	path := "./data/" + i.namespace + "/" + i.name + "/" + i.name + ".log"
+	fileWriter, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+
+	if err == nil {
+		writers := zerolog.MultiLevelWriter(fileWriter, zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: env.TimeFormat})
+		logger = zerolog.New(writers).With().Timestamp().Logger()
+	} else {
+		// use default logger
+		logger = log.Logger
+	}
+	// add default options
+	logger = logger.With().
+		Str("namespace", i.namespace).
+		Str("interaction", i.name).
+		Logger().
+		Hook(i) // (call Run hook whenever logging)
+	// DEV mode
+	if env.Mode == "DEV" {
+		logger = logger.With().Caller().Logger()
+	}
+	// first log
+	logger.Info().Str("context", "interaction").Msg("logger_created")
+
+	i.logger = logger
+}
+
 func newInteraction(id string, join types.JoinPayload) *interaction {
 	// process duration
 	durationInSeconds := join.Duration
@@ -123,12 +153,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
 	}
 	i.mixer = newMixer(i)
-	// log (call Run hook whenever logging)
-	i.logger = log.With().
-		Str("namespace", join.Namespace).
-		Str("interaction", join.InteractionName).
-		Logger().
-		Hook(i)
+	i.setLogger()
 
 	go i.abortCountdown()
 	return i
@@ -180,7 +205,7 @@ func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
 		// new user joined existing interaction: normal path
 		i.connectedIndex[userId] = true
 		i.joinedCountIndex[userId] = 1
-		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")
+		i.logger.Info().Str("context", "interaction").Str("user", userId).Interface("payload", join).Msg("peer_joined")
 		return "existing-interaction", nil
 	}
 }
@@ -306,7 +331,7 @@ func (i *interaction) addSSRC(ssrc uint32, kind string, userId string) {
 	defer i.Unlock()
 
 	i.ssrcs = append(i.ssrcs, ssrc)
-	go store.AddToSSRCIndex(ssrc, kind, i.namespace, i.name, userId)
+	go store.AddToSSRCIndex(ssrc, kind, i.namespace, i.name, userId, i.logger)
 }
 
 // returns true if signaling is needed

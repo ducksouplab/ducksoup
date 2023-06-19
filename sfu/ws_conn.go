@@ -25,6 +25,7 @@ type wsConn struct {
 	interactionName string
 	namespace       string
 	ps              *peerServer
+	logger          zerolog.Logger
 }
 
 type messageOut struct {
@@ -110,11 +111,17 @@ func parseFramerate(join types.JoinPayload) (framerate int) {
 // API
 
 func newWsConn(unsafeConn *websocket.Conn) *wsConn {
-	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", "", nil}
+	logger := log.With().Str("context", "peer").Logger() // default logger
+
+	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", "", nil, logger}
+}
+
+func (ws *wsConn) setLogger(logger zerolog.Logger) {
+	ws.logger = logger
 }
 
 func (ws *wsConn) logError() *zerolog.Event {
-	return log.Error().Str("context", "peer").Str("namespace", ws.namespace).Str("interaction", ws.interactionName).Str("user", ws.userId)
+	return ws.logger.Error().Str("user", ws.userId)
 }
 
 // peer server has not been created yet

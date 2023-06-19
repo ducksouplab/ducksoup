@@ -9,6 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	TimeFormat = "20060102-150405.000"
+)
+
 var ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
 var LogFile, Mode, Port, ProjectRoot, PublicIP, TestLogin, TestPassword, WebPrefix string
@@ -99,5 +103,5 @@ func init() {
 	}
 
 	// other global configuration
-	configureLogger(LogLevel)
+	configureGlobalLogger(LogLevel)
 }

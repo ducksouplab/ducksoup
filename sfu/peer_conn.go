@@ -51,7 +51,7 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
 	// create RTC API
 	estimatorCh := make(chan cc.BandwidthEstimator, 1)
-	api, err := engine.NewWebRTCAPI(estimatorCh)
+	api, err := engine.NewWebRTCAPI(estimatorCh, i.logger)
 	if err != nil {
 		return
 	}
