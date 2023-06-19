@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/ducksouplab/ducksoup/types"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -31,18 +30,15 @@ func (is *interactionStore) join(join types.JoinPayload) (*interaction, string, 
 	defer is.Unlock()
 
 	interactionId := generateId(join)
-	userId := join.UserId
 
 	if i, ok := interactionStoreSingleton.index[interactionId]; ok {
 		msg, err := i.join(join)
 		return i, msg, err
 	} else {
 		// new user creates interaction
-		newInteraction := newInteraction(interactionId, join)
-		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Str("id", interactionId).Str("origin", join.Origin).Msg("interaction_created")
-		log.Info().Str("context", "interaction").Str("namespace", join.Namespace).Str("interaction", join.InteractionName).Str("user", userId).Interface("payload", join).Msg("peer_joined")
-		interactionStoreSingleton.index[interactionId] = newInteraction
-		return newInteraction, "new-interaction", nil
+		i := newInteraction(interactionId, join)
+		interactionStoreSingleton.index[interactionId] = i
+		return i, "new-interaction", nil
 	}
 }
 

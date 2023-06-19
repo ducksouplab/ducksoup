@@ -155,6 +155,9 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	i.mixer = newMixer(i)
 	i.setLogger()
 
+	i.logger.Info().Str("context", "interaction").Str("user", join.UserId).Str("origin", join.Origin).Msg("interaction_created")
+	i.logger.Info().Str("context", "interaction").Str("user", join.UserId).Interface("payload", join).Msg("peer_joined")
+
 	go i.abortCountdown()
 	return i
 }
