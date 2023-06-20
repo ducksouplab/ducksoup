@@ -1,7 +1,12 @@
 appsrc name=audio_src is-live=true format=GST_FORMAT_TIME
 appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
+
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
+
+appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
+appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
+
 {{/* always record dry */}}
 {{.Video.Muxer}} name=dry_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
 {{/* record fx if one on audio or video */}}

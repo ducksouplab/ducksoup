@@ -18,7 +18,7 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerNack:
 			res += fmt.Sprintf(
-				"[NACK] ssrc:%v sender:%v nacks:%v",
+				"[NACK sent] ssrc:%v sender:%v nacks:%v",
 				rtcpPacket.MediaSSRC,
 				rtcpPacket.SenderSSRC,
 				rtcpPacket.Nacks,
@@ -43,17 +43,17 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 				}
 			}
 			res += fmt.Sprintf(
-				"[TWCC] ssrc:%v count:%v lost:%v",
+				"[TWCC sent] ssrc:%v count:%v lost:%v",
 				rtcpPacket.MediaSSRC,
 				count,
 				lost,
 			)
 
-		case *rtcp.ReceiverReport:
-			res += "[RR sent] reports: "
-			for _, report := range rtcpPacket.Reports {
-				res += fmt.Sprintf("lost=%d/%d ", report.FractionLost, report.TotalLost)
-			}
+		// case *rtcp.ReceiverReport:
+		// 	res += fmt.Sprintf("[ReceiverReport sent: %+v] reports:", rtcpPacket)
+		// 	for _, report := range rtcpPacket.Reports {
+		// 		res += fmt.Sprintf(" %+v", report.SSRC)
+		// 	}
 		default:
 			res += fmt.Sprintf("[%T sent] %+v", rtcpPacket, rtcpPacket)
 		}
@@ -99,8 +99,8 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 
 				if ssrc64, err := strconv.ParseUint(ssrcMatch[1], 10, 32); err == nil {
 					ssrc := uint32(ssrc64)
-					ssrcLog := store.GetFromSSRCIndex(ssrc)
-					if ssrcLog != nil {
+
+					if ssrcLog, ok := store.GetFromSSRCIndex(ssrc); ok {
 						countMatch := countRegexp.FindStringSubmatch(msg)
 						lostMatch := lostRegexp.FindStringSubmatch(msg)
 

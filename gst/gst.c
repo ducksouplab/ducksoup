@@ -150,11 +150,13 @@ void gstStartPipeline(GstElement *pipeline)
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     gst_bus_add_watch(bus, bus_callback, pipeline);
     gst_object_unref(bus);
+
     // src
-    GstElement *video_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_src");
-    GstPad *video_src_pad = gst_element_get_static_pad(video_src, "src");
-    gst_object_unref(video_src);
-    gst_object_unref(video_src_pad);
+    // GstElement *video_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_src");
+    // GstPad *video_src_pad = gst_element_get_static_pad(video_src, "src");
+    // gst_object_unref(video_src);
+    // gst_object_unref(video_src_pad);
+
     // sinks
     GstElement *audio_sink = gst_bin_get_by_name(GST_BIN(pipeline), "audio_sink");
     GstElement *video_sink = gst_bin_get_by_name(GST_BIN(pipeline), "video_sink");
@@ -164,21 +166,6 @@ void gstStartPipeline(GstElement *pipeline)
     g_object_set(video_sink, "emit-signals", TRUE, NULL);
     g_signal_connect(video_sink, "new-sample", G_CALLBACK(new_video_sample_callback), pipeline);
     gst_object_unref(video_sink);
-    // buffer request pad
-    GstElement *audio_buffer = gst_bin_get_by_name(GST_BIN(pipeline), "audio_buffer");
-    GstElement *video_buffer = gst_bin_get_by_name(GST_BIN(pipeline), "video_buffer");
-
-    // TODO push_rtcp does not work
-    // TODO deprecated gst_element_get_request_pad https://gitlab.freedesktop.org/gstreamer/gst-docs/-/merge_requests/152
-    // update when GStreamer 1.20 is out
-    // GstPad *audio_rtcp_pad = gst_element_get_request_pad (audio_buffer, "sink_rtcp");
-    // GstPad *video_rtcp_pad = gst_element_get_request_pad (video_buffer, "sink_rtcp");
-    // gst_pad_activate_mode (audio_rtcp_pad, GST_PAD_MODE_PULL, TRUE);
-    // gst_pad_activate_mode (video_rtcp_pad, GST_PAD_MODE_PULL, TRUE);
-    // gst_object_unref(audio_buffer);
-    // gst_object_unref(video_buffer);
-    // gst_object_unref(audio_rtcp_pad);
-    // gst_object_unref(video_rtcp_pad);
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
@@ -200,7 +187,7 @@ void gstStopPipeline(GstElement *pipeline)
     }
 }
 
-void gstPushBuffer(char *srcname, GstElement *pipeline, void *buffer, int len)
+void gstSrcPush(char *srcname, GstElement *pipeline, void *buffer, int len)
 {
     GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
     

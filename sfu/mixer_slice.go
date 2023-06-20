@@ -3,6 +3,7 @@ package sfu
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/plot"
 	"github.com/ducksouplab/ducksoup/sequencing"
+	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
@@ -140,6 +142,10 @@ func (ms *mixerSlice) logDebug() *zerolog.Event {
 	return ms.i.logger.Debug().Str("context", "track").Str("user", ms.fromPs.userId)
 }
 
+func (ms *mixerSlice) logTrace() *zerolog.Event {
+	return ms.i.logger.Trace().Str("context", "track").Str("user", ms.fromPs.userId)
+}
+
 // Same ID as output track
 func (ms *mixerSlice) ID() string {
 	return ms.output.ID()
@@ -207,13 +213,14 @@ func (ms *mixerSlice) loop() {
 	<-pipeline.ReadyCh
 
 	i.addFiles(userId, pipeline.OutputFiles()) // for reference
-	go ms.runTickers()
-	// go ms.runReceiverListener()
+
+	go ms.loopTickers()
+	go ms.loopReadRTCP()
 	if env.GeneratePlots {
 		go ms.plot.Loop()
 	}
 
-	// loop start
+	// main loop start
 	buf := make([]byte, config.SFU.Common.MTU)
 pushToPipeline:
 	for {
@@ -247,17 +254,17 @@ func (ms *mixerSlice) updateTargetBitrates(targetBitrate int) {
 	}
 }
 
-func (ms *mixerSlice) checkOutputBitrate() {
-	if ms.kind == "video" {
-		ms.Lock()
-		if ms.outputBitrate < ms.streamConfig.MinBitrate {
-			ms.fromPs.pc.throttledPLIRequest("output_bitrate_is_too_low")
-		}
-		ms.Unlock()
-	}
-}
+// func (ms *mixerSlice) checkOutputBitrate() {
+// 	if ms.kind == "video" {
+// 		ms.Lock()
+// 		if ms.outputBitrate < ms.streamConfig.MinBitrate {
+// 			ms.fromPs.pc.throttledPLIRequest("output_bitrate_is_too_low")
+// 		}
+// 		ms.Unlock()
+// 	}
+// }
 
-func (ms *mixerSlice) runTickers() {
+func (ms *mixerSlice) loopTickers() {
 	// sleep a bit to be closer to latest update from sender controller,
 	// (if encoderControlPeriod is a multiple of gccPeriod)
 	time.Sleep(50 * time.Millisecond)
@@ -345,41 +352,29 @@ func (ms *mixerSlice) runTickers() {
 	}()
 }
 
-// func (ms *mixerSlice) runReceiverListener() {
-// 	buf := make([]byte, defaultMTU)
+func (ms *mixerSlice) loopReadRTCP() {
+	for {
+		select {
+		case <-ms.Done():
+			return
+		default:
+			packets, _, err := ms.receiver.ReadRTCP()
+			if err != nil {
+				if err != io.EOF && err != io.ErrClosedPipe {
+					ms.logError().Err(err).Msg("rtcp_on_receiver_failed")
+				}
+				return
+			}
 
-// 	for {
-// 		select {
-// 		case <-ms.done():
-// 			return
-// 		default:
-// 			i, _, err := ms.receiver.Read(buf)
-// 			if err != nil {
-// 				if err != io.EOF && err != io.ErrClosedPipe {
-// 					ms.logError().Err(err).Msg("read_received_rtcp_failed")
-// 				}
-// 				return
-// 			}
-// 			// TODO: send to rtpjitterbuffer sink_rtcp
-// 			//ms.pipeline.PushRTCP(ms.kind, buf[:i])
-
-// 			packets, err := rtcp.Unmarshal(buf[:i])
-// 			if err != nil {
-// 				ms.logError().Err(err).Msg("unmarshal_received_rtcp_failed")
-// 				continue
-// 			}
-
-// 			for _, packet := range packets {
-// 				switch rtcpPacket := packet.(type) {
-// 				case *rtcp.SourceDescription:
-// 				// case *rtcp.SenderReport:
-// 				// 	log.Println(rtcpPacket)
-// 				// case *rtcp.ReceiverEstimatedMaximumBitrate:
-// 				// 	log.Println(rtcpPacket)
-// 				default:
-// 					//ms.logInfo().Msgf("%T %+v", rtcpPacket, rtcpPacket)
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+			for _, packet := range packets {
+				switch p := packet.(type) {
+				case *rtcp.SenderReport:
+					if buf, err := p.Marshal(); err == nil {
+						ms.pipeline.PushRTCP(ms.kind, buf)
+					}
+				}
+				ms.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_receiver")
+			}
+		}
+	}
+}

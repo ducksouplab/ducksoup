@@ -1,7 +1,9 @@
 appsrc name=audio_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
 appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
+
 appsink name=audio_sink qos=true
 appsink name=video_sink qos=true
+
 {{/* always record dry */}}
 opusparse name=dry_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.ogg 
 {{.Video.Muxer}} name=dry_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}

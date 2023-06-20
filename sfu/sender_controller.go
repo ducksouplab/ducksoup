@@ -67,6 +67,10 @@ func (sc *senderController) logDebug() *zerolog.Event {
 	return sc.ms.logDebug().Str("context", "track").Str("toUser", sc.toUserId)
 }
 
+func (sc *senderController) logTrace() *zerolog.Event {
+	return sc.ms.logTrace().Str("context", "track").Str("toUser", sc.toUserId)
+}
+
 func (sc *senderController) capRate(in int) int {
 	if in > sc.ms.streamConfig.MaxBitrate {
 		return sc.ms.streamConfig.MaxBitrate
@@ -148,7 +152,7 @@ func (sc *senderController) loopReadRTCP() {
 			packets, _, err := sc.sender.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
-					sc.logError().Err(err).Msg("read_sent_rtcp_failed")
+					sc.logError().Err(err).Msg("rtcp_on_sender_failed")
 					continue
 				} else {
 					return
@@ -159,18 +163,17 @@ func (sc *senderController) loopReadRTCP() {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
 					sc.ms.fromPs.pc.throttledPLIRequest("forward_from_receiving_peer")
-				case *rtcp.ReceiverEstimatedMaximumBitrate:
-					sc.logDebug().Msgf("%T %+v", packet, packet)
-					// disabled due to TWCC
-					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
+				// case *rtcp.ReceiverEstimatedMaximumBitrate:
+				// disabled due to TWCC
+				// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				case *rtcp.ReceiverReport:
-					// sc.logDebug().Msgf("%T %+v", packet, packet)
 					for _, r := range rtcpPacket.Reports {
 						if r.SSRC == uint32(sc.ssrc) {
 							sc.updateRateFromLoss(int(r.FractionLost))
 						}
 					}
 				}
+				sc.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_sender")
 			}
 		}
 	}

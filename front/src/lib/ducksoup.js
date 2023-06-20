@@ -27,8 +27,9 @@ const DEFAULT_RTC_CONFIG = {
   ],
 };
 
-const MAX_VIDEO_BITRATE = 1000000;
+const MAX_VIDEO_BITRATE = 1500000;
 const MAX_AUDIO_BITRATE = 64000;
+const BITRATE_RAMP_DURATION = 3000;
 
 // Init
 
@@ -170,7 +171,6 @@ const looseJSONParse = (str) => {
 const state = {};
 
 const rampBitrate = (pc) => {
-  const RAMP_DURATION = 3000;
   const STEPS = 8;
   let step = 0;
   state.rampInterval = setInterval(async () => {
@@ -192,7 +192,7 @@ const rampBitrate = (pc) => {
     if (step === STEPS) {
       clearInterval(state.rampInterval);
     }
-  }, RAMP_DURATION / STEPS);
+  }, BITRATE_RAMP_DURATION / STEPS);
 };
 
 // DuckSoup

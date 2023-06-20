@@ -132,22 +132,21 @@ func (p *Pipeline) OutputFiles() []string {
 	}
 }
 
-func (p *Pipeline) PushRTP(kind string, buffer []byte) {
-	s := C.CString(kind + "_src")
+func (p *Pipeline) srcPush(src string, buffer []byte) {
+	s := C.CString(src)
 	defer C.free(unsafe.Pointer(s))
 
 	b := C.CBytes(buffer)
 	defer C.free(b)
-	C.gstPushBuffer(s, p.cPipeline, b, C.int(len(buffer)))
+	C.gstSrcPush(s, p.cPipeline, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) PushRTP(kind string, buffer []byte) {
+	p.srcPush(kind+"_src", buffer)
 }
 
 func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
-	s := C.CString(kind + "_buffer")
-	defer C.free(unsafe.Pointer(s))
-
-	b := C.CBytes(buffer)
-	defer C.free(b)
-	//C.gstPushRTCPBuffer(s, p.cPipeline, b, C.int(len(buffer)))
+	p.srcPush(kind+"_rtcp_src", buffer)
 }
 
 func (p *Pipeline) BindTrackAutoStart(kind string, t types.TrackWriter) {

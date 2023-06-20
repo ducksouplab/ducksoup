@@ -278,7 +278,7 @@ Some settings apply to both scopes:
   - `1` errors (and GStreamer warnings)
   - `2` server info and above
   - `3` server debug, in/out/encoding bitrates, client info and above
-  - `4` trace logs (including TWCC reports) and above
+  - `4` trace logs (incoming and outgoing RTCP packets, including TWCC reports) and above
   - please note that while we rely on [zerolog](https://github.com/rs/zerolog), we don't use the same semantics regarding levels, their index or meaning.
 
 This setting only apply to global logs:

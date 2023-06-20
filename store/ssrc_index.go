@@ -7,28 +7,24 @@ import (
 )
 
 var (
-	ssrcIndexSingleton *ssrcIndex
+	ssrcIndexSingleton ssrcIndex
 )
 
+// Used to provide more info to RTCP packetdump
 type ssrcLog struct {
 	Kind        string
 	Namespace   string
 	Interaction string
 	User        string
-	logger      zerolog.Logger
 }
 
 type ssrcIndex struct {
 	sync.Mutex
-	index map[uint32]*ssrcLog
+	index map[uint32]ssrcLog
 }
 
 func init() {
-	ssrcIndexSingleton = newIdsIndex()
-}
-
-func newIdsIndex() *ssrcIndex {
-	return &ssrcIndex{sync.Mutex{}, make(map[uint32]*ssrcLog)}
+	ssrcIndexSingleton = ssrcIndex{sync.Mutex{}, make(map[uint32]ssrcLog)}
 }
 
 func AddToSSRCIndex(ssrc uint32, kind, namespace, interaction, user string, logger zerolog.Logger) {
@@ -41,26 +37,24 @@ func AddToSSRCIndex(ssrc uint32, kind, namespace, interaction, user string, logg
 			Str("namespace", namespace).
 			Str("interaction", interaction).
 			Str("user", user).
-			Msg("ssrc_index_failed")
+			Msg("ssrc_index_duplicate")
 	} else {
-		newIds := &ssrcLog{
+		newLog := ssrcLog{
 			Namespace:   namespace,
 			Interaction: interaction,
 			User:        user,
 			Kind:        kind,
 		}
-		ssrcIndexSingleton.index[ssrc] = newIds
+		ssrcIndexSingleton.index[ssrc] = newLog
 	}
 }
 
-func GetFromSSRCIndex(ssrc uint32) *ssrcLog {
+func GetFromSSRCIndex(ssrc uint32) (l ssrcLog, ok bool) {
 	ssrcIndexSingleton.Lock()
 	defer ssrcIndexSingleton.Unlock()
 
-	if entry, ok := ssrcIndexSingleton.index[ssrc]; ok {
-		return entry
-	}
-	return nil
+	l, ok = ssrcIndexSingleton.index[ssrc]
+	return
 }
 
 func RemoveFromSSRCIndex(ssrc uint32) {

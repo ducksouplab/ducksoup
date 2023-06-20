@@ -152,7 +152,7 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 		ssrc := uint32(remoteTrack.SSRC())
 		ps.i.addSSRC(ssrc, remoteTrack.Kind().String(), ps.userId)
 
-		pc.logDebug().Str("context", "track").Str("kind", remoteTrack.Kind().String()).Uint32("ssrc", ssrc).Str("track", remoteTrack.ID()).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg("in_track_received")
+		pc.logDebug().Str("context", "track").Str("kind", remoteTrack.Kind().String()).Str("ssrc", fmt.Sprintf("%x", ssrc)).Str("track", remoteTrack.ID()).Str("params", fmt.Sprintf("%+v", receiver.GetParameters())).Str("mime", remoteTrack.Codec().RTPCodecCapability.MimeType).Msg("in_track_received")
 		ps.i.runMixerSliceFromRemote(ps, remoteTrack, receiver)
 	})
 

@@ -15,7 +15,7 @@ void gstStartMainLoop(void);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);
 void gstStartPipeline(GstElement *pipeline);
 void gstStopPipeline(GstElement *pipeline);
-void gstPushBuffer(char *src, GstElement *pipeline, void *buffer, int len);
+void gstSrcPush(char *src, GstElement *pipeline, void *buffer, int len);
 
 // get/set props
 float gstGetPropFloat(GstElement *pipeline, char *elName, char *elProp);
@@ -28,6 +28,5 @@ guint64 gstGetPropUint64(GstElement *pipeline, char *name, char *prop);
 void gstSetPropUint64(GstElement *pipeline, char *name, char *prop, guint64 value);
 void gstSetPropString(GstElement *pipeline, char *name, char *prop, char *value);
 
-// void gstPushRTCPBuffer(char *name, GstElement *pipeline, void *buffer, int len);
 
 #endif
