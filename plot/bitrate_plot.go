@@ -77,16 +77,12 @@ func (p *BitratePlot) createFramerateLabels() {
 
 func (p *BitratePlot) save() {
 	// latest on foreground
+	grid := plotter.NewGrid()
+	grid.Horizontal.Dashes = []vg.Length{vg.Points(3), vg.Points(3)}
+	grid.Vertical.Dashes = []vg.Length{vg.Points(3), vg.Points(3)}
+	p.plot.Add(grid)
+
 	if p.kind == "video" {
-		p.createLinePoints(
-			"keyframe (event)",
-			p.keyframeLine,
-			0,
-			0,
-			color.RGBA{R: 255, G: 0, B: 0, A: 255},
-			draw.TriangleGlyph{},
-			bigGlyph,
-		)
 		p.createLinePoints(
 			"input width (pixels)",
 			p.widthLine,
@@ -156,6 +152,17 @@ func (p *BitratePlot) save() {
 		draw.CircleGlyph{},
 		smallGlyph,
 	)
+	if p.kind == "video" {
+		p.createLinePoints(
+			"keyframe (event)",
+			p.keyframeLine,
+			0,
+			0,
+			color.RGBA{R: 255, G: 0, B: 0, A: 255},
+			draw.TriangleGlyph{},
+			bigGlyph,
+		)
+	}
 
 	// Save the plot to a PNG file.
 	if err := p.plot.Save(6*vg.Inch, 4*vg.Inch, p.folder+"/bitrates-"+p.id+"-"+p.kind+".pdf"); err != nil {

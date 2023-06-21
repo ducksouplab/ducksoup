@@ -1,17 +1,17 @@
 appsrc name=audio_src is-live=true format=GST_FORMAT_TIME
 appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 
-appsink name=audio_sink qos=true
-appsink name=video_sink qos=true
-
 appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
 appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
 
+appsink name=audio_sink qos=true
+appsink name=video_sink qos=true
+
 {{/* always record dry */}}
-{{.Video.Muxer}} name=dry_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
+{{.Video.Muxer}} name=dry_recorder presentation-time=true faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-dry.mp4mux.faststart ! {{.Queue.Base}} ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
-    {{.Video.Muxer}} name=wet_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-wet.{{.Video.Extension}}
+    {{.Video.Muxer}} name=wet_recorder presentation-time=true faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-wet.mp4mux.faststart ! {{.Queue.Base}} ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 
 audio_src. !
@@ -21,45 +21,45 @@ audio_src. !
     {{.Audio.Rtp.Depay}} !
 
     tee name=tee_audio_in ! 
-        queue ! 
+        {{.Queue.Base}} !
         dry_recorder.
 
     tee_audio_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Audio.Decoder}} !
         audioconvert !
         audio/x-raw,channels=1 !
         {{.Audio.Fx}} ! 
         audioconvert ! 
-        {{.Audio.EncodeWithCache "audio_encoder_wet" .Folder .FilePrefix}} ! 
+        {{.Audio.EncodeWith "audio_encoder_wet" }} ! 
 
         tee name=tee_audio_out ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             wet_recorder.
 
         tee_audio_out. ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             {{.Audio.Rtp.Pay}} !
             audio_sink.
 {{else}}
     tee name=tee_audio_in ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Audio.Rtp.Depay}} !
         {{/* audio stream has to be written to two files if there is a video fx*/}}
         {{if .Video.Fx }}
             tee name=tee_audio_out !
-                queue ! 
+                {{.Queue.Base}} ! 
                 dry_recorder.
 
             tee_audio_out. !
-                queue ! 
+                {{.Queue.Base}} ! 
                 wet_recorder.
         {{else}}
             dry_recorder.
         {{end}}
 
     tee_audio_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         audio_sink.
 {{end}}
 
@@ -69,41 +69,41 @@ video_src. !
 {{if .Video.Fx}}
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
-    {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
+    {{.Video.ConstraintFormatFramerate .Framerate }} !
 
     tee name=tee_video_in ! 
-        queue ! 
+        {{.Queue.Leaky}} !  
         {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
         dry_recorder.
 
     tee_video_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         videoconvert ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
-            timeoverlay ! 
+            timeoverlay time-mode=1 ! 
         {{end}}
 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Video.ConstraintFormat}} !
         {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_video_out ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             wet_recorder.
 
         tee_video_out. ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             {{.Video.Rtp.Pay}} ! 
             video_sink.
 {{else}}
     tee name=tee_video_in ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Video.Rtp.Depay}} ! 
 
         {{if not .Video.SkipFixedCaps}}
             {{.Video.Decoder}} !
-            {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
+            {{.Video.ConstraintFormatFramerate .Framerate}} !
             {{if .Video.Overlay }}
                 timeoverlay ! 
             {{end}}
@@ -113,17 +113,17 @@ video_src. !
         {{/* video stream has to be written to two files if there is an aufio fx*/}}
         {{if .Audio.Fx }}
             tee name=tee_video_out !
-                queue ! 
+                {{.Queue.Base}} ! 
                 dry_recorder.
 
             tee_video_out. !
-                queue ! 
+                {{.Queue.Base}} ! 
                 wet_recorder.
         {{else}}
             dry_recorder.
         {{end}}
 
     tee_video_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         video_sink.
 {{end}}
