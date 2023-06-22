@@ -1,10 +1,10 @@
-appsrc name=audio_src is-live=true format=GST_FORMAT_TIME
-appsrc name=video_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 
-appsink name=audio_sink qos=true
-appsink name=video_sink qos=true
+appsink name=audio_rtp_sink qos=true
+appsink name=video_rtp_sink qos=true
 
-audio_src. !
+audio_rtp_src. !
 {{.Audio.Rtp.Caps}} ! 
 {{if .Audio.Fx}}
     {{.Audio.Rtp.JitterBuffer}} ! 
@@ -16,13 +16,13 @@ audio_src. !
     audioconvert !  
     {{.Audio.EncodeWithCache "audio_encoder_wet" .Folder .FilePrefix}} ! 
     {{.Audio.Rtp.Pay}} !
-    audio_sink.
+    audio_rtp_sink.
 {{else}}
     queue ! 
-    audio_sink.
+    audio_rtp_sink.
 {{end}}
 
-video_src. !
+video_rtp_src. !
 {{.Video.Rtp.Caps}} ! 
 {{if .Video.Fx}}
     {{.Video.Rtp.JitterBuffer}} ! 
@@ -38,8 +38,8 @@ video_src. !
     {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
     queue ! 
     {{.Video.Rtp.Pay}} ! 
-    video_sink.
+    video_rtp_sink.
 {{else}}
     queue ! 
-    video_sink.
+    video_rtp_sink.
 {{end}}

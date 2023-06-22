@@ -1,35 +1,39 @@
-appsrc name=audio_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
-appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
 
 appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
 appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
 
-appsink name=audio_sink qos=true
-appsink name=video_sink qos=true
+appsink name=audio_rtp_sink qos=true
+appsink name=video_rtp_sink qos=true
 
-opusparse name=dry_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.ogg 
-{{.Video.Muxer}} name=dry_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
+opusparse name=dry_audio_muxer !
+{{.Audio.Muxer}} !
+filesink name=dry_audio_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.{{.Audio.Extension}} 
 
-audio_src. !
+{{.Video.Muxer}} name=dry_video_muxer !
+filesink name=dry_video_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
+
+audio_rtp_src. !
 {{.Audio.Rtp.Caps}} ! 
+{{.Audio.Rtp.JitterBuffer}} ! 
 tee name=tee_audio ! 
-  queue ! 
-  {{.Audio.Rtp.JitterBuffer}} ! 
+  {{.Queue.Base}} ! 
   {{.Audio.Rtp.Depay}} !
-  dry_audio_recorder.
+  dry_audio_muxer.
 
 tee_audio. ! 
-  queue ! 
-  audio_sink.
+  {{.Queue.Base}} ! 
+  audio_rtp_sink.
 
-video_src. !
+video_rtp_src. !
 {{.Video.Rtp.Caps}} ! 
+{{.Video.Rtp.JitterBuffer}} ! 
 tee name=tee_video ! 
-  queue ! 
-  {{.Video.Rtp.JitterBuffer}} ! 
+  {{.Queue.Base}} ! 
   {{.Video.Rtp.Depay}} ! 
-  dry_video_recorder.
+  dry_video_muxer.
 
 tee_video. ! 
-  queue ! 
-  video_sink.
+  {{.Queue.Base}} ! 
+  video_rtp_sink.

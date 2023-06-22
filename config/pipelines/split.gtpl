@@ -1,30 +1,39 @@
-appsrc name=audio_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
-appsrc name=video_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
 
-appsink name=audio_sink qos=true
-appsink name=video_sink qos=true
+appsink name=audio_rtp_sink qos=true
+appsink name=video_rtp_sink qos=true
 
 {{/* always record dry */}}
-opusparse name=dry_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.ogg 
-{{.Video.Muxer}} name=dry_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
+opusparse name=dry_audio_muxer !
+{{.Audio.Muxer}} !
+filesink name=dry_audio_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.{{.Audio.Extension}} 
+
+{{.Video.Muxer}} name=dry_video_muxer !
+filesink name=dry_video_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-dry.{{.Video.Extension}}
+
 {{if .Audio.Fx }}
-    opusparse name=wet_audio_recorder ! oggmux ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-wet.ogg 
-{{end}}
-{{if .Video.Fx }}
-    {{.Video.Muxer}} name=wet_video_recorder ! filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-wet.{{.Video.Extension}}
+    opusparse name=wet_audio_muxer !
+    {{.Audio.Muxer}} !
+    filesink name=wet_audio_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-wet.{{.Audio.Extension}} 
 {{end}}
 
-audio_src. !
+{{if .Video.Fx }}
+    {{.Video.Muxer}} name=wet_video_muxer !
+    filesink name=wet_video_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-video-wet.{{.Video.Extension}}
+{{end}}
+
+audio_rtp_src. !
 {{.Audio.Rtp.Caps}} ! 
+{{.Audio.Rtp.JitterBuffer}} ! 
 {{if .Audio.Fx}}
-    {{.Audio.Rtp.JitterBuffer}} ! 
     {{.Audio.Rtp.Depay}} !
     tee name=tee_audio_in ! 
-        queue ! 
-        dry_audio_recorder.
+        {{.Queue.Base}} ! 
+        dry_audio_muxer.
 
     tee_audio_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Audio.Decoder}} !
         audioconvert ! 
         audio/x-raw,channels=1 !
@@ -32,40 +41,39 @@ audio_src. !
         audioconvert ! 
         {{.Audio.EncodeWithCache "audio_encoder_dry" .Folder .FilePrefix}} !
         tee name=tee_audio_out ! 
-            queue ! 
-            wet_audio_recorder.
+            {{.Queue.Base}} ! 
+            wet_audio_muxer.
 
         tee_audio_out. ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             {{.Audio.Rtp.Pay}} !
-            audio_sink.
+            audio_rtp_sink.
 {{else}}
     tee name=tee_audio_in ! 
-        queue ! 
-        {{.Audio.Rtp.JitterBuffer}} ! 
+        {{.Queue.Base}} ! 
         {{.Audio.Rtp.Depay}} !
-        dry_audio_recorder.
+        dry_audio_muxer.
  
     tee_audio_in. ! 
-        queue ! 
-        audio_sink.
+        {{.Queue.Base}} ! 
+        audio_rtp_sink.
 {{end}}
 
-video_src. !
+video_rtp_src. !
 {{.Video.Rtp.Caps}} ! 
+{{.Video.Rtp.JitterBuffer}} ! 
 {{if .Video.Fx}}
-    {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
     {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
 
     tee name=tee_video_in ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} !
-        dry_video_recorder.
+        dry_video_muxer.
 
     tee_video_in. ! 
-        queue ! 
+        {{.Queue.Base}} ! 
         videoconvert ! 
         {{.Video.Fx}} ! 
         {{if .Video.Overlay }}
@@ -75,17 +83,16 @@ video_src. !
         {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} !
 
         tee name=tee_video_out ! 
-            queue ! 
-            wet_video_recorder.
+            {{.Queue.Base}} ! 
+            wet_video_muxer.
 
         tee_video_out. ! 
-            queue ! 
+            {{.Queue.Base}} ! 
             {{.Video.Rtp.Pay}} ! 
-            video_sink.
+            video_rtp_sink.
 {{else}}
         tee name=tee_video_in ! 
-        queue ! 
-        {{.Video.Rtp.JitterBuffer}} ! 
+        {{.Queue.Base}} ! 
         {{.Video.Rtp.Depay}} ! 
         {{.Video.Decoder}} !
         {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
@@ -93,9 +100,9 @@ video_src. !
             timeoverlay ! 
         {{end}}
         {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} !
-        dry_video_recorder.
+        dry_video_muxer.
 
     tee_video_in. ! 
-        queue ! 
-        video_sink.
+        {{.Queue.Base}} ! 
+        video_rtp_sink.
 {{end}}

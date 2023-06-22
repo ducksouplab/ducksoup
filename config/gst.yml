@@ -23,6 +23,8 @@ shared:
     long: queue max-size-buffers=0 max-size-bytes=0 max-size-time=3000000000 
 opus:
   encoding: "OPUS"
+  muxer: "oggmux"
+  extension: "ogg"
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
     pay: rtpopuspay

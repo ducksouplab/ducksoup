@@ -2,6 +2,10 @@ dev:
 	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2 ./ducksoup
 debug:
 	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=6 GST_DEBUG_FILE=log/gst.log ./ducksoup
+cleardata:
+	@rm -rf data
+cleardev:
+	@rm -rf data && go build && DUCKSOUP_MODE=DEV GST_DEBUG=2 ./ducksoup
 run:
 	@go build && GST_DEBUG=2,videodecoder:1 ./ducksoup
 runlocal:
@@ -18,5 +22,3 @@ dockerbuild:
 	@docker build -f docker/Dockerfile.build -t ducksoup:latest . && docker tag ducksoup ducksouplab/ducksoup
 dockerpush:
 	@docker push ducksouplab/ducksoup:latest
-cleardata:
-	@rm -rf data

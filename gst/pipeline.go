@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/ducksouplab/ducksoup/env"
@@ -23,11 +24,13 @@ import (
 type Pipeline struct {
 	mu          sync.Mutex
 	id          string // same as local/output track id
-	join        types.JoinPayload
 	cPipeline   *C.GstElement
 	audioOutput types.TrackWriter
 	videoOutput types.TrackWriter
-	filePrefix  string
+	// sfu info
+	join            types.JoinPayload
+	iRandomId       string // interaction random id for filenames
+	connectionCount int    // count #connections for this user in this interaction
 	// options
 	videoOptions mediaOptions
 	audioOptions mediaOptions
@@ -36,7 +39,8 @@ type Pipeline struct {
 	// log
 	logger zerolog.Logger
 	// API
-	ReadyCh chan struct{}
+	RecordingFiles []string
+	ReadyCh        chan struct{}
 }
 
 func fileName(namespace string, prefix string, suffix string) string {
@@ -77,6 +81,21 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 	return
 }
 
+// this will be called twice:
+//   - when the pipeline is initialize/parsed, it gives a first temporary filePrefix
+//     with the interaction creation timestamp
+//   - when the pipeline is started, the timestamp is updated
+func (p *Pipeline) filePrefix() string {
+	blabla := "i-" + p.iRandomId +
+		"-a-" + time.Now().Format("20060102-150405.000") +
+		"-s-" + p.join.Namespace +
+		"-n-" + p.join.InteractionName +
+		"-u-" + p.join.UserId +
+		"-c-" + fmt.Sprint(p.connectionCount)
+
+	return blabla
+}
+
 // API
 
 func StartMainLoop() {
@@ -84,7 +103,7 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func NewPipeline(join types.JoinPayload, filePrefix string, logger zerolog.Logger) *Pipeline {
+func NewPipeline(join types.JoinPayload, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
 	id := uuid.New().String()
 	logger = logger.With().
 		Str("context", "pipeline").
@@ -96,40 +115,30 @@ func NewPipeline(join types.JoinPayload, filePrefix string, logger zerolog.Logge
 	logger.Info().Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
 	logger.Info().Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
 
-	pipelineStr := newPipelineDef(join, filePrefix, videoOptions, audioOptions)
+	p := &Pipeline{
+		mu:              sync.Mutex{},
+		id:              id,
+		join:            join,
+		iRandomId:       iRandomId,
+		connectionCount: connectionCount,
+		videoOptions:    videoOptions,
+		audioOptions:    audioOptions,
+		stoppedCount:    0,
+		ReadyCh:         make(chan struct{}),
+		logger:          logger,
+	}
 
+	// C pipeline
+	pipelineStr := newPipelineDef(join, p.filePrefix(), videoOptions, audioOptions)
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
 	defer C.free(unsafe.Pointer(cPipelineStr))
 	defer C.free(unsafe.Pointer(cId))
-
-	p := &Pipeline{
-		mu:           sync.Mutex{},
-		id:           id,
-		join:         join,
-		cPipeline:    C.gstParsePipeline(cPipelineStr, cId),
-		filePrefix:   filePrefix,
-		videoOptions: videoOptions,
-		audioOptions: audioOptions,
-		stoppedCount: 0,
-		ReadyCh:      make(chan struct{}),
-		logger:       logger,
-	}
-
+	p.cPipeline = C.gstParsePipeline(cPipelineStr, cId)
 	p.logger.Info().Str("pipeline", pipelineStr).Msg("pipeline_initialized")
 
 	pipelineStoreSingleton.add(p)
 	return p
-}
-
-func (p *Pipeline) OutputFiles() []string {
-	namespace := p.join.Namespace
-	hasFx := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
-	if hasFx {
-		return []string{fileName(namespace, p.filePrefix, "dry"), fileName(namespace, p.filePrefix, "wet")}
-	} else {
-		return []string{fileName(namespace, p.filePrefix, "dry")}
-	}
 }
 
 func (p *Pipeline) srcPush(src string, buffer []byte) {
@@ -142,7 +151,7 @@ func (p *Pipeline) srcPush(src string, buffer []byte) {
 }
 
 func (p *Pipeline) PushRTP(kind string, buffer []byte) {
-	p.srcPush(kind+"_src", buffer)
+	p.srcPush(kind+"_rtp_src", buffer)
 }
 
 func (p *Pipeline) PushRTCP(kind string, buffer []byte) {
@@ -161,15 +170,17 @@ func (p *Pipeline) BindTrackAutoStart(kind string, t types.TrackWriter) {
 func (p *Pipeline) updateReady() {
 	if p.audioOutput != nil && p.videoOutput != nil {
 		close(p.ReadyCh)
-		p.Start()
+		p.start()
 	}
 }
 
-func (p *Pipeline) Start() {
+func (p *Pipeline) start() {
+	// update timestamps in recordings file paths
+	p.updateRecordingFiles()
 	// GStreamer start
 	C.gstStartPipeline(p.cPipeline)
-	recording_prefix := fmt.Sprintf("%s/%s", p.join.Namespace, p.filePrefix)
-	p.logger.Info().Str("recording_prefix", recording_prefix).Msg("pipeline_started")
+	recordingPrefix := fmt.Sprintf("%s/%s/recordings/", p.join.Namespace, p.join.InteractionName)
+	p.logger.Info().Str("recording_prefix", recordingPrefix).Msg("pipeline_started")
 }
 
 // stop the GStreamer pipeline
@@ -181,6 +192,39 @@ func (p *Pipeline) Stop() {
 	if p.stoppedCount == 2 { // audio and video buffers from mixerSlice have been stopped
 		C.gstStopPipeline(p.cPipeline)
 		p.logger.Info().Msg("pipeline_stopped")
+	}
+}
+
+func (p *Pipeline) updateRecordingFiles() {
+	recordingPrefix := p.join.DataFolder() + "/recordings/" + p.filePrefix() + "-"
+
+	switch p.join.RecordingMode {
+	case "none":
+		return
+	case "split":
+		dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+		dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
+		wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
+		wetVideoFile := recordingPrefix + "video-wet." + p.videoOptions.Extension
+		p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+		p.setPropString("dry_video_filesink", "location", dryVideoFile)
+		p.setPropString("wet_audio_filesink", "location", wetAudioFile)
+		p.setPropString("wet_video_filesink", "location", wetVideoFile)
+		p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile, wetAudioFile, wetVideoFile)
+		return
+	case "passthrough":
+		dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+		dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
+		p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+		p.setPropString("dry_video_filesink", "location", dryVideoFile)
+		p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
+		return
+	default: // muxed
+		dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
+		wetFile := recordingPrefix + "wet." + p.videoOptions.Extension
+		p.setPropString("dry_filesink", "location", dryFile)
+		p.setPropString("wet_filesink", "location", wetFile)
+		p.RecordingFiles = append(p.RecordingFiles, dryFile, wetFile)
 	}
 }
 

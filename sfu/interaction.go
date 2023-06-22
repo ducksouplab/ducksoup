@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -232,20 +231,6 @@ func (i *interaction) allUsersConnected() bool {
 	defer i.RUnlock()
 
 	return i.unguardedConnectedUserCount() == i.size
-}
-
-func (i *interaction) filePrefix(userId string) string {
-	connectionCount := i.joinedCountForUser(userId)
-	// caution: time reflects the moment the pipeline is initialized.
-	// When pipeline is started, files are written to, but it's better
-	// to rely on the time advertised by the OS (file properties)
-	// if several files need to be synchronized
-	return "i-" + i.randomId +
-		"-a-" + time.Now().Format("20060102-150405.000") +
-		"-s-" + i.namespace +
-		"-n-" + i.name +
-		"-u-" + userId +
-		"-c-" + fmt.Sprint(connectionCount)
 }
 
 func (i *interaction) start() {

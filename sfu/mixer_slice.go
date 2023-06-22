@@ -212,7 +212,7 @@ func (ms *mixerSlice) loop() {
 	// wait for audio and video
 	<-pipeline.ReadyCh
 
-	i.addFiles(userId, pipeline.OutputFiles()) // for reference
+	i.addFiles(userId, pipeline.RecordingFiles) // for reference
 
 	go ms.loopTickers()
 	go ms.loopReadRTCP()
