@@ -215,6 +215,14 @@
             </div>
           </div>
           <div class="row">
+            <div class="col-6">
+              <div class="mb-3">
+                <label for="input-interaction-name" class="form-label">*Interaction name</label>
+                <input class="form-control" id="input-interaction-name" type="text" name="interactionName" required>
+              </div>
+            </div>
+          </div>
+          <div class="row">
             <div class="col">
               <div class="mb-3">
                 <label for="input-audio-fx" class="form-label">Audio FX</label>
@@ -243,7 +251,7 @@
             </div>
             <div class="col">
               <div class="mb-3" style="padding-top: 28px;">
-                <input class="form-check-input" id="input-gpu" type="checkbox" value="false" name="gpu">
+                <input class="form-check-input" id="input-gpu" type="checkbox" checked name="gpu">
                 <label class="form-check-label" for="input-gpu">GPU (if relevant)</label>
               </div>
             </div>
@@ -298,7 +306,7 @@
               <div class="mb-4">
                 <label for="input-duration" class="form-label">Duration</label>
                 <div class="input-group">
-                  <input class="form-control" id="input-duration" type="number" name="duration" value="30">
+                  <input class="form-control" id="input-duration" type="number" name="duration" value="120">
                   <span class="input-group-text">sec</span>
                 </div>
               </div>

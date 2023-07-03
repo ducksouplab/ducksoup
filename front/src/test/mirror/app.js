@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[DuckSoup test] v1.5.23");
+  console.log("[DuckSoup test] v1.5.24");
 });
 
 let state;
@@ -89,7 +89,7 @@ const start = async ({
 }) => {
   const isMirror = !!im;
   // required
-  const interactionName = isMirror ? randomId() : iName;
+  const interactionName = iName;
   const userId = isMirror ? randomId() : uId;
   const size = isMirror ? 1 : parseInt(s, 10);
   const namespace = isMirror ? "test_mirror" : "test_interaction";
@@ -168,8 +168,15 @@ const start = async ({
   window.state = state;
 };
 
+const initMirror = () => {
+  if(window.location.pathname.includes("mirror")) {
+    document.getElementById("input-interaction-name").value = randomId();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
-  reinitUX();
+  initMirror();
+  resetUX();
 
   // Init signalingURL with default value
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -283,7 +290,7 @@ const clearMount = () => {
   }
 };
 
-const reinitUX = () => {
+const resetUX = () => {
   // replace mountEl contents
   clearMount();
   // update UX
@@ -315,7 +322,7 @@ const ducksoupListener = (options) => (message) => {
     console.log("[App]", kind);
   }
   if (kind.startsWith("error") || kind === "closed") {
-    reinitUX();
+    resetUX();
   }
 
   // specific cases
