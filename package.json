@@ -1,7 +1,7 @@
 {
   "name": "play",
   "version": "1.0.0",
-  "main": "app.jsx",
+  "main": "play.jsx",
   "license": "MIT",
   "dependencies": {
     "react": "^17.0.2",

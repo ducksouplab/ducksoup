@@ -1,7 +1,3 @@
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("[DuckSoup test] v1.5.24");
-});
-
 let state;
 
 const randomId = () =>

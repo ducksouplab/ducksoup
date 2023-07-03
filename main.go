@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ducksouplab/ducksoup/env"
-	"github.com/ducksouplab/ducksoup/front"
+	"github.com/ducksouplab/ducksoup/frontbuild"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/server"
@@ -24,7 +24,7 @@ func init() {
 }
 
 func logState() {
-	log.Info().Str("context", "init").Str("version", "v1.5.30").Msg("app_started")
+	log.Info().Str("context", "init").Msg("app_started")
 	log.Info().Str("context", "init").Str("value", env.Mode).Msg("DUCKSOUP_MODE")
 	log.Info().Str("context", "init").Str("value", env.Port).Msg("DUCKSOUP_PORT")
 	log.Info().Str("context", "init").Str("value", env.WebPrefix).Msg("DUCKSOUP_WEB_PREFIX")
@@ -45,7 +45,7 @@ func logState() {
 
 func main() {
 	// always build front (in watch mode or not, depending on env.Mode value, see front/build.go)
-	front.Build()
+	frontbuild.Build()
 
 	// run ducksoup only if not in FRONT_BUILD env.Mode
 	if !cmdBuildMode {

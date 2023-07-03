@@ -34,8 +34,6 @@ const BITRATE_RAMP_DURATION = 3000;
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup] v1.5.36");
-
   const ua = navigator.userAgent;
   const containsChrome = ua.indexOf("Chrome") > -1;
   const containsSafari = ua.indexOf("Safari") > -1;

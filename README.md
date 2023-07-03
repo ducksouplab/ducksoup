@@ -26,10 +26,10 @@ Let's assume we have a DuckSoup server installed and running at `ducksoup-host.c
 
 The embedding origin (`my-experiment-host.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.com` (see [Environment variables](#environment-variables)).
 
-Then, on the experiment web page, include the `ducksoup.js` library:
+Then, on the experiment web page, include the `ducksoup.js` library (check latest version number in `config/front.yml`):
 
 ```
-<script src="https://ducksoup-host.com/assets/scripts/lib/ducksoup.js"></script>
+<script src="https://ducksoup-host.com/assets/v1.5/js/ducksoup.js"></script>
 ```
 
 And render it (in JavaScript):
@@ -90,7 +90,7 @@ Where:
     - please note that logs relying on WebRTC stats data are only polled every second, meaning some data samples may be missing
   - `overlay` (boolean, defaults to false) add text overlay on top of the video (mainly for debugging purposes)
 
-For a usage example, you may have a look at `front/src/test/app.js`
+For a usage example, you may have a look at `front/src/js/test/mirror/mirror.js`
 
 ### GStreamer effects
 

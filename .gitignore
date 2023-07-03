@@ -19,7 +19,7 @@ log
 plugins
 
 # front build assets
-front/static/assets/scripts
+front/static/assets
 
 # docker data folders
 docker/plugins

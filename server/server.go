@@ -96,6 +96,7 @@ func ListenAndServe() {
 
 	// assets without basic auth
 	router.PathPrefix(webPrefix + "/assets/").Handler(http.StripPrefix(webPrefix+"/assets/", http.FileServer(http.Dir("./front/static/assets/"))))
+	router.PathPrefix(webPrefix + "/config/").Handler(http.StripPrefix(webPrefix+"/config/", http.FileServer(http.Dir("./front/static/config/"))))
 
 	// test pages with basic auth
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()

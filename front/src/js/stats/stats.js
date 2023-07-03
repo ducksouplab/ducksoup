@@ -1,6 +1,5 @@
 // Init
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("[DuckSoup stats] v0.1.2");
   start();
 });
 

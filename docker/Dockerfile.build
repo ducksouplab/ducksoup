@@ -40,7 +40,7 @@ COPY main.go .
 COPY config/load.go ./config/load.go
 COPY engine ./engine
 COPY env ./env
-COPY front/build.go ./front/build.go
+COPY frontbuild ./frontbuild
 COPY gst ./gst
 COPY helpers ./helpers
 COPY plot ./plot
@@ -77,7 +77,7 @@ COPY --from=builder /build/ducksoup .
 # check .dockerignore to see generated scripts are excluded first...
 COPY front/static ./front/static
 # ... but added from build
-COPY --from=builder /build/front/static/assets/scripts ./front/static/assets/scripts
+COPY --from=builder /build/front/static/assets ./front/static/assets
 
 # add config files last not to refresh too many layers in case only config changes
 COPY config ./config
