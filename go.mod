@@ -3,7 +3,7 @@ module github.com/ducksouplab/ducksoup
 go 1.20
 
 require (
-	github.com/evanw/esbuild v0.18.6
+	github.com/evanw/esbuild v0.18.11
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
@@ -13,7 +13,7 @@ require (
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.7.13
 	github.com/pion/sdp/v3 v3.0.6
-	github.com/pion/webrtc/v3 v3.2.10
+	github.com/pion/webrtc/v3 v3.2.11
 	github.com/rs/zerolog v1.29.1
 	gonum.org/v1/plot v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -39,9 +39,9 @@ require (
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.7 // indirect
 	github.com/pion/srtp/v2 v2.0.15 // indirect
-	github.com/pion/stun v0.6.0 // indirect
+	github.com/pion/stun v0.6.1 // indirect
 	github.com/pion/transport/v2 v2.2.1 // indirect
-	github.com/pion/turn/v2 v2.1.0 // indirect
+	github.com/pion/turn/v2 v2.1.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
