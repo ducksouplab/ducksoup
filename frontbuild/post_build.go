@@ -55,23 +55,23 @@ func replaceIncludes(path string) {
 
 	lines := strings.Split(string(input), "\n")
 
-	var js, css bool
+	// var js, css bool
 	for i, line := range lines {
 		if jsLineRegex.MatchString(line) {
 			lines[i] = jsUpdateRegex.ReplaceAllString(line, "assets/"+config.FrontendVersion+"/js")
-			js = true
+			// js = true
 		} else if cssLineRegex.MatchString(line) {
 			lines[i] = cssUpdateRegex.ReplaceAllString(line, "assets/"+config.FrontendVersion+"/css")
-			css = true
+			// css = true
 		}
 	}
 	// log once
-	if js {
-		log.Printf("[Template] %v CSS prefixed with version %v\n", path, config.FrontendVersion)
-	}
-	if css {
-		log.Printf("[Template] %v  JS prefixed with version %v\n", path, config.FrontendVersion)
-	}
+	// if js {
+	// 	log.Printf("[Template] %v CSS prefixed with version %v\n", path, config.FrontendVersion)
+	// }
+	// if css {
+	// 	log.Printf("[Template] %v  JS prefixed with version %v\n", path, config.FrontendVersion)
+	// }
 
 	output := strings.Join(lines, "\n")
 	err = os.WriteFile(path, []byte(output), 0644)

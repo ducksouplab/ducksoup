@@ -85,7 +85,7 @@ const start = async ({
 }) => {
   const isMirror = !!im;
   // required
-  const interactionName = iName;
+  const interactionName = isMirror ? randomId() : iName;
   const userId = isMirror ? randomId() : uId;
   const size = isMirror ? 1 : parseInt(s, 10);
   const namespace = isMirror ? "test_mirror" : "test_interaction";
@@ -164,14 +164,7 @@ const start = async ({
   window.state = state;
 };
 
-const initMirror = () => {
-  if(window.location.pathname.includes("mirror")) {
-    document.getElementById("input-interaction-name").value = randomId();
-  }
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
-  initMirror();
   resetUX();
 
   // Init signalingURL with default value
