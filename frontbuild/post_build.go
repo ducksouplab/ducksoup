@@ -28,7 +28,7 @@ func cleanUpAssets() {
 	}
 
 	for _, info := range infos {
-		if info.IsDir() && info.Name() != config.FrontendVersion {
+		if info.IsDir() && info.Name() != config.FrontendVersion && info.Name() != "latest" {
 			os.RemoveAll(path + info.Name())
 		}
 	}
