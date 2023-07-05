@@ -27,6 +27,7 @@ type Pipeline struct {
 	cPipeline   *C.GstElement
 	audioOutput types.TrackWriter
 	videoOutput types.TrackWriter
+	startedCh   chan struct{}
 	// sfu info
 	join            types.JoinPayload
 	iRandomId       string // interaction random id for filenames
@@ -40,7 +41,6 @@ type Pipeline struct {
 	logger zerolog.Logger
 	// API
 	RecordingFiles []string
-	ReadyCh        chan struct{}
 }
 
 func fileName(namespace string, prefix string, suffix string) string {
@@ -124,7 +124,7 @@ func NewPipeline(join types.JoinPayload, iRandomId string, connectionCount int, 
 		videoOptions:    videoOptions,
 		audioOptions:    audioOptions,
 		stoppedCount:    0,
-		ReadyCh:         make(chan struct{}),
+		startedCh:       make(chan struct{}),
 		logger:          logger,
 	}
 
@@ -150,6 +150,10 @@ func (p *Pipeline) srcPush(src string, buffer []byte) {
 	C.gstSrcPush(s, p.cPipeline, b, C.int(len(buffer)))
 }
 
+func (p *Pipeline) Started() chan struct{} {
+	return p.startedCh
+}
+
 func (p *Pipeline) PushRTP(kind string, buffer []byte) {
 	p.srcPush(kind+"_rtp_src", buffer)
 }
@@ -164,21 +168,29 @@ func (p *Pipeline) BindTrackAutoStart(kind string, t types.TrackWriter) {
 	} else {
 		p.videoOutput = t
 	}
-	p.updateReady()
+	p.updateReady(kind)
 }
 
-func (p *Pipeline) updateReady() {
-	if p.audioOutput != nil && p.videoOutput != nil {
-		close(p.ReadyCh)
+func (p *Pipeline) updateReady(kind string) {
+	if p.join.AudioOnly {
+		if kind == "audio" {
+			p.start()
+		}
+	} else if p.audioOutput != nil && p.videoOutput != nil {
 		p.start()
 	}
 }
 
 func (p *Pipeline) start() {
+	close(p.startedCh)
 	// update timestamps in recordings file paths
 	p.updateRecordingFiles()
 	// GStreamer start
-	C.gstStartPipeline(p.cPipeline)
+	audioOnly := 0
+	if p.join.AudioOnly {
+		audioOnly = 1
+	}
+	C.gstStartPipeline(p.cPipeline, C.int(audioOnly))
 	recordingPrefix := fmt.Sprintf("%s/%s/recordings/", p.join.Namespace, p.join.InteractionName)
 	p.logger.Info().Str("recording_prefix", recordingPrefix).Msg("pipeline_started")
 }
@@ -196,35 +208,63 @@ func (p *Pipeline) Stop() {
 }
 
 func (p *Pipeline) updateRecordingFiles() {
+	hasWetFiles := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
 	recordingPrefix := p.join.DataFolder() + "/recordings/" + p.filePrefix() + "-"
 
-	switch p.join.RecordingMode {
-	case "none":
-		return
-	case "split":
-		dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-		dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
-		wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
-		wetVideoFile := recordingPrefix + "video-wet." + p.videoOptions.Extension
-		p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-		p.setPropString("dry_video_filesink", "location", dryVideoFile)
-		p.setPropString("wet_audio_filesink", "location", wetAudioFile)
-		p.setPropString("wet_video_filesink", "location", wetVideoFile)
-		p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile, wetAudioFile, wetVideoFile)
-		return
-	case "passthrough":
-		dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-		dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
-		p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-		p.setPropString("dry_video_filesink", "location", dryVideoFile)
-		p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
-		return
-	default: // muxed
-		dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
-		wetFile := recordingPrefix + "wet." + p.videoOptions.Extension
-		p.setPropString("dry_filesink", "location", dryFile)
-		p.setPropString("wet_filesink", "location", wetFile)
-		p.RecordingFiles = append(p.RecordingFiles, dryFile, wetFile)
+	if p.join.AudioOnly {
+		switch p.join.RecordingMode {
+		case "none":
+			return
+		case "passthrough":
+			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile)
+			return
+		default: // audio only
+			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile)
+			if hasWetFiles {
+				wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
+				p.setPropString("wet_audio_filesink", "location", wetAudioFile)
+				p.RecordingFiles = append(p.RecordingFiles, wetAudioFile)
+			}
+		}
+	} else {
+		switch p.join.RecordingMode {
+		case "none":
+			return
+		case "split":
+			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
+			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+			p.setPropString("dry_video_filesink", "location", dryVideoFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
+			if hasWetFiles {
+				wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
+				wetVideoFile := recordingPrefix + "video-wet." + p.videoOptions.Extension
+				p.setPropString("wet_audio_filesink", "location", wetAudioFile)
+				p.setPropString("wet_video_filesink", "location", wetVideoFile)
+				p.RecordingFiles = append(p.RecordingFiles, wetAudioFile, wetVideoFile)
+			}
+			return
+		case "passthrough":
+			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
+			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+			p.setPropString("dry_video_filesink", "location", dryVideoFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
+			return
+		default: // muxed
+			dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
+			p.setPropString("dry_filesink", "location", dryFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryFile)
+			if hasWetFiles {
+				wetFile := recordingPrefix + "wet." + p.videoOptions.Extension
+				p.setPropString("wet_filesink", "location", wetFile)
+				p.RecordingFiles = append(p.RecordingFiles, wetFile)
+			}
+		}
 	}
 }
 

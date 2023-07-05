@@ -18,7 +18,6 @@ import (
 const (
 	DefaultSize              = 2
 	MaxSize                  = 8
-	TracksPerPeer            = 2
 	DefaultDurationInSeconds = 30
 	MaxDurationInSeconds     = 1200
 	AbortLimitInSeconds      = 10
@@ -112,6 +111,10 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	} else if size > MaxSize {
 		size = MaxSize
 	}
+	neededTracks := size * 2 // 1 audio and 1 video track per peer
+	if join.AudioOnly {
+		neededTracks = size // 1 audio track per peer
+	}
 
 	// interaction initialized with one connected peer
 	connectedIndex := make(map[string]bool)
@@ -147,7 +150,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		name:                join.InteractionName,
 		size:                size,
 		duration:            time.Duration(durationInSeconds) * time.Second,
-		neededTracks:        size * TracksPerPeer,
+		neededTracks:        neededTracks,
 		ssrcs:               []uint32{},
 		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
 	}
@@ -296,7 +299,8 @@ func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *web
 	i.Unlock()
 
 	if isAlreadyReady {
-		// reconnection case, then send start only once (check for "audio" for instance)
+		// reconnection case, then send start only once
+		// test on audio not to send it twice and since there is always an audio track
 		if remoteTrack.Kind().String() == "audio" {
 			go fromPs.ws.sendWithPayload("start", i.remainingSeconds())
 		}

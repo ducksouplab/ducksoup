@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"strings"
+	"text/template"
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
@@ -41,19 +42,31 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 
 	// render pipeline from template
 	var buf bytes.Buffer
-	templater := muxedReencTemplater
-	if join.VideoFormat == "VP8" { // needs matroskamux which in turns needs fixed caps
-		templater = muxedReencTemplater
-	}
-	if env.NoRecording {
-		templater = noRecordingTemplater
+	var templater *template.Template
+	if join.AudioOnly {
+		if env.NoRecording {
+			templater = audioOnlyNoRecordingTemplater
+		} else if join.RecordingMode == "passthrough" {
+			templater = audioOnlyPassthroughTemplater
+		} else {
+			// audio only default
+			templater = audioOnlyTemplater
+		}
 	} else {
-		if join.RecordingMode == "split" {
+		if env.NoRecording {
+			templater = noRecordingTemplater
+		} else if join.RecordingMode == "split" {
 			templater = splitTemplater
 		} else if join.RecordingMode == "passthrough" {
 			templater = passthroughTemplater
 		} else if join.RecordingMode == "none" {
 			templater = noRecordingTemplater
+		} else {
+			// audio+video default, ideally would be muxedTemplater
+			templater = muxedReencTemplater
+			if join.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc vor VP8
+				templater = muxedReencTemplater
+			}
 		}
 	}
 	if err := templater.Execute(&buf, data); err != nil {

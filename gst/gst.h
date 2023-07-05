@@ -13,7 +13,7 @@ extern void goPipelineLog(char *id, char *msg, int isError);
 
 void gstStartMainLoop(void);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);
-void gstStartPipeline(GstElement *pipeline);
+void gstStartPipeline(GstElement *pipeline, gboolean audioOnly);
 void gstStopPipeline(GstElement *pipeline);
 void gstSrcPush(char *src, GstElement *pipeline, void *buffer, int len);
 

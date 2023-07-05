@@ -145,27 +145,25 @@ GstElement *gstParsePipeline(char *pipelineStr, char *id)
     return pipeline;
 }
 
-void gstStartPipeline(GstElement *pipeline)
+void gstStartPipeline(GstElement *pipeline, gboolean audioOnly)
 {
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     gst_bus_add_watch(bus, bus_callback, pipeline);
     gst_object_unref(bus);
 
-    // src
-    // GstElement *video_rtp_src = gst_bin_get_by_name(GST_BIN(pipeline), "video_rtp_src");
-    // GstPad *video_rtp_src_pad = gst_element_get_static_pad(video_rtp_src, "src");
-    // gst_object_unref(video_rtp_src);
-    // gst_object_unref(video_rtp_src_pad);
-
-    // sinks
+    // audio sink configuration
     GstElement *audio_rtp_sink = gst_bin_get_by_name(GST_BIN(pipeline), "audio_rtp_sink");
-    GstElement *video_rtp_sink = gst_bin_get_by_name(GST_BIN(pipeline), "video_rtp_sink");
     g_object_set(audio_rtp_sink, "emit-signals", TRUE, NULL);
     g_signal_connect(audio_rtp_sink, "new-sample", G_CALLBACK(audio_rtp_sink_callback), pipeline);
     gst_object_unref(audio_rtp_sink);
-    g_object_set(video_rtp_sink, "emit-signals", TRUE, NULL);
-    g_signal_connect(video_rtp_sink, "new-sample", G_CALLBACK(video_rtp_sink_callback), pipeline);
-    gst_object_unref(video_rtp_sink);
+
+    if(!audioOnly) {
+        // video sink configuration
+        GstElement *video_rtp_sink = gst_bin_get_by_name(GST_BIN(pipeline), "video_rtp_sink");
+        g_object_set(video_rtp_sink, "emit-signals", TRUE, NULL);
+        g_signal_connect(video_rtp_sink, "new-sample", G_CALLBACK(video_rtp_sink_callback), pipeline);
+        gst_object_unref(video_rtp_sink);
+    }
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }

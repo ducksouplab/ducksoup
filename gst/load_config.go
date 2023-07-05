@@ -40,7 +40,7 @@ type gstEnhancedConfig struct {
 
 // global state
 var gstConfig gstEnhancedConfig
-var muxedTemplater, muxedReencTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater *template.Template
+var muxedTemplater, muxedReencTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
 
 func init() {
 	// load config from yml file
@@ -79,6 +79,18 @@ func init() {
 		panic(err)
 	}
 	noRecordingTemplater, err = template.New("no_recording").Parse(helpers.ReadFile("config/pipelines/no_recording.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	audioOnlyTemplater, err = template.New("audio_only").Parse(helpers.ReadFile("config/pipelines/audio_only.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	audioOnlyPassthroughTemplater, err = template.New("audio_only_passthrough").Parse(helpers.ReadFile("config/pipelines/audio_only_passthrough.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	audioOnlyNoRecordingTemplater, err = template.New("audio_only_no_recording").Parse(helpers.ReadFile("config/pipelines/audio_only_no_recording.gtpl"))
 	if err != nil {
 		panic(err)
 	}

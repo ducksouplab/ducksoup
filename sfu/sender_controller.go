@@ -109,7 +109,11 @@ func (sc *senderController) updateRateFromLoss(loss int) {
 }
 
 func (sc *senderController) loop() {
-	go sc.loopReadRTCP()
+	if sc.kind == "video" {
+		go sc.loopReadRTCPOnVideo()
+	} else {
+		go sc.loopReadRTCPOnAudio()
+	}
 
 	<-sc.ms.i.ready()
 	if sc.kind == "video" && env.GCC {
@@ -143,7 +147,26 @@ func (sc *senderController) loopGCC() {
 		}
 	}
 }
-func (sc *senderController) loopReadRTCP() {
+func (sc *senderController) loopReadRTCPOnAudio() {
+	for {
+		select {
+		case <-sc.ms.Done():
+			return
+		default:
+			_, _, err := sc.sender.ReadRTCP()
+			if err != nil {
+				if err != io.EOF && err != io.ErrClosedPipe {
+					sc.logError().Err(err).Msg("rtcp_on_sender_failed")
+					continue
+				} else {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (sc *senderController) loopReadRTCPOnVideo() {
 	for {
 		select {
 		case <-sc.ms.Done():

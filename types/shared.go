@@ -18,6 +18,7 @@ type JoinPayload struct {
 	Framerate     int    `json:"framerate"`
 	GPU           bool   `json:"gpu"`
 	Overlay       bool   `json:"overlay"`
+	AudioOnly     bool   `json:"audioOnly"`
 	// Not from JSON
 	Origin string
 }

@@ -210,12 +210,15 @@ func (ms *mixerSlice) loop() {
 	// gives pipeline a track to write to
 	pipeline.BindTrackAutoStart(ms.kind, ms)
 	// wait for audio and video
-	<-pipeline.ReadyCh
+	<-pipeline.Started()
 
 	i.addFiles(userId, pipeline.RecordingFiles) // for reference
 
-	go ms.loopTickers()
 	go ms.loopReadRTCP()
+	if ms.kind == "video" {
+		go ms.loopEncoderController()
+	}
+	go ms.loopStats()
 	if env.GeneratePlots {
 		go ms.plot.Loop()
 	}
@@ -264,94 +267,6 @@ func (ms *mixerSlice) updateTargetBitrates(targetBitrate int) {
 // 	}
 // }
 
-func (ms *mixerSlice) loopTickers() {
-	// sleep a bit to be closer to latest update from sender controller,
-	// (if encoderControlPeriod is a multiple of gccPeriod)
-	time.Sleep(50 * time.Millisecond)
-	// update encoding bitrate on tick and according to minimum controller rate
-	go func() {
-		encoderTicker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
-		defer encoderTicker.Stop()
-		for {
-			select {
-			case <-ms.Done():
-				return
-			case <-encoderTicker.C:
-				if len(ms.senderControllerIndex) > 0 {
-					rates := []int{}
-					for _, sc := range ms.senderControllerIndex {
-						if env.GCC && ms.kind == "video" {
-							rates = append(rates, sc.ccOptimalBitrate)
-						} else {
-							rates = append(rates, sc.lossOptimalBitrate)
-						}
-					}
-					// DISABLED no need to encode more than inputToOutputMaxFactor times the inputBitrate
-					// inputDependentRate := int(inputToOutputMaxFactor * (float64(ms.inputBitrate)))
-					// rates = append(rates, inputDependentRate)
-					newPotentialRate := minInt(rates)
-
-					if ms.pipeline != nil && newPotentialRate > 0 {
-						// skip updating previous value and encoding rate too often
-						ms.Lock()
-						diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
-						ms.Unlock()
-						// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
-						diffIsBigEnough := diff > diffThreshold
-						diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
-						if diffIsBigEnough || diffToMax {
-							go ms.updateTargetBitrates(newPotentialRate)
-						}
-					}
-				}
-			}
-		}
-	}()
-
-	go func() {
-		statsTicker := time.NewTicker(statsPeriod * time.Millisecond)
-		defer statsTicker.Stop()
-		for {
-			select {
-			case <-ms.Done():
-				return
-			case tickTime := <-statsTicker.C:
-				ms.Lock()
-				sinceLastTick := tickTime.Sub(ms.lastStats).Seconds()
-				if sinceLastTick == 0 {
-					break
-				}
-				// update bitrates
-				ms.inputBitrate = int(float64(ms.inputBits) / sinceLastTick)
-				ms.outputBitrate = int(float64(ms.outputBits) / sinceLastTick)
-				// plot
-				if env.GeneratePlots {
-					ms.plot.AddInput(ms.inputBitrate)
-					ms.plot.AddOutput(ms.outputBitrate)
-				}
-
-				// reset cumulative bits and lastStats
-				ms.inputBits = 0
-				ms.outputBits = 0
-				ms.lastStats = tickTime
-				// may send a PLI if too low -> disabled since does not solve the encoding crash
-				//ms.checkOutputBitrate()
-				// log
-				displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)
-				displayOutputBitrateKbs := uint64(ms.outputBitrate / 1000)
-				displayOutputTargetBitrateKbs := uint64(ms.targetBitrate / 1000)
-
-				inputMsg := fmt.Sprintf("%s_in_bitrate", ms.output.Kind().String())
-				outputMsg := fmt.Sprintf("%s_out_bitrate", ms.output.Kind().String())
-				ms.Unlock()
-
-				ms.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
-				ms.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
-			}
-		}
-	}()
-}
-
 func (ms *mixerSlice) loopReadRTCP() {
 	for {
 		select {
@@ -375,6 +290,93 @@ func (ms *mixerSlice) loopReadRTCP() {
 				}
 				ms.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_receiver")
 			}
+		}
+	}
+}
+
+func (ms *mixerSlice) loopEncoderController() {
+	// sleep a bit to be closer to latest update from sender controller,
+	// (if encoderControlPeriod is a multiple of gccPeriod)
+	time.Sleep(50 * time.Millisecond)
+	// update encoding bitrate on tick and according to minimum controller rate
+	encoderTicker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
+	defer encoderTicker.Stop()
+	for {
+		select {
+		case <-ms.Done():
+			return
+		case <-encoderTicker.C:
+			if len(ms.senderControllerIndex) > 0 {
+				rates := []int{}
+				for _, sc := range ms.senderControllerIndex {
+					if env.GCC && ms.kind == "video" {
+						rates = append(rates, sc.ccOptimalBitrate)
+					} else {
+						rates = append(rates, sc.lossOptimalBitrate)
+					}
+				}
+				// DISABLED no need to encode more than inputToOutputMaxFactor times the inputBitrate
+				// inputDependentRate := int(inputToOutputMaxFactor * (float64(ms.inputBitrate)))
+				// rates = append(rates, inputDependentRate)
+				// END DISABLED
+				newPotentialRate := minInt(rates)
+
+				if ms.pipeline != nil && newPotentialRate > 0 {
+					// skip updating previous value and encoding rate too often
+					ms.Lock()
+					diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
+					ms.Unlock()
+					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
+					diffIsBigEnough := diff > diffThreshold
+					diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
+					if diffIsBigEnough || diffToMax {
+						go ms.updateTargetBitrates(newPotentialRate)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (ms *mixerSlice) loopStats() {
+	statsTicker := time.NewTicker(statsPeriod * time.Millisecond)
+	defer statsTicker.Stop()
+	for {
+		select {
+		case <-ms.Done():
+			return
+		case tickTime := <-statsTicker.C:
+			ms.Lock()
+			sinceLastTick := tickTime.Sub(ms.lastStats).Seconds()
+			if sinceLastTick == 0 {
+				break
+			}
+			// update bitrates
+			ms.inputBitrate = int(float64(ms.inputBits) / sinceLastTick)
+			ms.outputBitrate = int(float64(ms.outputBits) / sinceLastTick)
+			// plot
+			if env.GeneratePlots {
+				ms.plot.AddInput(ms.inputBitrate)
+				ms.plot.AddOutput(ms.outputBitrate)
+			}
+
+			// reset cumulative bits and lastStats
+			ms.inputBits = 0
+			ms.outputBits = 0
+			ms.lastStats = tickTime
+			// may send a PLI if too low -> disabled since does not solve the encoding crash
+			//ms.checkOutputBitrate()
+			// log
+			displayInputBitrateKbs := uint64(ms.inputBitrate / 1000)
+			displayOutputBitrateKbs := uint64(ms.outputBitrate / 1000)
+			displayOutputTargetBitrateKbs := uint64(ms.targetBitrate / 1000)
+
+			inputMsg := fmt.Sprintf("%s_in_bitrate", ms.output.Kind().String())
+			outputMsg := fmt.Sprintf("%s_out_bitrate", ms.output.Kind().String())
+			ms.Unlock()
+
+			ms.logDebug().Uint64("value", displayInputBitrateKbs).Str("unit", "kbit/s").Msg(inputMsg)
+			ms.logDebug().Uint64("value", displayOutputBitrateKbs).Uint64("target", displayOutputTargetBitrateKbs).Str("unit", "kbit/s").Msg(outputMsg)
 		}
 	}
 }
