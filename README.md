@@ -44,7 +44,7 @@ Where:
 
 - `embedOptions` (object) must define `mountEl` or `callback` (or both):
 
-  - `mountEl` (DOM node, obtained for instance with `document.getElementById("ducksoup-root")`): set this property if you want the player to automatically append `<audio>` and `<video>` HTML elements to `mountEl` for each incoming audio or video stream. If you want to manage how to append and render tracks in the DOM, don't define `mountEl` and prefer `callback` 
+  - `mountEl` (DOM node, obtained for instance with `document.getElementById("ducksoup-mount")`): set this property if you want the player to automatically append `<audio>` and `<video>` HTML elements to `mountEl` for each incoming audio or video stream. If you want to manage how to append and render tracks in the DOM, don't define `mountEl` and prefer `callback` 
   - `callback` (JavaScript function) to receive events from DuckSoup in the form `({ kind, payload }) => { /* callback body */ }`. The different `kind`s of events the player may trigger are:
     - `"joined"` when websocket has connected to the interaction identified by `interactionName` in `peerOptions` (see below). The associated payload may be: `"new-interaction"` if the user is the first to connect, `"existing-interaction"` if s/he's not, `"reconnection"` if s/he's reconnecting to the same interaction (a page refresh for instance)
     - `"track"` (payload: [RTCTrackEvent](https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent)) when a new track sent by the server is available. This event is used to render the track to the DOM, It won't be triggered if you defined `mountEl`
@@ -70,6 +70,7 @@ Where:
 - `peerOptions` may contain the following optional properties:
 
   - `duration` (integer, defaults to 30) the duration of the experiment in seconds
+  - `audioOnly` (boolean, defaults to false) set to true if only audio tracks are used (in this case the following properties are irrelevant `width`, `height`, `framerate`, `videoFx`, `video`, `videoFormat`, `gpu`)
   - `size` (integer, defaults to 2) the number of participants (size == 1 for a mirror effect)
   - `width` (integer, defaults to 800) of the video stream
   - `height` (integer, defaults to 600) of the video stream

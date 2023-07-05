@@ -72,6 +72,7 @@ const parseJoinPayload = (peerOptions) => {
     interactionName,
     userId,
     duration,
+    audioOnly,
     size,
     width,
     height,
@@ -84,7 +85,9 @@ const parseJoinPayload = (peerOptions) => {
     gpu,
     overlay,
   } = peerOptions;
+  // null fields will be deleted by clean()
   if (!["VP8", "H264"].includes(videoFormat)) videoFormat = null;
+  audioOnly = !!audioOnly ? true : null;
   if (isNaN(size)) size = null;
   if (isNaN(width)) width = null;
   if (isNaN(height)) height = null;
@@ -96,6 +99,7 @@ const parseJoinPayload = (peerOptions) => {
     interactionName,
     userId,
     duration,
+    audioOnly,
     size,
     width,
     height,
@@ -223,9 +227,11 @@ class DuckSoup {
         ...DEFAULT_CONSTRAINTS.audio,
         echoCancellation,
         ...peerOptions.audio,
-      },
-      video: { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video },
+      }
     };
+    if (!this._joinPayload.audioOnly) {
+      this._constraints.video = { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video };
+    }
     this._logLevel = 1;
     if (peerOptions && typeof peerOptions.logLevel !== undefined) {
       this._logLevel = peerOptions.logLevel;

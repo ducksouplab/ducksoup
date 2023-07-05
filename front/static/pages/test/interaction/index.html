@@ -131,9 +131,17 @@
             </div>
           </div>
           <div class="row">
+            <div class="col-6">
+              <label for="input-audio-fx" class="form-label">Audio FX</label>
+            </div>
+            <div class="col-6">
+              <input class="form-check-input" id="audio-only" type="checkbox" name="audioOnly">
+              <label class="form-check-label" for="audio-only">Audio only</label>
+            </div>
+          </div>
+          <div class="row">
             <div class="col">
               <div class="mb-3">
-                <label for="input-audio-fx" class="form-label">Audio FX</label>
                 <input class="form-control" id="input-audio-fx" type="text" name="audioFx" placeholder="fx_name prop1=value1 prop2=value2...">
               </div>
             </div>
@@ -250,7 +258,10 @@
         <div id="stopped" class="show-when-ended">
           <p id="stopped-message"></p>
         </div>
-        <div id="ducksoup-root" class="show-when-running mb-3"></div>
+        <div id="ducksoup-wrapper">
+          <div id="ducksoup-mount" class="show-when-running mb-3"></div>
+          <div class='overlay overlay-bottom show-when-ending d-none'><div>Conversation ending soon</div></div>
+        </div>
         <div class="row mb-3 stats">
           <div class="col-3">
             <p>video up ↑</p>

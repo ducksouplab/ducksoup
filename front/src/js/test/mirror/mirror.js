@@ -65,13 +65,16 @@ const playControlFxSequence = (type, sequence) => {
 };
 
 const start = async ({
+  // not processed
   signalingUrl,
+  videoFormat,
+  recordingMode,
+  audioOnly,
+  // processed
   isMirror: im,
   userId: uId,
   interactionName: iName,
   size: s,
-  videoFormat,
-  recordingMode,
   width: w,
   height: h,
   framerate: fr,
@@ -123,6 +126,7 @@ const start = async ({
     interactionName,
     userId,
     duration,
+    audioOnly,
     // optional
     videoFormat,
     recordingMode,
@@ -146,7 +150,10 @@ const start = async ({
   show(".show-when-running");
   if (isMirror) {
     // save space for remote video before local video
-    const mountEl = document.getElementById("ducksoup-root");
+    const wrapperEl = document.getElementById("ducksoup-wrapper");
+    const mountEl = document.getElementById("ducksoup-mount");
+    wrapperEl.style.width = state.width + "px";
+    wrapperEl.style.height = state.height + "px";
     mountEl.style.width = state.width + "px";
     mountEl.style.height = state.height + "px";
   }
@@ -273,7 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 const clearMount = () => {
-  const mountEl = document.getElementById("ducksoup-root");
+  const mountEl = document.getElementById("ducksoup-mount");
   while (mountEl.firstChild) {
     mountEl.removeChild(mountEl.firstChild);
   }
@@ -304,7 +311,7 @@ const appendMessage = (message) => {
 // communication with player
 const ducksoupListener = (options) => (message) => {
   const { kind, payload } = message;
-  const mountEl = document.getElementById("ducksoup-root");
+  const mountEl = document.getElementById("ducksoup-mount");
 
   // grouped cases
   if (kind !== "stats") {
@@ -342,10 +349,6 @@ const ducksoupListener = (options) => (message) => {
       el.style.height = state.height + "px";
       // append
       container.appendChild(el);
-      container.insertAdjacentHTML(
-        "beforeend",
-        "<div class='overlay overlay-bottom show-when-ending'><div>Conversation ending soon</div></div>"
-      );
       if (state.isMirror) {
         container.insertAdjacentHTML(
           "beforeend",
@@ -360,7 +363,7 @@ const ducksoupListener = (options) => (message) => {
       }
       mountEl.appendChild(container);
       hide(".show-when-ending");
-    } else {
+    } else { // audio
       let el = document.createElement(track.kind);
       el.id = track.id;
       el.srcObject = streams[0];
