@@ -60,6 +60,7 @@ COPY front/src ./front/src
 # Build DuckSoup front
 COPY package.json .
 RUN yarn
+COPY config/front.yml ./config/front.yml
 RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
