@@ -1,5 +1,5 @@
-appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
-appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true min-latency=33333333
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
 
 appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
 appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
@@ -7,8 +7,7 @@ appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
 appsink name=audio_rtp_sink qos=true
 appsink name=video_rtp_sink qos=true
 
-opusparse name=dry_audio_muxer !
-{{.Audio.Muxer}} !
+{{.Audio.Muxer}} name=dry_audio_muxer !
 filesink name=dry_audio_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.{{.Audio.Extension}} 
 
 {{.Video.Muxer}} name=dry_video_muxer !
