@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -166,11 +167,11 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 
 // Run: implement log Hook interface
 func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
-	sinceCreation := time.Since(i.createdAt).Round(time.Millisecond).String()
-	e.Str("sinceCreation", sinceCreation)
+	sinceCreation := time.Since(i.createdAt).Milliseconds()
+	e.Str("sinceCreation", fmt.Sprintf("%vms", sinceCreation))
 	if i.started {
-		sinceStart := time.Since(i.startedAt).Round(time.Millisecond).String()
-		e.Str("sinceStart", sinceStart)
+		sinceStart := time.Since(i.startedAt).Milliseconds()
+		e.Str("sinceStart", fmt.Sprintf("%vms", sinceStart))
 	}
 }
 
