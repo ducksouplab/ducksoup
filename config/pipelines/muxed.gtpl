@@ -86,7 +86,7 @@ video_rtp_src. !
         videoconvert ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
-            timeoverlay time-mode=1 ! 
+            {{.Video.TimeOverlay }} ! 
         {{end}}
 
         {{.Queue.Base}} ! 

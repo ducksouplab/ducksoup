@@ -75,7 +75,7 @@ video_rtp_src. !
         videoconvert ! 
         {{.Video.Fx}} ! 
         {{if .Video.Overlay }}
-            timeoverlay ! 
+            {{.Video.TimeOverlay }} ! 
         {{end}}
         {{.Video.ConstraintFormat}} !
         {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} !
@@ -95,7 +95,7 @@ video_rtp_src. !
         {{.Video.Decoder}} !
         {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
         {{if .Video.Overlay }}
-            timeoverlay ! 
+            {{.Video.TimeOverlay }} ! 
         {{end}}
         {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} !
         dry_video_muxer.

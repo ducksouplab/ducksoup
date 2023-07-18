@@ -16,6 +16,7 @@ shared:
         {{.Convert}} !
         videorate !
         capsfilter caps={{.VideoFormatFramerateResolution}} caps-change-mode=1
+    timeOverlay: timeoverlay time-mode=4
   queue:
     base: queue
     short: queue max-size-buffers=0 max-size-bytes=0 max-size-time=75000000

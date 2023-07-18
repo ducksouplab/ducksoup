@@ -86,7 +86,7 @@ video_rtp_src. !
         videoconvert ! 
         {{.Video.Fx}} !
         {{if .Video.Overlay }}
-            timeoverlay time-mode=1 ! 
+            {{.Video.TimeOverlay }} ! 
         {{end}}
 
         {{.Queue.Base}} ! 
@@ -110,7 +110,7 @@ video_rtp_src. !
             {{.Video.Decoder}} !
             {{.Video.ConstraintFormatFramerate .Framerate}} !
             {{if .Video.Overlay }}
-                timeoverlay ! 
+                {{.Video.TimeOverlay }} ! 
             {{end}}
             {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
         {{end}}

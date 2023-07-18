@@ -32,7 +32,7 @@ video_rtp_src. !
     videoconvert ! 
     {{.Video.Fx}} ! 
     {{if .Video.Overlay }}
-        timeoverlay ! 
+        {{.Video.TimeOverlay }} ! 
     {{end}}
     {{.Video.ConstraintFormat}} !
     {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
