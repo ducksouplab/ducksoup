@@ -29,6 +29,7 @@ type gstEnhancedConfig struct {
 				FormatFramerate           string `yaml:"formatFramerate"`
 				FormatFramerateResolution string `yaml:"formatFramerateResolution"`
 			}
+			TimeOverlay string `yaml:"timeOverlay"`
 		}
 		Queue queueConfig
 	}

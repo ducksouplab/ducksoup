@@ -13,10 +13,10 @@ import (
 	"github.com/ducksouplab/ducksoup/sequencing"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	ws "github.com/silently/wsmock"
 )
 
 const (
@@ -456,7 +456,7 @@ func (ps *peerServer) loop() {
 // API
 
 // handle incoming websockets
-func RunPeerServer(origin, href string, unsafeConn *websocket.Conn) {
+func RunPeerServer(origin, href string, unsafeConn ws.IGorilla) {
 
 	ws := newWsConn(unsafeConn)
 	defer ws.Close()

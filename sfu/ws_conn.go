@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"encoding/json"
+	"errors"
 	"regexp"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	ws "github.com/silently/wsmock"
 )
 
 const (
@@ -19,7 +21,7 @@ const (
 // Helper to make Gorilla Websockets threadsafe
 type wsConn struct {
 	sync.Mutex
-	*websocket.Conn
+	ws.IGorilla
 	createdAt       time.Time
 	userId          string
 	interactionName string
@@ -110,7 +112,7 @@ func parseFramerate(join types.JoinPayload) (framerate int) {
 
 // API
 
-func newWsConn(unsafeConn *websocket.Conn) *wsConn {
+func newWsConn(unsafeConn ws.IGorilla) *wsConn {
 	logger := log.With().Str("context", "peer").Logger() // default logger
 
 	return &wsConn{sync.Mutex{}, unsafeConn, time.Now(), "", "", "", nil, logger}
@@ -130,10 +132,12 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 
 	// First message must be a join
 	err = ws.ReadJSON(&m)
+
 	if err != nil {
 		// no need to ws.send an error if we can't read
 		return
 	} else if m.Kind != "join" {
+		err = errors.New("wrong_join_payload_kind")
 		// we don't use send method since it may try to close not created peer server
 		m := &messageOut{Kind: "error-join"}
 		ws.WriteJSON(m)
@@ -141,6 +145,7 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 	}
 
 	err = json.Unmarshal([]byte(m.Payload), &join)
+
 	// restrict to authorized values
 	join.Namespace = parseString(join.Namespace)
 	join.InteractionName = parseString(join.InteractionName)

@@ -323,8 +323,8 @@ Wherever it makes sense, the following properties are added to the logs:
 - `"namespace"`: a namespace used by DuckSoup client to categorize the experiment
 - `"interaction"`: interaction id
 - `"user"`: user id
-- `"sinceCreation"`: elapsed time since interaction creation
-- `"sinceStart"`: elapsed time since interaction start
+- `"sinceCreation"`: elapsed time since interaction creation in ms
+- `"sinceStart"`: elapsed time since interaction start in ms
 
 ### Logs message reference
 

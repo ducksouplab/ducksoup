@@ -4,20 +4,29 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/ducksouplab/ducksoup/env"
 	"github.com/rs/zerolog/log"
 )
 
+var fileRoot string
+
+func init() {
+	fileRoot = "./"
+	if strings.HasSuffix(os.Args[0], ".test") {
+		fileRoot = "../"
+	}
+}
+
 // Open file relatively to project
 func Open(name string) (*os.File, error) {
-	path := fmt.Sprintf(env.ProjectRoot+"%s", name)
+	path := fmt.Sprintf(fileRoot+"%s", name)
 	return os.Open(path)
 }
 
 func ReadFile(name string) string {
 	var output string
-	path := fmt.Sprintf(env.ProjectRoot+"%s", name)
+	path := fmt.Sprintf(fileRoot+"%s", name)
 	f, err := os.Open(path)
 
 	if err != nil {

@@ -30,6 +30,7 @@ type mediaOptions struct {
 		Depay        string
 		JitterBuffer string
 	}
+	TimeOverlay string
 }
 
 func (mo *mediaOptions) addSharedAudioProperties() {
@@ -44,6 +45,7 @@ func (mo *mediaOptions) addSharedVideoProperties() {
 	mo.Rtp.JitterBuffer = gstConfig.Shared.Video.RTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Video.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Video.DefaultBitrate / 1000
+	mo.TimeOverlay = gstConfig.Shared.Video.TimeOverlay
 }
 
 // template helpers
