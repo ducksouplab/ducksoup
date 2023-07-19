@@ -39,6 +39,7 @@ type interaction struct {
 	deleted             bool
 	createdAt           time.Time
 	startedAt           time.Time
+	pipelineStartCount  int
 	inTracksReadyCount  int
 	outTracksReadyCount int
 	// channels (safe)
@@ -143,6 +144,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		abortedCh:           make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		createdAt:           time.Now(),
+		pipelineStartCount:  0,
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
 		randomId:            helpers.RandomHexString(12),
@@ -245,7 +247,12 @@ func (i *interaction) allUsersConnected() bool {
 func (i *interaction) start() {
 	i.Lock()
 	defer i.Unlock()
-	if !i.started {
+
+	i.pipelineStartCount++
+
+	// starts if: not already started
+	// AND either size is 1 (participant) or at leat two pipeline have started (for size >= 2)
+	if !i.started && (i.size == 1 || i.pipelineStartCount > 1) {
 		i.started = true
 		i.startedAt = time.Now()
 		i.logger.Info().Str("context", "interaction").Msg("interaction_started")
