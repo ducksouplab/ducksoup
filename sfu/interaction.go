@@ -44,6 +44,7 @@ type interaction struct {
 	outTracksReadyCount int
 	// channels (safe)
 	readyCh   chan struct{}
+	startedCh chan struct{}
 	abortedCh chan struct{}
 	doneCh    chan struct{}
 	// other (written only during initialization)
@@ -141,6 +142,7 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		connectedIndex:      connectedIndex,
 		joinedCountIndex:    joinedCountIndex,
 		readyCh:             make(chan struct{}),
+		startedCh:           make(chan struct{}),
 		abortedCh:           make(chan struct{}),
 		doneCh:              make(chan struct{}),
 		createdAt:           time.Now(),
@@ -179,6 +181,10 @@ func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 
 func (i *interaction) isReady() chan struct{} {
 	return i.readyCh
+}
+
+func (i *interaction) isStarted() chan struct{} {
+	return i.startedCh
 }
 
 func (i *interaction) isAborted() chan struct{} {
@@ -261,6 +267,7 @@ func (i *interaction) start() {
 			go ps.ws.sendWithPayload("start", i.remainingSeconds())
 		}
 		go i.gracefulCountdown()
+		close(i.startedCh)
 	}
 }
 

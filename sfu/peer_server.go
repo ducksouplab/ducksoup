@@ -334,7 +334,7 @@ func (ps *peerServer) loop() {
 
 	// sends "ending" message before interaction does end
 	go func() {
-		<-ps.i.isReady()
+		<-ps.i.isStarted()
 		select {
 		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
