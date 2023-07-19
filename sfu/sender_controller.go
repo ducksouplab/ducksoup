@@ -115,7 +115,7 @@ func (sc *senderController) loop() {
 		go sc.loopReadRTCPOnAudio()
 	}
 
-	<-sc.ms.i.ready()
+	<-sc.ms.i.isReady()
 	if sc.kind == "video" && env.GCC {
 		// applying GCC only to video is an approximation since audio consumes less bandwidth
 		go sc.loopGCC()

@@ -34,8 +34,8 @@ type interaction struct {
 	connectedIndex      map[string]bool        // per user id, undefined: never connected, false: previously connected, true: connected
 	joinedCountIndex    map[string]int         // per user id
 	filesIndex          map[string][]string    // per user id, contains media file names
-	running             bool
-	started             bool // changed once to show if interaction has been aborted or not
+	ready               bool                   // all in tracks are there
+	started             bool                   // changed once to show if interaction has been aborted or not
 	deleted             bool
 	createdAt           time.Time
 	startedAt           time.Time
@@ -175,15 +175,15 @@ func (i *interaction) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	}
 }
 
-func (i *interaction) ready() chan struct{} {
+func (i *interaction) isReady() chan struct{} {
 	return i.readyCh
 }
 
-func (i *interaction) aborted() chan struct{} {
+func (i *interaction) isAborted() chan struct{} {
 	return i.abortedCh
 }
 
-func (i *interaction) done() chan struct{} {
+func (i *interaction) isDone() chan struct{} {
 	return i.doneCh
 }
 
@@ -237,21 +237,24 @@ func (i *interaction) allUsersConnected() bool {
 	return i.unguardedConnectedUserCount() == i.size
 }
 
+// Called when one of the pipeline of the interaction is ready
+// (can be called several times if there are several users,
+// but only the first will have an effect)
+// Waiting for a pipeline to be started provides more accurates
+// (relatively to client-side experience) startedAt and gracefulCountdown
 func (i *interaction) start() {
 	i.Lock()
 	defer i.Unlock()
-	// do start
-	i.abortTimer.Stop()
-	close(i.readyCh)
-	i.started = true
-	i.running = true
-	i.logger.Info().Str("context", "interaction").Msg("interaction_started")
-	i.startedAt = time.Now()
-	// send start to all peers
-	for _, ps := range i.peerServerIndex {
-		go ps.ws.sendWithPayload("start", i.remainingSeconds())
+	if !i.started {
+		i.started = true
+		i.startedAt = time.Now()
+		i.logger.Info().Str("context", "interaction").Msg("interaction_started")
+		// send start to all peers
+		for _, ps := range i.peerServerIndex {
+			go ps.ws.sendWithPayload("start", i.remainingSeconds())
+		}
+		go i.gracefulCountdown()
 	}
-	go i.gracefulCountdown()
 }
 
 func (i *interaction) stop(graceful bool) {
@@ -262,21 +265,21 @@ func (i *interaction) stop(graceful bool) {
 	} else {
 		i.logger.Info().Str("context", "interaction").Msg("interaction_aborted")
 	}
-	i.running = false
+	i.ready = false
 
 	<-time.After(3000 * time.Millisecond)
 	// most likely already deleted, see disconnectUser
-	// except if interaction was empty before turning to i.running=false
+	// except if interaction was empty before turning to i.allInTracksReady=false
 	i.unguardedDelete()
 }
 
 // ends room if not enough user have connected after a waiting limit
 func (i *interaction) abortCountdown() {
-	// wait then check if interaction is running, if not, abort
+	// wait then check if allInTracksReady, if not, abort
 	<-i.abortTimer.C
 
 	i.RLock()
-	if !i.running {
+	if !i.ready {
 		i.RUnlock()
 		i.stop(false)
 	}
@@ -312,11 +315,13 @@ func (i *interaction) incInTracksReadyCount(fromPs *peerServer, remoteTrack *web
 	i.inTracksReadyCount++
 	i.logger.Info().Str("context", "interaction").Int("count", i.inTracksReadyCount).Msg("in_track_added_to_interaction")
 	isReadyNow := i.inTracksReadyCount == i.neededTracks
+	if isReadyNow {
+		i.ready = true
+		i.abortTimer.Stop()
+		close(i.readyCh)
+	}
 	i.Unlock()
 
-	if isReadyNow {
-		i.start()
-	}
 }
 
 func (i *interaction) addSSRC(ssrc uint32, kind string, userId string) {
@@ -341,7 +346,7 @@ func (i *interaction) incOutTracksReadyCount() bool {
 	// interaction with >= 3 users: after two users have disconnected and only one came back
 	// trigger signaling (for an even number of out tracks since they go
 	// by audio/video pairs)
-	if i.running && (i.outTracksReadyCount%2 == 0) {
+	if i.ready && (i.outTracksReadyCount%2 == 0) {
 		return true
 	}
 	return false
@@ -393,7 +398,7 @@ func (i *interaction) disconnectUser(userId string) {
 
 		// users may have disconnected temporarily
 		// delete only if is empty and not running
-		if i.unguardedConnectedUserCount() == 0 && !i.running && !i.deleted {
+		if i.unguardedConnectedUserCount() == 0 && !i.ready && !i.deleted {
 			i.abortTimer.Stop()
 			i.unguardedDelete()
 		}
@@ -446,9 +451,9 @@ func (i *interaction) endingDelay() (delay int) {
 func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
-		case <-i.ready():
+		case <-i.isReady():
 			return true
-		case <-i.aborted():
+		case <-i.isAborted():
 			return false
 		default:
 			_, _, err := remoteTrack.ReadRTP()

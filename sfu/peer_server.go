@@ -82,7 +82,7 @@ func newPeerServer(
 	return ps
 }
 
-func (ps *peerServer) done() chan struct{} {
+func (ps *peerServer) isDone() chan struct{} {
 	return ps.doneCh
 }
 
@@ -300,7 +300,7 @@ func (ps *peerServer) controlFx(payload controlPayload) {
 
 		for {
 			select {
-			case <-ps.done():
+			case <-ps.isDone():
 				return
 			case currentValue, more := <-newInterpolator.C:
 				if more {
@@ -317,16 +317,16 @@ func (ps *peerServer) loop() {
 	// wait for interaction end
 	go func() {
 		select {
-		case <-ps.i.aborted():
+		case <-ps.i.isAborted():
 			ps.ws.send("error-aborted")
 			ps.close("interaction_aborted")
 			return
-		case <-ps.i.done():
+		case <-ps.i.isDone():
 			ps.ws.sendWithPayload("files", ps.i.files()) // peer could have left (ws closed) but interaction is still running
 			ps.ws.send("end")
 			ps.close("interaction_ended")
 			return
-		case <-ps.done():
+		case <-ps.isDone():
 			// user might have disconnected
 			return
 		}
@@ -334,13 +334,13 @@ func (ps *peerServer) loop() {
 
 	// sends "ending" message before interaction does end
 	go func() {
-		<-ps.i.ready()
+		<-ps.i.isReady()
 		select {
 		case <-time.After(time.Duration(ps.i.endingDelay()) * time.Second):
 			// user might have reconnected and this ps could be
 			ps.logInfo().Str("context", "peer").Msg("interaction_ending_sent")
 			ps.ws.send("ending")
-		case <-ps.done():
+		case <-ps.isDone():
 			// user might have disconnected
 			return
 		}
@@ -411,6 +411,7 @@ func (ps *peerServer) loop() {
 						Str("context", "track").
 						Str("name", payload.Name).
 						Str("property", payload.Property).
+						Str("kind", payload.Kind).
 						Str("value", payload.Value).
 						Msg("client_fx_control")
 				}()

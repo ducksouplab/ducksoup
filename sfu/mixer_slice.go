@@ -211,6 +211,7 @@ func (ms *mixerSlice) loop() {
 	pipeline.BindTrackAutoStart(ms.kind, ms)
 	// wait for audio and video
 	<-pipeline.Started()
+	i.start() // first pipeline started starts the interaction
 
 	i.addFiles(userId, pipeline.RecordingFiles) // for reference
 
@@ -228,7 +229,7 @@ func (ms *mixerSlice) loop() {
 pushToPipeline:
 	for {
 		select {
-		case <-ms.fromPs.done():
+		case <-ms.fromPs.isDone():
 			// interaction OR peer is done
 			break pushToPipeline
 		default:
