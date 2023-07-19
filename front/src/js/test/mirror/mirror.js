@@ -223,15 +223,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // /test/mirror/ control string fx
-  document.querySelector("form.fx-string")?.addEventListener("submit", (e) => {
+  // /test/mirror/ control int/float/string fx
+  document.querySelector("form.fx-infer-kind")?.addEventListener("submit", (e) => {
     e.preventDefault();
     if (state.ducksoup) {
-      const type = e.target.querySelector("[name='type']").value;
+      const name = e.target.querySelector("[name='name']").value;
       const property = e.target.querySelector("[name='property']").value;
       let value = e.target.querySelector("[name='value']").value;
       value = processMozzaDeform(property, value);
-      state.ducksoup.polyControlFx(type, property, "string", value);
+
+      let kind = "string";
+      if (!isNaN(value)) {
+        kind = value.toString().indexOf('.') != -1 ? "float" : "int";
+      }
+
+      state.ducksoup.polyControlFx(name, property, kind, value);
     }
   });
 

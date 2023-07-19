@@ -267,6 +267,7 @@ class DuckSoup {
   }
 
   polyControlFx(name, property, kind, value) {
+    console.log(name, property, kind, value);
     if (!this._checkControl(name, property, value)) return;
     const strValue = value.toString();
     this._send("client_polycontrol", { name, property, kind, value: strValue });
