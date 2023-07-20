@@ -257,7 +257,7 @@ func (ps *peerServer) close(cause string) {
 		ps.logInfo().Str("context", "peer").Str("cause", cause).Msg("peer_server_ended")
 	}
 	// cleanup anyway
-	ps.i.disconnectUser(ps.userId)
+	ps.i.disconnectUser(ps)
 }
 
 func (ps *peerServer) controlFx(payload controlPayload) {

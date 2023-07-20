@@ -321,7 +321,7 @@ const ducksoupListener = (options) => (message) => {
 
   // grouped cases
   if (kind !== "stats") {
-    console.log("[App]", kind);
+    console.debug("[Received by test client]", kind);
   }
   if (kind.startsWith("error") || kind === "closed") {
     resetUX();

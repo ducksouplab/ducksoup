@@ -255,9 +255,22 @@ class DuckSoup {
     };
   }
 
+  send(kind, payload) {
+    if (this._ws.readyState === 1) { // the connection is open and ready to communicate
+      const message = { kind };
+      // conditionnally add and possiblty format payload
+      if (!!payload) {
+        const payloadStr =
+          typeof payload === "string" ? payload : JSON.stringify(payload);
+        message.payload = payloadStr;
+      }
+      this._ws.send(JSON.stringify(message));
+    }
+  }
+
   controlFx(name, property, value, duration, userId) {
     if (!this._checkControl(name, property, value, duration, userId)) return;
-    this._send("client_control", {
+    this.send("client_control", {
       name,
       property,
       value,
@@ -267,23 +280,22 @@ class DuckSoup {
   }
 
   polyControlFx(name, property, kind, value) {
-    console.log(name, property, kind, value);
     if (!this._checkControl(name, property, value)) return;
     const strValue = value.toString();
-    this._send("client_polycontrol", { name, property, kind, value: strValue });
+    this.send("client_polycontrol", { name, property, kind, value: strValue });
   }
 
   stop(code = 1000) {
     if (this.stopped) return;
     if (this._ws) {
-      this._send("stop"); // will stop server ressources faster that _stopRTC
+      this.send("stop"); // will stop server ressources faster that _stopRTC
       this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
     }
     this._stopRTC();
   }
 
   log(kind, payload) {
-    this._send(`ext_${kind}`, payload);
+    this.send(`ext_${kind}`, payload);
   }
 
   // called by debug/client app to do tests
@@ -302,19 +314,6 @@ class DuckSoup {
   }
 
   // Inner methods
-
-  _send(kind, payload) {
-    if (this._ws.readyState === 1) { // the connection is open and ready to communicate
-      const message = { kind };
-      // conditionnally add and possiblty format payload
-      if (!!payload) {
-        const payloadStr =
-          typeof payload === "string" ? payload : JSON.stringify(payload);
-        message.payload = payloadStr;
-      }
-      this._ws.send(JSON.stringify(message));
-    }
-  }
 
   async _initialize() {
     try {
@@ -364,7 +363,7 @@ class DuckSoup {
   }
 
   _debugCandidatePair(pair) {
-    this._send(
+    this.send(
       "client_selected_candidate_pair",
       `client=${pair.local.candidate} server=${pair.remote.candidate}`
     );
@@ -423,11 +422,10 @@ class DuckSoup {
         );
 
         pc.setRemoteDescription(offer);
-        // console.debug("[DuckSoup] offer: ", offer);
         const answer = await pc.createAnswer();
         answer.sdp = processSDP(answer.sdp);
         pc.setLocalDescription(answer);
-        this._send("client_answer", answer);
+        this.send("client_answer", answer);
       } else if (kind === "candidate") {
         const candidate = looseJSONParse(payload);
         console.debug("[DuckSoup] server candidate:", candidate);
@@ -452,18 +450,18 @@ class DuckSoup {
       } else if (kind.startsWith("error")) {
         this._callback(message);
         this.stop(4000);
-      } if (["joined", "ending", "files", "end"].includes(kind)) {
+      } else if (["joined", "other_joined", "other_left", "ending", "files", "end"].includes(kind)) {
         // just forward
         this._callback(message);
       }
     };
 
     ws.onopen = () => {
-      this._send("join", this._joinPayload);
+      this.send("join", this._joinPayload);
 
       pc.onicecandidate = (e) => {
         if (!e.candidate) return;
-        this._send("client_ice_candidate", e.candidate);
+        this.send("client_ice_candidate", e.candidate);
         console.debug("[DuckSoup] client candidate:", e.candidate);
       };
 
@@ -503,12 +501,12 @@ class DuckSoup {
       // for server logging
       if (this._logLevel >= 2) {
         pc.onconnectionstatechange = () => {
-          this._send("client_connection_state_changed", pc.connectionState);
+          this.send("client_connection_state_changed", pc.connectionState);
           // console.debug("[DuckSoup] onconnectionstatechange:", pc.connectionState);
         };
 
         pc.onsignalingstatechange = () => {
-          this._send(
+          this.send(
             "client_signaling_state_changed",
             pc.signalingState.toString()
           );
@@ -516,13 +514,13 @@ class DuckSoup {
         };
 
         pc.onnegotiationneeded = () => {
-          this._send("client_negotiation_needed", pc.signalingState);
+          this.send("client_negotiation_needed", pc.signalingState);
           console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
         };
 
         pc.oniceconnectionstatechange = () => {
           const state = pc.iceConnectionState;
-          this._send("client_ice_connection_state_" + state);
+          this.send("client_ice_connection_state_" + state);
           if (state === "connected") {
             // add listeners on first sender (likely the same info to be shared for audio and video)
             const firstSender = pc.getSenders()[0];
@@ -540,7 +538,7 @@ class DuckSoup {
         };
 
         pc.onicegatheringstatechange = () => {
-          this._send(
+          this.send(
             "client_ice_gathering_state_changed",
             pc.iceGatheringState.toString()
           );
@@ -548,7 +546,7 @@ class DuckSoup {
         };
 
         pc.onicecandidateerror = (e) => {
-          this._send(
+          this.send(
             "client_ice_candidate_failed",
             `${e.url}#${e.errorCode}: ${e.errorText}`
           );
@@ -580,7 +578,7 @@ class DuckSoup {
             (newEncodedWidth !== this._info.encodedWith ||
               newEncodedHeight !== this._info.encodedHeight)
           ) {
-            this._send(
+            this.send(
               "client_video_resolution_updated",
               `${newEncodedWidth}x${newEncodedHeight}`
             );
@@ -593,7 +591,7 @@ class DuckSoup {
             typeof newFramesPerSecond !== "undefined" &&
             newFramesPerSecond !== this._info.framesPerSecond
           ) {
-            this._send("client_video_fps_updated", `${newFramesPerSecond}`);
+            this.send("client_video_fps_updated", `${newFramesPerSecond}`);
             this._info.framesPerSecond = newFramesPerSecond;
           }
           // PLI
@@ -602,7 +600,7 @@ class DuckSoup {
             typeof newPliCount !== "undefined" &&
             newPliCount !== this._info.pliCount
           ) {
-            this._send("client_pli_received_count_updated", `${newPliCount}`);
+            this.send("client_pli_received_count_updated", `${newPliCount}`);
             this._info.pliCount = newPliCount;
           }
           // FIR
@@ -611,7 +609,7 @@ class DuckSoup {
             typeof newFirCount !== "undefined" &&
             newFirCount !== this._info.firCount
           ) {
-            this._send("client_fir_received_count_updated", `${newFirCount}`);
+            this.send("client_fir_received_count_updated", `${newFirCount}`);
             this._info.firCount = newFirCount;
           }
           // KF
@@ -620,7 +618,7 @@ class DuckSoup {
             typeof newKeyFramesEncoded !== "undefined" &&
             newKeyFramesEncoded !== this._info.keyFramesEncoded
           ) {
-            this._send(
+            this.send(
               "client_keyframe_encoded_count_updated",
               `${newKeyFramesEncoded}`
             );
@@ -635,7 +633,7 @@ class DuckSoup {
             typeof newKeyFramesDecoded !== "undefined" &&
             newKeyFramesDecoded !== this._info.keyFramesDecoded
           ) {
-            this._send(
+            this.send(
               "client_keyframe_decoded_count_updated",
               `${newKeyFramesDecoded}`
             );

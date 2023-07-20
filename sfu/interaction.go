@@ -63,6 +63,11 @@ type interaction struct {
 	gracefulTimer *time.Timer
 }
 
+type userStream struct {
+	UserId   string `json:"userId"`
+	StreamId string `json:"streamId"`
+}
+
 // private and not guarded by mutex locks, since called by other guarded methods
 
 func generateId(join types.JoinPayload) string {
@@ -377,6 +382,18 @@ func (i *interaction) connectPeerServer(ps *peerServer) {
 	i.Lock()
 	defer i.Unlock()
 
+	// advertise everyone of each other
+	for _, other := range i.peerServerIndex {
+		go other.ws.sendWithPayload("other_joined", userStream{
+			ps.userId,
+			ps.streamId,
+		})
+		go ps.ws.sendWithPayload("other_joined", userStream{
+			other.userId,
+			other.streamId,
+		})
+	}
+	// add peer
 	i.peerServerIndex[ps.userId] = ps
 }
 
@@ -394,16 +411,23 @@ func (i *interaction) unguardedDelete() {
 	}
 }
 
-func (i *interaction) disconnectUser(userId string) {
+func (i *interaction) disconnectUser(ps *peerServer) {
 	i.Lock()
 	defer i.Unlock()
 
 	// protects decrementing since RemovePeer maybe called several times for same user
-	if i.connectedIndex[userId] {
+	if i.connectedIndex[ps.userId] {
 		// remove user current connection details (=peerServer)
-		delete(i.peerServerIndex, userId)
+		delete(i.peerServerIndex, ps.userId)
+		// advertise others
+		for _, other := range i.peerServerIndex {
+			go other.ws.sendWithPayload("other_left", userStream{
+				ps.userId,
+				ps.streamId,
+			})
+		}
 		// mark disconnected, but keep track of her
-		i.connectedIndex[userId] = false
+		i.connectedIndex[ps.userId] = false
 
 		// prevent useless signaling when aborting/ending room
 		if i.deleted {

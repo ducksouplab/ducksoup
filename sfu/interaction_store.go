@@ -38,7 +38,7 @@ func (is *interactionStore) join(join types.JoinPayload) (*interaction, string, 
 		// new user creates interaction
 		i := newInteraction(interactionId, join)
 		interactionStoreSingleton.index[interactionId] = i
-		return i, "new-interaction", nil
+		return i, "new_interaction", nil
 	}
 }
 
