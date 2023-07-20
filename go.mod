@@ -3,7 +3,7 @@ module github.com/ducksouplab/ducksoup
 go 1.20
 
 require (
-	github.com/evanw/esbuild v0.18.14
+	github.com/evanw/esbuild v0.18.15
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
@@ -15,7 +15,7 @@ require (
 	github.com/pion/sdp/v3 v3.0.6
 	github.com/pion/webrtc/v3 v3.2.12
 	github.com/rs/zerolog v1.29.1
-	github.com/silently/wsmock v0.1.4
+	github.com/silently/wsmock v0.1.5
 	gonum.org/v1/plot v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
 )
