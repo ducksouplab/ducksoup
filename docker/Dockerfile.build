@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.4 AS builder
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.5 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y curl build-essential
 
 # install go, choose version on https://golang.org/dl/
 WORKDIR /tmp
-ENV GO_ARCHIVE=go1.20.6.linux-amd64.tar.gz
-ENV GO_ARCHIVE_CHECKSUM="b945ae2bb5db01a0fb4786afde64e6fbab50b67f6fa0eb6cfa4924f16a7ff1eb"
+ENV GO_ARCHIVE=go1.21.0.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="d0398903a16ba2232b389fb31032ddf57cac34efda306a0eebac34f0965a0742"
 
 RUN curl -O https://dl.google.com/go/$GO_ARCHIVE
 RUN if [ "$(sha256sum $GO_ARCHIVE)" != "$GO_ARCHIVE_CHECKSUM  $GO_ARCHIVE" ]; then exit 1; fi
@@ -64,7 +64,7 @@ COPY config/front.yml ./config/front.yml
 RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.4 AS final
+FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.5 AS final
 
 RUN apt-get update && apt-get upgrade -y
 
