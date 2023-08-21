@@ -213,7 +213,9 @@ func (ms *mixerSlice) loop() {
 	<-pipeline.Started()
 	i.start() // first pipeline started starts the interaction
 
-	i.addFiles(userId, pipeline.RecordingFiles) // for reference
+	if ms.kind == "audio" { // add once
+		i.addFiles(userId, pipeline.RecordingFiles) // for reference
+	}
 
 	go ms.loopReadRTCP()
 	if ms.kind == "video" {
