@@ -278,10 +278,11 @@ func (i *interaction) start() {
 
 func (i *interaction) stop(graceful bool) {
 	// listened by peerServers, mixer, mixerTracks
-	close(i.doneCh)
 	if graceful {
+		close(i.doneCh)
 		i.logger.Info().Str("context", "interaction").Msg("interaction_end")
 	} else {
+		close(i.abortedCh)
 		i.logger.Info().Str("context", "interaction").Msg("interaction_aborted")
 	}
 	i.ready = false
@@ -527,7 +528,7 @@ func (i *interaction) runMixerSliceFromRemote(
 			signalingNeeded := i.incOutTracksReadyCount()
 			if signalingNeeded {
 				// TODO FIX WITH CAUTION: without this timeout, some tracks are not sent to peers
-				<-time.After(2000 * time.Millisecond)
+				<-time.After(250 * time.Millisecond)
 				go i.mixer.managedSignalingForEveryone("out_tracks_ready", true)
 			}
 			// blocking until interaction ends or user disconnects
