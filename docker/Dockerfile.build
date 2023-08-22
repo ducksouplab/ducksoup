@@ -1,4 +1,4 @@
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.5 AS builder
+FROM ducksouplab/debian-gstreamer:deb11-cuda12.2-gst1.22.5 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -64,7 +64,7 @@ COPY config/front.yml ./config/front.yml
 RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
-FROM ducksouplab/debian-gstreamer:debian11-gstreamer1.22.5 AS final
+FROM ducksouplab/debian-gstreamer:deb11-cuda12.2-gst1.22.5
 
 RUN apt-get update && apt-get upgrade -y
 
