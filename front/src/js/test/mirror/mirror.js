@@ -390,6 +390,7 @@ const ducksoupListener = (options) => (message) => {
       html += payload[state.userId].join("<br/>") + "<br/>";
       replaceMessage(html);
     } else {
+      console.log(kind, payload);
       replaceMessage("Connection terminated");
     }
   } else if (kind === "error-duplicate") {
