@@ -1,12 +1,12 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.163.1/containers/docker-existing-dockerfile
 {
-	"name": "GPU dev container",
+	"name": "NO GPU dev container",
 	// Sets the run context to one level up instead of the .devcontainer folder.
 	"build": {
-		"dockerfile": "../docker/Dockerfile.code",
+		"dockerfile": "../../docker/Dockerfile.code",
 		// Sets the run context to one level up instead of the .devcontainer folder.
-		"context": ".."
+		"context": "../.."
 	},
 	// "settings": {
 	// 	"remote.autoForwardPorts": true,
