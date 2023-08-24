@@ -15,7 +15,7 @@ const (
 
 var ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
-var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, WebPrefix string
+var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPassword, TurnPort, WebPrefix string
 var AllowedWSOrigins, ICEServers []string
 
 func getenvOr(key, fallback string) string {
@@ -78,6 +78,9 @@ func init() {
 		Port = "8100"
 	}
 	PublicIP = os.Getenv("DUCKSOUP_PUBLIC_IP")
+	TurnAddress = os.Getenv("DUCKSOUP_TURN_ADDRESS")
+	TurnPassword = os.Getenv("DUCKSOUP_TURN_PASSWORD")
+	TurnPort = os.Getenv("DUCKSOUP_TURN_PORT")
 	// for instance "/path" if DuckSoup is reachable at https://host/path
 	WebPrefix = getenvOr("DUCKSOUP_WEB_PREFIX", "")
 	// basic Auth

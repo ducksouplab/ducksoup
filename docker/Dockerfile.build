@@ -49,6 +49,7 @@ COPY server ./server
 COPY sfu ./sfu
 COPY stats ./stats
 COPY store ./store
+COPY turnserver ./turnserver
 COPY types ./types
 
 # Compile DuckSoup server

@@ -84,7 +84,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 
 // API
 
-func ListenAndServe() {
+func Start() {
 	webPrefix := env.WebPrefix
 	// parse the flags passed to program
 	flag.Parse()

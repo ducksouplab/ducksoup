@@ -8,6 +8,7 @@ import (
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/server"
+	"github.com/ducksouplab/ducksoup/turnserver"
 	"github.com/rs/zerolog/log"
 )
 
@@ -60,7 +61,11 @@ func main() {
 		logState()
 
 		// launch http (with websockets) server
-		go server.ListenAndServe()
+		go server.Start()
+
+		// launch TURN server
+		go turnserver.Start()
+		defer turnserver.Stop()
 
 		// start Glib main loop for GStreamer
 		gst.StartMainLoop()
