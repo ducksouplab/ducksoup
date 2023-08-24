@@ -24,9 +24,7 @@ func init() {
 
 func Join(u string) (ok bool, credential string) {
 	if started {
-		// TODO use and store u as a valid TURN client username
-		credential = string(turn.GenerateAuthKey(username, realm, password))
-		ok = true
+		return true, password
 	}
 	return
 }
