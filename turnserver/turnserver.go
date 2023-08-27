@@ -1,37 +1,56 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
+// Package main implements a simple TURN server
 package turnserver
 
 import (
 	"net"
+	"regexp"
+	"sync"
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/turn/v2"
 	"github.com/rs/zerolog/log"
 )
 
-var password string
-var realm = "ducksoup-realm"
-var username = "ducksoup"
+const realm = "ducksoup-realm"
+
+var turnIP net.IP
 var server *turn.Server
 var started bool
-
-// based on https://github.com/pion/turn/blob/master/examples/turn-server/simple/main.go
+var userStore struct {
+	mu    sync.Mutex
+	index map[string][]byte
+}
 
 func init() {
-	password = env.TurnPassword
+	userStore.mu.Lock()
+	defer userStore.mu.Unlock()
+
+	initialUsers := "ducksoup=" + env.TurnPassword
 	// TODO generate password on app start
 	// password = helpers.RandomHexString(32)
+
+	turnIP = net.ParseIP(env.PublicIP)
+	userStore.index = make(map[string][]byte)
+
+	for _, kv := range regexp.MustCompile(`(\w+)=(\w+)`).FindAllStringSubmatch(initialUsers, -1) {
+		userStore.index[kv[1]] = turn.GenerateAuthKey(kv[1], realm, kv[2])
+	}
 }
 
 func Join(u string) (ok bool, credential string) {
 	if started {
-		return true, password
+		// todo store hash
+		return true, env.TurnPassword
 	}
 	return
 }
 
 func Start() {
-	if len(env.TurnAddress) == 0 || len(env.TurnPort) == 0 {
-		log.Info().Str("context", "app").Msg("turn_server_not_requested")
+	if turnIP == nil || len(env.TurnAddress) == 0 || len(env.TurnPort) == 0 {
+		log.Info().Str("context", "app").Msg("turn_server_disabled")
 		return
 	}
 	log.Info().Str("context", "app").Msg("turn_server_requested")
@@ -44,20 +63,22 @@ func Start() {
 
 	server, err = turn.NewServer(turn.ServerConfig{
 		Realm: realm,
-		AuthHandler: func(u string, r string, srcAddr net.Addr) ([]byte, bool) {
-			if u == username && r == realm {
-				// TODO use u as username
-				return turn.GenerateAuthKey(username, r, password), true
+		// Set AuthHandler callback
+		// This is called every time a user tries to authenticate with the TURN server
+		// Return the key for that user, or false when no user is found
+		AuthHandler: func(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
+			if key, ok := userStore.index[username]; ok {
+				return key, true
 			}
 			return nil, false
 		},
-		// UDP Listeners
+		// PacketConnConfigs is a list of UDP Listeners and the configuration around them
 		PacketConnConfigs: []turn.PacketConnConfig{
 			{
 				PacketConn: udpListener,
 				RelayAddressGenerator: &turn.RelayAddressGeneratorStatic{
-					RelayAddress: net.IP(env.TurnAddress), // Claim that we are listening on given IP
-					Address:      "0.0.0.0",               // But actually be listening on every interface
+					RelayAddress: turnIP,    // Claim that we are listening on IP passed by user (This should be your Public IP)
+					Address:      "0.0.0.0", // But actually be listening on every interface
 				},
 			},
 		},
@@ -71,5 +92,7 @@ func Start() {
 }
 
 func Stop() {
-	server.Close()
+	if started {
+		server.Close()
+	}
 }

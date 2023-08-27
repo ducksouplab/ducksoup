@@ -26,12 +26,13 @@
 	// 	"args": { "ARG": "value"},
 	// },
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [8100],
+	// "forwardPorts": [8100, 3478],
 	// Uncomment the next line to run commands after the container is created - for example installing curl.
 	// "postCreateCommand": "apt-get update && apt-get install -y curl",
 	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
 	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
 	"runArgs": [
+		"--network=host",
 		"--gpus=all"
 	],
 	// Uncomment to use the Docker CLI from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker.
