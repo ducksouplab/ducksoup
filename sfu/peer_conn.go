@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ducksouplab/ducksoup/engine"
-	"github.com/ducksouplab/ducksoup/env"
+	"github.com/ducksouplab/ducksoup/iceservers"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/rtcp"
@@ -57,13 +57,7 @@ func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerCo
 	}
 	// configure and create a new RTCPeerConnection
 	config := webrtc.Configuration{}
-	if len(env.ICEServers) > 0 {
-		iceServers := []webrtc.ICEServer{}
-		for _, url := range env.ICEServers {
-			iceServers = append(iceServers, webrtc.ICEServer{URLs: []string{url}})
-		}
-		config.ICEServers = iceServers
-	}
+	config.ICEServers = iceservers.GetDefaultSTUNServers()
 	ppc, err = api.NewPeerConnection(config)
 	// Wait until our Bandwidth Estimator has been created
 	ccEstimator = <-estimatorCh

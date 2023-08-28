@@ -43,13 +43,13 @@ COPY env ./env
 COPY frontbuild ./frontbuild
 COPY gst ./gst
 COPY helpers ./helpers
+COPY iceservers ./iceservers
 COPY plot ./plot
 COPY sequencing ./sequencing
 COPY server ./server
 COPY sfu ./sfu
 COPY stats ./stats
 COPY store ./store
-COPY turnserver ./turnserver
 COPY types ./types
 
 # Compile DuckSoup server

@@ -83,7 +83,6 @@ Where:
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
   - `videoFormat` (string) possible values: "H264" (default if none) or "VP8"
   - `recordingMode` (string) possible values: `muxed` (default if none, records audio/video in the same muxed file), `split` (records separate files for audio and video), `none` (no recording) or `passthrough` (records input streams and sends them back, without applying fx or reencoding)
-  - `rtcConfig` ([RTCConfiguration dictionary](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#rtcconfiguration_dictionary) object) used when creating an RTCPeerConnection, for instance to set iceServers
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
   - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding (and other cuda accelerated plugins like raw video [conversions](https://gstreamer.freedesktop.org/documentation/nvcodec/cudaconvertscale.html)), if relevant hardware is available on host and if DuckSoup is launched with the `DUCKSOUP_NVCODEC=true` environment variable (see [Environment variables](#environment-variables))
   - `logLevel` (int, defaults to 1):
@@ -222,7 +221,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DUCKSOUP_LOG_LEVEL` (defaults to 3) to select log level display (see next section)
 - `DUCKSOUP_FORCE_OVERLAY` (defaults to false) set to true to display a time overlay in videos (recorded)
 - `DUCKSOUP_NO_RECORDING` (defaults to false) set to true to disable audio/video file recordings
-- `DUCKSOUP_ICE_SERVERS=false` (defaults to `stun:stun.l.google.com:19302`) declares comma separated allowed STUN servers to be used to find ICE candidates (or false to disable STUN)
+- `DUCKSOUP_STUN_SERVER_URLS=false` (defaults to `stun:stun.l.google.com:19302`) declares comma separated allowed STUN servers to be used to find ICE candidates (or false to disable STUN)
 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 

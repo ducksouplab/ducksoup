@@ -16,7 +16,7 @@ const (
 var ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
 var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPassword, TurnPort, WebPrefix string
-var AllowedWSOrigins, ICEServers []string
+var AllowedWSOrigins, STUNServerURLS []string
 
 func getenvOr(key, fallback string) string {
 	value := os.Getenv(key)
@@ -89,19 +89,20 @@ func init() {
 	// origins
 	originsUnsplit := os.Getenv("DUCKSOUP_ALLOWED_WS_ORIGINS")
 	if len(originsUnsplit) > 0 {
+
 		AllowedWSOrigins = append(AllowedWSOrigins, strings.Split(originsUnsplit, ",")...)
 	}
 	if Mode == "DEV" {
 		AllowedWSOrigins = append(AllowedWSOrigins, "http://localhost:"+Port, "http://localhost:8180")
 	}
 	// ICE servers
-	iceServersUnsplit := os.Getenv("DUCKSOUP_ICE_SERVERS")
+	iceServersUnsplit := os.Getenv("DUCKSOUP_STUN_SERVER_URLS")
 	if iceServersUnsplit == "false" {
-		ICEServers = []string{}
+		STUNServerURLS = []string{}
 	} else if len(iceServersUnsplit) > 0 {
-		ICEServers = append(ICEServers, strings.Split(iceServersUnsplit, ",")...)
+		STUNServerURLS = append(STUNServerURLS, strings.Split(iceServersUnsplit, ",")...)
 	} else { // default
-		ICEServers = []string{"stun:stun.l.google.com:19302"}
+		STUNServerURLS = []string{"stun:stun.l.google.com:19302"}
 	}
 
 	// other global configuration

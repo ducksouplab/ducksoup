@@ -10,8 +10,8 @@ import (
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
+	"github.com/ducksouplab/ducksoup/iceservers"
 	"github.com/ducksouplab/ducksoup/sequencing"
-	"github.com/ducksouplab/ducksoup/turnserver"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
@@ -495,21 +495,14 @@ func RunPeerServer(origin, href string, unsafeConn ws.IGorilla) {
 			return
 		}
 		uniqueUserId := i.id + "#" + userId
-		if ok, credential := turnserver.Join(uniqueUserId); ok {
-			ws.sendWithPayload("joined", struct {
-				Context    string `json:"context"`
-				Urls       string `json:"urls"`
-				Username   string `json:"username"`
-				Credential string `json:"credential"`
-			}{
-				msg,
-				"turn:" + env.TurnAddress + ":" + env.TurnPort,
-				"ducksoup",
-				credential,
-			})
-		} else {
-			ws.sendWithPayload("joined", msg)
-		}
+		iceServers := iceservers.GetICEServers(uniqueUserId)
+		ws.sendWithPayload("joined", struct {
+			Context    string             `json:"context"`
+			IceServers []webrtc.ICEServer `json:"iceServers"`
+		}{
+			msg,
+			iceServers,
+		})
 
 		pc, err := newPeerConn(joinPayload, i)
 

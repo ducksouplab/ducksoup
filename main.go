@@ -7,8 +7,8 @@ import (
 	"github.com/ducksouplab/ducksoup/frontbuild"
 	"github.com/ducksouplab/ducksoup/gst"
 	"github.com/ducksouplab/ducksoup/helpers"
+	"github.com/ducksouplab/ducksoup/iceservers"
 	"github.com/ducksouplab/ducksoup/server"
-	"github.com/ducksouplab/ducksoup/turnserver"
 	"github.com/rs/zerolog/log"
 )
 
@@ -41,7 +41,7 @@ func logState() {
 	log.Info().Str("context", "init").Str("value", env.LogFile).Msg("DUCKSOUP_LOG_FILE")
 	log.Info().Str("context", "init").Bool("value", env.ForceOverlay).Msg("DUCKSOUP_FORCE_OVERLAY")
 	log.Info().Str("context", "init").Bool("value", env.NoRecording).Msg("DUCKSOUP_NO_RECORDING")
-	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.ICEServers)).Msg("DUCKSOUP_ICE_SERVERS")
+	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.STUNServerURLS)).Msg("DUCKSOUP_STUN_SERVER_URLS")
 }
 
 func main() {
@@ -64,8 +64,8 @@ func main() {
 		go server.Start()
 
 		// launch TURN server
-		go turnserver.Start()
-		defer turnserver.Stop()
+		go iceservers.StartTURN()
+		defer iceservers.StopTURN()
 
 		// start Glib main loop for GStreamer
 		gst.StartMainLoop()

@@ -1,8 +1,6 @@
-// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
-// SPDX-License-Identifier: MIT
+package iceservers
 
-// Package main implements a simple TURN server
-package turnserver
+// adapted from pion/turn simple stun server example
 
 import (
 	"net"
@@ -11,6 +9,7 @@ import (
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/turn/v2"
+	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,15 +39,21 @@ func init() {
 	}
 }
 
-func Join(u string) (ok bool, credential string) {
+// Contains STUN servers from DUCKSOUP_STUN_SERVER_URLS env var + TURN server with credentials if enabled
+func GetICEServers(u string) []webrtc.ICEServer {
+	iceServers := GetDefaultSTUNServers()
 	if started {
 		// todo store hash
-		return true, env.TurnPassword
+		iceServers = append(iceServers, webrtc.ICEServer{
+			URLs:       []string{"turn:" + env.TurnAddress + ":" + env.TurnPort},
+			Username:   "ducksoup",
+			Credential: env.TurnPassword,
+		})
 	}
-	return
+	return iceServers
 }
 
-func Start() {
+func StartTURN() {
 	if turnIP == nil || len(env.TurnAddress) == 0 || len(env.TurnPort) == 0 {
 		log.Info().Str("context", "app").Msg("turn_server_disabled")
 		return
@@ -67,7 +72,9 @@ func Start() {
 		// This is called every time a user tries to authenticate with the TURN server
 		// Return the key for that user, or false when no user is found
 		AuthHandler: func(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
+			log.Debug().Msg("turn_auth_handler_called")
 			if key, ok := userStore.index[username]; ok {
+				log.Debug().Msg("turn_auth_handler_ok")
 				return key, true
 			}
 			return nil, false
@@ -91,7 +98,7 @@ func Start() {
 	log.Info().Str("context", "app").Msg("turn_server_started")
 }
 
-func Stop() {
+func StopTURN() {
 	if started {
 		server.Close()
 	}

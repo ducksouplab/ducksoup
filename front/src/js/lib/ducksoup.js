@@ -16,17 +16,6 @@ const DEFAULT_CONSTRAINTS = {
   },
 };
 
-const DEFAULT_RTC_CONFIG = {
-  iceServers: [
-    {
-      urls: "stun:stun.l.google.com:19302",
-    },
-    {
-      urls: "stun:stun3.l.google.com:19302",
-    },
-  ],
-};
-
 const MAX_VIDEO_BITRATE = 1500000;
 const MAX_AUDIO_BITRATE = 64000;
 const BITRATE_RAMP_DURATION = 3000;
@@ -203,11 +192,16 @@ class DuckSoup {
   // API
 
   constructor(embedOptions, peerOptions) {
+    // log
     console.debug("[DuckSoup] embedOptions: ", embedOptions);
     console.debug("[DuckSoup] peerOptions: ", peerOptions);
 
+    // check errors
     const err = optionsFirstError(embedOptions, peerOptions);
     if (err) throw new Error(err);
+
+    // defaults
+    this._boundPCCallbacks = false
 
     const { mountEl } = embedOptions;
     if (mountEl) {
@@ -218,7 +212,6 @@ class DuckSoup {
       }
     }
     this._signalingUrl = peerOptions.signalingUrl;
-    this._rtcConfig = peerOptions.rtcConfig || DEFAULT_RTC_CONFIG;
     this._joinPayload = parseJoinPayload(peerOptions);
     // by default we cancel echo except in mirror mode (interaction size=1) (mirror mode is for test purposes)
     const echoCancellation = this._joinPayload.size !== 1;
@@ -395,14 +388,10 @@ class DuckSoup {
       const { kind, payload } = message;
 
       if (kind === "joined") {
-        const { urls, username, credential } = payload;
-        let rtcConfig = { ...this._rtcConfig };
-        if (!!urls) {
-          let iceServers = rtcConfig.iceServers || {};
-          rtcConfig.iceServers = [...iceServers, { urls, username, credential }];
-        }
-        this._startRTC(rtcConfig);
-        // just forward
+        const { iceServers } = payload;
+        this._rtcConfig = { iceServers };
+        await this._startRTC();
+        // and forward
         this._callback(message);
       } else if (kind === "offer") {
         const offer = looseJSONParse(payload);
@@ -415,11 +404,12 @@ class DuckSoup {
         answer.sdp = processSDP(answer.sdp);
         this._pc.setLocalDescription(answer);
         this.send("client_answer", answer);
+        this.bindPCCallbacks();
       } else if (kind === "candidate") {
         const candidate = looseJSONParse(payload);
         console.debug("[DuckSoup] server candidate:", candidate);
         try {
-          this._.addIceCandidate(candidate);
+          this._pc.addIceCandidate(candidate);
         } catch (error) {
           console.error(error);
         }
@@ -456,10 +446,10 @@ class DuckSoup {
     }, 10000);
   }
 
-  async _startRTC(rtcConfig) {
+  async _startRTC() {
     // RTCPeerConnection
-    console.log(rtcConfig);
-    const pc = new RTCPeerConnection(rtcConfig);
+    console.log(this._rtcConfig);
+    const pc = new RTCPeerConnection(this._rtcConfig);
     this._pc = pc;
 
     // Add local tracks before signaling
@@ -478,100 +468,107 @@ class DuckSoup {
       true
     );
     this._stream = stream;
+  }
 
-    pc.onicecandidate = (e) => {
-      if (!e.candidate) return;
-      this.send("client_ice_candidate", e.candidate);
-      console.debug("[DuckSoup] client candidate:", e.candidate);
-    };
-
-    pc.ontrack = (event) => {
-      console.debug(
-        `[DuckSoup] on track (while connection state is ${pc.connectionState})`
-      );
-      if (this._mountEl) {
-        let el = document.createElement(event.track.kind);
-        el.id = event.track.id;
-        el.srcObject = event.streams[0];
-        el.autoplay = true;
-        if (event.track.kind === "video") {
-          if (this._joinPayload.width) {
-            el.style.width = this._joinPayload.width + "px";
-          } else {
-            el.style.width = "100%";
-          }
-          if (this._joinPayload.height) {
-            el.style.height = this._joinPayload.height + "px";
-          }
-        }
-        this._mountEl.appendChild(el);
-        // on remove
-        event.streams[0].onremovetrack = ({ track }) => {
-          const el = document.getElementById(track.id);
-          if (el) el.parentNode.removeChild(el);
-        };
-      } else {
-        this._callback({
-          kind: "track",
-          payload: event,
-        });
-      }
-    };
-
-    // for server logging
-    if (this._logLevel >= 2) {
-      pc.onconnectionstatechange = () => {
-        this.send("client_connection_state_changed", pc.connectionState);
-        // console.debug("[DuckSoup] onconnectionstatechange:", pc.connectionState);
+  bindPCCallbacks = () => {
+    if(!this._boundPCCallbacks) {
+      this._boundPCCallbacks = true;
+      const pc = this._pc;
+  
+      pc.onicecandidate = (e) => {
+        if (!e.candidate) return;
+        this.send("client_ice_candidate", e.candidate);
+        console.log("[DuckSoup] client " + e.candidate.type + " " + e.candidate.candidate); // TODO console.debug
       };
-
-      pc.onsignalingstatechange = () => {
-        this.send(
-          "client_signaling_state_changed",
-          pc.signalingState.toString()
+  
+      pc.ontrack = (event) => {
+        console.debug(
+          `[DuckSoup] on track (while connection state is ${pc.connectionState})`
         );
-        // console.debug("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
-      };
-
-      pc.onnegotiationneeded = () => {
-        this.send("client_negotiation_needed", pc.signalingState);
-        console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        const state = pc.iceConnectionState;
-        this.send("client_ice_connection_state_" + state);
-        if (state === "connected") {
-          // add listeners on first sender (likely the same info to be shared for audio and video)
-          const firstSender = pc.getSenders()[0];
-          if (firstSender) {
-            const { iceTransport } = firstSender.transport;
-            if (iceTransport && this._logLevel >= 2) {
-              const pair = iceTransport.getSelectedCandidatePair();
-              this._debugCandidatePair(pair);
-              console.debug(
-                `[DuckSoup] selected candidate pair: client=${pair.local.candidate} server=${pair.remote.candidate}`
-              );
+        if (this._mountEl) {
+          let el = document.createElement(event.track.kind);
+          el.id = event.track.id;
+          el.srcObject = event.streams[0];
+          el.autoplay = true;
+          if (event.track.kind === "video") {
+            if (this._joinPayload.width) {
+              el.style.width = this._joinPayload.width + "px";
+            } else {
+              el.style.width = "100%";
+            }
+            if (this._joinPayload.height) {
+              el.style.height = this._joinPayload.height + "px";
             }
           }
+          this._mountEl.appendChild(el);
+          // on remove
+          event.streams[0].onremovetrack = ({ track }) => {
+            const el = document.getElementById(track.id);
+            if (el) el.parentNode.removeChild(el);
+          };
+        } else {
+          this._callback({
+            kind: "track",
+            payload: event,
+          });
         }
       };
-
-      pc.onicegatheringstatechange = () => {
-        this.send(
-          "client_ice_gathering_state_changed",
-          pc.iceGatheringState.toString()
-        );
-        // console.debug("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
-      };
-
-      pc.onicecandidateerror = (e) => {
-        this.send(
-          "client_ice_candidate_failed",
-          `${e.url}#${e.errorCode}: ${e.errorText}`
-        );
-        // console.debug("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
-      };
+  
+      // for server logging
+      if (this._logLevel >= 2) {
+        pc.onconnectionstatechange = () => {
+          this.send("client_connection_state_changed", pc.connectionState);
+          // console.debug("[DuckSoup] onconnectionstatechange:", pc.connectionState);
+        };
+  
+        pc.onsignalingstatechange = () => {
+          this.send(
+            "client_signaling_state_changed",
+            pc.signalingState.toString()
+          );
+          // console.debug("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
+        };
+  
+        pc.onnegotiationneeded = () => {
+          this.send("client_negotiation_needed", pc.signalingState);
+          console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
+        };
+  
+        pc.oniceconnectionstatechange = () => {
+          const state = pc.iceConnectionState;
+          this.send("client_ice_connection_state_" + state);
+          if (state === "connected") {
+            // add listeners on first sender (likely the same info to be shared for audio and video)
+            const firstSender = pc.getSenders()[0];
+            if (firstSender) {
+              const { iceTransport } = firstSender.transport;
+              if (iceTransport && this._logLevel >= 2) {
+                const pair = iceTransport.getSelectedCandidatePair();
+                this._debugCandidatePair(pair);
+                console.debug(
+                  `[DuckSoup] selected candidate pair: client=${pair.local.candidate} server=${pair.remote.candidate}`
+                );
+              }
+            }
+          }
+        };
+  
+        pc.onicegatheringstatechange = () => {
+          this.send(
+            "client_ice_gathering_state_changed",
+            pc.iceGatheringState.toString()
+          );
+          // console.debug("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
+        };
+  
+        pc.onicecandidateerror = (e) => {
+          this.send(
+            "client_ice_candidate_failed",
+            `${e.url}#${e.errorCode}: ${e.errorText}`
+          );
+          // console.debug("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
+        };
+      }
     }
   }
 
