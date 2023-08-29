@@ -21,7 +21,7 @@ const (
 	MaxSize                  = 8
 	DefaultDurationInSeconds = 30
 	MaxDurationInSeconds     = 1200
-	AbortLimitInSeconds      = 10
+	AbortLimitInSeconds      = 15
 	EndingInSeconds          = 15
 )
 

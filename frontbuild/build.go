@@ -57,6 +57,7 @@ func generateBuildOptions(versioned bool) api.BuildOptions {
 	return api.BuildOptions{
 		EntryPoints: []string{
 			"front/src/js/lib/ducksoup.js",
+			"front/src/js/test/ice/ice.js",
 			"front/src/js/test/play/play.jsx",
 			"front/src/js/test/mirror/mirror.js",
 			"front/src/js/stats/stats.js",

@@ -45,7 +45,7 @@ func (m *mixer) removeMixerSlice(ms *mixerSlice) {
 
 // Signaling is split in three steps:
 // - clean unused tracks on peer connections (other user has disconnected)
-// - add tracks from other ushers
+// - add tracks from other users
 // - share offer with client
 func (m *mixer) updateSignaling(cause string) bool {
 	// lock for peerServerIndex

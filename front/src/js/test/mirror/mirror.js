@@ -383,7 +383,7 @@ const ducksoupListener = (options) => (message) => {
     };
   } else if (kind === "ending") {
     show(".show-when-ending");
-    if (state.ducksoup) state.ducksoup.log("interaction_ending_received");
+    if (state.ducksoup) state.ducksoup.serverLog("interaction_ending_received");
   } else if (kind === "files") {
     if (payload && payload[state.userId]) {
       let html = "The following files have been recorded:<br/><br/>";

@@ -189,50 +189,70 @@ const rampBitrate = (pc) => {
 // DuckSoup
 
 class DuckSoup {
+  // private instance fields
+  #pc;
+  #ws;
+  #started;
+  #startedRTC;
+  #stopped;
+  #rtcConfig;
+  #stream;
+  #info;
+  #stats;
+  #logLevel;
+  #mountEl;
+  #joinPayload;
+  #constraints;
+  #statsIntervalId;
+  #signalingUrl;
+  #callback;
+
   // API
 
   constructor(embedOptions, peerOptions) {
     // log
-    console.debug("[DuckSoup] embedOptions: ", embedOptions);
-    console.debug("[DuckSoup] peerOptions: ", peerOptions);
+    console.debug("[DS] embedOptions: ", embedOptions);
+    console.debug("[DS] peerOptions: ", peerOptions);
 
     // check errors
     const err = optionsFirstError(embedOptions, peerOptions);
     if (err) throw new Error(err);
 
-    // defaults
-    this._boundPCCallbacks = false
+    // init
+    this.#started = false // locally started
+    this.#startedRTC = false // signaling with server has come to start peer connection
+    this.#stopped = false;
 
     const { mountEl } = embedOptions;
     if (mountEl) {
-      this._mountEl = mountEl;
+      this.#mountEl = mountEl;
       // replace mountEl contents
       while (mountEl.firstChild) {
         mountEl.removeChild(mountEl.firstChild);
       }
     }
-    this._signalingUrl = peerOptions.signalingUrl;
-    this._joinPayload = parseJoinPayload(peerOptions);
+    this.#signalingUrl = peerOptions.signalingUrl;
+    this.#joinPayload = parseJoinPayload(peerOptions);
     // by default we cancel echo except in mirror mode (interaction size=1) (mirror mode is for test purposes)
-    const echoCancellation = this._joinPayload.size !== 1;
-    this._constraints = {
+    const echoCancellation = this.#joinPayload.size !== 1;
+    this.#constraints = {
       audio: {
         ...DEFAULT_CONSTRAINTS.audio,
         echoCancellation,
         ...peerOptions.audio,
       }
     };
-    if (!this._joinPayload.audioOnly) {
-      this._constraints.video = { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video };
+    if (!this.#joinPayload.audioOnly) {
+      this.#constraints.video = { ...DEFAULT_CONSTRAINTS.video, ...peerOptions.video };
     }
-    this._logLevel = 1;
+    this.#logLevel = 1;
     if (peerOptions && typeof peerOptions.logLevel !== undefined) {
-      this._logLevel = peerOptions.logLevel;
+      this.#logLevel = peerOptions.logLevel;
     }
-    this._stats = embedOptions && embedOptions.stats;
-    this._doCallback = embedOptions && embedOptions.callback;
+    this.#stats = embedOptions && embedOptions.stats;
+    this.#callback = embedOptions && embedOptions.callback;
     // needed for debug and stats
-    this._info = {
+    this.#info = {
       now: Date.now(),
       audioBytesSent: 0,
       audioBytesReceived: 0,
@@ -248,22 +268,30 @@ class DuckSoup {
     };
   }
 
-  send(kind, payload) {
-    if (this._ws.readyState === 1) { // the connection is open and ready to communicate
-      const message = { kind };
-      // conditionnally add and possiblty format payload
-      if (!!payload) {
-        const payloadStr =
-          typeof payload === "string" ? payload : JSON.stringify(payload);
-        message.payload = payloadStr;
-      }
-      this._ws.send(JSON.stringify(message));
+  async start() {
+    try {
+      // async calls
+      await this.#startWS();
+      this.#started = true;
+    } catch (err) {
+      console.log(err);
+      this.#forward({ kind: "error", payload: err });
     }
   }
 
+  stop(code = 1000) {
+    if (this.#stopped) return;
+    if (this.#ws) {
+      this.#serverSend("stop"); // will stop server ressources faster that #stopRTC
+      this.#ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    }
+    this.#stopRTC();
+    this.#stopped = true;
+  }
+
   controlFx(name, property, value, duration, userId) {
-    if (!this._checkControl(name, property, value, duration, userId)) return;
-    this.send("client_control", {
+    if (!this.#checkControl(name, property, value, duration, userId)) return;
+    this.#serverSend("client_control", {
       name,
       property,
       value,
@@ -273,27 +301,19 @@ class DuckSoup {
   }
 
   polyControlFx(name, property, kind, value) {
-    if (!this._checkControl(name, property, value)) return;
+    if (!this.#checkControl(name, property, value)) return;
     const strValue = value.toString();
-    this.send("client_polycontrol", { name, property, kind, value: strValue });
+    this.#serverSend("client_polycontrol", { name, property, kind, value: strValue });
   }
 
-  stop(code = 1000) {
-    if (this.stopped) return;
-    if (this._ws) {
-      this.send("stop"); // will stop server ressources faster that _stopRTC
-      this._ws.close(code); // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
-    }
-    this._stopRTC();
-  }
-
-  log(kind, payload) {
-    this.send(`ext_${kind}`, payload);
+  // add prefix to differentiate from ducksoup.js logs
+  serverLog(kind, payload) {
+    this.#serverSend(`ext_${kind}`, payload);
   }
 
   // called by debug/client app to do tests
   async limit(maxKbps) {
-    for (const sender of this._pc.getSenders()) {
+    for (const sender of this.#pc.getSenders()) {
       // set bitrate
       const params = sender.getParameters();
       if (!params.encodings) params.encodings = [{}]; // needed for FF
@@ -308,18 +328,20 @@ class DuckSoup {
 
   // Inner methods
 
-  async _initialize() {
-    try {
-      // async calls
-      await this._startWS();
-      this._running = true;
-    } catch (err) {
-      console.log(err);
-      this._callback({ kind: "error", payload: err });
+  #serverSend(kind, payload) {
+    if (this.#ws.readyState === 1) { // the connection is open and ready to communicate
+      const message = { kind };
+      // conditionnally add and possiblty format payload
+      if (!!payload) {
+        const payloadStr =
+          typeof payload === "string" ? payload : JSON.stringify(payload);
+        message.payload = payloadStr;
+      }
+      this.#ws.send(JSON.stringify(message));
     }
   }
 
-  _checkControl(name, property, value, duration, userId) {
+  #checkControl(name, property, value, duration, userId) {
     const durationValid =
       typeof duration === "undefined" || typeof duration === "number";
     const userIdValid =
@@ -334,249 +356,245 @@ class DuckSoup {
   }
 
   // send local event to js that has embedded the player
-  _callback(event, force) {
-    if (this._doCallback && (this._running || force)) {
+  #forward(event, force) {
+    if (this.#callback && (this.#started || force)) {
       const message = typeof event === "string" ? { kind: event } : event;
-      this._doCallback(message);
+      this.#callback(message);
     }
   }
 
-  _stopRTC() {
+  #stopRTC() {
     if (state.rampInterval) {
       clearInterval(state.rampInterval);
       delete state.rampInterval;
     }
-    if (this._stream) {
-      this._stream.getTracks().forEach((track) => track.stop());
+    if (this.#statsIntervalId) {
+      clearInterval(this.#statsIntervalId);
     }
-    if (this._pc) {
-      this._pc.close();
+    if (this.#stream) {
+      this.#stream.getTracks().forEach((track) => track.stop());
     }
-    this.stopped = true;
+    if (this.#pc) {
+      this.#pc.close();
+    }
   }
 
-  _debugCandidatePair(pair) {
-    this.send(
+  #debugCandidatePair(pair) {
+    this.#serverSend(
       "client_selected_candidate_pair",
       `client=${pair.local.candidate} server=${pair.remote.candidate}`
     );
   }
 
-  async _startWS() {
+  async #startWS() {
     // Signaling
     const { href } = window.location;  
-    const ws = new WebSocket(this._signalingUrl + '?href=' + encodeURI(href));
-
-    this._ws = ws;
-
-    ws.onclose = (event) => {
-      console.debug("[DuckSoup] ws.onclose ", event);
-      this._callback({ kind: "closed" });
-      this._stopRTC();
-      if (this._statsIntervalId) clearInterval(this._statsIntervalId);
-    };
-
-    ws.onerror = (event) => {
-      console.debug("[DuckSoup] ws.onerror ", event);
-      this._callback({ kind: "error", payload: event.data });
-      this.stop(4000); // used as error
-    };
+    const ws = new WebSocket(this.#signalingUrl + '?href=' + encodeURI(href));
+    this.#ws = ws;
 
     ws.onmessage = async (event) => {
-      //console.debug("[DuckSoup] ws.onmessage ", event);
+      //console.debug("[DS] ws.onmessage ", event);
       const message = looseJSONParse(event.data);
       const { kind, payload } = message;
 
       if (kind === "joined") {
         const { iceServers } = payload;
-        this._rtcConfig = { iceServers };
-        await this._startRTC();
+        this.#rtcConfig = { iceServers };
         // and forward
-        this._callback(message);
+        this.#forward(message);
       } else if (kind === "offer") {
+        await this.#startRTCOnce();
         const offer = looseJSONParse(payload);
-        console.debug(
-          `[DuckSoup] server offer sdp (length ${payload.length}):\n${offer.sdp}`
-        );
-
-        this._pc.setRemoteDescription(offer);
-        const answer = await this._pc.createAnswer();
+        await this.#pc.setRemoteDescription(offer);
+        const answer = await this.#pc.createAnswer();
         answer.sdp = processSDP(answer.sdp);
-        this._pc.setLocalDescription(answer);
-        this.send("client_answer", answer);
-        this.bindPCCallbacks();
+        await this.#pc.setLocalDescription(answer);
+        this.#serverSend("client_answer", answer);
+        console.debug(`[DS] server offer sdp (length ${payload.length})\n`, offer.sdp);
       } else if (kind === "candidate") {
         const candidate = looseJSONParse(payload);
-        console.debug("[DuckSoup] server candidate:", candidate);
         try {
-          this._pc.addIceCandidate(candidate);
+          this.#pc.addIceCandidate(candidate);
         } catch (error) {
           console.error(error);
         }
+        console.debug("[DS] server candidate:", candidate);
       } else if (kind === "start") {
         // set encoding parameters
-        rampBitrate(this._pc);
+        rampBitrate(this.#pc);
         // unmute
         // stream.getTracks().forEach((track) => {
         //     track.enabled = true;
         // });
-        this._callback(message, true); // force with true since player is not already running
+        this.#forward(message, true); // force with true since player is not already running
         // Getting peerconnection stats is needed either for stats or debug option
-        if (this._stats || this._logLevel >= 1) {
-          console.debug(`[DuckSoup] start stats`);
-          this._statsIntervalId = setInterval(() => this._updateStats(), 1000);
+        if (this.#stats || this.#logLevel >= 1) {
+          this.#statsIntervalId = setInterval(() => this.#updateStats(), 1000);
         }
       } else if (kind.startsWith("error")) {
-        this._callback(message);
+        this.#forward(message);
         this.stop(4000);
       } else if (["other_joined", "other_left", "ending", "files", "end"].includes(kind)) {
         // just forward
-        this._callback(message);
+        this.#forward(message);
       }
     };
 
     ws.onopen = () => {
-      this.send("join", this._joinPayload);
+      this.#serverSend("join", this.#joinPayload);
+    };
+
+    ws.onclose = (event) => {
+      console.debug("[DS] ws.onclose ", event);
+      this.#forward({ kind: "closed" });
+      this.#stopRTC();
+    };
+
+    ws.onerror = (event) => {
+      console.debug("[DS] ws.onerror ", event);
+      this.#forward({ kind: "error", payload: event.data });
+      this.stop(4000); // used as error
     };
 
     setTimeout(() => {
       if (ws.readyState === 0) {
-        console.error("[DuckSoup] ws can't connect (after 10 seconds)");
+        console.error("[DS] ws can't connect (after 10 seconds)");
       }
     }, 10000);
   }
 
-  async _startRTC() {
+  async #startRTCOnce() {
+    if(this.#startedRTC) return;
     // RTCPeerConnection
-    console.log(this._rtcConfig);
-    const pc = new RTCPeerConnection(this._rtcConfig);
-    this._pc = pc;
+    const pc = new RTCPeerConnection(this.#rtcConfig);
+    this.#pc = pc;
+    console.log("[DS] RTC config: ", this.#rtcConfig);
 
     // Add local tracks before signaling
-    const stream = await navigator.mediaDevices.getUserMedia(this._constraints);
+    const stream = await navigator.mediaDevices.getUserMedia(this.#constraints);
+    this.#stream = stream;
     stream.getTracks().forEach((track) => {
       // implement a mute-like behavior (with `enabled`) until the interaction does start
       // see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/enabled
       //track.enabled = false;//disabled for now
       pc.addTrack(track, stream);
     });
-    this._callback(
-      {
-        kind: "local-stream",
-        payload: stream,
-      },
-      true
-    );
-    this._stream = stream;
+    this.#forward({
+      kind: "local-stream",
+      payload: stream,
+    }, true);
+
+    this.#bindPCCallbacks();
+    this.#startedRTC = true;
   }
 
-  bindPCCallbacks = () => {
-    if(!this._boundPCCallbacks) {
-      this._boundPCCallbacks = true;
-      const pc = this._pc;
-  
-      pc.onicecandidate = (e) => {
-        if (!e.candidate) return;
-        this.send("client_ice_candidate", e.candidate);
-        console.log("[DuckSoup] client " + e.candidate.type + " " + e.candidate.candidate); // TODO console.debug
+  #bindPCCallbacks = () => {
+    const pc = this.#pc;
+
+    pc.onicecandidate = (e) => {
+      if (!e.candidate) return;
+      console.debug("[DS] ice_candidate " + e.candidate.type + " " + e.candidate.candidate);
+      this.#serverSend("client_ice_candidate", e.candidate);
+    };
+
+    pc.ontrack = (event) => {
+      if (this.#mountEl) {
+        let el = document.createElement(event.track.kind);
+        el.id = event.track.id;
+        el.srcObject = event.streams[0];
+        el.autoplay = true;
+        if (event.track.kind === "video") {
+          if (this.#joinPayload.width) {
+            el.style.width = this.#joinPayload.width + "px";
+          } else {
+            el.style.width = "100%";
+          }
+          if (this.#joinPayload.height) {
+            el.style.height = this.#joinPayload.height + "px";
+          }
+        }
+        this.#mountEl.appendChild(el);
+        // on remove
+        event.streams[0].onremovetrack = ({ track }) => {
+          const el = document.getElementById(track.id);
+          if (el) el.parentNode.removeChild(el);
+        };
+      } else {
+        this.#forward({
+          kind: "track",
+          payload: event,
+        });
+      }
+      console.debug(`[DS] on track (while connection state is ${pc.connectionState})`);
+    };
+
+    // for server logging
+    if (this.#logLevel >= 2) {
+      pc.onconnectionstatechange = () => {
+        this.#serverSend("client_connection_state_changed", pc.connectionState);
+        console.debug("[DS] onconnectionstatechange:", pc.connectionState);
       };
-  
-      pc.ontrack = (event) => {
-        console.debug(
-          `[DuckSoup] on track (while connection state is ${pc.connectionState})`
+
+      // when "stable" -> ICE gathering has complete
+      pc.onsignalingstatechange = () => {
+        this.#serverSend(
+          "client_signaling_state_changed",
+          pc.signalingState.toString()
         );
-        if (this._mountEl) {
-          let el = document.createElement(event.track.kind);
-          el.id = event.track.id;
-          el.srcObject = event.streams[0];
-          el.autoplay = true;
-          if (event.track.kind === "video") {
-            if (this._joinPayload.width) {
-              el.style.width = this._joinPayload.width + "px";
-            } else {
-              el.style.width = "100%";
-            }
-            if (this._joinPayload.height) {
-              el.style.height = this._joinPayload.height + "px";
+        console.debug("[DS] signaling_state_changed: ", pc.signalingState.toString());
+      };
+
+      pc.onnegotiationneeded = (e) => {
+        this.#serverSend("client_negotiation_needed", pc.signalingState);
+        console.debug("[DS] negotiation_needed: ", pc.signalingState, e);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        const state = pc.iceConnectionState;
+        console.debug("[DS] ice_connection_state: " + state);
+        this.#serverSend("client_ice_connection_state_" + state);
+
+        if (state === "failed") {
+          pc.restartIce();
+        } else if (state === "connected") {
+          // add listeners on first sender (likely the same info to be shared for audio and video)
+          const firstSender = pc.getSenders()[0];
+          if (firstSender) {
+            const { iceTransport } = firstSender.transport;
+            if (iceTransport && this.#logLevel >= 2) {
+              const pair = iceTransport.getSelectedCandidatePair();
+              this.#debugCandidatePair(pair);
+              console.debug(
+                `[DS] selected candidate pair: client=${pair.local.candidate} server=${pair.remote.candidate}`
+              );
             }
           }
-          this._mountEl.appendChild(el);
-          // on remove
-          event.streams[0].onremovetrack = ({ track }) => {
-            const el = document.getElementById(track.id);
-            if (el) el.parentNode.removeChild(el);
-          };
-        } else {
-          this._callback({
-            kind: "track",
-            payload: event,
-          });
         }
       };
-  
-      // for server logging
-      if (this._logLevel >= 2) {
-        pc.onconnectionstatechange = () => {
-          this.send("client_connection_state_changed", pc.connectionState);
-          // console.debug("[DuckSoup] onconnectionstatechange:", pc.connectionState);
-        };
-  
-        pc.onsignalingstatechange = () => {
-          this.send(
-            "client_signaling_state_changed",
-            pc.signalingState.toString()
-          );
-          // console.debug("[DuckSoup] onsignalingstatechange:", pc.signalingState.toString());
-        };
-  
-        pc.onnegotiationneeded = () => {
-          this.send("client_negotiation_needed", pc.signalingState);
-          console.debug("[DuckSoup] onnegotiationneeded: ", pc.signalingState);
-        };
-  
-        pc.oniceconnectionstatechange = () => {
-          const state = pc.iceConnectionState;
-          this.send("client_ice_connection_state_" + state);
-          if (state === "connected") {
-            // add listeners on first sender (likely the same info to be shared for audio and video)
-            const firstSender = pc.getSenders()[0];
-            if (firstSender) {
-              const { iceTransport } = firstSender.transport;
-              if (iceTransport && this._logLevel >= 2) {
-                const pair = iceTransport.getSelectedCandidatePair();
-                this._debugCandidatePair(pair);
-                console.debug(
-                  `[DuckSoup] selected candidate pair: client=${pair.local.candidate} server=${pair.remote.candidate}`
-                );
-              }
-            }
-          }
-        };
-  
-        pc.onicegatheringstatechange = () => {
-          this.send(
-            "client_ice_gathering_state_changed",
-            pc.iceGatheringState.toString()
-          );
-          // console.debug("[DuckSoup] onicegatheringstatechange:", pc.iceGatheringState.toString());
-        };
-  
-        pc.onicecandidateerror = (e) => {
-          this.send(
-            "client_ice_candidate_failed",
-            `${e.url}#${e.errorCode}: ${e.errorText}`
-          );
-          // console.debug("[DuckSoup] onicecandidateerror:", `${e.url}#${e.errorCode}: ${e.errorText}`);
-        };
-      }
+
+      pc.onicegatheringstatechange = () => {
+        this.#serverSend(
+          "client_ice_gathering_state_changed",
+          pc.iceGatheringState.toString()
+        );
+        console.debug("[DS] ice_gathering_state_changed:", pc.iceGatheringState.toString());
+      };
+
+      pc.onicecandidateerror = (e) => {
+        this.#serverSend(
+          "client_ice_candidate_failed",
+          `${e.url}#${e.errorCode}: ${e.errorText}`
+        );
+        console.debug("[DS] ice_candidate_failed:", `${e.url}#${e.errorCode}: ${e.errorText}`);
+      };
     }
   }
 
-  async _updateStats() {
-    const pc = this._pc;
+  async #updateStats() {
+    const pc = this.#pc;
     const pcStats = await pc.getStats();
 
-    if (this._logLevel >= 1) {
+    if (this.#logLevel >= 1) {
       pcStats.forEach((report) => {
         if (report.type === "outbound-rtp" && report.kind === "video") {
           // encoded size
@@ -585,55 +603,55 @@ class DuckSoup {
           if (
             newEncodedWidth &&
             newEncodedHeight &&
-            (newEncodedWidth !== this._info.encodedWith ||
-              newEncodedHeight !== this._info.encodedHeight)
+            (newEncodedWidth !== this.#info.encodedWith ||
+              newEncodedHeight !== this.#info.encodedHeight)
           ) {
-            this.send(
+            this.#serverSend(
               "client_video_resolution_updated",
               `${newEncodedWidth}x${newEncodedHeight}`
             );
-            this._info.encodedWith = newEncodedWidth;
-            this._info.encodedHeight = newEncodedHeight;
+            this.#info.encodedWith = newEncodedWidth;
+            this.#info.encodedHeight = newEncodedHeight;
           }
           // FPS
           let newFramesPerSecond = report.framesPerSecond;
           if (
             typeof newFramesPerSecond !== "undefined" &&
-            newFramesPerSecond !== this._info.framesPerSecond
+            newFramesPerSecond !== this.#info.framesPerSecond
           ) {
-            this.send("client_video_fps_updated", `${newFramesPerSecond}`);
-            this._info.framesPerSecond = newFramesPerSecond;
+            this.#serverSend("client_video_fps_updated", `${newFramesPerSecond}`);
+            this.#info.framesPerSecond = newFramesPerSecond;
           }
           // PLI
           let newPliCount = report.pliCount;
           if (
             typeof newPliCount !== "undefined" &&
-            newPliCount !== this._info.pliCount
+            newPliCount !== this.#info.pliCount
           ) {
-            this.send("client_pli_received_count_updated", `${newPliCount}`);
-            this._info.pliCount = newPliCount;
+            this.#serverSend("client_pli_received_count_updated", `${newPliCount}`);
+            this.#info.pliCount = newPliCount;
           }
           // FIR
           let newFirCount = report.firCount;
           if (
             typeof newFirCount !== "undefined" &&
-            newFirCount !== this._info.firCount
+            newFirCount !== this.#info.firCount
           ) {
-            this.send("client_fir_received_count_updated", `${newFirCount}`);
-            this._info.firCount = newFirCount;
+            this.#serverSend("client_fir_received_count_updated", `${newFirCount}`);
+            this.#info.firCount = newFirCount;
           }
           // KF
           let newKeyFramesEncoded = report.keyFramesEncoded;
           if (
             typeof newKeyFramesEncoded !== "undefined" &&
-            newKeyFramesEncoded !== this._info.keyFramesEncoded
+            newKeyFramesEncoded !== this.#info.keyFramesEncoded
           ) {
-            this.send(
+            this.#serverSend(
               "client_keyframe_encoded_count_updated",
               `${newKeyFramesEncoded}`
             );
-            this._info.keyFramesEncoded = newKeyFramesEncoded;
-            //console.debug("[DuckSoup] encoded KFs", newKeyFramesEncoded);
+            this.#info.keyFramesEncoded = newKeyFramesEncoded;
+            //console.debug("[DS] encoded KFs", newKeyFramesEncoded);
           }
         }
         if (report.type === "inbound-rtp" && report.kind === "video") {
@@ -641,20 +659,20 @@ class DuckSoup {
           let newKeyFramesDecoded = report.keyFramesDecoded;
           if (
             typeof newKeyFramesDecoded !== "undefined" &&
-            newKeyFramesDecoded !== this._info.keyFramesDecoded
+            newKeyFramesDecoded !== this.#info.keyFramesDecoded
           ) {
-            this.send(
+            this.#serverSend(
               "client_keyframe_decoded_count_updated",
               `${newKeyFramesDecoded}`
             );
-            this._info.keyFramesDecoded = newKeyFramesDecoded;
-            //console.debug("[DuckSoup] decoded KFs", newKeyFramesDecoded);
+            this.#info.keyFramesDecoded = newKeyFramesDecoded;
+            //console.debug("[DS] decoded KFs", newKeyFramesDecoded);
           }
         }
       });
     }
 
-    if (this._stats) {
+    if (this.#stats) {
       const newNow = Date.now();
       let newAudioBytesSent = 0;
       let newAudioBytesReceived = 0;
@@ -701,24 +719,24 @@ class DuckSoup {
           remoteInboundRTPVideo = report;
         }
       });
-      const elapsed = (newNow - this._info.now) / 1000;
+      const elapsed = (newNow - this.#info.now) / 1000;
       const audioUp = kbps(
-        newAudioBytesSent - this._info.audioBytesSent,
+        newAudioBytesSent - this.#info.audioBytesSent,
         elapsed
       );
       const audioDown = kbps(
-        newAudioBytesReceived - this._info.audioBytesReceived,
+        newAudioBytesReceived - this.#info.audioBytesReceived,
         elapsed
       );
       const videoUp = kbps(
-        newVideoBytesSent - this._info.videoBytesSent,
+        newVideoBytesSent - this.#info.videoBytesSent,
         elapsed
       );
       const videoDown = kbps(
-        newVideoBytesReceived - this._info.videoBytesReceived,
+        newVideoBytesReceived - this.#info.videoBytesReceived,
         elapsed
       );
-      this._callback({
+      this.#forward({
         kind: "stats",
         payload: {
           audioUp,
@@ -736,8 +754,8 @@ class DuckSoup {
         },
       });
 
-      this._info = {
-        ...this._info,
+      this.#info = {
+        ...this.#info,
         now: newNow,
         audioBytesSent: newAudioBytesSent,
         audioBytesReceived: newAudioBytesReceived,
@@ -753,7 +771,7 @@ class DuckSoup {
 window.DuckSoup = {
   render: async (embedOptions, peerOptions) => {
     const player = new DuckSoup(embedOptions, peerOptions);
-    await player._initialize();
+    await player.start();
     return player;
   },
 };
