@@ -1,6 +1,8 @@
 package env
 
 import (
+	"errors"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +15,7 @@ const (
 	TimeFormat = "20060102-150405.000"
 )
 
-var ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
+var ExplicitIPHost, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
 var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPassword, TurnPort, WebPrefix string
 var AllowedWSOrigins, STUNServerURLS []string
@@ -31,10 +33,22 @@ func init() {
 	// CAUTION: other init functions in "helpers" package may be called before this
 	if Mode == "DEV" {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("app_crashed")
+		}
+	}
+	// string needed for ExplicitIPHost
+	if rawPublicIP := os.Getenv("DUCKSOUP_PUBLIC_IP"); rawPublicIP != "" {
+		log.Printf("%+v", net.ParseIP(rawPublicIP) == nil)
+		if net.ParseIP(rawPublicIP) == nil {
+			log.Fatal().Err(errors.New("error parsing DUCKSOUP_PUBLIC_IP")).Msg("app_crashed")
+		} else {
+			PublicIP = rawPublicIP
 		}
 	}
 	// bools
+	if strings.ToLower(os.Getenv("DUCKSOUP_EXPLICIT_IP_HOST")) == "true" && len(PublicIP) > 0 {
+		ExplicitIPHost = true
+	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_FORCE_OVERLAY")) == "true" {
 		ForceOverlay = true
 	}
@@ -77,7 +91,6 @@ func init() {
 	if len(Port) < 2 {
 		Port = "8100"
 	}
-	PublicIP = os.Getenv("DUCKSOUP_PUBLIC_IP")
 	TurnAddress = os.Getenv("DUCKSOUP_TURN_ADDRESS")
 	TurnPassword = os.Getenv("DUCKSOUP_TURN_PASSWORD")
 	TurnPort = os.Getenv("DUCKSOUP_TURN_PORT")
@@ -89,7 +102,6 @@ func init() {
 	// origins
 	originsUnsplit := os.Getenv("DUCKSOUP_ALLOWED_WS_ORIGINS")
 	if len(originsUnsplit) > 0 {
-
 		AllowedWSOrigins = append(AllowedWSOrigins, strings.Split(originsUnsplit, ",")...)
 	}
 	if Mode == "DEV" {

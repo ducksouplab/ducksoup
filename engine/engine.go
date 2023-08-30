@@ -178,9 +178,9 @@ func NewWebRTCAPI(estimatorCh chan cc.BandwidthEstimator, logger zerolog.Logger)
 		logger.Error().Err(err).Str("context", "peer").Msg("configure_api_failed")
 	}
 
-	if len(env.PublicIP) > 0 {
+	if env.ExplicitIPHost {
 		s.SetNAT1To1IPs([]string{env.PublicIP}, webrtc.ICECandidateTypeHost)
-		logger.Info().Str("context", "peer").Str("IP", env.PublicIP).Msg("set_host_candidate")
+		logger.Info().Str("context", "peer").Str("IP", env.PublicIP).Msg("set_explicit_host_candidate")
 	}
 
 	return webrtc.NewAPI(

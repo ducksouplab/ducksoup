@@ -204,8 +204,10 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DUCKSOUP_MODE=DEV` enables automatic front-end assets build + adds a few allowed origins for WebSocket connections + changes log format (adds the `file:line` of caller) + print logs to Stdout
 - `DUCKSOUP_PORT=8000` (defaults to 8100) to set port listen by server
 - `DUCKSOUP_WEB_PREFIX=/path` (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
-- `DUCKSOUP_PUBLIC_IP` (defaults to none) if set, will be used to add a Host candidate during signaling (not necessary if ICE servers are used)
 - `DUCKSOUP_ALLOWED_WS_ORIGINS=https://origin1,https://origin2:8180` (defaults to none) declares comma separated allowed origins for WebSocket connections
+- `DUCKSOUP_EXPLICIT_IP_HOST` (defaults to false) if true, will use `DUCKSOUP_PUBLIC_IP` as a host candidate during signaling (not necessary if ICE servers are used)
+- `DUCKSOUP_PUBLIC_IP` (defaults to none) needed if `DUCKSOUP_EXPLICIT_IP_HOST` is true or if DuckSoup embedded TURN server is enabled (see `DUCKSOUP_TURN_*` variables)
+- `DUCKSOUP_TURN_ADDRESS` and `DUCKSOUP_TURN_PORT` (defaults to none) if both are set, they will be used to configure DuckSoup embedded TURN server and share its configuration with ducksoup.js as `turn:${DUCKSOUP_TURN_ADDRESS}:${DUCKSOUP_TURN_PORT}`
 - `DUCKSOUP_TEST_LOGIN` (defaults to "ducksoup") to protect test and stats pages with HTTP authentitcation
 - `DUCKSOUP_TEST_PASSWORD` (defaults to "ducksoup") to protect test and stats pages with HTTP authentitcation
 - `DUCKSOUP_MODE=FRONT_BUILD` builds front-end assets but do not start server
