@@ -31,7 +31,7 @@ func logState() {
 	log.Info().Str("context", "init").Str("value", env.WebPrefix).Msg("DUCKSOUP_WEB_PREFIX")
 	log.Info().Str("context", "init").Str("value", env.PublicIP).Msg("DUCKSOUP_PUBLIC_IP")
 	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.AllowedWSOrigins)).Msg("DUCKSOUP_ALLOWED_WS_ORIGINS")
-	log.Info().Str("context", "init").Bool("value", env.ExplicitIPHost).Msg("DUCKSOUP_EXPLICIT_IP_HOST")
+	log.Info().Str("context", "init").Bool("value", env.ExplicitHostCandidate).Msg("DUCKSOUP_EXPLICIT_HOST_CANDIDATE")
 	log.Info().Str("context", "init").Bool("value", env.NVCodec).Msg("DUCKSOUP_NVCODEC")
 	log.Info().Str("context", "init").Bool("value", env.NVCuda).Msg("DUCKSOUP_NVCUDA")
 	log.Info().Str("context", "init").Bool("value", env.GeneratePlots).Msg("DUCKSOUP_GENERATE_PLOTS")

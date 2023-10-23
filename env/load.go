@@ -15,9 +15,9 @@ const (
 	TimeFormat = "20060102-150405.000"
 )
 
-var ExplicitIPHost, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
+var ExplicitHostCandidate, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
 var LogLevel int
-var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPassword, TurnPort, WebPrefix string
+var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPort, WebPrefix string
 var AllowedWSOrigins, STUNServerURLS []string
 
 func getenvOr(key, fallback string) string {
@@ -46,8 +46,8 @@ func init() {
 		}
 	}
 	// bools
-	if strings.ToLower(os.Getenv("DUCKSOUP_EXPLICIT_IP_HOST")) == "true" && len(PublicIP) > 0 {
-		ExplicitIPHost = true
+	if strings.ToLower(os.Getenv("DUCKSOUP_EXPLICIT_HOST_CANDIDATE")) == "true" && len(PublicIP) > 0 {
+		ExplicitHostCandidate = true
 	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_FORCE_OVERLAY")) == "true" {
 		ForceOverlay = true
@@ -92,7 +92,6 @@ func init() {
 		Port = "8100"
 	}
 	TurnAddress = os.Getenv("DUCKSOUP_TURN_ADDRESS")
-	TurnPassword = os.Getenv("DUCKSOUP_TURN_PASSWORD")
 	TurnPort = os.Getenv("DUCKSOUP_TURN_PORT")
 	// for instance "/path" if DuckSoup is reachable at https://host/path
 	WebPrefix = getenvOr("DUCKSOUP_WEB_PREFIX", "")

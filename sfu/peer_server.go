@@ -196,7 +196,7 @@ func (ps *peerServer) shareOffer(cause string, iceRestart bool) bool {
 
 	var gatherComplete <-chan struct{}
 	// if we rely on a public IP, we need to gather candidates when creating the offer
-	waitForCandidatesGathering := env.ExplicitIPHost
+	waitForCandidatesGathering := env.ExplicitHostCandidate
 	if waitForCandidatesGathering {
 		// channel that will be closed when the gathering of local candidates is complete
 		// needed especially when using DUCKSOUP_PUBLIC_IP as a host candidate

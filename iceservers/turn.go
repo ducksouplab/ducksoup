@@ -8,12 +8,15 @@ import (
 	"sync"
 
 	"github.com/ducksouplab/ducksoup/env"
+	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/pion/turn/v2"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
 )
 
 const realm = "ducksoup-realm"
+
+var password string
 
 var turnIP net.IP
 var server *turn.Server
@@ -27,9 +30,11 @@ func init() {
 	userStore.mu.Lock()
 	defer userStore.mu.Unlock()
 
-	initialUsers := "ducksoup=" + env.TurnPassword
+	password = helpers.RandomHexString(32)
+	log.Info().Str("context", "init").Str("value", password).Msg("DUCKSOUP_TURN_PASSWORD")
+
+	initialUsers := "ducksoup=" + password
 	// TODO generate password on app start
-	// password = helpers.RandomHexString(32)
 
 	turnIP = net.ParseIP(env.PublicIP)
 	userStore.index = make(map[string][]byte)
@@ -47,7 +52,7 @@ func GetICEServers(u string) []webrtc.ICEServer {
 		iceServers = append(iceServers, webrtc.ICEServer{
 			URLs:       []string{"turn:" + env.TurnAddress + ":" + env.TurnPort},
 			Username:   "ducksoup",
-			Credential: env.TurnPassword,
+			Credential: password,
 		})
 	}
 	return iceServers
