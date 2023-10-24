@@ -632,7 +632,7 @@ To enter the container:
 docker exec -it ducksoup_1 bash
 ```
 
-As an aside, this image is published on Docker Hub as `ducksouplab/ducksoup`, let's tag it and push it:
+As an aside, this image is published on Docker Hub as [`ducksouplab/ducksoup`](https://hub.docker.com/r/ducksouplab/ducksoup), let's tag it and push it:
 
 ```
 docker tag ducksoup ducksouplab/ducksoup

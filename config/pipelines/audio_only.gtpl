@@ -1,8 +1,8 @@
-appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
 
 appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
 
-appsink name=audio_rtp_sink qos=true
+appsink name=audio_rtp_sink
 
 {{/* always record dry */}}
 {{.Audio.Muxer}} name=dry_audio_muxer !
@@ -20,11 +20,11 @@ audio_rtp_src. !
     {{.Audio.Rtp.Depay}} !
 
     tee name=tee_audio_in ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Leaky}} ! 
         dry_audio_muxer.
 
     tee_audio_in. ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Leaky}} ! 
         {{.Audio.Decoder}} !
         audioconvert ! 
         audio/x-raw,channels=1 !
@@ -33,20 +33,20 @@ audio_rtp_src. !
         {{.Audio.EncodeWith "audio_encoder_dry"}} !
 
         tee name=tee_audio_out ! 
-            {{.Queue.Base}} ! 
+            {{.Queue.Leaky}} ! 
             wet_audio_muxer.
 
         tee_audio_out. ! 
-            {{.Queue.Base}} ! 
+            {{.Queue.Leaky}} ! 
             {{.Audio.Rtp.Pay}} !
             audio_rtp_sink.
 {{else}}
     tee name=tee_audio_in ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Leaky}} ! 
         {{.Audio.Rtp.Depay}} !
         dry_audio_muxer.
  
     tee_audio_in. ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Leaky}} ! 
         audio_rtp_sink.
 {{end}}

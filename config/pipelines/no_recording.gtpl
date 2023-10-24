@@ -1,7 +1,7 @@
-appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME
-appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME min-latency=33333333
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
 
-appsink name=audio_rtp_sink qos=true
+appsink name=audio_rtp_sink
 appsink name=video_rtp_sink qos=true
 
 audio_rtp_src. !
@@ -28,6 +28,7 @@ video_rtp_src. !
     {{.Video.Rtp.JitterBuffer}} ! 
     {{.Video.Rtp.Depay}} ! 
     {{.Video.Decoder}} !
+    {{.Queue.Leaky}} ! 
     {{.Video.ConstraintFormatFramerateResolution .Framerate .Width .Height}} !
     videoconvert ! 
     {{.Video.Fx}} ! 

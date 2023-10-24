@@ -1,8 +1,8 @@
 shared:
   audio:
-    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer do-lost=1 latency=200
+    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=200
   video:
-    RTPJitterBuffer: rtpjitterbuffer name=video_buffer do-lost=1 add-reference-timestamp-meta=true latency=200
+    RTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=200
     rawFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
     constraint:
       format: >-
@@ -18,9 +18,9 @@ shared:
         capsfilter caps={{.VideoFormatFramerateResolution}} caps-change-mode=1
     timeOverlay: timeoverlay time-mode=1
   queue:
-    base: queue
+    base: queue max-size-buffers=0 max-size-bytes=0 max-size-time=200000000
+    leaky: queue leaky=2 max-size-buffers=0 max-size-bytes=0 max-size-time=200000000
     short: queue max-size-buffers=0 max-size-bytes=0 max-size-time=75000000
-    leaky: queue leaky=2
     long: queue max-size-buffers=0 max-size-bytes=0 max-size-time=3000000000 
 opus:
   encoding: "OPUS"
@@ -28,10 +28,8 @@ opus:
   extension: "ogg"
   rtp:
     caps: application/x-rtp,payload=111,encoding-name=OPUS
-    pay: rtpopuspay
-    depay: >-
-      rtpopusdepay !
-      opusparse
+    pay: rtpopuspay pt=111 mtu=1200
+    depay: rtpopusdepay
   decoder: opusdec
   encoder: >-
     opusenc name={{.Name}}
@@ -45,9 +43,9 @@ vp8:
   extension: "mkv"
   rtp:
     caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
-    pay: rtpvp8pay min-ptime=30000000
+    pay: rtpvp8pay pt=96 min-ptime=30000000
     depay: rtpvp8depay
-  decoder: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
+  decoder: vp8dec min-force-key-unit-interval=3000000000 discard-corrupted-frames=true
   encoder: >-
     vp8enc name={{.Name}}
     target-bitrate={{.DefaultBitrate}}
@@ -57,28 +55,27 @@ vp8:
     keyframe-max-dist=999999
     max-quantizer=56
     min-force-key-unit-interval=3000000000
-    qos=true
 x264:
   encoding: "H264"
   muxer: "mp4mux"
   extension: "mp4"
   rtp:
     caps: application/x-rtp,encoding-name=H264
-    pay: rtph264pay
+    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
       rtph264depay !
       h264parse !
       h264timestamper
-  decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true qos=true
+  decoder: avdec_h264 min-force-key-unit-interval=3000000000 discard-corrupted-frames=true
   encoder: >-
     x264enc name={{.Name}} pass=17
     bitrate={{.DefaultKBitrate}}
     pass=pass1
     multipass-cache-file={{.Folder}}/cache/{{.FilePrefix}}.{{.Name}}.x264_pass.log 
     speed-preset=ultrafast
-    min-force-key-unit-interval=3000000000
-    qos=true !
-    video/x-h264, profile=main ! 
+    tune=zerolatency
+    min-force-key-unit-interval=3000000000 !
+    video/x-h264, profile=constrained-baseline ! 
     h264parse
 nv264:
   encoding: "H264"
@@ -86,18 +83,18 @@ nv264:
   extension: "mp4"
   rtp:
     caps: application/x-rtp,encoding-name=H264
-    pay: rtph264pay
+    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
       rtph264depay !
       h264parse !
       h264timestamper
-  decoder: nvh264sldec qos=true
+  decoder: nvh264sldec
   encoder: >-
     nvh264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
-    preset=5
-    rc-mode=7
-    rc-lookahead=0
-    qos=true !
-    video/x-h264, profile=main !
+    preset=low-latency-hp
+    rc-mode=cbr-ld-hq
+    zerolatency=true
+    rc-lookahead=0 !
+    video/x-h264, profile=constrained-baseline !
     h264parse

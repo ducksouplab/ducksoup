@@ -1,8 +1,8 @@
-appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
 
 appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
 
-appsink name=audio_rtp_sink qos=true
+appsink name=audio_rtp_sink
 
 audio_rtp_src. !
 {{.Audio.Rtp.Caps}} ! 
