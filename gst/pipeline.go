@@ -255,7 +255,7 @@ func (p *Pipeline) updateRecordingFiles() {
 			p.setPropString("dry_video_filesink", "location", dryVideoFile)
 			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
 			return
-		default: // muxed
+		default: // muxed (or reenc)
 			dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
 			p.setPropString("dry_filesink", "location", dryFile)
 			p.RecordingFiles = append(p.RecordingFiles, dryFile)

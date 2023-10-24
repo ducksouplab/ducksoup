@@ -9,13 +9,11 @@ appsink name=video_rtp_sink qos=true
 
 {{/* always record dry */}}
 {{.Video.Muxer}} name=dry_muxer faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-dry.mp4mux.faststart !
-{{.Queue.Base}} !
 filesink name=dry_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
 
 {{/* record fx if one on audio or video */}}
 {{if or .Video.Fx .Audio.Fx }}
     {{.Video.Muxer}} name=wet_muxer faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-wet.mp4mux.faststart !
-    {{.Queue.Base}} !
     filesink name=wet_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 

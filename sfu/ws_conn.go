@@ -80,7 +80,7 @@ func parseVideoFormat(join types.JoinPayload) (videoFormat string) {
 
 func parseRecordingMode(join types.JoinPayload) (recordingMode string) {
 	recordingMode = join.RecordingMode
-	if recordingMode != "muxed" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
+	if recordingMode != "reenc" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
 		recordingMode = defaultRecordingMode
 	}
 	return

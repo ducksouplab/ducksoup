@@ -2,6 +2,8 @@ Currently different recording modes are offered:
 
 - `muxed` (default) -> audio/video muxed in the same file
 
+- `reenc` -> audio/video muxed in the same file, dry signal being reencoded
+
 - `split` -> audio video recorded in separate files (currently introduces delay on audio stream)
 
 - `passthrough` -> records input streams and sends them back, without applying any fx or reencoding
