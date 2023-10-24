@@ -12,7 +12,7 @@ A few notes about GStreamer settings:
 
 - input media streams are stored with a `-dry.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-wet.extension`
 
-- currently, setting `min-force-key-unit-interval` on encoders is disabled (more tests have to be done), it may be an interesting option to limit PLI requests
+- before: setting `min-force-key-unit-interval` on encoders was disabled (more tests have to be done), it may be an interesting option to limit PLI requests
 
 - disregard of dry paths, on wet paths: we always constrain caps before fx since some may rely on constant sizes
 
