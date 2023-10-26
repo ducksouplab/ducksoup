@@ -13,7 +13,6 @@ import (
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/plot"
 	"github.com/ducksouplab/ducksoup/sequencing"
-	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
@@ -276,6 +275,7 @@ func (ms *mixerSlice) loopReadRTCP() {
 		case <-ms.Done():
 			return
 		default:
+			// ReadRTCP unmarshals but also split packets and run interceptors
 			packets, _, err := ms.receiver.ReadRTCP()
 			if err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
@@ -285,11 +285,8 @@ func (ms *mixerSlice) loopReadRTCP() {
 			}
 
 			for _, packet := range packets {
-				switch p := packet.(type) {
-				case *rtcp.SenderReport:
-					if buf, err := p.Marshal(); err == nil {
-						ms.pipeline.PushRTCP(ms.kind, buf)
-					}
+				if buf, err := packet.Marshal(); err == nil {
+					ms.pipeline.PushRTCP(ms.kind, buf)
 				}
 				ms.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_receiver")
 			}

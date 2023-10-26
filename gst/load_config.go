@@ -41,7 +41,9 @@ type gstEnhancedConfig struct {
 
 // global state
 var gstConfig gstEnhancedConfig
-var muxedTemplater, muxedReencTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
+
+// muxedTemplater
+var muxedReencTemplater, muxedRtpBinTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
 
 func init() {
 	// load config from yml file
@@ -63,11 +65,15 @@ func init() {
 	gstConfig.NV264.addSharedVideoProperties()
 
 	// templates
-	muxedTemplater, err = template.New("muxed").Parse(helpers.ReadFile("config/pipelines/muxed.gtpl"))
+	// muxedTemplater, err = template.New("muxed").Parse(helpers.ReadFile("config/pipelines/muxed.gtpl"))
+	// if err != nil {
+	// 	panic(err)
+	// }
+	muxedReencTemplater, err = template.New("muxed_reenc").Parse(helpers.ReadFile("config/pipelines/muxed_reenc.gtpl"))
 	if err != nil {
 		panic(err)
 	}
-	muxedReencTemplater, err = template.New("muxed_reenc").Parse(helpers.ReadFile("config/pipelines/muxed_reenc.gtpl"))
+	muxedRtpBinTemplater, err = template.New("muxed_rtpbin").Parse(helpers.ReadFile("config/pipelines/muxed_rtpbin.gtpl"))
 	if err != nil {
 		panic(err)
 	}

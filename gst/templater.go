@@ -65,7 +65,7 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 			templater = muxedReencTemplater
 		} else {
 			// audio+video default, ideally would be muxedTemplater
-			templater = muxedTemplater
+			templater = muxedRtpBinTemplater
 			if join.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
 				templater = muxedReencTemplater
 			}

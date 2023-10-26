@@ -27,7 +27,7 @@ opus:
   muxer: "oggmux"
   extension: "ogg"
   rtp:
-    caps: application/x-rtp,payload=111,encoding-name=OPUS
+    caps: application/x-rtp,media=audio,clock-rate=48000,payload=111,encoding-name=OPUS
     pay: rtpopuspay pt=111 mtu=1200
     depay: rtpopusdepay
   decoder: opusdec
@@ -42,7 +42,7 @@ vp8:
   muxer: "matroskamux"
   extension: "mkv"
   rtp:
-    caps: application/x-rtp,encoding-name=VP8-DRAFT-IETF-01
+    caps: application/x-rtp,media=video,clock-rate=90000,payload=96,encoding-name=VP8-DRAFT-IETF-01
     pay: rtpvp8pay pt=96 min-ptime=30000000
     depay: rtpvp8depay
   decoder: vp8dec min-force-key-unit-interval=120000000 discard-corrupted-frames=true
@@ -60,7 +60,7 @@ x264:
   muxer: "mp4mux"
   extension: "mp4"
   rtp:
-    caps: application/x-rtp,encoding-name=H264
+    caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
     pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
       rtph264depay !
@@ -87,7 +87,7 @@ nv264:
   muxer: "mp4mux"
   extension: "mp4"
   rtp:
-    caps: application/x-rtp,encoding-name=H264
+    caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
     pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
       rtph264depay !
