@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
@@ -12,10 +11,6 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
-)
-
-const (
-	gccPeriod = 1000
 )
 
 type senderController struct {
@@ -110,33 +105,22 @@ func (sc *senderController) updateRateFromLoss(loss int) {
 
 func (sc *senderController) loop() {
 	if sc.kind == "video" {
-		go sc.loopReadRTCPOnVideo()
+		if env.GCC {
+			go sc.simpleLoopReadRTCPOnVideo()
+		} else {
+			go sc.estimateLoopReadRTCPOnVideo()
+		}
 	} else {
 		go sc.loopReadRTCPOnAudio()
 	}
 
 	<-sc.ms.i.isStarted()
 	if sc.kind == "video" && env.GCC {
-		// applying GCC only to video is an approximation since audio consumes less bandwidth
-		go sc.loopGCC()
-	}
-}
-
-func (sc *senderController) loopGCC() {
-	ticker := time.NewTicker(gccPeriod * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-sc.ms.Done():
-			// TODO FIX it could happen that addSender have triggered this loop without the slice
-			// to have actually started
-			return
-		case <-ticker.C:
+		sc.ccEstimator.OnTargetBitrateChange(func(bitrate int) {
 			sc.Lock()
 			// update optimal video bitrate
 			// we could leave room for audio and subtracting - config.Audio.MaxBitrate
-			sc.ccOptimalBitrate = sc.capRate(sc.ccEstimator.GetTargetBitrate())
+			sc.ccOptimalBitrate = sc.capRate(bitrate)
 			sc.logInfo().Str("kind", sc.ms.kind).Int("value", sc.ccOptimalBitrate).Msg("cc_optimal_bitrate_updated")
 			// plot
 			if env.GeneratePlots {
@@ -144,9 +128,10 @@ func (sc *senderController) loopGCC() {
 			}
 			sc.Unlock()
 			sc.logDebug().Str("target", fmt.Sprintf("%v", sc.ccEstimator.GetTargetBitrate())).Str("stats", fmt.Sprintf("%v", sc.ccEstimator.GetStats())).Msg("gcc")
-		}
+		})
 	}
 }
+
 func (sc *senderController) loopReadRTCPOnAudio() {
 	for {
 		select {
@@ -166,7 +151,7 @@ func (sc *senderController) loopReadRTCPOnAudio() {
 	}
 }
 
-func (sc *senderController) loopReadRTCPOnVideo() {
+func (sc *senderController) estimateLoopReadRTCPOnVideo() {
 	for {
 		select {
 		case <-sc.ms.Done():
@@ -195,6 +180,36 @@ func (sc *senderController) loopReadRTCPOnVideo() {
 							sc.updateRateFromLoss(int(r.FractionLost))
 						}
 					}
+				}
+				sc.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_sender")
+			}
+		}
+	}
+}
+
+func (sc *senderController) simpleLoopReadRTCPOnVideo() {
+	for {
+		select {
+		case <-sc.ms.Done():
+			return
+		default:
+			packets, _, err := sc.sender.ReadRTCP()
+			if err != nil {
+				if err != io.EOF && err != io.ErrClosedPipe {
+					sc.logError().Err(err).Msg("rtcp_on_sender_failed")
+					continue
+				} else {
+					return
+				}
+			}
+
+			for _, packet := range packets {
+				switch packet.(type) {
+				case *rtcp.PictureLossIndication:
+					sc.ms.fromPs.pc.throttledPLIRequest("forward_from_receiving_peer")
+					// case *rtcp.ReceiverEstimatedMaximumBitrate:
+					// disabled due to TWCC
+					// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
 				}
 				sc.logTrace().Str("type", fmt.Sprintf("%T", packet)).Str("packet", fmt.Sprintf("%+v", packet)).Msg("received_rtcp_on_sender")
 			}

@@ -639,6 +639,13 @@ docker tag ducksoup ducksouplab/ducksoup
 docker push ducksouplab/ducksoup:latest
 ```
 
+Add and share extra tag:
+
+```
+docker tag ducksoup:latest ducksouplab/ducksoup:better-tag
+docker push ducksouplab/ducksoup:better-tag
+```
+
 With this image, `root` is the user that launches and owns files in the Docker container. The project [deploy-ducksoup](https://github.com/ducksouplab/deploy-ducksoup) shows a way to build a lightweight image on top of this one with another user.
 
 ### GPU-enabled Docker containers
