@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/video/video-event.h>
 
 #include "gst.h"
 
@@ -51,6 +52,23 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
     return TRUE;
 }
 
+GstPadProbeReturn videosrc_callback(GstPad *pad, GstPadProbeInfo *info, gpointer data)
+{
+    
+    GstEvent* event = gst_pad_probe_info_get_event(info);
+    gboolean fku = gst_video_event_is_force_key_unit(event);
+    // g_print("event is forced key unit %d\n", fku);
+
+    if(fku)
+    {
+        GstElement *pipeline = (GstElement*) data;
+        char *id = gst_element_get_name(pipeline);
+        goRequestKeyFrame(id);
+        g_free(id);
+    }
+    
+}
+
 GstFlowReturn audio_rtp_sink_callback(GstElement *object, gpointer data)
 {
     GstSample *sample = NULL;
@@ -69,7 +87,7 @@ GstFlowReturn audio_rtp_sink_callback(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goWriteAudio(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+            goWriteAudio(id, copy, copy_size);
         }
         gst_sample_unref(sample);
     }
@@ -95,29 +113,12 @@ GstFlowReturn video_rtp_sink_callback(GstElement *object, gpointer data)
         if (buffer)
         {
             gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goWriteVideo(id, copy, copy_size, GST_BUFFER_PTS(buffer));
+            goWriteVideo(id, copy, copy_size);
         }
         gst_sample_unref(sample);
     }
 
     return GST_FLOW_OK;
-}
-
-// TODO use <gst/video/video.h> implementation
-gboolean gst_event_is (GstEvent * event, const gchar * name)
-{
-  const GstStructure *s;
-
-  g_return_val_if_fail (event != NULL, FALSE);
-
-  if (GST_EVENT_TYPE (event) != GST_EVENT_CUSTOM_UPSTREAM)
-    return FALSE;               /* Not a force key unit event */
-
-  s = gst_event_get_structure (event);
-  if (s == NULL || !gst_structure_has_name (s, name))
-    return FALSE;
-
-  return TRUE;
 }
 
 // API: functions called from Go (camelCased)
@@ -166,6 +167,15 @@ void gstStartPipeline(GstElement *pipeline, gboolean audioOnly)
     }
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    GstElement *videosrc = gst_bin_get_by_name(GST_BIN(pipeline), "video_rtp_src");
+    if (videosrc != NULL)
+    {
+        GstPad *pad = gst_element_get_static_pad(videosrc, "src");
+        gst_pad_add_probe(pad,GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, videosrc_callback, pipeline, NULL);
+        gst_object_unref(videosrc);
+    }
+
 }
 
 void gstStopPipeline(GstElement *pipeline)
@@ -185,7 +195,7 @@ void gstStopPipeline(GstElement *pipeline)
     }
 }
 
-void gstSrcPush(char *srcname, GstElement *pipeline, void *buffer, int len)
+void gstSrcPush(GstElement *pipeline, char *srcname, void *buffer, int len)
 {
     GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), srcname);
     
@@ -197,6 +207,12 @@ void gstSrcPush(char *srcname, GstElement *pipeline, void *buffer, int len)
         gst_object_unref(src);
     }
 }
+
+void gstSendPLI(GstElement *pipeline)
+{
+    gst_element_send_event(pipeline, gst_video_event_new_upstream_force_key_unit(GST_CLOCK_TIME_NONE, TRUE, 0));
+}
+
 
 // float get/set
 

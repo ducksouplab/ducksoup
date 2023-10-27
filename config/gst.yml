@@ -44,8 +44,11 @@ vp8:
   rtp:
     caps: application/x-rtp,media=video,clock-rate=90000,payload=96,encoding-name=VP8-DRAFT-IETF-01
     pay: rtpvp8pay pt=96 min-ptime=30000000
-    depay: rtpvp8depay
-  decoder: vp8dec min-force-key-unit-interval=120000000 discard-corrupted-frames=true
+    depay: rtpvp8depay request-keyframe=true
+  decoder: >-
+    vp8dec
+    discard-corrupted-frames=true
+    min-force-key-unit-interval=120000000
   encoder: >-
     vp8enc name={{.Name}}
     target-bitrate={{.DefaultBitrate}}
@@ -63,10 +66,13 @@ x264:
     caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
     pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
-      rtph264depay !
+      rtph264depay request-keyframe=true !
       h264parse !
       h264timestamper
-  decoder: avdec_h264 min-force-key-unit-interval=120000000 discard-corrupted-frames=true
+  decoder: >-
+    avdec_h264
+    discard-corrupted-frames=true
+    min-force-key-unit-interval=120000000
   encoder: >-
     x264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
@@ -90,10 +96,13 @@ nv264:
     caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
     pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
     depay: >-
-      rtph264depay !
+      rtph264depay request-keyframe=true !
       h264parse !
       h264timestamper
-  decoder: nvh264sldec
+  decoder: >-
+    nvh264sldec
+    discard-corrupted-frames=true
+    min-force-key-unit-interval=120000000
   encoder: >-
     nvh264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}

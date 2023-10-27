@@ -13,7 +13,6 @@ import (
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/plot"
 	"github.com/ducksouplab/ducksoup/sequencing"
-	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog"
 )
@@ -179,15 +178,13 @@ func (l *mixerSlice) updateInputBits(n int) {
 }
 
 func (ms *mixerSlice) Write(buf []byte) (err error) {
-	packet := &rtp.Packet{}
-	packet.Unmarshal(buf)
-	err = ms.output.WriteRTP(packet)
+	n, err := ms.output.Write(buf)
 
 	if err == nil {
 		go func() {
-			newBits := (packet.MarshalSize() - packet.Header.MarshalSize()) * 8
 			ms.Lock()
-			ms.outputBits += newBits
+			// TOCHECK: header size is constant (12)
+			ms.outputBits += (n - 12) * 8
 			ms.Unlock()
 		}()
 	}

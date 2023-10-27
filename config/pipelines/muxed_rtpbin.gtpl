@@ -78,7 +78,7 @@ rtpbin. !
         {{.Queue.Base}} ! 
         {{.Video.Decoder}} !
         {{.Queue.Leaky}} ! 
-        {{.Video.ConstraintFormatFramerate .Framerate}} !
+        {{.Video.ConstraintFormat}} !
 
         videoconvert ! 
         {{.Video.Fx}} !

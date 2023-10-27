@@ -6,16 +6,18 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-extern void goWriteAudio(char *id, void *buffer, int bufferLen, int pts);
-extern void goWriteVideo(char *id, void *buffer, int bufferLen, int pts);
+extern void goWriteAudio(char *id, void *buffer, int bufferLen);
+extern void goWriteVideo(char *id, void *buffer, int bufferLen);
 extern void goDeletePipeline(char *id);
+extern void goRequestKeyFrame(char *id);
 extern void goPipelineLog(char *id, char *msg, int isError);
 
 void gstStartMainLoop(void);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);
 void gstStartPipeline(GstElement *pipeline, gboolean audioOnly);
 void gstStopPipeline(GstElement *pipeline);
-void gstSrcPush(char *src, GstElement *pipeline, void *buffer, int len);
+void gstSrcPush(GstElement *pipeline, char *src, void *buffer, int len);
+void gstSendPLI(GstElement *pipeline);
 
 // get/set props
 float gstGetPropFloat(GstElement *pipeline, char *elName, char *elProp);

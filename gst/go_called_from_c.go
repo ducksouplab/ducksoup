@@ -63,13 +63,23 @@ func writeTo(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 }
 
 //export goWriteAudio
-func goWriteAudio(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
+func goWriteAudio(cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 	writeTo("audio", cId, buffer, bufferLen)
 }
 
 //export goWriteVideo
-func goWriteVideo(cId *C.char, buffer unsafe.Pointer, bufferLen C.int, pts C.int) {
+func goWriteVideo(cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 	writeTo("video", cId, buffer, bufferLen)
+}
+
+//export goRequestKeyFrame
+func goRequestKeyFrame(cId *C.char) {
+	id := C.GoString(cId)
+	p, ok := pipelineStoreSingleton.find(id)
+
+	if ok {
+		p.logger.Log().Msg("gstreamer_request_key_frame")
+	}
 }
 
 //export goPipelineLog
@@ -83,7 +93,7 @@ func goPipelineLog(cId *C.char, msg *C.char, isError C.int) {
 			p.logger.Error().Err(errors.New(m)).Msg("gstreamer_pipeline_error")
 		} else {
 			// CAUTION: not documented
-			p.logger.Log().Err(errors.New(m)).Msg("gstreamer_pipeline_log")
+			p.logger.Log().Str("value", m).Msg("gstreamer_pipeline_log")
 		}
 	}
 }

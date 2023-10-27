@@ -2,7 +2,7 @@
 package gst
 
 /*
-#cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
+#cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
 #include "gst.h"
 */
 import "C"
@@ -147,7 +147,11 @@ func (p *Pipeline) srcPush(src string, buffer []byte) {
 
 	b := C.CBytes(buffer)
 	defer C.free(b)
-	C.gstSrcPush(s, p.cPipeline, b, C.int(len(buffer)))
+	C.gstSrcPush(p.cPipeline, s, b, C.int(len(buffer)))
+}
+
+func (p *Pipeline) SendPLI() {
+	C.gstSendPLI(p.cPipeline)
 }
 
 func (p *Pipeline) Started() chan struct{} {
