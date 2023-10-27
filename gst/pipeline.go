@@ -145,8 +145,7 @@ func (p *Pipeline) srcPush(src string, buffer []byte) {
 	s := C.CString(src)
 	defer C.free(unsafe.Pointer(s))
 
-	b := C.CBytes(buffer)
-	defer C.free(b)
+	b := C.CBytes(buffer) // not freed since used as-is in GStreamer
 	C.gstSrcPush(p.cPipeline, s, b, C.int(len(buffer)))
 }
 

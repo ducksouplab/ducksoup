@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/app/gstappsink.h>
 #include <gst/video/video-event.h>
 
 #include "gst.h"
@@ -17,12 +18,13 @@ void stop_pipeline(GstElement* pipeline) {
     gst_object_unref(pipeline);
 
     goDeletePipeline(id);
+    g_free(id);
 }
 
 
 static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
-    GstElement* pipeline = (GstElement*) data;
+    GstElement* pipeline = (GstElement*) data; // free?
     char *id = gst_element_get_name(pipeline);
 
     switch (GST_MESSAGE_TYPE(msg))
@@ -38,10 +40,9 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         char msgBuf[100];
         sprintf(msgBuf, "ERR [gst.c] from element %d: %s\n",GST_OBJECT_NAME (msg->src), error->message);
         goPipelineLog(id, msgBuf, 1);
+        stop_pipeline(pipeline);
 
         g_error_free(error);
-
-        stop_pipeline(pipeline);
         break;
     }
     default:
@@ -49,13 +50,14 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         break;
     }
 
+    g_free(id);
     return TRUE;
 }
 
 GstPadProbeReturn videosrc_callback(GstPad *pad, GstPadProbeInfo *info, gpointer data)
 {
     
-    GstEvent* event = gst_pad_probe_info_get_event(info);
+    GstEvent* event = gst_pad_probe_info_get_event(info); // free?
     gboolean fku = gst_video_event_is_force_key_unit(event);
     // g_print("event is forced key unit %d\n", fku);
 
@@ -69,18 +71,18 @@ GstPadProbeReturn videosrc_callback(GstPad *pad, GstPadProbeInfo *info, gpointer
     
 }
 
-GstFlowReturn audio_rtp_sink_callback(GstElement *object, gpointer data)
+GstFlowReturn audio_rtp_sink_callback(GstElement *sink, gpointer data)
 {
-    GstSample *sample = NULL;
-    GstBuffer *buffer = NULL;
-    gpointer copy = NULL;
+    GstSample *sample;
+    GstBuffer *buffer; // free?
+    gpointer copy; // TODO don't copy
     gsize copy_size = 0;
-    GstElement *pipeline = (GstElement*) data;
+    GstElement *pipeline = (GstElement*) data; // free?
 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
 
-    g_signal_emit_by_name(object, "pull-sample", &sample);
+    sample = gst_app_sink_pull_sample((GstAppSink*) sink);
     if (sample)
     {
         buffer = gst_sample_get_buffer(sample);
@@ -92,21 +94,22 @@ GstFlowReturn audio_rtp_sink_callback(GstElement *object, gpointer data)
         gst_sample_unref(sample);
     }
 
+    g_free(id);
     return GST_FLOW_OK;
 }
 
-GstFlowReturn video_rtp_sink_callback(GstElement *object, gpointer data)
+GstFlowReturn video_rtp_sink_callback(GstElement *sink, gpointer data)
 {
-    GstSample *sample = NULL;
-    GstBuffer *buffer = NULL;
-    gpointer copy = NULL;
+    GstSample *sample;
+    GstBuffer *buffer; // free?
+    gpointer copy; // TODO don't copy
     gsize copy_size = 0;
-    GstElement *pipeline = (GstElement*) data;
+    GstElement *pipeline = (GstElement*) data; // free?
 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
 
-    g_signal_emit_by_name(object, "pull-sample", &sample);
+    sample = gst_app_sink_pull_sample((GstAppSink*) sink);
     if (sample)
     {
         buffer = gst_sample_get_buffer(sample);
@@ -118,6 +121,7 @@ GstFlowReturn video_rtp_sink_callback(GstElement *object, gpointer data)
         gst_sample_unref(sample);
     }
 
+    g_free(id);
     return GST_FLOW_OK;
 }
 
@@ -193,6 +197,8 @@ void gstStopPipeline(GstElement *pipeline)
         // gracefully stops media recording
         gst_element_send_event(pipeline, gst_event_new_eos());
     }
+
+    g_free(id);
 }
 
 void gstSrcPush(GstElement *pipeline, char *srcname, void *buffer, int len)
@@ -201,9 +207,8 @@ void gstSrcPush(GstElement *pipeline, char *srcname, void *buffer, int len)
     
     if (src != NULL)
     {
-        gpointer p = g_memdup(buffer, len);
-        GstBuffer *buffer = gst_buffer_new_wrapped(p, len);
-        gst_app_src_push_buffer(GST_APP_SRC(src), buffer);
+        GstBuffer *b = gst_buffer_new_wrapped(buffer, len); // gst_buffer_unref -> crash
+        gst_app_src_push_buffer(GST_APP_SRC(src), b);
         gst_object_unref(src);
     }
 }
