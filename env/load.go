@@ -16,7 +16,7 @@ const (
 )
 
 var ExplicitHostCandidate, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
-var LogLevel int
+var JitterBuffer, LogLevel int
 var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPort, WebPrefix string
 var AllowedWSOrigins, STUNServerURLS []string
 
@@ -79,6 +79,12 @@ func init() {
 
 	// uints
 	var err error
+	JitterBuffer, err = strconv.Atoi(os.Getenv("DUCKSOUP_JITTER_BUFFER"))
+
+	if err != nil {
+		LogLevel = 150
+	}
+
 	LogLevel, err = strconv.Atoi(os.Getenv("DUCKSOUP_LOG_LEVEL"))
 
 	if err != nil {

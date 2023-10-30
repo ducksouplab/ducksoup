@@ -80,7 +80,7 @@ func parseVideoFormat(jp types.JoinPayload) (videoFormat string) {
 
 func parseRecordingMode(jp types.JoinPayload) (recordingMode string) {
 	recordingMode = jp.RecordingMode
-	if recordingMode != "ff" && recordingMode != "reenc" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
+	if recordingMode != "forced" && recordingMode != "free" && recordingMode != "reenc" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
 		recordingMode = defaultRecordingMode
 	}
 	return

@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -31,6 +32,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		Width      int
 		Height     int
 		Framerate  int
+		RTPBin     string
 	}{
 		gstConfig.Shared.Queue,
 		videoOptions,
@@ -40,6 +42,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		jp.Width,
 		jp.Height,
 		jp.Framerate,
+		"rtpbin name=rtpbin latency=" + strconv.Itoa(env.JitterBuffer),
 	}
 
 	// render pipeline from template
@@ -65,11 +68,11 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 			templater = noRecordingTemplater
 		} else if jp.RecordingMode == "reenc" {
 			templater = muxedReencTemplater
-		} else if jp.RecordingMode == "ff" {
-			templater = muxedRtpBinFramerateTemplater
+		} else if jp.RecordingMode == "free" {
+			templater = muxedRtpBinTemplater
 		} else {
 			// audio+video default, ideally would be muxedTemplater
-			templater = muxedRtpBinTemplater
+			templater = muxedRtpBinFramerateTemplater
 			if jp.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
 				templater = muxedReencTemplater
 			}

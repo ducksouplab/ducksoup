@@ -49,6 +49,7 @@ func (mo *mediaOptions) addSharedVideoProperties() {
 }
 
 // template helpers
+
 func (mo mediaOptions) EncodeWith(name string) (output string) {
 	output = strings.Replace(mo.Encoder, "{{.Name}}", name, -1)
 	output = strings.Replace(output, "{{.DefaultBitrate}}", strconv.Itoa(mo.DefaultBitrate), -1)
