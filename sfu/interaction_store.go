@@ -25,18 +25,18 @@ func newInteractionStore() *interactionStore {
 }
 
 // last return value provides additional context
-func (is *interactionStore) join(join types.JoinPayload) (*interaction, string, error) {
+func (is *interactionStore) join(jp types.JoinPayload) (*interaction, string, error) {
 	is.Lock()
 	defer is.Unlock()
 
-	interactionId := generateId(join)
+	interactionId := generateId(jp)
 
 	if i, ok := interactionStoreSingleton.index[interactionId]; ok {
-		msg, err := i.join(join)
+		msg, err := i.join(jp)
 		return i, msg, err
 	} else {
 		// new user creates interaction
-		i := newInteraction(interactionId, join)
+		i := newInteraction(interactionId, jp)
 		interactionStoreSingleton.index[interactionId] = i
 		return i, "new_interaction", nil
 	}

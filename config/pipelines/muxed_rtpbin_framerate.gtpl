@@ -74,7 +74,7 @@ rtpbin. !
         {{.Queue.Base}} name=video_queue_bef_dec ! 
         {{.Video.Decoder}} !
         {{.Queue.Leaky}} name=video_queue_aft_dec ! 
-        {{.Video.ConstraintFormat}} !
+        {{.Video.ConstraintFormatFramerate .Framerate}} !
 
         videoconvert ! 
         {{.Video.Fx}} !

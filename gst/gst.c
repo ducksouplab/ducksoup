@@ -315,7 +315,7 @@ guint64 gstGetPropUint64(GstElement *pipeline, char *name, char *prop) {
         g_object_get(el, prop, &value, NULL);
         gst_object_unref(el);
     }
-
+    // printf("gstGetPropUint64: %s:%s:%s\n", name, prop, value);
     return value;
 }
 

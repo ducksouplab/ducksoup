@@ -43,7 +43,7 @@ type gstEnhancedConfig struct {
 var gstConfig gstEnhancedConfig
 
 // muxedTemplater
-var muxedReencTemplater, muxedRtpBinTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
+var muxedReencTemplater, muxedRtpBinTemplater, muxedRtpBinFramerateTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
 
 func init() {
 	// load config from yml file
@@ -74,6 +74,10 @@ func init() {
 		panic(err)
 	}
 	muxedRtpBinTemplater, err = template.New("muxed_rtpbin").Parse(helpers.ReadFile("config/pipelines/muxed_rtpbin.gtpl"))
+	if err != nil {
+		panic(err)
+	}
+	muxedRtpBinFramerateTemplater, err = template.New("muxed_rtpbin_framerate").Parse(helpers.ReadFile("config/pipelines/muxed_rtpbin_framerate.gtpl"))
 	if err != nil {
 		panic(err)
 	}

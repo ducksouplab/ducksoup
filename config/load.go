@@ -24,12 +24,13 @@ type SFUStream struct {
 	MaxBitrate     int `yaml:"maxBitrate"`
 }
 
-type frontendConfig struct {
-	Version string
+type versionConfig struct {
+	Front string
+	Back  string
 }
 
 var SFU SFUConfig
-var FrontendVersion string
+var FrontendVersion, BackendVersion string
 
 func init() {
 	// SFU
@@ -46,19 +47,20 @@ func init() {
 	}
 
 	// Front-end
-	f, err = helpers.Open("config/front.yml")
+	f, err = helpers.Open("config/version.yml")
 	if err != nil {
 		log.Fatal().Err(err)
 	}
 	defer f.Close()
 
-	var frontend frontendConfig
+	var version versionConfig
 	decoder = yaml.NewDecoder(f)
-	err = decoder.Decode(&frontend)
+	err = decoder.Decode(&version)
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	FrontendVersion = frontend.Version
+	FrontendVersion = version.Front
+	BackendVersion = version.Back
 
 	// log
 	log.Info().Str("context", "init").Str("config", fmt.Sprintf("%+v", SFU)).Msg("sfu_config_loaded")

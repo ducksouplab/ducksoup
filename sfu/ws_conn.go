@@ -70,40 +70,40 @@ func parseString(str string) string {
 	return clean
 }
 
-func parseVideoFormat(join types.JoinPayload) (videoFormat string) {
-	videoFormat = join.VideoFormat
+func parseVideoFormat(jp types.JoinPayload) (videoFormat string) {
+	videoFormat = jp.VideoFormat
 	if videoFormat != "VP8" && videoFormat != "H264" {
 		videoFormat = defaultVideoFormat
 	}
 	return
 }
 
-func parseRecordingMode(join types.JoinPayload) (recordingMode string) {
-	recordingMode = join.RecordingMode
-	if recordingMode != "reenc" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
+func parseRecordingMode(jp types.JoinPayload) (recordingMode string) {
+	recordingMode = jp.RecordingMode
+	if recordingMode != "ff" && recordingMode != "reenc" && recordingMode != "split" && recordingMode != "passthrough" && recordingMode != "none" {
 		recordingMode = defaultRecordingMode
 	}
 	return
 }
 
-func parseWidth(join types.JoinPayload) (width int) {
-	width = join.Width
+func parseWidth(jp types.JoinPayload) (width int) {
+	width = jp.Width
 	if width == 0 {
 		width = defaultWidth
 	}
 	return
 }
 
-func parseHeight(join types.JoinPayload) (height int) {
-	height = join.Height
+func parseHeight(jp types.JoinPayload) (height int) {
+	height = jp.Height
 	if height == 0 {
 		height = defaultHeight
 	}
 	return
 }
 
-func parseFramerate(join types.JoinPayload) (framerate int) {
-	framerate = join.Framerate
+func parseFramerate(jp types.JoinPayload) (framerate int) {
+	framerate = jp.Framerate
 	if framerate == 0 {
 		framerate = defaultFramerate
 	}
@@ -127,7 +127,7 @@ func (ws *wsConn) logError() *zerolog.Event {
 }
 
 // peer server has not been created yet
-func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
+func (ws *wsConn) readJoin(origin string) (jp types.JoinPayload, err error) {
 	var m messageIn
 
 	// First message must be a join
@@ -144,24 +144,24 @@ func (ws *wsConn) readJoin(origin string) (join types.JoinPayload, err error) {
 		return
 	}
 
-	err = json.Unmarshal([]byte(m.Payload), &join)
+	err = json.Unmarshal([]byte(m.Payload), &jp)
 
 	// restrict to authorized values
-	join.Namespace = parseString(join.Namespace)
-	join.InteractionName = parseString(join.InteractionName)
-	join.UserId = parseString(join.UserId)
-	join.VideoFormat = parseVideoFormat(join)
-	join.RecordingMode = parseRecordingMode(join)
-	join.Width = parseWidth(join)
-	join.Height = parseHeight(join)
-	join.Framerate = parseFramerate(join)
+	jp.Namespace = parseString(jp.Namespace)
+	jp.InteractionName = parseString(jp.InteractionName)
+	jp.UserId = parseString(jp.UserId)
+	jp.VideoFormat = parseVideoFormat(jp)
+	jp.RecordingMode = parseRecordingMode(jp)
+	jp.Width = parseWidth(jp)
+	jp.Height = parseHeight(jp)
+	jp.Framerate = parseFramerate(jp)
 	// add property
-	join.Origin = origin
+	jp.Origin = origin
 
 	// bind fields
-	ws.interactionName = join.InteractionName
-	ws.userId = join.UserId
-	ws.namespace = join.Namespace
+	ws.interactionName = jp.InteractionName
+	ws.userId = jp.UserId
+	ws.namespace = jp.Namespace
 	return
 }
 

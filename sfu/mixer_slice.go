@@ -45,15 +45,16 @@ type mixerSlice struct {
 	senderControllerIndex map[string]*senderController // per user id
 	targetBitrate         int
 	// stats
-	lastStats     time.Time
-	inputBits     int
-	outputBits    int
-	inputBitrate  int
-	outputBitrate int
+	lastStats          time.Time
+	inputBits          int
+	outputBits         int
+	inputBitrate       int
+	outputBitrate      int
+	baseRTPTimestampIn uint32
 	// status
 	doneCh chan struct{} // stop processing when track is removed
 	// analysic
-	plot *plot.BitratePlot
+	plot *plot.SlicePlot
 }
 
 // helpers
@@ -118,7 +119,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	}
 	// analysis
 	if env.GeneratePlots {
-		ms.plot = plot.NewBitratePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
+		ms.plot = plot.NewSlicePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
 	}
 
 	return
@@ -181,12 +182,10 @@ func (ms *mixerSlice) Write(buf []byte) (err error) {
 	n, err := ms.output.Write(buf)
 
 	if err == nil {
-		go func() {
-			ms.Lock()
-			// TOCHECK: header size is constant (12)
-			ms.outputBits += (n - 12) * 8
-			ms.Unlock()
-		}()
+		ms.Lock()
+		// supposed constant 12 bytes header
+		ms.outputBits += (n - 12) * 8
+		ms.Unlock()
 	}
 
 	return
@@ -238,6 +237,19 @@ pushToPipeline:
 			ms.pipeline.PushRTP(ms.kind, buf[:n])
 			// for stats
 			go ms.updateInputBits(n)
+			// time
+
+			// plot rtp timestamp
+			// r := &rtp.Packet{}
+			// if err := r.Unmarshal(buf[:n]); err == nil {
+			// 	if ms.baseRTPTimestampIn == 0 {
+			// 		ms.baseRTPTimestampIn = r.Timestamp
+			// 	} else {
+			// 		elapsedRTP := (r.Timestamp - ms.baseRTPTimestampIn) * 1000 / ms.input.Codec().ClockRate
+			// 		sinceStart := time.Since(i.startedAt).Milliseconds()
+			// 		ms.plot.AddRtpDiffIn(sinceStart - int64(elapsedRTP))
+			// 	}
+			// }
 		}
 	}
 }
@@ -291,6 +303,18 @@ func (ms *mixerSlice) loopReadRTCP() {
 	}
 }
 
+func (ms *mixerSlice) plotCurrentLevelTimes() {
+	names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+	if len(ms.fromPs.join.VideoFx) > 0 {
+		names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+	}
+	for _, n := range names {
+		l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
+		ms.plot.AddCurrentLevelTime(n, l)
+		ms.logInfo().Str("name", n).Uint64("value", l).Msg("poll_current_level_time")
+	}
+}
+
 func (ms *mixerSlice) loopEncoderController() {
 	// sleep a bit to be closer to latest update from sender controller,
 	// (if encoderControlPeriod is a multiple of gccPeriod)
@@ -303,6 +327,7 @@ func (ms *mixerSlice) loopEncoderController() {
 		case <-ms.Done():
 			return
 		case <-encoderTicker.C:
+			go ms.plotCurrentLevelTimes()
 			if len(ms.senderControllerIndex) > 0 {
 				rates := []int{}
 				for _, sc := range ms.senderControllerIndex {

@@ -26,7 +26,7 @@ Let's assume we have a DuckSoup server installed and running at `ducksoup-host.c
 
 The embedding origin (`my-experiment-host.com`) has to be listed as an authorized origin when starting the DuckSoup instance available at `ducksoup-host.com` (see [Environment variables](#environment-variables)).
 
-Then, on the experiment web page, include the `ducksoup.js` library (check latest version number in `config/front.yml`):
+Then, on the experiment web page, include the `ducksoup.js` library (check latest version number in `config/version.yml`):
 
 ```
 <script src="https://ducksoup-host.com/assets/v1.5/js/ducksoup.js"></script>

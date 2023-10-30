@@ -9,14 +9,16 @@ import "C"
 import (
 	"bufio"
 	"bytes"
+	"os"
 	"strings"
 	"text/template"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 )
 
-func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, audioOptions mediaOptions) string {
+func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audioOptions mediaOptions) string {
 
 	// shape template data
 	data := struct {
@@ -33,20 +35,20 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 		gstConfig.Shared.Queue,
 		videoOptions,
 		audioOptions,
-		join.DataFolder(),
+		jp.DataFolder(),
 		filePrefix,
-		join.Width,
-		join.Height,
-		join.Framerate,
+		jp.Width,
+		jp.Height,
+		jp.Framerate,
 	}
 
 	// render pipeline from template
 	var buf bytes.Buffer
 	var templater *template.Template
-	if join.AudioOnly {
+	if jp.AudioOnly {
 		if env.NoRecording {
 			templater = audioOnlyNoRecordingTemplater
-		} else if join.RecordingMode == "passthrough" {
+		} else if jp.RecordingMode == "passthrough" {
 			templater = audioOnlyPassthroughTemplater
 		} else {
 			// audio only default
@@ -55,18 +57,20 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 	} else {
 		if env.NoRecording {
 			templater = noRecordingTemplater
-		} else if join.RecordingMode == "split" {
+		} else if jp.RecordingMode == "split" {
 			templater = splitTemplater
-		} else if join.RecordingMode == "passthrough" {
+		} else if jp.RecordingMode == "passthrough" {
 			templater = passthroughTemplater
-		} else if join.RecordingMode == "none" {
+		} else if jp.RecordingMode == "none" {
 			templater = noRecordingTemplater
-		} else if join.RecordingMode == "reenc" {
+		} else if jp.RecordingMode == "reenc" {
 			templater = muxedReencTemplater
+		} else if jp.RecordingMode == "ff" {
+			templater = muxedRtpBinFramerateTemplater
 		} else {
 			// audio+video default, ideally would be muxedTemplater
 			templater = muxedRtpBinTemplater
-			if join.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
+			if jp.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
 				templater = muxedReencTemplater
 			}
 		}
@@ -74,6 +78,11 @@ func newPipelineDef(join types.JoinPayload, filePrefix string, videoOptions, aud
 	if err := templater.Execute(&buf, data); err != nil {
 		panic(err)
 	}
+
+	// log pipeline
+	contents := []byte("DuckSoup: " + config.BackendVersion + "\n\n")
+	contents = append(contents, buf.Bytes()...)
+	os.WriteFile(jp.DataFolder()+"/pipeline.txt", contents, 0666)
 
 	// process lines (trim and remove blank lines)
 	var formattedBuf bytes.Buffer

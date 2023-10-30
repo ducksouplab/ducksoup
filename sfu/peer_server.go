@@ -44,18 +44,18 @@ type peerServer struct {
 }
 
 func newPeerServer(
-	join types.JoinPayload,
+	jp types.JoinPayload,
 	i *interaction,
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	pipeline := gst.NewPipeline(join, i.randomId, i.joinedCountForUser(join.UserId), i.logger)
+	pipeline := gst.NewPipeline(jp, i.randomId, i.joinedCountForUser(jp.UserId), i.logger)
 
 	ps := &peerServer{
-		userId:            join.UserId,
+		userId:            jp.UserId,
 		interactionName:   i.name,
 		streamId:          uuid.New().String(),
-		join:              join,
+		join:              jp,
 		i:                 i,
 		pc:                pc,
 		ws:                ws,

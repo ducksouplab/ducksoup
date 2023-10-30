@@ -29,7 +29,7 @@ type Pipeline struct {
 	videoOutput types.TrackWriter
 	startedCh   chan struct{}
 	// sfu info
-	join            types.JoinPayload
+	jp              types.JoinPayload
 	iRandomId       string // interaction random id for filenames
 	connectionCount int    // count #connections for this user in this interaction
 	// options
@@ -47,7 +47,7 @@ func fileName(namespace string, prefix string, suffix string) string {
 	return namespace + "/" + prefix + "-" + suffix + ".mkv"
 }
 
-func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions) {
+func getOptions(jp types.JoinPayload) (videoOptions, audioOptions mediaOptions) {
 	audioOptions = gstConfig.Opus
 	// rely on the fact that assigning to a struct with only primitive values (string), is copying by value
 	// caution: don't extend codec type with non primitive values
@@ -55,9 +55,9 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 		panic("Unhandled audioCodec assign")
 	}
 	// choose videoCodec
-	nvCodec := env.NVCodec && join.GPU
-	nvCuda := env.NVCuda && join.GPU
-	switch join.VideoFormat {
+	nvCodec := env.NVCodec && jp.GPU
+	nvCuda := env.NVCuda && jp.GPU
+	switch jp.VideoFormat {
 	case "VP8":
 		videoOptions = gstConfig.VP8
 		videoOptions.SkipFixedCaps = true
@@ -68,15 +68,15 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 			videoOptions = gstConfig.X264
 		}
 	default:
-		panic("Unhandled format " + join.VideoFormat)
+		panic("Unhandled format " + jp.VideoFormat)
 	}
-	// set env and join dependent options
+	// set env and jp dependent options
 	videoOptions.nvCodec = nvCodec
 	videoOptions.nvCuda = nvCuda
-	videoOptions.Overlay = join.Overlay || env.ForceOverlay
+	videoOptions.Overlay = jp.Overlay || env.ForceOverlay
 	// complete with Fx
-	audioOptions.Fx = strings.Replace(join.AudioFx, "name=", "name=client_", -1)
-	videoOptions.Fx = strings.Replace(join.VideoFx, "name=", "name=client_", -1)
+	audioOptions.Fx = strings.Replace(jp.AudioFx, "name=", "name=client_", -1)
+	videoOptions.Fx = strings.Replace(jp.VideoFx, "name=", "name=client_", -1)
 
 	return
 }
@@ -86,14 +86,12 @@ func getOptions(join types.JoinPayload) (videoOptions, audioOptions mediaOptions
 //     with the interaction creation timestamp
 //   - when the pipeline is started, the timestamp is updated
 func (p *Pipeline) filePrefix() string {
-	blabla := "i-" + p.iRandomId +
+	return "i-" + p.iRandomId +
 		"-a-" + time.Now().Format("20060102-150405.000") +
-		"-s-" + p.join.Namespace +
-		"-n-" + p.join.InteractionName +
-		"-u-" + p.join.UserId +
+		"-s-" + p.jp.Namespace +
+		"-n-" + p.jp.InteractionName +
+		"-u-" + p.jp.UserId +
 		"-c-" + fmt.Sprint(p.connectionCount)
-
-	return blabla
 }
 
 // API
@@ -103,22 +101,22 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func NewPipeline(join types.JoinPayload, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
+func NewPipeline(jp types.JoinPayload, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
 	id := uuid.New().String()
 	logger = logger.With().
 		Str("context", "pipeline").
-		Str("user", join.UserId).
+		Str("user", jp.UserId).
 		Str("pipeline", id).
 		Logger()
 
-	videoOptions, audioOptions := getOptions(join)
+	videoOptions, audioOptions := getOptions(jp)
 	logger.Info().Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
 	logger.Info().Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
 
 	p := &Pipeline{
 		mu:              sync.Mutex{},
 		id:              id,
-		join:            join,
+		jp:              jp,
 		iRandomId:       iRandomId,
 		connectionCount: connectionCount,
 		videoOptions:    videoOptions,
@@ -129,7 +127,7 @@ func NewPipeline(join types.JoinPayload, iRandomId string, connectionCount int, 
 	}
 
 	// C pipeline
-	pipelineStr := newPipelineDef(join, p.filePrefix(), videoOptions, audioOptions)
+	pipelineStr := newPipelineDef(jp, p.filePrefix(), videoOptions, audioOptions)
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
 	defer C.free(unsafe.Pointer(cPipelineStr))
@@ -175,7 +173,7 @@ func (p *Pipeline) BindTrackAutoStart(kind string, t types.TrackWriter) {
 }
 
 func (p *Pipeline) updateReady(kind string) {
-	if p.join.AudioOnly {
+	if p.jp.AudioOnly {
 		if kind == "audio" {
 			p.start()
 		}
@@ -190,11 +188,11 @@ func (p *Pipeline) start() {
 	p.updateRecordingFiles()
 	// GStreamer start
 	audioOnly := 0
-	if p.join.AudioOnly {
+	if p.jp.AudioOnly {
 		audioOnly = 1
 	}
 	C.gstStartPipeline(p.cPipeline, C.int(audioOnly))
-	recordingPrefix := fmt.Sprintf("%s/%s/recordings/", p.join.Namespace, p.join.InteractionName)
+	recordingPrefix := fmt.Sprintf("%s/%s/recordings/", p.jp.Namespace, p.jp.InteractionName)
 	p.logger.Info().Str("recording_prefix", recordingPrefix).Msg("pipeline_started")
 }
 
@@ -211,11 +209,11 @@ func (p *Pipeline) Stop() {
 }
 
 func (p *Pipeline) updateRecordingFiles() {
-	hasWetFiles := len(p.join.AudioFx) > 0 || len(p.join.VideoFx) > 0
-	recordingPrefix := p.join.DataFolder() + "/recordings/" + p.filePrefix() + "-"
+	hasWetFiles := len(p.jp.AudioFx) > 0 || len(p.jp.VideoFx) > 0
+	recordingPrefix := p.jp.DataFolder() + "/recordings/" + p.filePrefix() + "-"
 
-	if p.join.AudioOnly {
-		switch p.join.RecordingMode {
+	if p.jp.AudioOnly {
+		switch p.jp.RecordingMode {
 		case "none":
 			return
 		case "passthrough":
@@ -234,7 +232,7 @@ func (p *Pipeline) updateRecordingFiles() {
 			}
 		}
 	} else {
-		switch p.join.RecordingMode {
+		switch p.jp.RecordingMode {
 		case "none":
 			return
 		case "split":
@@ -292,6 +290,16 @@ func (p *Pipeline) setPropInt(name string, prop string, value int) {
 	C.gstSetPropInt(p.cPipeline, cName, cProp, cValue)
 }
 
+func (p *Pipeline) getPropUint64(name string, prop string) uint64 {
+	cName := C.CString(name)
+	cProp := C.CString(prop)
+
+	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cProp))
+
+	return uint64(C.gstGetPropUint64(p.cPipeline, cName, cProp))
+}
+
 func (p *Pipeline) setPropFloat(name string, prop string, value float32) {
 	// fx prefix needed (added during pipeline initialization)
 	cName := C.CString(name)
@@ -314,6 +322,12 @@ func (p *Pipeline) setPropString(name, prop, value string) {
 	C.gstSetPropString(p.cPipeline, cName, cProp, cValue)
 }
 
+// API
+
+func (p *Pipeline) GetCurrentLevelTime(name string) uint64 {
+	return p.getPropUint64(name, "current-level-time")
+}
+
 func (p *Pipeline) SetEncodingBitrate(kind string, value int) {
 	// see https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#x264enc:bitrate
 	// see https://gstreamer.freedesktop.org/documentation/nvcodec/GstNvBaseEnc.html?gi-language=c#GstNvBaseEnc:bitrate
@@ -321,11 +335,11 @@ func (p *Pipeline) SetEncodingBitrate(kind string, value int) {
 	if kind == "audio" {
 		p.setPropInt("audio_encoder_wet", "bitrate", value)
 	} else {
-		if p.join.VideoFormat == "VP8" {
+		if p.jp.VideoFormat == "VP8" {
 			// see https://gstreamer.freedesktop.org/documentation/vpx/GstVPXEnc.html?gi-language=c#GstVPXEnc:target-bitrate
 			p.setPropInt("video_encoder_dry", "target-bitrate", value)
 			p.setPropInt("video_encoder_wet", "target-bitrate", value)
-		} else if p.join.VideoFormat == "H264" {
+		} else if p.jp.VideoFormat == "H264" {
 			// in kbit/s for x264enc and nvh264enc
 			value = value / 1000
 			p.setPropInt("video_encoder_dry", "bitrate", value)

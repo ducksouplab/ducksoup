@@ -48,7 +48,7 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 
 // API
 
-func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
+func newPionPeerConn(i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
 	// create RTC API
 	estimatorCh := make(chan cc.BandwidthEstimator, 1)
 	api, err := engine.NewWebRTCAPI(estimatorCh, i.logger)
@@ -64,7 +64,7 @@ func newPionPeerConn(join types.JoinPayload, i *interaction) (ppc *webrtc.PeerCo
 	return
 }
 
-func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
+func (pc *peerConn) prepareInTracks(jp types.JoinPayload) (err error) {
 	// accept one audio
 	_, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
@@ -84,7 +84,7 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 	}
 
 	// force codec preference if H264 (so VP8 won't prevail)
-	if join.VideoFormat == "H264" {
+	if jp.VideoFormat == "H264" {
 		err = videoTransceiver.SetCodecPreferences(engine.H264Codecs)
 		if err != nil {
 			pc.logError().Str("context", "track").Err(err).Msg("set_codec_preferences_failed")
@@ -94,18 +94,18 @@ func (pc *peerConn) prepareInTracks(join types.JoinPayload) (err error) {
 	return
 }
 
-func newPeerConn(join types.JoinPayload, i *interaction) (pc *peerConn, err error) {
-	ppc, ccEstimator, err := newPionPeerConn(join, i)
+func newPeerConn(jp types.JoinPayload, i *interaction) (pc *peerConn, err error) {
+	ppc, ccEstimator, err := newPionPeerConn(i)
 	if err != nil {
 		// pc is not created for now so we use the interaction logger
-		i.logger.Error().Err(err).Str("user", join.UserId)
+		i.logger.Error().Err(err).Str("user", jp.UserId)
 		return
 	}
 
 	// initial lastPLI far enough in the past
 	lastPLI := time.Now().Add(-2 * initialPLIMinInterval)
 
-	pc = &peerConn{sync.Mutex{}, ppc, join.UserId, i, lastPLI, initialPLIMinInterval, ccEstimator}
+	pc = &peerConn{sync.Mutex{}, ppc, jp.UserId, i, lastPLI, initialPLIMinInterval, ccEstimator}
 
 	// after an initial delay, change the minimum PLI interval
 	go func() {
@@ -113,7 +113,7 @@ func newPeerConn(join types.JoinPayload, i *interaction) (pc *peerConn, err erro
 		pc.pliMinInterval = mainPLIMinInterval
 	}()
 
-	err = pc.prepareInTracks(join)
+	err = pc.prepareInTracks(jp)
 	return
 }
 

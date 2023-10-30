@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/store"
@@ -56,6 +57,7 @@ type interaction struct {
 	duration     time.Duration
 	neededTracks int
 	ssrcs        []uint32
+	jp           types.JoinPayload
 	// log
 	logger zerolog.Logger
 	// internals
@@ -70,14 +72,14 @@ type userStream struct {
 
 // private and not guarded by mutex locks, since called by other guarded methods
 
-func generateId(join types.JoinPayload) string {
-	return join.Origin + "#" + join.Namespace + "#" + join.InteractionName
+func generateId(jp types.JoinPayload) string {
+	return jp.Origin + "#" + jp.Namespace + "#" + jp.InteractionName
 }
 
 func (i *interaction) setLogger() {
 	var logger zerolog.Logger
 
-	path := "./data/" + i.namespace + "/" + i.name + "/" + i.name + ".log"
+	path := i.jp.DataFolder() + "/" + i.name + ".log"
 	fileWriter, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 
 	if err == nil {
@@ -103,9 +105,9 @@ func (i *interaction) setLogger() {
 	i.logger = logger
 }
 
-func newInteraction(id string, join types.JoinPayload) *interaction {
+func newInteraction(id string, jp types.JoinPayload) *interaction {
 	// process duration
-	durationInSeconds := join.Duration
+	durationInSeconds := jp.Duration
 	if durationInSeconds < 1 {
 		durationInSeconds = DefaultDurationInSeconds
 	} else if durationInSeconds > MaxDurationInSeconds {
@@ -113,31 +115,31 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 	}
 
 	// process size
-	size := join.Size
+	size := jp.Size
 	if size < 1 {
 		size = DefaultSize
 	} else if size > MaxSize {
 		size = MaxSize
 	}
 	neededTracks := size * 2 // 1 audio and 1 video track per peer
-	if join.AudioOnly {
+	if jp.AudioOnly {
 		neededTracks = size // 1 audio track per peer
 	}
 
 	// interaction initialized with one connected peer
 	connectedIndex := make(map[string]bool)
-	connectedIndex[join.UserId] = true
+	connectedIndex[jp.UserId] = true
 	joinedCountIndex := make(map[string]int)
-	joinedCountIndex[join.UserId] = 1
+	joinedCountIndex[jp.UserId] = 1
 
 	// create data folders
-	helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/recordings")
+	helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/recordings")
 	if env.GeneratePlots {
-		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/plots")
+		helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/plots")
 	}
-	if join.VideoFormat == "H264" {
+	if jp.VideoFormat == "H264" {
 		// used by x264 mutipass cache or muxer
-		helpers.EnsureDir("./data/" + join.Namespace + "/" + join.InteractionName + "/cache")
+		helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/cache")
 	}
 
 	i := &interaction{
@@ -155,20 +157,21 @@ func newInteraction(id string, join types.JoinPayload) *interaction {
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
 		randomId:            helpers.RandomHexString(12),
-		namespace:           join.Namespace,
+		namespace:           jp.Namespace,
 		id:                  id,
-		name:                join.InteractionName,
+		name:                jp.InteractionName,
 		size:                size,
 		duration:            time.Duration(durationInSeconds) * time.Second,
 		neededTracks:        neededTracks,
 		ssrcs:               []uint32{},
+		jp:                  jp,
 		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
 	}
 	i.mixer = newMixer(i)
 	i.setLogger()
 
-	i.logger.Info().Str("context", "interaction").Str("user", join.UserId).Str("origin", join.Origin).Msg("interaction_created")
-	i.logger.Info().Str("context", "interaction").Str("user", join.UserId).Interface("payload", join).Msg("peer_joined")
+	i.logger.Info().Str("context", "interaction").Str("user", jp.UserId).Str("origin", jp.Origin).Msg("interaction_created")
+	i.logger.Info().Str("context", "interaction").Str("user", jp.UserId).Interface("payload", jp).Msg("peer_joined")
 
 	go i.abortCountdown()
 	return i
@@ -200,11 +203,11 @@ func (i *interaction) isDone() chan struct{} {
 	return i.doneCh
 }
 
-func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
+func (i *interaction) join(jp types.JoinPayload) (msg string, err error) {
 	i.Lock()
 	defer i.Unlock()
 
-	userId := join.UserId
+	userId := jp.UserId
 	connected, ok := i.connectedIndex[userId]
 	if ok {
 		// ok -> same user has previously connected
@@ -224,7 +227,7 @@ func (i *interaction) join(join types.JoinPayload) (msg string, err error) {
 		// new user joined existing interaction: normal path
 		i.connectedIndex[userId] = true
 		i.joinedCountIndex[userId] = 1
-		i.logger.Info().Str("context", "interaction").Str("user", userId).Interface("payload", join).Msg("peer_joined")
+		i.logger.Info().Str("context", "interaction").Str("user", userId).Interface("payload", jp).Msg("peer_joined")
 		return "existing-interaction", nil
 	}
 }
@@ -488,6 +491,7 @@ func (i *interaction) endingDelay() (delay int) {
 
 // return false if an error ends the waiting, discards RTP till ready
 func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
+	buf := make([]byte, config.SFU.Common.MTU)
 	for {
 		select {
 		case <-i.isReady():
@@ -495,7 +499,7 @@ func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 		case <-i.isAborted():
 			return false
 		default:
-			_, _, err := remoteTrack.ReadRTP()
+			_, _, err := remoteTrack.Read(buf)
 			if err != nil {
 				i.logger.Error().Str("context", "track").Err(err).Msg("loop_till_all_ready_failed")
 				return false

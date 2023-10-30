@@ -49,11 +49,11 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 				lost,
 			)
 
-		// case *rtcp.ReceiverReport:
-		// 	res += fmt.Sprintf("[ReceiverReport sent: %+v] reports:", rtcpPacket)
-		// 	for _, report := range rtcpPacket.Reports {
-		// 		res += fmt.Sprintf(" %+v", report.SSRC)
-		// 	}
+		case *rtcp.ReceiverReport:
+			res += fmt.Sprintf("[ReceiverReport sent: %+v] reports:", rtcpPacket)
+			for _, report := range rtcpPacket.Reports {
+				res += fmt.Sprintf(" %+v", report.SSRC)
+			}
 		default:
 			res += fmt.Sprintf("[%T sent] %+v", rtcpPacket, rtcpPacket)
 		}
