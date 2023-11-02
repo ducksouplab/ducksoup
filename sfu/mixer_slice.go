@@ -10,7 +10,6 @@ import (
 	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/gst"
-	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/plot"
 	"github.com/ducksouplab/ducksoup/sequencing"
 	"github.com/pion/webrtc/v3"
@@ -344,16 +343,20 @@ func (ms *mixerSlice) loopEncoderController() {
 				newPotentialRate := minInt(rates)
 
 				if ms.pipeline != nil && newPotentialRate > 0 {
-					// skip updating previous value and encoding rate too often
-					ms.Lock()
-					diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
-					ms.Unlock()
-					// diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
-					diffIsBigEnough := diff > diffThreshold
-					diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
-					if diffIsBigEnough || diffToMax {
-						go ms.updateTargetBitrates(newPotentialRate)
-					}
+					ms.updateTargetBitrates(newPotentialRate)
+
+					// DISABLED throttling update
+					// // skip updating previous value and encoding rate too often
+					// ms.Lock()
+					// diff := helpers.AbsPercentageDiff(ms.targetBitrate, newPotentialRate)
+					// ms.Unlock()
+					// // diffIsBigEnough: works also for diff being Inf+ (when updating from 0, diff is Inf+)
+					// diffIsBigEnough := diff > diffThreshold
+					// diffToMax := diff > 0 && (newPotentialRate == ms.streamConfig.MaxBitrate)
+					// if diffIsBigEnough || diffToMax {
+					// 	go ms.updateTargetBitrates(newPotentialRate)
+					// }
+					// END DISABLED
 				}
 			}
 		}

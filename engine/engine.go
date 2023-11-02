@@ -29,8 +29,8 @@ var (
 	H264Codecs []webrtc.RTPCodecParameters
 	VP8Codecs  []webrtc.RTPCodecParameters
 	// VP9 is not supported for the time being (GStreamer pipelines remained to be defined)
-	VP9Codecs                           []webrtc.RTPCodecParameters
-	ssrcRegexp, countRegexp, lostRegexp *regexp.Regexp
+	VP9Codecs  []webrtc.RTPCodecParameters
+	ssrcRegexp *regexp.Regexp
 )
 
 func init() {
@@ -41,8 +41,6 @@ func init() {
 
 	// other shared vars
 	ssrcRegexp = regexp.MustCompile(`ssrc:(.*?) `)
-	countRegexp = regexp.MustCompile(`count:(.*?) `)
-	lostRegexp = regexp.MustCompile(`lost:(.*?)$`)
 	videoRTCPFeedback = []webrtc.RTCPFeedback{
 		{Type: "goog-remb", Parameter: ""},
 		{Type: "ccm", Parameter: "fir"},

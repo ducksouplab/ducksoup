@@ -18,41 +18,26 @@ func formatSentRTCP(pkts []rtcp.Packet, _ interceptor.Attributes) (res string) {
 		switch rtcpPacket := pkt.(type) {
 		case *rtcp.TransportLayerNack:
 			res += fmt.Sprintf(
-				"[NACK sent] ssrc:%v sender:%v nacks:%v",
+				"ssrc:%v type: %T packet: %+v",
 				rtcpPacket.MediaSSRC,
-				rtcpPacket.SenderSSRC,
-				rtcpPacket.Nacks,
+				rtcpPacket,
+				rtcpPacket,
 			)
 		case *rtcp.TransportLayerCC:
-			var count uint16 = 0
-			var lost uint16 = 0
-			for _, chunk := range rtcpPacket.PacketChunks {
-				switch chk := chunk.(type) {
-				case *rtcp.RunLengthChunk:
-					count += chk.RunLength
-					if chk.PacketStatusSymbol == 0 {
-						lost += chk.RunLength
-					}
-				case *rtcp.StatusVectorChunk:
-					for _, symbol := range chk.SymbolList {
-						count += 1
-						if symbol == 0 {
-							lost += 1
-						}
-					}
-				}
-			}
 			res += fmt.Sprintf(
-				"[TWCC sent] ssrc:%v count:%v lost:%v",
+				"ssrc:%v type: %T packet: %+v",
 				rtcpPacket.MediaSSRC,
-				count,
-				lost,
+				rtcpPacket,
+				rtcpPacket,
 			)
-
 		case *rtcp.ReceiverReport:
-			res += fmt.Sprintf("[ReceiverReport sent: %+v] reports:", rtcpPacket)
 			for _, report := range rtcpPacket.Reports {
-				res += fmt.Sprintf(" %+v", report.SSRC)
+				res += fmt.Sprintf(
+					"ssrc:%v type: %T packet: %+v",
+					report.SSRC,
+					report,
+					report,
+				)
 			}
 		default:
 			res += fmt.Sprintf("[%T sent] %+v", rtcpPacket, rtcpPacket)
@@ -90,36 +75,24 @@ func (wc *logWriteCloser) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if n > 0 {
 		msg := string(p)
-		if strings.HasPrefix(msg, "[TWCC]") {
+		if strings.HasPrefix(msg, "ssrc") {
 			ssrcMatch := ssrcRegexp.FindStringSubmatch(msg)
 			// trace level to respect DUCKSOUP_LOG_LEVEL setting
 			if len(ssrcMatch) > 0 {
-				// remove ssrc from string and add it as a log prop
-				msg = ssrcRegexp.ReplaceAllString(msg, "")
-
 				if ssrc64, err := strconv.ParseUint(ssrcMatch[1], 10, 32); err == nil {
 					ssrc := uint32(ssrc64)
 
 					if ssrcLog, ok := store.GetFromSSRCIndex(ssrc); ok {
-						countMatch := countRegexp.FindStringSubmatch(msg)
-						lostMatch := lostRegexp.FindStringSubmatch(msg)
-
-						if len(countMatch) > 0 && len(lostMatch) > 0 {
-							// don't log empty counts
-							if count, err := strconv.ParseUint(countMatch[1], 10, 64); err == nil && count != 0 {
-								if lost, err := strconv.ParseUint(lostMatch[1], 10, 64); err == nil {
-									wc.logger.Trace().
-										Str("context", "track").
-										Str("ssrc", ssrcMatch[1]).
-										Str("namespace", ssrcLog.Namespace).
-										Str("interaction", ssrcLog.Interaction).
-										Str("user", ssrcLog.User).
-										Uint64("lost", lost).
-										Uint64("count", count).
-										Msg(ssrcLog.Kind + "_in_report")
-								}
-							}
-						}
+						// remove ssrc from string and add it as a log prop
+						msg = ssrcRegexp.ReplaceAllString(msg, "")
+						wc.logger.Trace().
+							Str("context", "track").
+							Str("ssrc", ssrcMatch[1]).
+							Str("namespace", ssrcLog.Namespace).
+							Str("interaction", ssrcLog.Interaction).
+							Str("user", ssrcLog.User).
+							Str("packet", msg).
+							Msg(ssrcLog.Kind + "_in_rtcp_emitted")
 					}
 				}
 			}

@@ -1,5 +1,7 @@
 dev:
 	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2 ./ducksoup
+devlog:
+	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=2 GST_DEBUG_FILE=log/gst.log ./ducksoup
 debug:
 	@go build && DUCKSOUP_MODE=DEV GST_DEBUG=6 GST_DEBUG_FILE=log/gst.log ./ducksoup
 cleardata:
@@ -22,5 +24,3 @@ dockerbuild:
 	@docker build -f docker/Dockerfile.build -t ducksoup:latest . && docker tag ducksoup ducksouplab/ducksoup
 dockerpush:
 	@docker push ducksouplab/ducksoup:latest
-ttt:
-	@TTT=blabla echo '$$TTT'
