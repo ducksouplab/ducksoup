@@ -34,7 +34,3 @@ func createLinePoints(p *plot.Plot, label string, xys plotter.XYer, width, dashe
 	p.Add(line, points)
 	p.Legend.Add(label, line, points)
 }
-
-func getColorFromInt(counter int) color.RGBA {
-	return color.RGBA{R: uint8((10 + 100*counter) % 255), G: uint8((240 - 50*counter) % 255), B: uint8((200 + 50*counter) % 255), A: 255}
-}

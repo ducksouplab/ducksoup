@@ -64,6 +64,7 @@ rtpbin. !
 
 rtpbin. !
 {{if .Video.Fx}}
+    {{.Queue.Base}} name=video_queue_bef_depay !
     {{.Video.Rtp.Depay}} ! 
 
     tee name=tee_video_in ! 
@@ -77,7 +78,9 @@ rtpbin. !
         {{.Video.ConstraintFormatFramerate .Framerate}} !
 
         videoconvert ! 
+        {{.Queue.Base}} name=video_queue_bef_fx !
         {{.Video.Fx}} !
+        {{.Queue.Base}} name=video_queue_aft_fx !
         {{if .Video.Overlay }}
             {{.Video.TimeOverlay }} ! 
         {{end}}

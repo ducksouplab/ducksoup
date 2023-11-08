@@ -305,7 +305,7 @@ func (ms *mixerSlice) loopReadRTCP() {
 func (ms *mixerSlice) plotCurrentLevelTimes() {
 	names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
 	if len(ms.fromPs.join.VideoFx) > 0 {
-		names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+		names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_drymux", "video_queue_bef_fx", "video_queue_aft_fx", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
 	}
 	for _, n := range names {
 		l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
@@ -330,10 +330,8 @@ func (ms *mixerSlice) loopEncoderController() {
 			if len(ms.senderControllerIndex) > 0 {
 				rates := []int{}
 				for _, sc := range ms.senderControllerIndex {
-					if env.GCC && ms.kind == "video" {
-						rates = append(rates, sc.ccOptimalBitrate)
-					} else {
-						rates = append(rates, sc.lossOptimalBitrate)
+					if ms.kind == "video" {
+						rates = append(rates, sc.optimalRate())
 					}
 				}
 				// DISABLED no need to encode more than inputToOutputMaxFactor times the inputBitrate

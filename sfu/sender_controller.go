@@ -75,6 +75,13 @@ func (sc *senderController) capRate(in int) int {
 	return in
 }
 
+func (sc *senderController) optimalRate() int {
+	if env.GCC {
+		return sc.ccOptimalBitrate
+	}
+	return sc.lossOptimalBitrate
+}
+
 // see https://datatracker.ietf.org/doc/html/draft-ietf-rmcat-gcc-02
 // credits to https://github.com/jech/galene
 func (sc *senderController) updateRateFromLoss(loss int) {
