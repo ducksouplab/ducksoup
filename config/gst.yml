@@ -3,7 +3,7 @@ shared:
     RTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=200
   video:
     RTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=200
-    rawFormat: video/x-raw,format=I420,colorimetry=bt601,chroma-site=jpeg,pixel-aspect-ratio=1/1
+    rawFormat: video/x-raw,format=I420,pixel-aspect-ratio=1/1
     constraint:
       format: >-
         {{.Convert}} !
@@ -48,7 +48,7 @@ vp8:
   decoder: >-
     vp8dec
     discard-corrupted-frames=true
-    min-force-key-unit-interval=120000000
+    min-force-key-unit-interval=500000000
   encoder: >-
     vp8enc name={{.Name}}
     target-bitrate={{.DefaultBitrate}}
@@ -57,22 +57,22 @@ vp8:
     undershoot=95
     keyframe-max-dist=999999
     max-quantizer=56
-    min-force-key-unit-interval=120000000
+    min-force-key-unit-interval=500000000
 x264:
   encoding: "H264"
   muxer: "mp4mux"
   extension: "mp4"
   rtp:
     caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
-    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
+    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency
     depay: >-
       rtph264depay request-keyframe=true !
-      h264parse !
+      h264parse config-interval=-1 !
       h264timestamper
   decoder: >-
     avdec_h264
     discard-corrupted-frames=true
-    min-force-key-unit-interval=120000000
+    min-force-key-unit-interval=500000000
   encoder: >-
     x264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
@@ -85,7 +85,7 @@ x264:
     key-int-max=256
     b-adapt=false
     vbv-buf-capacity=120
-    min-force-key-unit-interval=120000000 !
+    min-force-key-unit-interval=500000000 !
     video/x-h264, profile=constrained-baseline ! 
     h264parse
 nv264:
@@ -94,22 +94,22 @@ nv264:
   extension: "mp4"
   rtp:
     caps: application/x-rtp,media=video,clock-rate=90000,payload=125,encoding-name=H264
-    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency config-interval=-1
+    pay: rtph264pay pt=125 mtu=1200 aggregate-mode=zero-latency
     depay: >-
       rtph264depay request-keyframe=true !
-      h264parse !
+      h264parse config-interval=-1 !
       h264timestamper
   decoder: >-
     nvh264sldec
     discard-corrupted-frames=true
-    min-force-key-unit-interval=120000000
+    min-force-key-unit-interval=500000000
   encoder: >-
     nvh264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
     preset=low-latency-hp
     rc-mode=cbr-ld-hq
     zerolatency=true
-    min-force-key-unit-interval=120000000
+    min-force-key-unit-interval=500000000
     rc-lookahead=0 !
     video/x-h264, profile=constrained-baseline !
     h264parse

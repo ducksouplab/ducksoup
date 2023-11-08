@@ -38,7 +38,7 @@ rtpbin. !
             wet_muxer.
 
         tee_audio_out. ! 
-            {{.Queue.Leaky}} ! 
+            {{.FinalQueue}} leaky=2 ! 
             {{.Audio.Rtp.Pay}} !
             audio_rtp_sink.
 {{else}}
@@ -58,7 +58,7 @@ rtpbin. !
         {{end}}
 
     tee_audio_in. ! 
-        {{.Queue.Leaky}} ! 
+        {{.FinalQueue}} leaky=2 ! 
         audio_rtp_sink.
 {{end}}
 
@@ -90,7 +90,7 @@ rtpbin. !
             wet_muxer.
 
         tee_video_out. ! 
-            {{.Queue.Base}} name=video_queue_bef_sink ! 
+            {{.FinalQueue}} name=video_queue_bef_sink ! 
             {{.Video.Rtp.Pay}} ! 
             video_rtp_sink.
 {{else}}
@@ -108,6 +108,6 @@ rtpbin. !
             dry_muxer.
         {{end}}
     tee_video_in. ! 
-        {{.Queue.Base}} name=video_queue_bef_sink ! 
+        {{.FinalQueue}} name=video_queue_bef_sink ! 
         video_rtp_sink.
 {{end}}

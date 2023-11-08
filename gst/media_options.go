@@ -95,16 +95,3 @@ func (mo mediaOptions) ConstraintFormatFramerateResolution(framerate, width, hei
 	}
 	return
 }
-
-// func (mo mediaOptions) ConstraintFormatFramerateResolution(width, height, framerate int) (output string) {
-// 	output = strings.Replace(gstConfig.SharedVideoConstraintFormatFramerateResolution, "{{.VideoCaps}}", gstConfig.SharedVideoFormat, -1)
-// 	output = strings.Replace(output, "{{.Width}}", ", width="+strconv.Itoa(width), -1)
-// 	output = strings.Replace(output, "{{.Height}}", ", height="+strconv.Itoa(height), -1)
-// 	output = strings.Replace(output, "{{.Framerate}}", ", framerate="+strconv.Itoa(framerate)+"/1", -1)
-// 	if mo.nvCuda {
-// 		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
-// 	} else {
-// 		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
-// 	}
-// 	return
-// }

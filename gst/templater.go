@@ -33,6 +33,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		Height     int
 		Framerate  int
 		RTPBin     string
+		FinalQueue string
 	}{
 		gstConfig.Shared.Queue,
 		videoOptions,
@@ -43,6 +44,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		jp.Height,
 		jp.Framerate,
 		"rtpbin name=rtpbin latency=" + strconv.Itoa(env.JitterBuffer),
+		"queue max-size-buffers=0 max-size-bytes=0 max-size-time=" + strconv.Itoa(env.JitterBuffer) + "000000",
 	}
 
 	// render pipeline from template
