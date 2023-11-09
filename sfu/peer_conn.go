@@ -202,11 +202,8 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error
 		},
 	})
 	if err != nil {
-		pc.logError().Err(err).Str("context", "track").Msg("server_send_pli_failed")
+		pc.logError().Err(err).Str("context", "track").Msg("server_pli_failed")
 	} else {
-		pc.Lock()
-		pc.lastPLI = time.Now()
-		pc.Unlock()
 		pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_sent")
 	}
 	return
@@ -224,6 +221,7 @@ func (pc *peerConn) throttledPLIRequest(cause string) {
 				// throttle: don't send too many PLIs
 				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_skipped")
 			} else {
+				pc.lastPLI = time.Now()
 				go pc.writePLI(track, cause)
 			}
 		}
