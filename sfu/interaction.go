@@ -80,7 +80,7 @@ func generateId(jp types.JoinPayload) string {
 func (i *interaction) setLogger() {
 	var logger zerolog.Logger
 
-	path := i.DataFolder() + "/" + i.name + ".log"
+	path := i.DataFolder() + "/" + i.name + "-a-" + time.Now().Format("20060102-150405.000") + ".log"
 	fileWriter, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 
 	if err == nil {
@@ -156,7 +156,7 @@ func newInteraction(id string, jp types.JoinPayload) *interaction {
 		neededTracks:        neededTracks,
 		ssrcs:               []uint32{},
 		jp:                  jp,
-		dataFolder:          fmt.Sprintf("data/%v/%v-%v", jp.Namespace, time.Now().Format("20060102-150405"), jp.InteractionName),
+		dataFolder:          fmt.Sprintf("data/%v/%v", jp.Namespace, jp.InteractionName),
 		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
 	}
 	// create data folders

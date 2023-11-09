@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
@@ -87,7 +88,7 @@ func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOp
 	// log pipeline
 	contents := []byte("DuckSoup: " + config.BackendVersion + "\n\n")
 	contents = append(contents, buf.Bytes()...)
-	os.WriteFile(dataFolder+"/pipeline-"+jp.UserId+".txt", contents, 0666)
+	os.WriteFile(dataFolder+"/pipeline-u-"+jp.UserId+"-"+time.Now().Format("20060102-150405.000")+".txt", contents, 0666)
 
 	// process lines (trim and remove blank lines)
 	var formattedBuf bytes.Buffer
