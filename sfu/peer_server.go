@@ -30,7 +30,7 @@ type peerServer struct {
 	userId          string
 	interactionName string
 	streamId        string // one stream Id shared by mixerSlices on a given pc
-	join            types.JoinPayload
+	jp              types.JoinPayload
 	i               *interaction
 	pc              *peerConn
 	ws              *wsConn
@@ -49,13 +49,13 @@ func newPeerServer(
 	pc *peerConn,
 	ws *wsConn) *peerServer {
 
-	pipeline := gst.NewPipeline(jp, i.randomId, i.joinedCountForUser(jp.UserId), i.logger)
+	pipeline := gst.NewPipeline(jp, i.DataFolder(), i.randomId, i.joinedCountForUser(jp.UserId), i.logger)
 
 	ps := &peerServer{
 		userId:            jp.UserId,
 		interactionName:   i.name,
 		streamId:          uuid.New().String(),
-		join:              jp,
+		jp:                jp,
 		i:                 i,
 		pc:                pc,
 		ws:                ws,

@@ -1,6 +1,8 @@
 Currently different recording modes are offered:
 
-- `muxed` (default) -> audio/video muxed in the same file
+- `forced framerate` (default) -> audio/video muxed in the same file, with video outputs framerate constrained
+
+- `free framerate` (default) -> audio/video muxed in the same file, with varying input framerate let unconstrained
 
 - `reenc` -> audio/video muxed in the same file, dry signal being reencoded
 

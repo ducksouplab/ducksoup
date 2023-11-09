@@ -37,8 +37,9 @@ type Pipeline struct {
 	audioOptions mediaOptions
 	// stoppedCount=2 if audio and video have been stopped
 	stoppedCount int
-	// log
-	logger zerolog.Logger
+	// data and log
+	dataFolder string
+	logger     zerolog.Logger
 	// API
 	RecordingFiles []string
 }
@@ -101,7 +102,7 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func NewPipeline(jp types.JoinPayload, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
+func NewPipeline(jp types.JoinPayload, dataFolder, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
 	id := uuid.New().String()
 	logger = logger.With().
 		Str("context", "pipeline").
@@ -123,11 +124,12 @@ func NewPipeline(jp types.JoinPayload, iRandomId string, connectionCount int, lo
 		audioOptions:    audioOptions,
 		stoppedCount:    0,
 		startedCh:       make(chan struct{}),
+		dataFolder:      dataFolder,
 		logger:          logger,
 	}
 
 	// C pipeline
-	pipelineStr := newPipelineDef(jp, p.filePrefix(), videoOptions, audioOptions)
+	pipelineStr := newPipelineDef(jp, p.dataFolder, p.filePrefix(), videoOptions, audioOptions)
 	cPipelineStr := C.CString(pipelineStr)
 	cId := C.CString(id)
 	defer C.free(unsafe.Pointer(cPipelineStr))
@@ -210,7 +212,7 @@ func (p *Pipeline) Stop() {
 
 func (p *Pipeline) updateRecordingFiles() {
 	hasWetFiles := len(p.jp.AudioFx) > 0 || len(p.jp.VideoFx) > 0
-	recordingPrefix := p.jp.DataFolder() + "/recordings/" + p.filePrefix() + "-"
+	recordingPrefix := p.dataFolder + "/recordings/" + p.filePrefix() + "-"
 
 	if p.jp.AudioOnly {
 		switch p.jp.RecordingMode {

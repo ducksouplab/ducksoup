@@ -58,6 +58,7 @@ type interaction struct {
 	neededTracks int
 	ssrcs        []uint32
 	jp           types.JoinPayload
+	dataFolder   string
 	// log
 	logger zerolog.Logger
 	// internals
@@ -79,7 +80,7 @@ func generateId(jp types.JoinPayload) string {
 func (i *interaction) setLogger() {
 	var logger zerolog.Logger
 
-	path := i.jp.DataFolder() + "/" + i.name + ".log"
+	path := i.DataFolder() + "/" + i.name + ".log"
 	fileWriter, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 
 	if err == nil {
@@ -132,16 +133,6 @@ func newInteraction(id string, jp types.JoinPayload) *interaction {
 	joinedCountIndex := make(map[string]int)
 	joinedCountIndex[jp.UserId] = 1
 
-	// create data folders
-	helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/recordings")
-	if env.GeneratePlots {
-		helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/plots")
-	}
-	if jp.VideoFormat == "H264" {
-		// used by x264 mutipass cache or muxer
-		helpers.EnsureDir("./data/" + jp.Namespace + "/" + jp.InteractionName + "/cache")
-	}
-
 	i := &interaction{
 		peerServerIndex:     make(map[string]*peerServer),
 		filesIndex:          make(map[string][]string),
@@ -165,7 +156,17 @@ func newInteraction(id string, jp types.JoinPayload) *interaction {
 		neededTracks:        neededTracks,
 		ssrcs:               []uint32{},
 		jp:                  jp,
+		dataFolder:          fmt.Sprintf("data/%v/%v-%v", jp.Namespace, time.Now().Format("20060102-150405"), jp.InteractionName),
 		abortTimer:          time.NewTimer(time.Duration(AbortLimitInSeconds) * time.Second),
+	}
+	// create data folders
+	helpers.EnsureDir("./" + i.dataFolder + "/recordings")
+	if env.GeneratePlots {
+		helpers.EnsureDir("./" + i.dataFolder + "/plots")
+	}
+	if jp.VideoFormat == "H264" {
+		// used by x264 mutipass cache or muxer
+		helpers.EnsureDir("./" + i.dataFolder + "/cache")
 	}
 	i.mixer = newMixer(i)
 	i.setLogger()
@@ -175,6 +176,10 @@ func newInteraction(id string, jp types.JoinPayload) *interaction {
 
 	go i.abortCountdown()
 	return i
+}
+
+func (i *interaction) DataFolder() string {
+	return i.dataFolder
 }
 
 // Run: implement log Hook interface

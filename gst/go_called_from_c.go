@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/ducksouplab/ducksoup/types"
+	"github.com/rs/zerolog/log"
 )
 
 const GstLevelError = 1
@@ -82,18 +83,16 @@ func goRequestKeyFrame(cId *C.char) {
 	}
 }
 
-//export goPipelineLog
-func goPipelineLog(cId *C.char, msg *C.char, isError C.int) {
+//export goLogError
+func goLogError(cId, cMsg, cEl *C.char) {
 	id := C.GoString(cId)
-	m := C.GoString(msg)
-	p, ok := pipelineStoreSingleton.find(id)
+	msg := C.GoString(cMsg)
+	el := C.GoString(cEl)
+	p, found := pipelineStoreSingleton.find(id)
 
-	if ok {
-		if isError == 0 {
-			p.logger.Error().Err(errors.New(m)).Msg("gstreamer_pipeline_error")
-		} else {
-			// CAUTION: not documented
-			p.logger.Log().Str("value", m).Msg("gstreamer_pipeline_log")
-		}
+	if found {
+		p.logger.Error().Err(errors.New(msg)).Str("element", el).Msg("gstreamer_error")
+	} else {
+		log.Error().Str("context", "gst").Err(errors.New(msg)).Str("element", el).Str("id", id).Msg("gstreamer_error_detached")
 	}
 }

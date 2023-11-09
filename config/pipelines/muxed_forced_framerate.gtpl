@@ -2,6 +2,7 @@
 
 appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! {{.Audio.Rtp.Caps}} ! rtpbin.recv_rtp_sink_0
 appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! {{.Video.Rtp.Caps}} ! rtpbin.recv_rtp_sink_1
+
 appsrc name=audio_rtcp_src ! rtpbin.recv_rtcp_sink_0
 appsrc name=video_rtcp_src ! rtpbin.recv_rtcp_sink_1
 
@@ -38,7 +39,7 @@ rtpbin. !
             wet_muxer.
 
         tee_audio_out. ! 
-            {{.Queue.Leaky}} ! 
+            {{.FinalQueue}} leaky=2 ! 
             {{.Audio.Rtp.Pay}} !
             audio_rtp_sink.
 {{else}}
@@ -58,12 +59,13 @@ rtpbin. !
         {{end}}
 
     tee_audio_in. ! 
-        {{.Queue.Leaky}} ! 
+        {{.FinalQueue}} leaky=2 ! 
         audio_rtp_sink.
 {{end}}
 
 rtpbin. !
 {{if .Video.Fx}}
+    {{.Queue.Base}} name=video_queue_bef_depay !
     {{.Video.Rtp.Depay}} ! 
 
     tee name=tee_video_in ! 
@@ -74,10 +76,12 @@ rtpbin. !
         {{.Queue.Base}} name=video_queue_bef_dec ! 
         {{.Video.Decoder}} !
         {{.Queue.Leaky}} name=video_queue_aft_dec ! 
-        {{.Video.ConstraintFormat}} !
+        {{.Video.ConstraintFormatFramerate .Framerate}} !
 
         videoconvert ! 
+        {{.Queue.Base}} name=video_queue_bef_fx !
         {{.Video.Fx}} !
+        {{.Queue.Base}} name=video_queue_aft_fx !
         {{if .Video.Overlay }}
             {{.Video.TimeOverlay }} ! 
         {{end}}
@@ -90,7 +94,7 @@ rtpbin. !
             wet_muxer.
 
         tee_video_out. ! 
-            {{.Queue.Base}} name=video_queue_bef_sink ! 
+            {{.FinalQueue}} name=video_queue_bef_sink ! 
             {{.Video.Rtp.Pay}} ! 
             video_rtp_sink.
 {{else}}
@@ -108,6 +112,6 @@ rtpbin. !
             dry_muxer.
         {{end}}
     tee_video_in. ! 
-        {{.Queue.Base}} name=video_queue_bef_sink ! 
+        {{.FinalQueue}} name=video_queue_bef_sink ! 
         video_rtp_sink.
 {{end}}

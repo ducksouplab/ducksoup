@@ -44,12 +44,12 @@ type mixerSlice struct {
 	senderControllerIndex map[string]*senderController // per user id
 	targetBitrate         int
 	// stats
-	lastStats          time.Time
-	inputBits          int
-	outputBits         int
-	inputBitrate       int
-	outputBitrate      int
-	baseRTPTimestampIn uint32
+	lastStats     time.Time
+	inputBits     int
+	outputBits    int
+	inputBitrate  int
+	outputBitrate int
+	// baseRTPTimestampIn uint32
 	// status
 	doneCh chan struct{} // stop processing when track is removed
 	// analysic
@@ -118,7 +118,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	}
 	// analysis
 	if env.GeneratePlots {
-		ms.plot = plot.NewSlicePlot(ms, kind, ps.userId, ps.join.DataFolder()+"/plots")
+		ms.plot = plot.NewSlicePlot(ms, kind, ps.userId, ps.i.DataFolder()+"/plots")
 	}
 
 	return
@@ -214,6 +214,11 @@ func (ms *mixerSlice) loop() {
 	go ms.loopReadRTCP()
 	if ms.kind == "video" {
 		go ms.loopEncoderController()
+
+		rm := ms.i.jp.RecordingMode
+		if rm == "forced" || rm == "free" || rm == "reenc" {
+			go ms.loopCurrentLevelTimePlots()
+		}
 	}
 	go ms.loopStats()
 	if env.GeneratePlots {
@@ -302,18 +307,6 @@ func (ms *mixerSlice) loopReadRTCP() {
 	}
 }
 
-func (ms *mixerSlice) plotCurrentLevelTimes() {
-	names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
-	if len(ms.fromPs.join.VideoFx) > 0 {
-		names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_drymux", "video_queue_bef_fx", "video_queue_aft_fx", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
-	}
-	for _, n := range names {
-		l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
-		ms.plot.AddCurrentLevelTime(n, l)
-		ms.logInfo().Str("name", n).Uint64("value", l).Msg("poll_current_level_time")
-	}
-}
-
 func (ms *mixerSlice) loopEncoderController() {
 	// sleep a bit to be closer to latest update from sender controller,
 	// (if encoderControlPeriod is a multiple of gccPeriod)
@@ -326,7 +319,6 @@ func (ms *mixerSlice) loopEncoderController() {
 		case <-ms.Done():
 			return
 		case <-encoderTicker.C:
-			go ms.plotCurrentLevelTimes()
 			if len(ms.senderControllerIndex) > 0 {
 				rates := []int{}
 				for _, sc := range ms.senderControllerIndex {
@@ -356,6 +348,27 @@ func (ms *mixerSlice) loopEncoderController() {
 					// }
 					// END DISABLED
 				}
+			}
+		}
+	}
+}
+
+func (ms *mixerSlice) loopCurrentLevelTimePlots() {
+	ticker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ms.Done():
+			return
+		case <-ticker.C:
+			names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+			if len(ms.fromPs.jp.VideoFx) > 0 {
+				names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_drymux", "video_queue_bef_fx", "video_queue_aft_fx", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+			}
+			for _, n := range names {
+				l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
+				ms.plot.AddCurrentLevelTime(n, l)
+				ms.logInfo().Str("name", n).Uint64("value", l).Msg("poll_current_level_time")
 			}
 		}
 	}

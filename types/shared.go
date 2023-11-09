@@ -1,7 +1,5 @@
 package types
 
-import "fmt"
-
 type JoinPayload struct {
 	InteractionName string `json:"interactionName"`
 	UserId          string `json:"userId"`
@@ -21,10 +19,6 @@ type JoinPayload struct {
 	AudioOnly     bool   `json:"audioOnly"`
 	// Not from JSON
 	Origin string
-}
-
-func (join JoinPayload) DataFolder() string {
-	return fmt.Sprintf("data/%v/%v", join.Namespace, join.InteractionName)
 }
 
 type TrackWriter interface {

@@ -19,7 +19,7 @@ import (
 	"github.com/ducksouplab/ducksoup/types"
 )
 
-func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audioOptions mediaOptions) string {
+func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOptions, audioOptions mediaOptions) string {
 
 	// shape template data
 	data := struct {
@@ -38,7 +38,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		gstConfig.Shared.Queue,
 		videoOptions,
 		audioOptions,
-		jp.DataFolder(),
+		dataFolder,
 		filePrefix,
 		jp.Width,
 		jp.Height,
@@ -69,14 +69,14 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 		} else if jp.RecordingMode == "none" {
 			templater = noRecordingTemplater
 		} else if jp.RecordingMode == "reenc" {
-			templater = muxedReencTemplater
+			templater = muxedReencDryTemplater
 		} else if jp.RecordingMode == "free" {
-			templater = muxedRtpBinTemplater
-		} else {
+			templater = muxedFreeFramerateTemplater
+		} else { // default
 			// audio+video default, ideally would be muxedTemplater
-			templater = muxedRtpBinFramerateTemplater
+			templater = muxedForcedFramerateTemplater
 			if jp.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
-				templater = muxedReencTemplater
+				templater = muxedReencDryTemplater
 			}
 		}
 	}
@@ -87,7 +87,7 @@ func newPipelineDef(jp types.JoinPayload, filePrefix string, videoOptions, audio
 	// log pipeline
 	contents := []byte("DuckSoup: " + config.BackendVersion + "\n\n")
 	contents = append(contents, buf.Bytes()...)
-	os.WriteFile(jp.DataFolder()+"/pipeline.txt", contents, 0666)
+	os.WriteFile(dataFolder+"/pipeline-"+jp.UserId+".txt", contents, 0666)
 
 	// process lines (trim and remove blank lines)
 	var formattedBuf bytes.Buffer

@@ -27,6 +27,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
     GstElement* pipeline = (GstElement*) data; // free?
     char *id = gst_element_get_name(pipeline);
 
+    // https://gstreamer.freedesktop.org/documentation/gstreamer/gstmessage.html?gi-language=c
     switch (GST_MESSAGE_TYPE(msg))
     {
     case GST_MESSAGE_EOS: {
@@ -35,11 +36,14 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
     }
     case GST_MESSAGE_ERROR:
     {
+
+        gchar *debug;
         GError *error;
 
-        char msgBuf[100];
-        sprintf(msgBuf, "ERR [gst.c] from element %d: %s\n",GST_OBJECT_NAME (msg->src), error->message);
-        goPipelineLog(id, msgBuf, 1);
+        gst_message_parse_error(msg, &error, &debug);
+        g_free(debug);
+
+        goLogError(id, error->message, GST_OBJECT_NAME (msg->src));
         stop_pipeline(pipeline);
 
         g_error_free(error);
