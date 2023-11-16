@@ -185,7 +185,6 @@ func (p *Pipeline) updateReady(kind string) {
 }
 
 func (p *Pipeline) start() {
-	close(p.startedCh)
 	// update timestamps in recordings file paths
 	p.updateRecordingFiles()
 	// GStreamer start
@@ -196,6 +195,10 @@ func (p *Pipeline) start() {
 	C.gstStartPipeline(p.cPipeline, C.int(audioOnly))
 	recordingPrefix := fmt.Sprintf("%s/%s/recordings/", p.jp.Namespace, p.jp.InteractionName)
 	p.logger.Info().Str("recording_prefix", recordingPrefix).Msg("pipeline_started")
+
+	// a side-effect of closing startedCh is that buffers will be pushed to appsrc
+	// and this should not happen before starting the pipeline
+	close(p.startedCh)
 }
 
 // stop the GStreamer pipeline

@@ -458,7 +458,7 @@ func (ps *peerServer) loop() {
 // API
 
 // handle incoming websockets
-func RunPeerServer(origin, href string, unsafeConn ws.IGorilla) {
+func RunPeerServer(origin string, unsafeConn ws.IGorilla) {
 
 	ws := newWsConn(unsafeConn)
 	defer ws.Close()
@@ -473,7 +473,7 @@ func RunPeerServer(origin, href string, unsafeConn ws.IGorilla) {
 			log.Error().Str("context", "signaling").Err(err).Msg("join_payload_corrupted")
 			return
 		}
-		log.Info().Str("context", "peer").Str("href", href).Str("userId", joinPayload.UserId).Msg("join_payload_ok")
+		log.Info().Str("context", "peer").Str("userId", joinPayload.UserId).Msg("join_payload_ok")
 		joinCh <- joinPayload
 	}()
 

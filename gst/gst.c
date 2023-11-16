@@ -50,7 +50,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         break;
     }
     default:
-        //g_print("got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
+        // g_print(">>> got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
         break;
     }
 
@@ -212,6 +212,7 @@ void gstSrcPush(GstElement *pipeline, char *srcname, void *buffer, int len)
     if (src != NULL)
     {
         GstBuffer *b = gst_buffer_new_wrapped(buffer, len); // gst_buffer_unref -> crash
+        b->pts = GST_CLOCK_TIME_NONE;
         gst_app_src_push_buffer(GST_APP_SRC(src), b);
         gst_object_unref(src);
     }

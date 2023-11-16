@@ -61,9 +61,6 @@ type polyControlPayload struct {
 func parseString(str string) string {
 	reg, _ := regexp.Compile("[^a-zA-Z0-9-_]+")
 	clean := reg.ReplaceAllString(str, "")
-	if len(clean) == 0 {
-		return "default"
-	}
 	if len(clean) > MaxParsedLength {
 		return clean[0 : MaxParsedLength-1]
 	}
@@ -138,9 +135,7 @@ func (ws *wsConn) readJoin(origin string) (jp types.JoinPayload, err error) {
 		return
 	} else if m.Kind != "join" {
 		err = errors.New("wrong_join_payload_kind")
-		// we don't use send method since it may try to close not created peer server
-		m := &messageOut{Kind: "error-join"}
-		ws.WriteJSON(m)
+		ws.rawSend("error-join")
 		return
 	}
 
@@ -157,6 +152,17 @@ func (ws *wsConn) readJoin(origin string) (jp types.JoinPayload, err error) {
 	jp.Framerate = parseFramerate(jp)
 	// add property
 	jp.Origin = origin
+
+	if len(jp.InteractionName) == 0 {
+		err = errors.New("wrong_join_payload_interaction_name")
+		ws.rawSend("error-join")
+		return
+	}
+	if len(jp.UserId) == 0 {
+		err = errors.New("wrong_join_payload_user_id")
+		ws.rawSend("error-join")
+		return
+	}
 
 	// bind fields
 	ws.interactionName = jp.InteractionName
@@ -186,7 +192,7 @@ func (ws *wsConn) send(text string) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
-	m := &messageOut{Kind: text}
+	m := messageOut{Kind: text}
 
 	if err = ws.WriteJSON(m); err != nil {
 		ws.ps.close("ws_write_error")
@@ -198,7 +204,7 @@ func (ws *wsConn) sendWithPayload(kind string, payload any) (err error) {
 	ws.Lock()
 	defer ws.Unlock()
 
-	m := &messageOut{
+	m := messageOut{
 		Kind:    kind,
 		Payload: payload,
 	}
@@ -206,5 +212,16 @@ func (ws *wsConn) sendWithPayload(kind string, payload any) (err error) {
 	if err = ws.WriteJSON(m); err != nil {
 		ws.ps.close("ws_write_error")
 	}
+	return
+}
+
+// prefer rawSend over send when you don't want to possibly trigger close
+// on possibly not-created peer server
+func (ws *wsConn) rawSend(text string) (err error) {
+	ws.Lock()
+	defer ws.Unlock()
+
+	m := messageOut{Kind: text}
+	ws.WriteJSON(m)
 	return
 }
