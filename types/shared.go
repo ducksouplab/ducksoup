@@ -29,3 +29,7 @@ type TrackWriter interface {
 type Terminable interface {
 	Done() chan struct{}
 }
+
+type PLIRequester interface {
+	PLIRequest(cause string)
+}

@@ -30,6 +30,7 @@ type Pipeline struct {
 	startedCh   chan struct{}
 	// sfu info
 	jp              types.JoinPayload
+	plir            types.PLIRequester
 	iRandomId       string // interaction random id for filenames
 	connectionCount int    // count #connections for this user in this interaction
 	// options
@@ -102,7 +103,7 @@ func StartMainLoop() {
 }
 
 // create a GStreamer pipeline
-func NewPipeline(jp types.JoinPayload, dataFolder, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
+func NewPipeline(jp types.JoinPayload, plir types.PLIRequester, dataFolder, iRandomId string, connectionCount int, logger zerolog.Logger) *Pipeline {
 	id := uuid.New().String()
 	logger = logger.With().
 		Str("context", "pipeline").
@@ -118,6 +119,7 @@ func NewPipeline(jp types.JoinPayload, dataFolder, iRandomId string, connectionC
 		mu:              sync.Mutex{},
 		id:              id,
 		jp:              jp,
+		plir:            plir,
 		iRandomId:       iRandomId,
 		connectionCount: connectionCount,
 		videoOptions:    videoOptions,

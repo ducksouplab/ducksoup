@@ -80,6 +80,7 @@ func goRequestKeyFrame(cId *C.char) {
 
 	if ok {
 		p.logger.Log().Msg("gstreamer_request_key_frame")
+		p.plir.PLIRequest("gstreamer_request_key_frame")
 	}
 }
 

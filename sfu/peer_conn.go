@@ -48,6 +48,10 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 
 // API
 
+func (pc *peerConn) PLIRequest(cause string) {
+	pc.throttledPLIRequest(cause)
+}
+
 func newPionPeerConn(i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
 	// create RTC API
 	estimatorCh := make(chan cc.BandwidthEstimator, 1)
