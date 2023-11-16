@@ -65,7 +65,7 @@ rtpbin. !
 
 rtpbin. !
 {{if .Video.Fx}}
-   {{.Queue.Base}} name {{.Queue.Base}} name=video_queue_bef_depay !
+    {{.Queue.Base}} name=video_queue_bef_depay !
     {{.Video.Rtp.Depay}} ! 
 
     tee name=tee_video_in ! 

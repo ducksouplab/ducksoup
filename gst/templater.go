@@ -45,7 +45,8 @@ func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOp
 		jp.Height,
 		jp.Framerate,
 		"rtpbin name=rtpbin latency=" + strconv.Itoa(env.JitterBuffer),
-		"queue max-size-buffers=0 max-size-bytes=0 max-size-time=" + strconv.Itoa(env.JitterBuffer) + "000000",
+		// important: max-size-time greater than the jitter buffer latency to prevent audio glitches
+		"queue max-size-buffers=0 max-size-bytes=0 max-size-time=" + strconv.Itoa(env.JitterBuffer+100) + "000000",
 	}
 
 	// render pipeline from template

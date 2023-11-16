@@ -1,30 +1,28 @@
-appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
-appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true
+{{.RTPBin}}
 
-appsrc name=audio_rtcp_src ! audio_buffer.sink_rtcp
-appsrc name=video_rtcp_src ! video_buffer.sink_rtcp
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! {{.Audio.Rtp.Caps}} ! rtpbin.recv_rtp_sink_0
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! {{.Video.Rtp.Caps}} ! rtpbin.recv_rtp_sink_1
+
+appsrc name=audio_rtcp_src ! rtpbin.recv_rtcp_sink_0
+appsrc name=video_rtcp_src ! rtpbin.recv_rtcp_sink_1
 
 appsink name=audio_rtp_sink
 appsink name=video_rtp_sink qos=true
 
-{{/* always record dry */}}
 {{.Video.Muxer}} name=dry_muxer faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-dry.mp4mux.faststart !
 filesink name=dry_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-dry.{{.Video.Extension}}
 
-{{/* record fx if one on audio or video */}}
-{{if or .Video.Fx .Audio.Fx }}
+{{if or .Video.Fx .Audio.Fx }}{{/* record fx if one on audio or video */}}
     {{.Video.Muxer}} name=wet_muxer faststart=true faststart-file={{.Folder}}/cache/{{.FilePrefix}}-wet.mp4mux.faststart !
     filesink name=wet_filesink location={{.Folder}}/recordings/{{.FilePrefix}}-wet.{{.Video.Extension}}
 {{end}}
 
-audio_rtp_src. !
-{{.Audio.Rtp.Caps}} ! 
-{{.Audio.Rtp.JitterBuffer}} ! 
+rtpbin. !
 {{if .Audio.Fx}}
     {{.Audio.Rtp.Depay}} !
 
     tee name=tee_audio_in ! 
-        {{.Queue.Leaky}} !
+        {{.Queue.Leaky}} ! 
         dry_muxer.
 
     tee_audio_in. ! 
@@ -34,22 +32,21 @@ audio_rtp_src. !
         audio/x-raw,channels=1 !
         {{.Audio.Fx}} ! 
         audioconvert ! 
-        {{.Audio.EncodeWith "audio_encoder_wet" }} ! 
+        {{.Audio.EncodeWith "audio_encoder_wet"}} ! 
 
         tee name=tee_audio_out ! 
             {{.Queue.Leaky}} ! 
             wet_muxer.
 
         tee_audio_out. ! 
-            {{.Queue.Leaky}} ! 
+            {{.FinalQueue}} leaky=2 ! 
             {{.Audio.Rtp.Pay}} !
             audio_rtp_sink.
 {{else}}
     tee name=tee_audio_in ! 
         {{.Queue.Leaky}} ! 
         {{.Audio.Rtp.Depay}} !
-        {{/* audio stream has to be written to two files if there is a video fx*/}}
-        {{if .Video.Fx }}
+        {{if .Video.Fx }}{{/* audio stream has to be written to two files if there is a video fx*/}}
             tee name=tee_audio_out !
                 {{.Queue.Leaky}} ! 
                 dry_muxer.
@@ -62,27 +59,29 @@ audio_rtp_src. !
         {{end}}
 
     tee_audio_in. ! 
-        {{.Queue.Leaky}} ! 
+        {{.FinalQueue}} leaky=2 ! 
         audio_rtp_sink.
 {{end}}
 
-video_rtp_src. !
-{{.Video.Rtp.Caps}} ! 
-{{.Video.Rtp.JitterBuffer}} ! 
+rtpbin. !
 {{if .Video.Fx}}
+    {{.Queue.Base}} name=video_queue_bef_depay !
     {{.Video.Rtp.Depay}} ! 
-    {{.Video.Decoder}} !
-    {{.Video.ConstraintFormatFramerate .Framerate }} !
 
     tee name=tee_video_in ! 
-        {{.Queue.Leaky}} !  
-        {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
+        {{.Queue.Base}} name=video_queue_bef_drymux ! 
         dry_muxer.
 
     tee_video_in. ! 
-        {{.Queue.Leaky}} ! 
+        {{.Queue.Base}} name=video_queue_bef_dec ! 
+        {{.Video.Decoder}} !
+        {{.Queue.Leaky}} name=video_queue_aft_dec ! 
+        {{.Video.ConstraintFormatFramerate .Framerate}} !
+
         videoconvert ! 
+        {{.Queue.Base}} name=video_queue_bef_fx !
         {{.Video.Fx}} !
+        {{.Queue.Base}} name=video_queue_aft_fx !
         {{if .Video.Overlay }}
             {{.Video.TimeOverlay }} ! 
         {{end}}
@@ -91,42 +90,28 @@ video_rtp_src. !
         {{.Video.EncodeWithCache "video_encoder_wet" .Folder .FilePrefix}} ! 
 
         tee name=tee_video_out ! 
-            {{.Queue.Base}} ! 
+            {{.Queue.Base}} name=video_queue_bef_wetmux ! 
             wet_muxer.
 
         tee_video_out. ! 
-            {{.Queue.Base}} ! 
+            {{.FinalQueue}} name=video_queue_bef_sink ! 
             {{.Video.Rtp.Pay}} ! 
             video_rtp_sink.
 {{else}}
     tee name=tee_video_in ! 
-        {{.Queue.Base}} ! 
+        {{.Queue.Base}} name=video_queue_bef_depay ! 
         {{.Video.Rtp.Depay}} ! 
-
-        {{if not .Video.SkipFixedCaps}}
-            {{.Video.Decoder}} !
-            {{.Queue.Leaky}} ! 
-            {{.Video.ConstraintFormatFramerate .Framerate}} !
-            {{if .Video.Overlay }}
-                {{.Video.TimeOverlay }} ! 
-            {{end}}
-            {{.Video.EncodeWithCache "video_encoder_dry" .Folder .FilePrefix}} ! 
-        {{end}}
-        
-        {{/* video stream has to be written to two files if there is an aufio fx*/}}
-        {{if .Audio.Fx }}
+        {{if .Audio.Fx }}{{/* video stream has to be written to two files if there is an aufio fx*/}}
             tee name=tee_video_out !
-                {{.Queue.Base}} ! 
+                {{.Queue.Base}} name=video_queue_bef_drymux ! 
                 dry_muxer.
-
             tee_video_out. !
-                {{.Queue.Base}} ! 
+                {{.Queue.Base}} name=video_queue_bef_wetmux ! 
                 wet_muxer.
         {{else}}
             dry_muxer.
         {{end}}
-
     tee_video_in. ! 
-        {{.Queue.Base}} ! 
+        {{.FinalQueue}} name=video_queue_bef_sink ! 
         video_rtp_sink.
 {{end}}
