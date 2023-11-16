@@ -177,7 +177,7 @@ func (sc *senderController) estimateLoopReadRTCPOnVideo() {
 			for _, packet := range packets {
 				switch rtcpPacket := packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.ms.fromPs.pc.throttledPLIRequest("forward_from_receiving_peer")
+					sc.ms.fromPs.pc.managedPLIRequest("forward_from_receiving_peer")
 				// case *rtcp.ReceiverEstimatedMaximumBitrate:
 				// disabled due to TWCC
 				// sc.updateRateFromREMB(uint64(rtcpPacket.Bitrate))
@@ -213,7 +213,7 @@ func (sc *senderController) simpleLoopReadRTCPOnVideo() {
 			for _, packet := range packets {
 				switch packet.(type) {
 				case *rtcp.PictureLossIndication:
-					sc.ms.fromPs.pc.throttledPLIRequest("forward_from_receiving_peer")
+					sc.ms.fromPs.pc.managedPLIRequest("forward_from_receiving_peer")
 					sc.ms.pipeline.SendPLI()
 					// case *rtcp.ReceiverEstimatedMaximumBitrate:
 					// disabled due to TWCC

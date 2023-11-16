@@ -95,6 +95,6 @@ func (m *mixer) dispatchInteractionPLI(cause string) {
 	defer m.RUnlock()
 
 	for _, ps := range m.i.peerServerIndex {
-		ps.pc.throttledPLIRequest(cause)
+		ps.pc.managedPLIRequest(cause)
 	}
 }

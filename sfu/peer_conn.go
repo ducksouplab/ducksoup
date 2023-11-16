@@ -49,7 +49,7 @@ func (pc *peerConn) logDebug() *zerolog.Event {
 // API
 
 func (pc *peerConn) PLIRequest(cause string) {
-	pc.throttledPLIRequest(cause)
+	pc.managedPLIRequest(cause)
 }
 
 func newPionPeerConn(i *interaction) (ppc *webrtc.PeerConnection, ccEstimator cc.BandwidthEstimator, err error) {
@@ -199,7 +199,7 @@ func (pc *peerConn) handleCallbacks(ps *peerServer) {
 	})
 }
 
-func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error) {
+func (pc *peerConn) sendPLIRequest(track *webrtc.TrackRemote, cause string) (err error) {
 	err = pc.WriteRTCP([]rtcp.Packet{
 		&rtcp.PictureLossIndication{
 			MediaSSRC: uint32(track.SSRC()),
@@ -213,21 +213,23 @@ func (pc *peerConn) writePLI(track *webrtc.TrackRemote, cause string) (err error
 	return
 }
 
-func (pc *peerConn) throttledPLIRequest(cause string) {
+func (pc *peerConn) managedPLIRequest(cause string) {
 	pc.Lock()
 	defer pc.Unlock()
 
 	for _, receiver := range pc.GetReceivers() {
 		track := receiver.Track()
 		if track != nil && track.Kind().String() == "video" {
-			durationSinceLastPLI := time.Since(pc.lastPLI)
-			if durationSinceLastPLI < pc.pliMinInterval {
-				// throttle: don't send too many PLIs
-				pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_skipped")
-			} else {
-				pc.lastPLI = time.Now()
-				go pc.writePLI(track, cause)
-			}
+			go pc.sendPLIRequest(track, cause)
+			// // throttling currently disabled
+			// durationSinceLastPLI := time.Since(pc.lastPLI)
+			// if durationSinceLastPLI < pc.pliMinInterval {
+			// 	// throttle: don't send too many PLIs
+			// 	pc.logInfo().Str("context", "track").Str("cause", cause).Msg("server_pli_skipped")
+			// } else {
+			// 	pc.lastPLI = time.Now()
+			// 	go pc.sendPLIRequest(track, cause)
+			// }
 		}
 	}
 }

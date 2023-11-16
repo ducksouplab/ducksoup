@@ -276,7 +276,7 @@ func (ms *mixerSlice) updateTargetBitrates(targetBitrate int) {
 // 	if ms.kind == "video" {
 // 		ms.Lock()
 // 		if ms.outputBitrate < ms.streamConfig.MinBitrate {
-// 			ms.fromPs.pc.throttledPLIRequest("output_bitrate_is_too_low")
+// 			ms.fromPs.pc.managedPLIRequest("output_bitrate_is_too_low")
 // 		}
 // 		ms.Unlock()
 // 	}
