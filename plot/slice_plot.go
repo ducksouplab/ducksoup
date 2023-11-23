@@ -23,6 +23,7 @@ const (
 type SlicePlot struct {
 	controller  types.Terminable
 	kind        string
+	plotBuffers bool
 	id          string
 	folder      string
 	bitratePlot *plot.Plot
@@ -162,7 +163,7 @@ func (s *SlicePlot) save() {
 	s.bitratePlot.Save(6*vg.Inch, 4*vg.Inch, s.folder+"/"+s.kind+"-"+s.id+"-bitrates.pdf")
 
 	// buffer plot
-	if s.kind == "video" {
+	if s.kind == "video" && s.plotBuffers {
 		counter := 0
 		for name, line := range s.currentLevelTimeLines {
 			createLinePoints(s.bufferPlot,
@@ -184,9 +185,10 @@ func (s *SlicePlot) save() {
 
 // API
 
-func NewSlicePlot(controller types.Terminable, kind, id, folder string) *SlicePlot {
+func NewSlicePlot(controller types.Terminable, kind string, plotBuffers bool, id, folder string) *SlicePlot {
 	return &SlicePlot{
 		kind:                   kind,
+		plotBuffers:            plotBuffers,
 		id:                     id,
 		controller:             controller,
 		folder:                 folder,

@@ -223,8 +223,6 @@ func (p *Pipeline) updateRecordingFiles() {
 		switch p.jp.RecordingMode {
 		case "none":
 			return
-		case "rtpbin_only":
-			return
 		default: // audio only
 			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
 			p.setPropString("dry_audio_filesink", "location", dryAudioFile)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 	"time"
 
@@ -27,6 +28,8 @@ const (
 	// inputToOutputMaxFactor = 2
 )
 
+var plotBuffersRecordingModes = []string{"forced", "free", "reenc"}
+
 type mixerSlice struct {
 	sync.Mutex
 	fromPs       *peerServer
@@ -43,6 +46,8 @@ type mixerSlice struct {
 	// controller
 	senderControllerIndex map[string]*senderController // per user id
 	targetBitrate         int
+	// plots
+	plotBuffers bool
 	// stats
 	lastStats     time.Time
 	inputBits     int
@@ -111,6 +116,8 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 		interpolatorIndex: make(map[string]*sequencing.LinearInterpolator),
 		// controller
 		senderControllerIndex: map[string]*senderController{},
+		// plots
+		plotBuffers: slices.Contains(plotBuffersRecordingModes, ps.i.jp.RecordingMode),
 		// stats
 		lastStats: time.Now(),
 		// status
@@ -118,7 +125,7 @@ func newMixerSlice(ps *peerServer, remoteTrack *webrtc.TrackRemote, receiver *we
 	}
 	// analysis
 	if env.GeneratePlots {
-		ms.plot = plot.NewSlicePlot(ms, kind, ps.userId, ps.i.DataFolder()+"/plots")
+		ms.plot = plot.NewSlicePlot(ms, kind, ms.plotBuffers, ps.userId, ps.i.DataFolder()+"/plots")
 	}
 
 	return
@@ -214,10 +221,8 @@ func (ms *mixerSlice) loop() {
 	go ms.loopReadRTCP()
 	if ms.kind == "video" {
 		go ms.loopEncoderController()
-
-		rm := ms.i.jp.RecordingMode
-		if rm == "forced" || rm == "free" || rm == "reenc" {
-			go ms.loopCurrentLevelTimePlots()
+		if ms.plotBuffers {
+			go ms.loopBufferPlots()
 		}
 	}
 	go ms.loopStats()
@@ -353,7 +358,7 @@ func (ms *mixerSlice) loopEncoderController() {
 	}
 }
 
-func (ms *mixerSlice) loopCurrentLevelTimePlots() {
+func (ms *mixerSlice) loopBufferPlots() {
 	ticker := time.NewTicker(time.Duration(config.SFU.Common.EncoderControlPeriod) * time.Millisecond)
 	defer ticker.Stop()
 	for {

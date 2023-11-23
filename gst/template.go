@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/ducksouplab/ducksoup/config"
@@ -51,41 +50,42 @@ func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOp
 
 	// render pipeline from template
 	var buf bytes.Buffer
-	var template *template.Template
+	var templateName string
 	if jp.AudioOnly {
 		if env.NoRecording {
-			template = templateIndex["audio_only_no_recording"]
+			templateName = "audio_only_no_recording"
 		} else {
 			// audio only default
-			template = templateIndex["audio_only"]
+			templateName = "audio_only"
 		}
 	} else {
 		if env.NoRecording {
-			template = templateIndex["no_recording"]
+			templateName = "no_recording"
 		} else if jp.RecordingMode == "split" {
-			template = templateIndex["split"]
+			templateName = "split"
 		} else if jp.RecordingMode == "rtpbin_only" {
-			template = templateIndex["rtpbin_only"]
+			templateName = "rtpbin_only"
 		} else if jp.RecordingMode == "none" {
-			template = templateIndex["no_recording"]
+			templateName = "no_recording"
 		} else if jp.RecordingMode == "reenc" {
-			template = templateIndex["muxed_reenc_dry"]
+			templateName = "muxed_reenc_dry"
 		} else if jp.RecordingMode == "free" {
-			template = templateIndex["muxed_free_framerate"]
+			templateName = "muxed_free_framerate"
 		} else { // default
 			// audio+video default, ideally would be muxedTemplater
-			template = templateIndex["muxed_forced_framerate"]
+			templateName = "muxed_forced_framerate"
 			if jp.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
-				template = templateIndex["muxed_reenc_dry"]
+				templateName = "muxed_reenc_dry"
 			}
 		}
 	}
+	template := templateIndex[templateName]
 	if err := template.Execute(&buf, data); err != nil {
 		panic(err)
 	}
 
 	// log pipeline
-	contents := []byte("DuckSoup: " + config.BackendVersion + "\n\n")
+	contents := []byte("// DuckSoup#" + config.BackendVersion + " Pipeline#" + templateName + "\n\n")
 	contents = append(contents, buf.Bytes()...)
 	os.WriteFile(dataFolder+"/pipeline-u-"+jp.UserId+"-"+time.Now().Format("20060102-150405.000")+".txt", contents, 0666)
 

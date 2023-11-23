@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 const (
 	MaxParsedLength = 50
 )
+
+var recordingModes = []string{"forced", "free", "reenc", "split", "rtpbin_only", "none", "direct"}
 
 // Helper to make Gorilla Websockets threadsafe
 type wsConn struct {
@@ -75,12 +78,12 @@ func parseVideoFormat(jp types.JoinPayload) (videoFormat string) {
 	return
 }
 
-func parseRecordingMode(jp types.JoinPayload) (recordingMode string) {
-	recordingMode = jp.RecordingMode
-	if recordingMode != "forced" && recordingMode != "free" && recordingMode != "reenc" && recordingMode != "split" && recordingMode != "rtpbin_only" && recordingMode != "none" && recordingMode != "direct" {
-		recordingMode = defaultRecordingMode
+func parseRecordingMode(jp types.JoinPayload) string {
+	if slices.Contains(recordingModes, jp.RecordingMode) {
+		return jp.RecordingMode
+	} else {
+		return defaultRecordingMode
 	}
-	return
 }
 
 func parseWidth(jp types.JoinPayload) (width int) {

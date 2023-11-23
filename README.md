@@ -236,7 +236,7 @@ And regarding pion:
 
 - `PION_LOG_TRACE` (unset by default) to log pion debug messages (see [more](https://github.com/pion/webrtc/wiki/Debugging-WebRTC))
 
-Ducksoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
+DuckSoup settings related to GStreamer pipelines are defined in `config/gst.yml`:
 
 - `rtpjitterbuffer` defines properties passed to the [rtpjitterbuffer](https://gstreamer.freedesktop.org/documentation/rtpmanager/rtpjitterbuffer.html#properties) plugin
 - `vp8`, `x264`, `nv264` and `opus` define codec settings, `nv264` being preferred to `x264` depending on `DUCKSOUP_NVCODEC` (and `gpu` on `peerOptions`).

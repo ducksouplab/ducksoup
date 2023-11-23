@@ -6,10 +6,10 @@ import (
 	"flag"
 	"net/http"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/ducksouplab/ducksoup/env"
-	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/sfu"
 	"github.com/ducksouplab/ducksoup/stats"
 	"github.com/gorilla/mux"
@@ -23,7 +23,7 @@ var (
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			return helpers.Contains(env.AllowedWSOrigins, origin)
+			return slices.Contains(env.AllowedWSOrigins, origin)
 		},
 	}
 )
