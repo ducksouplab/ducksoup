@@ -3,7 +3,7 @@ module github.com/ducksouplab/ducksoup
 go 1.20
 
 require (
-	github.com/evanw/esbuild v0.19.6
+	github.com/evanw/esbuild v0.19.7
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
