@@ -1,0 +1,2 @@
+appsrc name=audio_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! appsink name=audio_rtp_sink
+appsrc name=video_rtp_src is-live=true format=GST_FORMAT_TIME do-timestamp=true ! appsink name=video_rtp_sink qos=true

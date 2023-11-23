@@ -51,38 +51,36 @@ func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOp
 
 	// render pipeline from template
 	var buf bytes.Buffer
-	var templater *template.Template
+	var template *template.Template
 	if jp.AudioOnly {
 		if env.NoRecording {
-			templater = audioOnlyNoRecordingTemplater
-		} else if jp.RecordingMode == "passthrough" {
-			templater = audioOnlyPassthroughTemplater
+			template = templateIndex["audio_only_no_recording"]
 		} else {
 			// audio only default
-			templater = audioOnlyTemplater
+			template = templateIndex["audio_only"]
 		}
 	} else {
 		if env.NoRecording {
-			templater = noRecordingTemplater
+			template = templateIndex["no_recording"]
 		} else if jp.RecordingMode == "split" {
-			templater = splitTemplater
-		} else if jp.RecordingMode == "passthrough" {
-			templater = passthroughTemplater
+			template = templateIndex["split"]
+		} else if jp.RecordingMode == "rtpbin_only" {
+			template = templateIndex["rtpbin_only"]
 		} else if jp.RecordingMode == "none" {
-			templater = noRecordingTemplater
+			template = templateIndex["no_recording"]
 		} else if jp.RecordingMode == "reenc" {
-			templater = muxedReencDryTemplater
+			template = templateIndex["muxed_reenc_dry"]
 		} else if jp.RecordingMode == "free" {
-			templater = muxedFreeFramerateTemplater
+			template = templateIndex["muxed_free_framerate"]
 		} else { // default
 			// audio+video default, ideally would be muxedTemplater
-			templater = muxedForcedFramerateTemplater
+			template = templateIndex["muxed_forced_framerate"]
 			if jp.VideoFormat == "VP8" { // if we switch default to muxedTemplater, keep reenc for VP8
-				templater = muxedReencDryTemplater
+				template = templateIndex["muxed_reenc_dry"]
 			}
 		}
 	}
-	if err := templater.Execute(&buf, data); err != nil {
+	if err := template.Execute(&buf, data); err != nil {
 		panic(err)
 	}
 

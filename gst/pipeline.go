@@ -223,10 +223,7 @@ func (p *Pipeline) updateRecordingFiles() {
 		switch p.jp.RecordingMode {
 		case "none":
 			return
-		case "passthrough":
-			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile)
+		case "rtpbin_only":
 			return
 		default: // audio only
 			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
@@ -242,6 +239,13 @@ func (p *Pipeline) updateRecordingFiles() {
 		switch p.jp.RecordingMode {
 		case "none":
 			return
+		case "rtpbin_only":
+			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
+			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+			p.setPropString("dry_video_filesink", "location", dryVideoFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
+			return
 		case "split":
 			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
 			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
@@ -255,13 +259,6 @@ func (p *Pipeline) updateRecordingFiles() {
 				p.setPropString("wet_video_filesink", "location", wetVideoFile)
 				p.RecordingFiles = append(p.RecordingFiles, wetAudioFile, wetVideoFile)
 			}
-			return
-		case "passthrough":
-			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
-			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-			p.setPropString("dry_video_filesink", "location", dryVideoFile)
-			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
 			return
 		default: // muxed (or reenc)
 			dryFile := recordingPrefix + "dry." + p.videoOptions.Extension

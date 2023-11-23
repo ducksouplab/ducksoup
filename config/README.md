@@ -8,7 +8,7 @@ Currently different recording modes are offered:
 
 - `split` -> audio video recorded in separate files (currently introduces delay on audio stream)
 
-- `passthrough` -> records input streams and sends them back, without applying any fx or reencoding
+- `rtpbin_only` -> no recording no fx, just goes through GStreamer rtpbin for instance for jitterbuffer
 
 - `none` -> no recording
 

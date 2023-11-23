@@ -39,10 +39,12 @@ type gstEnhancedConfig struct {
 	NV264 mediaOptions `yaml:"nv264"`
 }
 
+var templateNames = []string{"audio_only_no_recording", "audio_only", "direct", "muxed_forced_framerate", "muxed_free_framerate", "muxed_reenc_dry", "no_recording", "rtpbin_only", "split"}
+
 // global state
 var gstConfig gstEnhancedConfig
 
-var muxedFreeFramerateTemplater, muxedForcedFramerateTemplater, muxedReencDryTemplater, splitTemplater, passthroughTemplater, noRecordingTemplater, audioOnlyTemplater, audioOnlyPassthroughTemplater, audioOnlyNoRecordingTemplater *template.Template
+var templateIndex map[string]*template.Template
 
 func init() {
 	// load config from yml file
@@ -64,41 +66,13 @@ func init() {
 	gstConfig.NV264.addSharedVideoProperties()
 
 	// templates
-	muxedReencDryTemplater, err = template.New("muxed_reenc_dry").Parse(helpers.ReadFile("config/pipelines/muxed_reenc_dry.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	muxedFreeFramerateTemplater, err = template.New("muxed_free_framerate").Parse(helpers.ReadFile("config/pipelines/muxed_free_framerate.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	muxedForcedFramerateTemplater, err = template.New("muxed_forced_framerate").Parse(helpers.ReadFile("config/pipelines/muxed_forced_framerate.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	splitTemplater, err = template.New("split").Parse(helpers.ReadFile("config/pipelines/split.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	passthroughTemplater, err = template.New("passthrough").Parse(helpers.ReadFile("config/pipelines/passthrough.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	noRecordingTemplater, err = template.New("no_recording").Parse(helpers.ReadFile("config/pipelines/no_recording.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	audioOnlyTemplater, err = template.New("audio_only").Parse(helpers.ReadFile("config/pipelines/audio_only.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	audioOnlyPassthroughTemplater, err = template.New("audio_only_passthrough").Parse(helpers.ReadFile("config/pipelines/audio_only_passthrough.gtpl"))
-	if err != nil {
-		panic(err)
-	}
-	audioOnlyNoRecordingTemplater, err = template.New("audio_only_no_recording").Parse(helpers.ReadFile("config/pipelines/audio_only_no_recording.gtpl"))
-	if err != nil {
-		panic(err)
+	templateIndex = make(map[string]*template.Template)
+	for _, name := range templateNames {
+		t, err := template.New("name").Parse(helpers.ReadFile("config/pipelines/" + name + ".gtpl"))
+		if err != nil {
+			panic(err)
+		}
+		templateIndex[name] = t
 	}
 
 	// log

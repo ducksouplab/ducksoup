@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/ducksouplab/ducksoup/store"
@@ -495,20 +494,13 @@ func (i *interaction) endingDelay() (delay int) {
 }
 
 // return false if an error ends the waiting, discards RTP till ready
-func (i *interaction) loopTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
-	buf := make([]byte, config.SFU.Common.MTU)
+func (i *interaction) waitTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
 	for {
 		select {
 		case <-i.isReady():
 			return true
 		case <-i.isAborted():
 			return false
-		default:
-			_, _, err := remoteTrack.Read(buf)
-			if err != nil {
-				i.logger.Error().Str("context", "track").Err(err).Msg("loop_till_all_ready_failed")
-				return false
-			}
 		}
 	}
 }
@@ -530,7 +522,8 @@ func (i *interaction) runMixerSliceFromRemote(
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 		// wait for all peers to connect
-		ok := i.loopTillAllReady(remoteTrack)
+		ok := i.waitTillAllReady(remoteTrack)
+		i.logger.Info().Str("context", "interaction").Str("user", ps.userId).Msg("loopTillAllReady")
 
 		if ok {
 			// trigger signaling if needed
