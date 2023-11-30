@@ -60,7 +60,6 @@ func writeTo(kind string, cId *C.char, buffer unsafe.Pointer, bufferLen C.int) {
 		// TODO return error to gst.c and stop processing?
 		p.logger.Error().Msg("pipeline_not_found")
 	}
-	C.free(buffer)
 }
 
 //export goWriteAudio

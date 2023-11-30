@@ -95,7 +95,7 @@ const start = async ({
   // parse
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
-  const framerate = parseIntWithFallback(fr, 30);
+  const framerate = parseIntWithFallback(fr, 25);
   const duration = parseIntWithFallback(d, 30);
   const gpu = !!g;
   const overlay = !!o;

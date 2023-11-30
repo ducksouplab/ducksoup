@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ducksouplab/ducksoup/helpers"
 	"github.com/rs/zerolog/log"
@@ -10,9 +11,9 @@ import (
 
 type SFUConfig struct {
 	Common struct {
-		MTU                  int `yaml:"mtu"`
-		EncoderControlPeriod int `yaml:"encoderControlPeriod"`
-		TWCCInterval         int `yaml:"twccInterval"`
+		MTU                  int           `yaml:"mtu"`
+		EncoderControlPeriod int           `yaml:"encoderControlPeriod"`
+		TWCCInterval         time.Duration `yaml:"twccInterval"`
 	}
 	Audio SFUStream
 	Video SFUStream

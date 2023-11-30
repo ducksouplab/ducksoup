@@ -4,7 +4,7 @@ const DEFAULT_CONSTRAINTS = {
   video: {
     width: { ideal: 800 },
     height: { ideal: 600 },
-    frameRate: { ideal: 30 },
+    frameRate: { ideal: 25 },
     facingMode: { ideal: "user" },
   },
   audio: {

@@ -3,6 +3,7 @@ package engine
 import (
 	"time"
 
+	"github.com/ducksouplab/ducksoup/config"
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
@@ -92,7 +93,7 @@ func configureTWCCSender(m *webrtc.MediaEngine, r *interceptor.Registry) error {
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
 	m.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
 
-	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
+	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(config.SFU.Common.TWCCInterval * time.Millisecond))
 	if err != nil {
 		return err
 	}

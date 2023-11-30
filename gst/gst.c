@@ -24,7 +24,7 @@ void stop_pipeline(GstElement* pipeline) {
 
 static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
-    GstElement* pipeline = (GstElement*) data; // free?
+    GstElement* pipeline = (GstElement*) data;
     char *id = gst_element_get_name(pipeline);
 
     // https://gstreamer.freedesktop.org/documentation/gstreamer/gstmessage.html?gi-language=c
@@ -34,14 +34,20 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         stop_pipeline(pipeline);
         break;
     }
+    case GST_MESSAGE_LATENCY: {
+        gst_bin_recalculate_latency(GST_BIN(pipeline));
+        break;
+	}
     case GST_MESSAGE_ERROR:
     {
-
-        gchar *debug;
         GError *error;
 
-        gst_message_parse_error(msg, &error, &debug);
-        g_free(debug);
+        // uncomment if debug info is used 
+        // gchar *debug;
+        // gst_message_parse_error(msg, &error, &debug);
+        // g_free(debug);
+
+        gst_message_parse_error(msg, &error, NULL);
 
         goLogError(id, error->message, GST_OBJECT_NAME (msg->src));
         stop_pipeline(pipeline);
@@ -78,10 +84,8 @@ GstPadProbeReturn videosrc_callback(GstPad *pad, GstPadProbeInfo *info, gpointer
 GstFlowReturn audio_rtp_sink_callback(GstElement *sink, gpointer data)
 {
     GstSample *sample;
-    GstBuffer *buffer; // free?
-    gpointer copy; // TODO don't copy
-    gsize copy_size = 0;
-    GstElement *pipeline = (GstElement*) data; // free?
+    GstBuffer *buffer;
+    GstElement *pipeline = (GstElement*) data;
 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
@@ -92,8 +96,10 @@ GstFlowReturn audio_rtp_sink_callback(GstElement *sink, gpointer data)
         buffer = gst_sample_get_buffer(sample);
         if (buffer)
         {
-            gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goWriteAudio(id, copy, copy_size);
+            GstMapInfo map;
+        	gst_buffer_map(buffer, &map, GST_MAP_READ);
+            goWriteAudio(id, map.data, map.size);
+            gst_buffer_unmap(buffer, &map);
         }
         gst_sample_unref(sample);
     }
@@ -106,9 +112,7 @@ GstFlowReturn video_rtp_sink_callback(GstElement *sink, gpointer data)
 {
     GstSample *sample;
     GstBuffer *buffer; // free?
-    gpointer copy; // TODO don't copy
-    gsize copy_size = 0;
-    GstElement *pipeline = (GstElement*) data; // free?
+    GstElement *pipeline = (GstElement*) data;
 
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
@@ -119,8 +123,10 @@ GstFlowReturn video_rtp_sink_callback(GstElement *sink, gpointer data)
         buffer = gst_sample_get_buffer(sample);
         if (buffer)
         {
-            gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-            goWriteVideo(id, copy, copy_size);
+            GstMapInfo map;
+            gst_buffer_map(buffer, &map, GST_MAP_READ);
+            goWriteVideo(id, map.data, map.size);
+            gst_buffer_unmap(buffer, &map);
         }
         gst_sample_unref(sample);
     }
@@ -211,8 +217,7 @@ void gstSrcPush(GstElement *pipeline, char *srcname, void *buffer, int len)
     
     if (src != NULL)
     {
-        GstBuffer *b = gst_buffer_new_wrapped(buffer, len); // gst_buffer_unref -> crash
-        b->pts = GST_CLOCK_TIME_NONE;
+        GstBuffer *b = gst_buffer_new_wrapped(buffer, len);
         gst_app_src_push_buffer(GST_APP_SRC(src), b);
         gst_object_unref(src);
     }
