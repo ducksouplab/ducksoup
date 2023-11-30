@@ -82,7 +82,15 @@ Where:
   - `audio` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_audio_tracks))
   - `video` (object) merged with DuckSoup default constraints and passed to getUserMedia (see [properties](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#properties_of_video_tracks))
   - `videoFormat` (string) possible values: "H264" (default if none) or "VP8"
-  - `recordingMode` (string) possible values: `muxed` (default if none, records audio/video in the same muxed file), `split` (records separate files for audio and video), `none` (no recording) or `rtpbin_only` (no recording no fx, just goes through GStreamer rtpbin for instance for jitterbuffer)
+  - `recordingMode` (string) possible values (some of them are mainly for testing purposes):
+    - `forced` (default if none) records audio/video in the same muxed file and forces framerate of reencoded video streams
+    - `free` same as `forced` but without enforcing framerate
+    - `reenc` same as `forced` but reencodes the dry signal too
+    - `split` records separate files for audio and video
+    - `none` provides FX but no recording
+    - `rtpbin_only` no FX nor recording, but RTP packets go through GStreamer rtpbin for its jitterbuffer
+    - `direct` (gst src->sink) no FX nor recording, RTP packets enter and exit GStreamer directly
+    - `bypass` no FX nor recording, copy RTP input to RTP outputs within pion (bypassing GStreamer)
   - `namespace` (string, defaults to "default") to group recordings under the same namespace (folder)
   - `gpu` (boolean, defaults to false) enable hardware accelarated h264 encoding and decoding (and other cuda accelerated plugins like raw video [conversions](https://gstreamer.freedesktop.org/documentation/nvcodec/cudaconvertscale.html)), if relevant hardware is available on host and if DuckSoup is launched with the `DUCKSOUP_NVCODEC=true` environment variable (see [Environment variables](#environment-variables))
   - `logLevel` (int, defaults to 1):

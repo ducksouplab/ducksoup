@@ -1,17 +1,3 @@
-Currently different recording modes are offered:
-
-- `forced framerate` (default) -> audio/video muxed in the same file, with video outputs framerate constrained
-
-- `free framerate` (default) -> audio/video muxed in the same file, with varying input framerate let unconstrained
-
-- `reenc` -> audio/video muxed in the same file, dry signal being reencoded
-
-- `split` -> audio video recorded in separate files (currently introduces delay on audio stream)
-
-- `rtpbin_only` -> no recording no fx, just goes through GStreamer rtpbin for instance for jitterbuffer
-
-- `none` -> no recording
-
 A few notes about GStreamer settings:
 
 - input media streams are stored with a `-dry.extension` suffix, when an effect is applied to a media stream, the recorded file of this processed stream ends with `-wet.extension`

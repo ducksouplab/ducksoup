@@ -19,7 +19,7 @@ const (
 	MaxParsedLength = 50
 )
 
-var recordingModes = []string{"forced", "free", "reenc", "split", "rtpbin_only", "none", "direct"}
+var recordingModes = []string{"forced", "free", "reenc", "split", "rtpbin_only", "none", "direct", "bypass"}
 
 // Helper to make Gorilla Websockets threadsafe
 type wsConn struct {

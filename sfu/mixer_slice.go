@@ -232,33 +232,51 @@ func (ms *mixerSlice) loop() {
 
 	// main loop start
 	buf := make([]byte, config.SFU.Common.MTU)
-pushToPipeline:
-	for {
-		select {
-		case <-ms.fromPs.isDone():
-			// interaction OR peer is done
-			break pushToPipeline
-		default:
-			n, _, err := ms.input.Read(buf)
-			if err != nil {
-				break pushToPipeline
-			}
-			ms.pipeline.PushRTP(ms.kind, buf[:n])
-			// for stats
-			go ms.updateInputBits(n)
-			// time
 
-			// plot rtp timestamp
-			// r := &rtp.Packet{}
-			// if err := r.Unmarshal(buf[:n]); err == nil {
-			// 	if ms.baseRTPTimestampIn == 0 {
-			// 		ms.baseRTPTimestampIn = r.Timestamp
-			// 	} else {
-			// 		elapsedRTP := (r.Timestamp - ms.baseRTPTimestampIn) * 1000 / ms.input.Codec().ClockRate
-			// 		sinceStart := time.Since(i.startedAt).Milliseconds()
-			// 		ms.plot.AddRtpDiffIn(sinceStart - int64(elapsedRTP))
-			// 	}
-			// }
+	if ms.fromPs.jp.RecordingMode == "bypass" {
+	bypass:
+		for {
+			select {
+			case <-ms.fromPs.isDone():
+				// interaction OR peer is done
+				break bypass
+			default:
+				n, _, err := ms.input.Read(buf)
+				if err != nil {
+					break bypass
+				}
+				ms.Write(buf[:n])
+			}
+		}
+	} else {
+	toPipeline:
+		for {
+			select {
+			case <-ms.fromPs.isDone():
+				// interaction OR peer is done
+				break toPipeline
+			default:
+				n, _, err := ms.input.Read(buf)
+				if err != nil {
+					break toPipeline
+				}
+				ms.pipeline.PushRTP(ms.kind, buf[:n])
+				// for stats
+				go ms.updateInputBits(n)
+				// time
+
+				// plot rtp timestamp
+				// r := &rtp.Packet{}
+				// if err := r.Unmarshal(buf[:n]); err == nil {
+				// 	if ms.baseRTPTimestampIn == 0 {
+				// 		ms.baseRTPTimestampIn = r.Timestamp
+				// 	} else {
+				// 		elapsedRTP := (r.Timestamp - ms.baseRTPTimestampIn) * 1000 / ms.input.Codec().ClockRate
+				// 		sinceStart := time.Since(i.startedAt).Milliseconds()
+				// 		ms.plot.AddRtpDiffIn(sinceStart - int64(elapsedRTP))
+				// 	}
+				// }
+			}
 		}
 	}
 }

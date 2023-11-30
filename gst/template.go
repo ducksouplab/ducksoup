@@ -85,9 +85,11 @@ func newPipelineDef(jp types.JoinPayload, dataFolder, filePrefix string, videoOp
 	}
 
 	// log pipeline
-	contents := []byte("// DuckSoup#" + config.BackendVersion + " Pipeline#" + templateName + "\n\n")
-	contents = append(contents, buf.Bytes()...)
-	os.WriteFile(dataFolder+"/pipeline-u-"+jp.UserId+"-"+time.Now().Format("20060102-150405.000")+".txt", contents, 0666)
+	if jp.RecordingMode != "bypass" {
+		contents := []byte("// DuckSoup#" + config.BackendVersion + " Pipeline#" + templateName + "\n\n")
+		contents = append(contents, buf.Bytes()...)
+		os.WriteFile(dataFolder+"/pipeline-u-"+jp.UserId+"-"+time.Now().Format("20060102-150405.000")+".txt", contents, 0666)
+	}
 
 	// process lines (trim and remove blank lines)
 	var formattedBuf bytes.Buffer

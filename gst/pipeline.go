@@ -8,6 +8,7 @@ package gst
 import "C"
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +20,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
+
+var muxedModes = []string{"forced", "free", "reenc"}
 
 // Pipeline is a wrapper for a GStreamer pipeline and output track
 type Pipeline struct {
@@ -220,31 +223,25 @@ func (p *Pipeline) updateRecordingFiles() {
 	recordingPrefix := p.dataFolder + "/recordings/" + p.filePrefix() + "-"
 
 	if p.jp.AudioOnly {
-		switch p.jp.RecordingMode {
-		case "none":
-			return
-		default: // audio only
-			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile)
-			if hasWetFiles {
-				wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
-				p.setPropString("wet_audio_filesink", "location", wetAudioFile)
-				p.RecordingFiles = append(p.RecordingFiles, wetAudioFile)
-			}
+		dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
+		p.setPropString("dry_audio_filesink", "location", dryAudioFile)
+		p.RecordingFiles = append(p.RecordingFiles, dryAudioFile)
+		if hasWetFiles {
+			wetAudioFile := recordingPrefix + "audio-wet." + p.audioOptions.Extension
+			p.setPropString("wet_audio_filesink", "location", wetAudioFile)
+			p.RecordingFiles = append(p.RecordingFiles, wetAudioFile)
 		}
 	} else {
-		switch p.jp.RecordingMode {
-		case "none":
-			return
-		case "rtpbin_only":
-			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
-			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
-			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
-			p.setPropString("dry_video_filesink", "location", dryVideoFile)
-			p.RecordingFiles = append(p.RecordingFiles, dryAudioFile, dryVideoFile)
-			return
-		case "split":
+		if slices.Contains(muxedModes, p.jp.RecordingMode) {
+			dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
+			p.setPropString("dry_filesink", "location", dryFile)
+			p.RecordingFiles = append(p.RecordingFiles, dryFile)
+			if hasWetFiles {
+				wetFile := recordingPrefix + "wet." + p.videoOptions.Extension
+				p.setPropString("wet_filesink", "location", wetFile)
+				p.RecordingFiles = append(p.RecordingFiles, wetFile)
+			}
+		} else if p.jp.RecordingMode == "split" {
 			dryAudioFile := recordingPrefix + "audio-dry." + p.audioOptions.Extension
 			dryVideoFile := recordingPrefix + "video-dry." + p.videoOptions.Extension
 			p.setPropString("dry_audio_filesink", "location", dryAudioFile)
@@ -257,17 +254,8 @@ func (p *Pipeline) updateRecordingFiles() {
 				p.setPropString("wet_video_filesink", "location", wetVideoFile)
 				p.RecordingFiles = append(p.RecordingFiles, wetAudioFile, wetVideoFile)
 			}
-			return
-		default: // muxed (or reenc)
-			dryFile := recordingPrefix + "dry." + p.videoOptions.Extension
-			p.setPropString("dry_filesink", "location", dryFile)
-			p.RecordingFiles = append(p.RecordingFiles, dryFile)
-			if hasWetFiles {
-				wetFile := recordingPrefix + "wet." + p.videoOptions.Extension
-				p.setPropString("wet_filesink", "location", wetFile)
-				p.RecordingFiles = append(p.RecordingFiles, wetFile)
-			}
 		}
+		// else there is no record
 	}
 }
 
