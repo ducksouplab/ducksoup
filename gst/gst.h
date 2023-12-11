@@ -10,7 +10,8 @@ extern void goWriteAudio(char *id, void *buffer, int bufferLen);
 extern void goWriteVideo(char *id, void *buffer, int bufferLen);
 extern void goDeletePipeline(char *id);
 extern void goRequestKeyFrame(char *id);
-extern void goLogError(char *id, char *msg, char *el);
+extern void goBusLog(char *id, char *msg, char *el);
+extern void goDebugLog(int level, char *file, char *function,int line, char *msg);
 
 void gstStartMainLoop(void);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);

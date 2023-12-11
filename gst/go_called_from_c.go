@@ -8,8 +8,10 @@ import "C"
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"unsafe"
 
+	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
@@ -83,8 +85,8 @@ func goRequestKeyFrame(cId *C.char) {
 	}
 }
 
-//export goLogError
-func goLogError(cId, cMsg, cEl *C.char) {
+//export goBusLog
+func goBusLog(cId, cMsg, cEl *C.char) {
 	id := C.GoString(cId)
 	msg := C.GoString(cMsg)
 	el := C.GoString(cEl)
@@ -94,5 +96,49 @@ func goLogError(cId, cMsg, cEl *C.char) {
 		p.logger.Error().Err(errors.New(msg)).Str("element", el).Msg("gstreamer_error")
 	} else {
 		log.Error().Str("context", "gst").Err(errors.New(msg)).Str("element", el).Str("id", id).Msg("gstreamer_error_detached")
+	}
+}
+
+//export goDebugLog
+func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char) {
+
+	level := int(cLevel)
+	from := "GStreamer:" + C.GoString(cFile) + ":" + C.GoString(cFunction) + ":" + strconv.Itoa(int(line))
+	msg := C.GoString(cMsg)
+
+	if env.GSTTracking && level == GstLevelWarning {
+		match := idRegexp.FindStringSubmatch(msg)
+		if len(match) > 0 {
+			idsMatch := idsRegexp.FindStringSubmatch(match[1])
+			if len(idsMatch) > 3 {
+				frameMatch := frameRegexp.FindStringSubmatch(msg)
+				frame := ""
+				if len(frameMatch) > 0 {
+					frame = frameMatch[1]
+				}
+				trackingMatch := trackingRegexp.FindStringSubmatch(msg)
+				tracking := false
+				if len(trackingMatch) > 0 {
+					tracking = true
+				}
+				log.Warn().
+					Str("context", "gstreamer").
+					Int("GST_LEVEL", level).
+					Str("namespace", idsMatch[1]).
+					Str("interaction", idsMatch[2]).
+					Str("user", idsMatch[3]).
+					Str("frame", frame).
+					Bool("value", tracking).
+					Msg("video_tracking")
+			}
+		} else {
+			log.Warn().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+		}
+	} else if level == GstLevelError {
+		log.Error().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+	} else if level == GstLevelWarning {
+		log.Warn().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
+	} else {
+		log.Info().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
 	}
 }

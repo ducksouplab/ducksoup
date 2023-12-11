@@ -21,6 +21,19 @@ void stop_pipeline(GstElement* pipeline) {
     g_free(id);
 }
 
+void log_callback(
+    GstDebugCategory * category,
+    GstDebugLevel level,
+    const gchar * file,
+    const gchar * function,
+    gint line,
+    GObject * object,
+    GstDebugMessage * message,
+    gpointer data
+) {
+    // printf("[Level:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
+    goDebugLog(level, (char*)file, (char*)function, line, (char*)gst_debug_message_get(message));
+}
 
 static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
@@ -38,18 +51,9 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         gst_bin_recalculate_latency(GST_BIN(pipeline));
         break;
 	}
-    // case GST_MESSAGE_WARNING: {
-    //     GError *error;
-    //     gst_message_parse_warning(msg, &error, NULL);
-    //     goLogError(id, error->message, GST_OBJECT_NAME (msg->src));
-    //     g_error_free(error);
-    //     break;
-	// }
     case GST_MESSAGE_ERROR:
     {
         GError *error;
-        g_print(">>>2");
-
         // uncomment if debug info is used 
         // gchar *debug;
         // gst_message_parse_error(msg, &error, &debug);
@@ -57,14 +61,14 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 
         gst_message_parse_error(msg, &error, NULL);
 
-        goLogError(id, error->message, GST_OBJECT_NAME (msg->src));
+        goBusLog(id, error->message, GST_OBJECT_NAME (msg->src));
         stop_pipeline(pipeline);
 
         g_error_free(error);
         break;
     }
     default:
-        g_print(">>>3 got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
+        // g_print(">>> got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
         break;
     }
 
@@ -149,6 +153,8 @@ GMainLoop *gstreamer_main_loop = NULL;
 
 void gstStartMainLoop(void)
 {
+    // use custom log
+    gst_debug_add_log_function(log_callback, NULL, NULL);
     // run loop
     gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(gstreamer_main_loop);
@@ -157,6 +163,7 @@ void gstStartMainLoop(void)
 GstElement *gstParsePipeline(char *pipelineStr, char *id)
 {    
     gst_init(NULL, NULL);
+    gst_debug_remove_log_function(gst_debug_log_default);
     gst_debug_set_active(TRUE);
 
     GError *error = NULL;
