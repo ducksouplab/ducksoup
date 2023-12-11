@@ -213,7 +213,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DUCKSOUP_PORT=8000` (defaults to 8100) to set port listen by server
 - `DUCKSOUP_WEB_PREFIX=/path` (defaults to none) if DuckSoup server is behind a proxy and reachable at https://ducksoup-host.com/path
 - `DUCKSOUP_ALLOWED_WS_ORIGINS=https://origin1,https://origin2:8180` (defaults to none) declares comma separated allowed origins for WebSocket connections
-- `DUCKSOUP_EXPLICIT_HOST_CANDIDATE` (defaults to false) if true, will use `DUCKSOUP_PUBLIC_IP` as a host candidate during signaling (not necessary if ICE servers are used)
+- `DUCKSOUP_EXPLICIT_HOST_CANDIDATE` (defaults to false) if true, will use `DUCKSOUP_PUBLIC_IP` as a host candidate during signaling (not necessary if ICE servers are used). It only applies to DuckSoup server candidate, and won't affect STUN servers being used or not, as defined by `DUCKSOUP_STUN_SERVER_URLS` (see below)
 - `DUCKSOUP_PUBLIC_IP` (defaults to none) needed if `DUCKSOUP_EXPLICIT_HOST_CANDIDATE` is true or if DuckSoup embedded TURN server is enabled (see `DUCKSOUP_TURN_*` variables)
 - `DUCKSOUP_TURN_ADDRESS` and `DUCKSOUP_TURN_PORT` (defaults to none) if both are set, they will be used to configure DuckSoup embedded TURN server and share its configuration with ducksoup.js as `turn:${DUCKSOUP_TURN_ADDRESS}:${DUCKSOUP_TURN_PORT}`
 - `DUCKSOUP_TEST_LOGIN` (defaults to "ducksoup") to protect test and stats pages with HTTP authentitcation
@@ -233,7 +233,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
 - `DUCKSOUP_LOG_LEVEL` (defaults to 3) to select log level display (see next section)
 - `DUCKSOUP_FORCE_OVERLAY` (defaults to false) set to true to display a time overlay in videos (recorded)
 - `DUCKSOUP_NO_RECORDING` (defaults to false) set to true to disable audio/video file recordings
-- `DUCKSOUP_STUN_SERVER_URLS=false` (defaults to `stun:stun.l.google.com:19302`) declares comma separated allowed STUN servers to be used to find ICE candidates (or false to disable STUN)
+- `DUCKSOUP_STUN_SERVER_URLS=false` (defaults to `stun:stun.l.google.com:19302`) declares comma separated allowed STUN servers to be used to find ICE candidates (or false to disable STUN) both for peers and the DuckSoup server
 
 Since DuckSoup relies on GStreamer, GStreamer environment variables may be useful, for instance:
 
