@@ -38,9 +38,17 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         gst_bin_recalculate_latency(GST_BIN(pipeline));
         break;
 	}
+    // case GST_MESSAGE_WARNING: {
+    //     GError *error;
+    //     gst_message_parse_warning(msg, &error, NULL);
+    //     goLogError(id, error->message, GST_OBJECT_NAME (msg->src));
+    //     g_error_free(error);
+    //     break;
+	// }
     case GST_MESSAGE_ERROR:
     {
         GError *error;
+        g_print(">>>2");
 
         // uncomment if debug info is used 
         // gchar *debug;
@@ -56,7 +64,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
         break;
     }
     default:
-        // g_print(">>> got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
+        g_print(">>>3 got message %s\n", gst_message_type_get_name (GST_MESSAGE_TYPE (msg)));
         break;
     }
 

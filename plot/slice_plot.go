@@ -80,7 +80,7 @@ func (s *SlicePlot) save() {
 			smallGlyph,
 		)
 		createLinePoints(s.bitratePlot,
-			"framerate (per second)",
+			"input framerate",
 			s.framerateLine,
 			0,
 			0,
