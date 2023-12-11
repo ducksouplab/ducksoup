@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/ducksouplab/ducksoup/env"
+	extLogger "github.com/ducksouplab/ducksoup/logger"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/rs/zerolog/log"
 )
@@ -25,7 +26,7 @@ var (
 
 func init() {
 	idRegexp = regexp.MustCompile(`user-id: (.*?),`)
-	idsRegexp = regexp.MustCompile(`n-(.*?)-r-(.*?)-u-(.*?)$`)
+	idsRegexp = regexp.MustCompile(`r-(.*?)-u-(.*?)$`)
 	frameRegexp = regexp.MustCompile(`frame: (.*?),`)
 	trackingRegexp = regexp.MustCompile("TRACKER_OK")
 }
@@ -101,7 +102,6 @@ func goBusLog(cId, cMsg, cEl *C.char) {
 
 //export goDebugLog
 func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char) {
-
 	level := int(cLevel)
 	from := "GStreamer:" + C.GoString(cFile) + ":" + C.GoString(cFunction) + ":" + strconv.Itoa(int(line))
 	msg := C.GoString(cMsg)
@@ -110,27 +110,28 @@ func goDebugLog(cLevel C.int, cFile, cFunction *C.char, line C.int, cMsg *C.char
 		match := idRegexp.FindStringSubmatch(msg)
 		if len(match) > 0 {
 			idsMatch := idsRegexp.FindStringSubmatch(match[1])
-			if len(idsMatch) > 3 {
-				frameMatch := frameRegexp.FindStringSubmatch(msg)
-				frame := ""
-				if len(frameMatch) > 0 {
-					frame = frameMatch[1]
+			if len(idsMatch) > 2 {
+				if logger, ok := extLogger.GetLogger(idsMatch[1]); ok {
+					frameMatch := frameRegexp.FindStringSubmatch(msg)
+					frame := ""
+					if len(frameMatch) > 0 {
+						frame = frameMatch[1]
+					}
+					trackingMatch := trackingRegexp.FindStringSubmatch(msg)
+					tracking := false
+					if len(trackingMatch) > 0 {
+						tracking = true
+					}
+					logger.Warn().
+						Str("context", "gstreamer").
+						Int("GST_LEVEL", level).
+						Str("user", idsMatch[2]).
+						Str("frame", frame).
+						Bool("value", tracking).
+						Msg("video_tracking")
 				}
-				trackingMatch := trackingRegexp.FindStringSubmatch(msg)
-				tracking := false
-				if len(trackingMatch) > 0 {
-					tracking = true
-				}
-				log.Warn().
-					Str("context", "gstreamer").
-					Int("GST_LEVEL", level).
-					Str("namespace", idsMatch[1]).
-					Str("interaction", idsMatch[2]).
-					Str("user", idsMatch[3]).
-					Str("frame", frame).
-					Bool("value", tracking).
-					Msg("video_tracking")
 			}
+
 		} else {
 			log.Warn().Str("context", "gstreamer").Str("from", from).Int("GST_LEVEL", level).Msg(msg)
 		}

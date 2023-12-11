@@ -9,6 +9,7 @@ import (
 
 	"github.com/ducksouplab/ducksoup/env"
 	"github.com/ducksouplab/ducksoup/helpers"
+	extLogger "github.com/ducksouplab/ducksoup/logger"
 	"github.com/ducksouplab/ducksoup/store"
 	"github.com/ducksouplab/ducksoup/types"
 	"github.com/pion/webrtc/v3"
@@ -103,6 +104,7 @@ func (i *interaction) setLogger() {
 	logger.Info().Str("context", "interaction").Msg("logger_created")
 
 	i.logger = logger
+	extLogger.SetLogger(i.randomId, &logger)
 }
 
 func newInteraction(id string, jp types.JoinPayload) *interaction {
@@ -146,7 +148,7 @@ func newInteraction(id string, jp types.JoinPayload) *interaction {
 		pipelineStartCount:  0,
 		inTracksReadyCount:  0,
 		outTracksReadyCount: 0,
-		randomId:            helpers.RandomHexString(12),
+		randomId:            helpers.RandomHexString(32),
 		namespace:           jp.Namespace,
 		id:                  id,
 		name:                jp.InteractionName,
@@ -412,6 +414,7 @@ func (i *interaction) unguardedDelete() {
 	}
 	i.deleted = true
 	interactionStoreSingleton.delete(i)
+	extLogger.DeleteLogger(i.randomId)
 	i.logger.Info().Str("context", "interaction").Msg("interaction_deleted")
 	// cleanup
 	for _, ssrc := range i.ssrcs {

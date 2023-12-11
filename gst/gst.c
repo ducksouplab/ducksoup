@@ -31,7 +31,7 @@ void log_callback(
     GstDebugMessage * message,
     gpointer data
 ) {
-    // printf("[Level:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
+    printf("[GST_LEVEL:%d] %s:%s:%d  %s\n", level, file, function, line, gst_debug_message_get(message));
     goDebugLog(level, (char*)file, (char*)function, line, (char*)gst_debug_message_get(message));
 }
 

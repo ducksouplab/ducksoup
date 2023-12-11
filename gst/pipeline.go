@@ -52,7 +52,7 @@ func fileName(namespace string, prefix string, suffix string) string {
 	return namespace + "/" + prefix + "-" + suffix + ".mkv"
 }
 
-func getOptions(jp types.JoinPayload) (videoOptions, audioOptions mediaOptions) {
+func getOptions(jp types.JoinPayload, iRandomId string) (videoOptions, audioOptions mediaOptions) {
 	audioOptions = gstConfig.Opus
 	// rely on the fact that assigning to a struct with only primitive values (string), is copying by value
 	// caution: don't extend codec type with non primitive values
@@ -82,6 +82,9 @@ func getOptions(jp types.JoinPayload) (videoOptions, audioOptions mediaOptions) 
 	// complete with Fx
 	audioOptions.Fx = strings.Replace(jp.AudioFx, "name=", "name=client_", -1)
 	videoOptions.Fx = strings.Replace(jp.VideoFx, "name=", "name=client_", -1)
+	if strings.Contains(videoOptions.Fx, "mozza") {
+		videoOptions.Fx += fmt.Sprintf(" user-id=r-%v-u-%v", iRandomId, jp.UserId)
+	}
 
 	return
 }
@@ -114,7 +117,7 @@ func NewPipeline(jp types.JoinPayload, plir types.PLIRequester, dataFolder, iRan
 		Str("pipeline", id).
 		Logger()
 
-	videoOptions, audioOptions := getOptions(jp)
+	videoOptions, audioOptions := getOptions(jp, iRandomId)
 	logger.Info().Str("audioOptions", fmt.Sprintf("%+v", audioOptions)).Msg("template_data")
 	logger.Info().Str("videoOptions", fmt.Sprintf("%+v", videoOptions)).Msg("template_data")
 
