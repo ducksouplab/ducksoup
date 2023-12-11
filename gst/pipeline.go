@@ -102,10 +102,18 @@ func (p *Pipeline) filePrefix() string {
 		"-c-" + fmt.Sprint(p.connectionCount)
 }
 
+func envInterceptGSTLogs() int {
+	interceptGSTLogs := 0
+	if env.InterceptGSTLogs {
+		interceptGSTLogs = 1
+	}
+	return interceptGSTLogs
+}
+
 // API
 
 func StartMainLoop() {
-	C.gstStartMainLoop()
+	C.gstStartMainLoop(C.int(envInterceptGSTLogs()))
 }
 
 // create a GStreamer pipeline

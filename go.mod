@@ -3,14 +3,14 @@ module github.com/ducksouplab/ducksoup
 go 1.20
 
 require (
-	github.com/evanw/esbuild v0.19.7
+	github.com/evanw/esbuild v0.19.9
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/joho/godotenv v1.5.1
 	github.com/pion/ice/v2 v2.3.11
 	github.com/pion/interceptor v0.1.25
-	github.com/pion/rtcp v1.2.12
+	github.com/pion/rtcp v1.2.13
 	github.com/pion/sdp/v3 v3.0.6
 	github.com/pion/turn/v2 v2.1.4
 	github.com/pion/webrtc/v3 v3.2.23
@@ -45,10 +45,10 @@ require (
 	github.com/pion/transport/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
+	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/image v0.14.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

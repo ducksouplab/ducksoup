@@ -13,7 +13,7 @@ extern void goRequestKeyFrame(char *id);
 extern void goBusLog(char *id, char *msg, char *el);
 extern void goDebugLog(int level, char *file, char *function,int line, char *msg);
 
-void gstStartMainLoop(void);
+void gstStartMainLoop(gboolean interceptLogs);
 GstElement *gstParsePipeline(char *pipelineStr, char *id);
 void gstStartPipeline(GstElement *pipeline, gboolean audioOnly);
 void gstStopPipeline(GstElement *pipeline);

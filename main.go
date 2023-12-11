@@ -41,6 +41,7 @@ func logState() {
 	log.Info().Str("context", "init").Bool("value", env.GSTTracking).Msg("DUCKSOUP_GST_TRACKING")
 	log.Info().Str("context", "init").Int("value", env.LogLevel).Msg("DUCKSOUP_LOG_LEVEL")
 	log.Info().Str("context", "init").Str("value", env.LogFile).Msg("DUCKSOUP_LOG_FILE")
+	log.Info().Str("context", "init").Bool("value", env.InterceptGSTLogs).Msg("DUCKSOUP_INTERCEPT_GST_LOGS")
 	log.Info().Str("context", "init").Bool("value", env.ForceOverlay).Msg("DUCKSOUP_FORCE_OVERLAY")
 	log.Info().Str("context", "init").Bool("value", env.NoRecording).Msg("DUCKSOUP_NO_RECORDING")
 	log.Info().Str("context", "init").Str("value", fmt.Sprintf("%v", env.STUNServerURLS)).Msg("DUCKSOUP_STUN_SERVER_URLS")

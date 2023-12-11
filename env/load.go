@@ -15,7 +15,7 @@ const (
 	TimeFormat = "20060102-150405.000"
 )
 
-var ExplicitHostCandidate, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, LogStdout, NoRecording, NVCodec, NVCuda bool
+var ExplicitHostCandidate, ForceOverlay, GCC, GSTTracking, GeneratePlots, GenerateTWCC, InterceptGSTLogs, LogStdout, NoRecording, NVCodec, NVCuda bool
 var JitterBuffer, LogLevel int
 var LogFile, Mode, Port, PublicIP, TestLogin, TestPassword, TurnAddress, TurnPort, WebPrefix string
 var AllowedWSOrigins, STUNServerURLS []string
@@ -63,6 +63,9 @@ func init() {
 	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_GENERATE_TWCC")) == "true" {
 		GenerateTWCC = true
+	}
+	if strings.ToLower(os.Getenv("DUCKSOUP_INTERCEPT_GST_LOGS")) == "true" {
+		InterceptGSTLogs = true
 	}
 	if strings.ToLower(os.Getenv("DUCKSOUP_LOG_STDOUT")) == "true" {
 		LogStdout = true

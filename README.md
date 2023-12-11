@@ -231,6 +231,7 @@ Security related settings and settings defining how DuckSoup is run on host are 
   - if `DUCKSOUP_LOG_FILE` is also set, global logs are written to both (see next section)
   - if neither are set, logs are written to Stderr 
 - `DUCKSOUP_LOG_LEVEL` (defaults to 3) to select log level display (see next section)
+- `DUCKSOUP_INTERCEPT_GST_LOGS` (defaults to false) disable GStreamer default logger to intercept logs and put them in the relevant interaction logs if possible
 - `DUCKSOUP_FORCE_OVERLAY` (defaults to false) set to true to display a time overlay in videos (recorded)
 - `DUCKSOUP_NO_RECORDING` (defaults to false) set to true to disable audio/video file recordings
 - `DUCKSOUP_STUN_SERVER_URLS=false` (defaults to `stun:stun.l.google.com:19302`) declares comma separated allowed STUN servers to be used to find ICE candidates (or false to disable STUN) both for peers and the DuckSoup server

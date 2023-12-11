@@ -151,10 +151,13 @@ GstFlowReturn video_rtp_sink_callback(GstElement *sink, gpointer data)
 
 GMainLoop *gstreamer_main_loop = NULL;
 
-void gstStartMainLoop(void)
+void gstStartMainLoop(gboolean interceptLogs)
 {
-    // use custom log
-    gst_debug_add_log_function(log_callback, NULL, NULL);
+    if(interceptLogs) {
+        // use custom log
+        gst_debug_add_log_function(log_callback, NULL, NULL);
+        gst_debug_remove_log_function(gst_debug_log_default);
+    }
     // run loop
     gstreamer_main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(gstreamer_main_loop);
@@ -163,7 +166,6 @@ void gstStartMainLoop(void)
 GstElement *gstParsePipeline(char *pipelineStr, char *id)
 {    
     gst_init(NULL, NULL);
-    gst_debug_remove_log_function(gst_debug_log_default);
     gst_debug_set_active(TRUE);
 
     GError *error = NULL;
