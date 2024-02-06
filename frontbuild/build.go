@@ -60,9 +60,11 @@ func generateBuildOptions(versioned bool) api.BuildOptions {
 			"front/src/js/test/ice/ice.js",
 			"front/src/js/test/play/play.jsx",
 			"front/src/js/test/mirror/mirror.js",
+			"front/src/js/test/communication_test/communication_test.js",
 			"front/src/js/stats/stats.js",
 			"front/src/css/mirror.css",
 			"front/src/css/play.css",
+			
 		},
 		EntryNames:        entryNames,
 		Bundle:            true,

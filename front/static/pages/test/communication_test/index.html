@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="h-100">
+
+<head>
+  <title>DuckSoup | Comm test</title>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet"
+  integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.min.js"
+  integrity="sha384-j0CNLUeiqtyaRmlzUHCPZ+Gy5fQu0dQ6eZ/xAww941Ai1SxSY+0EQqNXNE6DZiVc"
+  crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="../../assets/v1.91/css/mirror.css">
+  <script src="../../assets/v1.91/js/ducksoup.js"></script>
+  <script src="../../assets/v1.91/js/mirror.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+  <div class="container mt-3">
+    <div class="row">
+      <div class="col-4">
+        <form id="settings">
+          <input type="hidden" name="isMirror" value="true">
+          <div class="row mb-4">
+            <div class="col-9">
+              <h2>Communication Test</h2>
+            </div>
+            <div class="col-3">
+              <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
+              <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
+            </div>
+          </div>
+          <div class="row" style="display: none;">
+            <div class="col-6">
+              <label for="input-audio-fx" class="form-label">Audio FX</label>
+            </div>
+            <div class="col-6">
+              <input class="form-check-input" id="audio-only" type="checkbox" name="audioOnly">
+              <label class="form-check-label" for="audio-only">Audio only</label>
+            </div>
+          </div>
+          <div class="row" style="display: none;">
+            <div class="col">
+              <div class="mb-3">
+                <input class="form-control" id="input-audio-fx" type="text" name="audioFx" placeholder="fx_name prop1=value1 prop2=value2...">
+              </div>
+            </div>
+          </div>
+          <div class="row" style="display: none;">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-video-fx" class="form-label">Video FX</label>
+                <input class="form-control" id="input-video-fx" type="text" name="videoFx" value="" placeholder="fx_name prop1=value1 prop2=value2...">
+              </div>
+            </div>
+          </div>
+          <hr/>
+          <div class="row" style="display: none;">
+            <div class="col-6">
+              <div class="mb-3">
+                <label for="input-video-format" class="form-label">Video format</label>
+                <select class="form-select" id="input-video-format" name="videoFormat">
+                  <option value="H264" selected>H264</option>
+                  <option value="VP8">VP8</option>
+                </select>
+              </div>
+            </div>
+            <div class="col" style="display: none;">
+              <div class="mb-3" style="padding-top: 28px;">
+                <input class="form-check-input" id="input-gpu" type="checkbox" checked name="gpu">
+                <label class="form-check-label" for="input-gpu">GPU (if relevant)</label>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="display: none;">
+            <div class="col-6">
+              <div class="mb-3">
+                <label for="input-recording-mode" class="form-label">Recording mode</label>
+                <select class="form-select" id="input-recording-mode" name="recordingMode">
+                  <option value="forced" selected>forced framerate</option>
+                  <option value="free">free framerate</option>
+                  <option value="reenc">reenc dry</option>
+                  <option value="split">split</option>
+                  <option value="rtpbin_only">rtpbin only</option>
+                  <option value="none">none</option>
+                  <option value="direct">gst src->sink</option>
+                  <option value="bypass">bypass GStreamer</option>
+                </select>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3" style="padding-top: 28px;">
+                <input class="form-check-input" id="input-overlay" type="checkbox" value="false" name="overlay">
+                <label class="form-check-label" for="input-overlay">overlay (if FX)</label>
+              </div>
+            </div>
+          </div>
+          Let's test the communication setting.
+          1- Put your headphones on. <br/>
+          2- Choose your audio and video input. <br/>
+          3- Click start. <br/>
+          4- Talk. <br/>
+          Can you see and hear yourself correctly? Can you hear your voice clearly? Is the sound quality excelent and the microphone working? <br/>
+          <hr/>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-audio" class="form-label">Audio input</label>
+                <select class="form-select" id="input-audio" name="audioDevice"></select>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-video" class="form-label">Video input</label>
+                <select class="form-select" id="input-video" name="videoDevice"></select>
+              </div>
+            </div>
+          </div>
+          <hr/>
+          <p>
+          If you can see and hear yourself <strong>correctly and in good quality</strong>, it means that you can participate in the experiment. Remember  the configuration that you used you will be asked to use this after.
+          </p>
+          <p>
+          If you can't see or hear anything after pressing start or if there is "ERROR" displayed, then it means that there is a compatibility problem with your internet connection and you are not allowed to participate in the experiment. In that case, please <strong>return your prolific submission with code Sett_ERROR</strong>. Don't worry you will be compnensated for the time you took setting up the experiment.
+          </p>
+
+          <div class="row" style="display: none;">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-frame-rate" class="form-label">Frame rate</label>
+                <div class="input-group">
+                  <input class="form-control" id="input-frame-rate" type="number" name="framerate" value="25">
+                  <span class="input-group-text">fps</span>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-4">
+                <label for="input-duration" class="form-label">Duration</label>
+                <div class="input-group">
+                  <input class="form-control" id="input-duration" type="number" name="duration" value="120">
+                  <span class="input-group-text">sec</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="display: none;">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-width" class="form-label">Width</label>
+                <input class="form-control" id="input-width" type="number" name="width" value="800">
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-height" class="form-label">Height</label>
+                <input class="form-control" id="input-height" type="number" name="height" value="600">
+              </div>
+            </div>
+            <p>Width/height may not apply depending on browser encoder and DuckSoup configuration</p>
+          </div>
+          <hr/>
+          <div class="row" style="display: none;">
+            <div class="col">
+              <div class="mb-3">
+                <label for="input-signaling-url" class="form-label">DuckSoup signaling URL</label>
+                <input class="form-control" id="input-signaling-url" type="text" name="signalingUrl">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="col-8">
+        <div id="stopped" class="show-when-ended">
+          <p id="stopped-message"></p>
+        </div>
+        <div id="ducksoup-wrapper">
+          <div id="ducksoup-mount" class="show-when-running mb-3"></div>
+          <div class='overlay overlay-bottom show-when-ending d-none'><div>Conversation ending soon</div></div>
+        </div>
+       
+        <hr/>
+        <div class="video-container show-when-running">
+          <video id="local-video" autoplay muted></video>
+          <div class="overlay overlay-top"><div>Direct from webcam</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
