@@ -105,7 +105,7 @@ func Start() {
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/interaction/").Handler(http.StripPrefix(webPrefix+"/test/interaction/", http.FileServer(http.Dir("./front/static/pages/test/interaction/"))))
 	testRouter.PathPrefix("/play/").Handler(http.StripPrefix(webPrefix+"/test/play/", http.FileServer(http.Dir("./front/static/pages/test/play/"))))
-	testRouter.PathPrefix("/communication_test/").Handler(http.StripPrefix(webPrefix+"/test/communication_test/", http.FileServer(http.Dir("./front/static/pages/test/communication_test/"))))
+	testRouter.PathPrefix("/direct/").Handler(http.StripPrefix(webPrefix+"/test/direct/", http.FileServer(http.Dir("./front/static/pages/test/direct/"))))
 
 
 	// stats pages with basic auth
