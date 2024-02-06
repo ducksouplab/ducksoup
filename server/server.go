@@ -97,16 +97,22 @@ func Start() {
 	// assets without basic auth
 	router.PathPrefix(webPrefix + "/assets/").Handler(http.StripPrefix(webPrefix+"/assets/", http.FileServer(http.Dir("./front/static/assets/"))))
 	router.PathPrefix(webPrefix + "/config/").Handler(http.StripPrefix(webPrefix+"/config/", http.FileServer(http.Dir("./front/static/config/"))))
+	
+
+	directRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
+	directRouter.PathPrefix("/direct/").Handler(http.StripPrefix(webPrefix+"/test/direct/", http.FileServer(http.Dir("./front/static/pages/test/direct/"))))
+
+	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 
 	// test pages with basic auth
-	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 	testRouter.Use(basicAuthWith(env.TestLogin, env.TestPassword))
 	testRouter.PathPrefix("/ice/").Handler(http.StripPrefix(webPrefix+"/test/ice/", http.FileServer(http.Dir("./front/static/pages/test/ice/"))))
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/interaction/").Handler(http.StripPrefix(webPrefix+"/test/interaction/", http.FileServer(http.Dir("./front/static/pages/test/interaction/"))))
 	testRouter.PathPrefix("/play/").Handler(http.StripPrefix(webPrefix+"/test/play/", http.FileServer(http.Dir("./front/static/pages/test/play/"))))
-	testRouter.PathPrefix("/direct/").Handler(http.StripPrefix(webPrefix+"/test/direct/", http.FileServer(http.Dir("./front/static/pages/test/direct/"))))
+	
 
+	
 
 	// stats pages with basic auth
 	if config.GenerateStats {
