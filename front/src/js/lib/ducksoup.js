@@ -20,6 +20,10 @@ const MAX_VIDEO_BITRATE = 1500000;
 const MAX_AUDIO_BITRATE = 64000;
 const BITRATE_RAMP_DURATION = 3000;
 
+// Chrome 122 fix
+
+let chrome122Fix = false;
+
 // Init
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -29,6 +33,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // needed for safari (getUserMedia before enumerateDevices), but could be a problem if constraints change for Chrome
   if (containsSafari && !containsChrome) {
     await navigator.mediaDevices.getUserMedia(DEFAULT_CONSTRAINTS);
+  }
+  if (containsChrome) {
+    const versionExec = /Chrome\/([0-9]+)/.exec(ua);
+    if (versionExec.length > 1) {
+      const version = parseInt(versionExec[1], 10);
+      if (version >= 122) {
+        chrome122Fix = true;
+      }
+    }
   }
 });
 
@@ -138,7 +151,28 @@ const addTWCC = (sdp) => {
     .join("\r\n");
 };
 
-const processSDP = (sdp) => {
+
+const fixChrome122 = (sdp) => {
+  console.log(chrome122Fix);
+  if (!chrome122Fix) return sdp;
+  return sdp
+    .split("\r\n")
+    .map((line) => {
+      if (chrome122Fix && line.startsWith("a=group:BUNDLE")) {
+        return `${line}\r\na=msid-semantic: WMS`;      
+      } else {
+        return line;
+      }
+    })
+    .join("\r\n");
+};
+
+const processOffer = (sdp) => {
+  let output = fixChrome122(sdp);
+  return output;
+};
+
+const processAnswer = (sdp) => {
   let output = preferMono(sdp);
   // output = addTWCC(output);
   return output;
@@ -206,6 +240,7 @@ class DuckSoup {
   #statsIntervalId;
   #signalingUrl;
   #callback;
+  #pendingCandidates;
 
   // API
 
@@ -222,6 +257,7 @@ class DuckSoup {
     this.#started = false // locally started
     this.#startedRTC = false // signaling with server has come to start peer connection
     this.#stopped = false;
+    this.#pendingCandidates = [];
 
     const { mountEl } = embedOptions;
     if (mountEl) {
@@ -403,22 +439,29 @@ class DuckSoup {
         // and forward
         this.#forward(message);
       } else if (kind === "offer") {
+        // start PC and add tracks
         await this.#startRTCOnce();
+        // set offer
         const offer = looseJSONParse(payload);
+        offer.sdp = processOffer(offer.sdp);
         await this.#pc.setRemoteDescription(offer);
+        // add pending candidates
+        for (const candidate of this.#pendingCandidates) {
+          this.#addIceCandidate(candidate);
+        }
+        // create and share answer
         const answer = await this.#pc.createAnswer();
-        answer.sdp = processSDP(answer.sdp);
+        answer.sdp = processAnswer(answer.sdp);
         await this.#pc.setLocalDescription(answer);
         this.#serverSend("client_answer", answer);
         console.debug(`[DS] server offer sdp (length ${payload.length})\n`, offer.sdp);
       } else if (kind === "candidate") {
         const candidate = looseJSONParse(payload);
-        try {
-          this.#pc.addIceCandidate(candidate);
-        } catch (error) {
-          console.error(error);
+        if (!this.#pc.remoteDescription) {
+          this.#pendingCandidates.push(candidate);
+        } else {
+          this.#addIceCandidate(candidate);
         }
-        console.debug("[DS] server candidate:", candidate);
       } else if (kind === "start") {
         // set encoding parameters
         rampBitrate(this.#pc);
@@ -461,6 +504,15 @@ class DuckSoup {
         console.error("[DS] ws can't connect (after 10 seconds)");
       }
     }, 10000);
+  }
+
+  #addIceCandidate(candidate) {
+    try {
+      this.#pc.addIceCandidate(candidate);
+      console.debug("[DS] server candidate:", candidate);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async #startRTCOnce() {

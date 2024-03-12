@@ -497,7 +497,7 @@ func (i *interaction) endingDelay() (delay int) {
 }
 
 // return false if an error ends the waiting, discards RTP till ready
-func (i *interaction) waitTillAllReady(remoteTrack *webrtc.TrackRemote) bool {
+func (i *interaction) waitTillAllReady() bool {
 	for {
 		select {
 		case <-i.isReady():
@@ -525,7 +525,7 @@ func (i *interaction) runMixerSliceFromRemote(
 		ps.setMixerSlice(remoteTrack.Kind().String(), slice)
 
 		// wait for all peers to connect
-		ok := i.waitTillAllReady(remoteTrack)
+		ok := i.waitTillAllReady()
 		i.logger.Info().Str("context", "interaction").Str("user", ps.userId).Msg("loopTillAllReady")
 
 		if ok {
