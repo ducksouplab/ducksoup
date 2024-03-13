@@ -20,6 +20,8 @@ A few notes about GStreamer settings:
 
 - `h264timestamper` triggers an "Unknown frame rate, assume 25/1" that's why we disabled it since framerate should not be defined by this elemend
 
+- `oggmux` it seems it needs a few seconds before starting recording to files
+
 About cuda
 
 Check how to use cudaupload, cudadownload and where to put caps here: https://gstreamer.freedesktop.org/documentation/nvcodec/cudascale.html?gi-language=c
