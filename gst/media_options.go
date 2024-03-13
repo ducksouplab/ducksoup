@@ -35,14 +35,12 @@ type mediaOptions struct {
 
 func (mo *mediaOptions) addSharedAudioProperties() {
 	// used in template or by template helpers
-	mo.Rtp.JitterBuffer = gstConfig.Shared.Audio.RTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Audio.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Audio.DefaultBitrate / 1000
 }
 
 func (mo *mediaOptions) addSharedVideoProperties() {
 	// used in template or by template helpers
-	mo.Rtp.JitterBuffer = gstConfig.Shared.Video.RTPJitterBuffer
 	mo.DefaultBitrate = config.SFU.Video.DefaultBitrate
 	mo.DefaultKBitrate = config.SFU.Video.DefaultBitrate / 1000
 	mo.TimeOverlay = gstConfig.Shared.Video.TimeOverlay

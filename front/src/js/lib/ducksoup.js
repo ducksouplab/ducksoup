@@ -153,7 +153,6 @@ const addTWCC = (sdp) => {
 
 
 const fixChrome122 = (sdp) => {
-  console.log(chrome122Fix);
   if (!chrome122Fix) return sdp;
   return sdp
     .split("\r\n")

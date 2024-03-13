@@ -1,8 +1,5 @@
 shared:
-  audio:
-    RTPJitterBuffer: rtpjitterbuffer name=audio_buffer latency=200
   video:
-    RTPJitterBuffer: rtpjitterbuffer name=video_buffer latency=200
     rawFormat: video/x-raw,format=I420,pixel-aspect-ratio=1/1
     constraint:
       format: >-
@@ -29,7 +26,7 @@ opus:
   rtp:
     caps: application/x-rtp,media=audio,clock-rate=48000,payload=111,encoding-name=OPUS
     pay: rtpopuspay pt=111 mtu=1200
-    depay: rtpopusdepay
+    depay: rtpopusdepay ! opusparse
   decoder: opusdec
   encoder: >-
     opusenc name={{.Name}}

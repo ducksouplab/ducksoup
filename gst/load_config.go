@@ -18,13 +18,9 @@ type queueConfig struct {
 
 type gstEnhancedConfig struct {
 	Shared struct {
-		Audio struct {
-			RTPJitterBuffer string `yaml:"RTPJitterBuffer"`
-		}
 		Video struct {
-			RTPJitterBuffer string `yaml:"RTPJitterBuffer"`
-			RawFormat       string `yaml:"rawFormat"`
-			Constraint      struct {
+			RawFormat  string `yaml:"rawFormat"`
+			Constraint struct {
 				Format                    string
 				FormatFramerate           string `yaml:"formatFramerate"`
 				FormatFramerateResolution string `yaml:"formatFramerateResolution"`
