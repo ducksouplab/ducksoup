@@ -16,7 +16,8 @@ filesink location={{.Folder}}/recordings/{{.FilePrefix}}-audio-dry.{{.Audio.Exte
 
 rtpbin. !
 {{if .Audio.Fx}}
-    {{.Audio.Rtp.Depay}} !
+    {{.Audio.Rtp.Depay}} ! 
+    opusparse ! 
 
     tee name=tee_audio_in ! 
         {{.Queue.Leaky}} ! 
@@ -43,7 +44,8 @@ rtpbin. !
 {{else}}
     tee name=tee_audio_in ! 
         {{.Queue.Leaky}} ! 
-        {{.Audio.Rtp.Depay}} !
+        {{.Audio.Rtp.Depay}} ! 
+        opusparse ! 
         dry_muxer.
  
     tee_audio_in. ! 

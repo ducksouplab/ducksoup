@@ -8,7 +8,8 @@ appsink name=audio_rtp_sink
 
 rtpbin. !
 {{if .Audio.Fx}}
-    {{.Audio.Rtp.Depay}} !
+    {{.Audio.Rtp.Depay}} ! 
+    opusparse ! 
     {{.Audio.Decoder}} !
     audioconvert !
     audio/x-raw,channels=1 !
