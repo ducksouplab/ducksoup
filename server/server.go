@@ -97,10 +97,10 @@ func Start() {
 	// assets without basic auth
 	router.PathPrefix(webPrefix + "/assets/").Handler(http.StripPrefix(webPrefix+"/assets/", http.FileServer(http.Dir("./front/static/assets/"))))
 	router.PathPrefix(webPrefix + "/config/").Handler(http.StripPrefix(webPrefix+"/config/", http.FileServer(http.Dir("./front/static/config/"))))
-	
 
 	directRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 	directRouter.PathPrefix("/direct/").Handler(http.StripPrefix(webPrefix+"/test/direct/", http.FileServer(http.Dir("./front/static/pages/test/direct/"))))
+	directRouter.PathPrefix("/audio_direct/").Handler(http.StripPrefix(webPrefix+"/test/audio_direct/", http.FileServer(http.Dir("./front/static/pages/test/audio_direct/"))))
 
 	testRouter := router.PathPrefix(webPrefix + "/test").Subrouter()
 
@@ -110,9 +110,6 @@ func Start() {
 	testRouter.PathPrefix("/mirror/").Handler(http.StripPrefix(webPrefix+"/test/mirror/", http.FileServer(http.Dir("./front/static/pages/test/mirror/"))))
 	testRouter.PathPrefix("/interaction/").Handler(http.StripPrefix(webPrefix+"/test/interaction/", http.FileServer(http.Dir("./front/static/pages/test/interaction/"))))
 	testRouter.PathPrefix("/play/").Handler(http.StripPrefix(webPrefix+"/test/play/", http.FileServer(http.Dir("./front/static/pages/test/play/"))))
-	
-
-	
 
 	// stats pages with basic auth
 	if config.GenerateStats {

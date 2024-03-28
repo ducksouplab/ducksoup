@@ -384,14 +384,16 @@ func (ms *mixerSlice) loopBufferPlots() {
 		case <-ms.Done():
 			return
 		case <-ticker.C:
-			names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
-			if len(ms.fromPs.jp.VideoFx) > 0 {
-				names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_drymux", "video_queue_bef_fx", "video_queue_aft_fx", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
-			}
-			for _, n := range names {
-				l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
-				ms.plot.AddCurrentLevelTime(n, l)
-				ms.logInfo().Str("name", n).Uint64("value", l).Msg("poll_current_level_time")
+			if ms.plot != nil {
+				names := []string{"video_rtp_src", "video_queue_bef_depay", "video_queue_bef_drymux", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+				if len(ms.fromPs.jp.VideoFx) > 0 {
+					names = []string{"video_rtp_src", "video_queue_bef_drymux", "video_queue_bef_drymux", "video_queue_bef_fx", "video_queue_aft_fx", "video_queue_bef_dec", "video_queue_aft_dec", "video_queue_bef_wetmux", "video_queue_bef_sink"}
+				}
+				for _, n := range names {
+					l := ms.pipeline.GetCurrentLevelTime(n) / 1000000 // ns -> ms
+					ms.plot.AddCurrentLevelTime(n, l)
+					ms.logInfo().Str("name", n).Uint64("value", l).Msg("poll_current_level_time")
+				}
 			}
 		}
 	}
