@@ -383,7 +383,7 @@ const ducksoupListener = (options) => (message) => {
     if (state.ducksoup) state.ducksoup.serverLog("interaction_ending_received");
   } else if (kind === "files") {
     if (payload && payload[state.userId]) {
-      let html = "The test just finished. Were you able to hear and see yourself correctly without background noise? If you did, you can participate in the experiment. If not then you are not allowed to participate in the experiment. Please return your prolific submission using the code Sett_error.";
+      let html = "The test just finished. Were you able to hear yourself correctly without background noise? If you did, you can participate in the experiment. If not then you are not allowed to participate in the experiment. Please return your prolific submission using the code Sett_error.";
       // html += payload[state.userId].join("<br/>") + "<br/>";
       replaceMessage(html);
     } else {
