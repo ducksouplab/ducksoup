@@ -9,11 +9,16 @@
 #define GST_RTP_EVENT_RETRANSMISSION_REQUEST "GstRTPRetransmissionRequest"
 
 // Internals (snake_case)
+void send_eos_to_pipeline(GstElement* pipeline) {
+    if (!gst_element_send_event(pipeline, gst_event_new_eos())) {
+        g_printerr("Failed to send EOS to pipeline\n");
+    }
+}
 
 void stop_pipeline(GstElement* pipeline) {
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
-
+    send_eos_to_pipeline(pipeline);
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(pipeline);
 
