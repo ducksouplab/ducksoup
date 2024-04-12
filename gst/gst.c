@@ -8,9 +8,17 @@
 
 #define GST_RTP_EVENT_RETRANSMISSION_REQUEST "GstRTPRetransmissionRequest"
 
+// Internals (snake_case)
+void send_eos_to_pipeline(GstElement* pipeline) {
+    if (!gst_element_send_event(pipeline, gst_event_new_eos())) {
+        g_printerr("Failed to send EOS to pipeline\n");
+    }
+}
+
 void stop_pipeline(GstElement* pipeline) {
     // use previously set name as id
     char *id = gst_element_get_name(pipeline);
+    send_eos_to_pipeline(pipeline);
     gst_element_set_state(pipeline, GST_STATE_NULL);
     gst_object_unref(pipeline);
 
@@ -206,41 +214,6 @@ void gstStartPipeline(GstElement *pipeline, gboolean audioOnly)
 
 }
 
-// Helper function to send EOS to an appsrc element
-void send_eos_to_appsrc(GstElement *appsrc) {
-    if (GST_IS_APP_SRC(appsrc)) {
-        gboolean result = gst_app_src_end_of_stream(GST_APP_SRC(appsrc));
-        if (!result) {
-            g_warning("Failed to send EOS to %s", GST_ELEMENT_NAME(appsrc));
-        } else {
-            g_info("EOS sent to %s successfully.", GST_ELEMENT_NAME(appsrc));
-        }
-    }
-}
-
-// Function to iterate over all elements in a bin and send EOS to all appsrcs
-void send_eos_to_all_appsrc(GstElement *element) {
-    GValue item = G_VALUE_INIT;
-    gboolean more_items;
-
-    if (GST_IS_BIN(element)) {
-        GstIterator *it = gst_bin_iterate_elements(GST_BIN(element));
-        while ((more_items = gst_iterator_next(it, &item)) == GST_ITERATOR_OK) {
-            GstElement *child = GST_ELEMENT(g_value_get_object(&item));
-            send_eos_to_all_appsrc(child);  // Recursive call to handle nested bins
-            g_value_reset(&item);
-        }
-        if (more_items != GST_ITERATOR_DONE) {
-            gst_iterator_resync(it);
-        }
-        gst_iterator_free(it);
-    } else {
-        // Check if the element is an appsrc and send EOS
-        send_eos_to_appsrc(element);
-    }
-}
-
-
 void gstStopPipeline(GstElement *pipeline)
 {
     // query GstStateChangeReturn within 0.1s, if GST_STATE_CHANGE_ASYNC, sending an EOS will fail main loop
@@ -251,14 +224,10 @@ void gstStopPipeline(GstElement *pipeline)
 
     if(changeReturn == GST_STATE_CHANGE_ASYNC) {
         // force stop
-        printf("I'm forcing the stop man!!!! \n");
-        send_eos_to_all_appsrc(pipeline);
         stop_pipeline(pipeline);
     } else {
         // gracefully stops media recording
-        printf("I'm here in the graceful stop!!!! \n");
         gst_element_send_event(pipeline, gst_event_new_eos());
-        send_eos_to_all_appsrc(pipeline);
     }
 
     g_free(id);
