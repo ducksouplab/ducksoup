@@ -222,8 +222,16 @@ func (p *Pipeline) Stop() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	//if we are in audio nly condition there's only one buffer
+	var nb_buff int
+	if p.jp.AudioOnly {
+		nb_buff = 1
+	} else {
+		nb_buff = 2
+	}
+
 	p.stoppedCount += 1
-	if p.stoppedCount == 2 { // audio and video buffers from mixerSlice have been stopped
+	if p.stoppedCount == nb_buff { // audio and video buffers from mixerSlice have been stopped
 		C.gstStopPipeline(p.cPipeline)
 		p.logger.Info().Msg("pipeline_stopped")
 	}
