@@ -45,6 +45,7 @@ rtpbin. !
     tee name=tee_audio_in ! 
         {{.Queue.Leaky}} ! 
         {{.Audio.Rtp.Depay}} ! 
+        opusparse ! 
         dry_muxer.
  
     tee_audio_in. ! 
