@@ -201,10 +201,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("stop").addEventListener("click", () => {
     if (state.ducksoup) state.ducksoup.stop();
-    clearMount();
+    //clearMount();
     show(".show-when-not-running");
     hide(".show-when-running");
+    const started_message = document.getElementById("started_message");
+    started_message.classList.add("d-none");
+
+// Remove the 'd-none' class
+    ducksoupMount.classList.remove("d-none");
   });
+
 
   // /test/mirror/ control sequence fx
   const sequenceFxForms = document.querySelectorAll("form.fx-sequence");
@@ -373,6 +379,10 @@ const ducksoupListener = (options) => (message) => {
       el.srcObject = streams[0];
       el.autoplay = true;
       mountEl.appendChild(el);
+      
+      const started_message = document.getElementById("started_message");
+      started_message.classList.remove("d-none");
+
     }
     // on remove
     streams[0].onremovetrack = ({ track }) => {
