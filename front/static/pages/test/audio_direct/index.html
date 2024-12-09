@@ -14,6 +14,20 @@
   <script src="../../assets/v1.93/js/ducksoup.js"></script>
   <script src="../../assets/v1.93/js/audio_direct.js"></script>
 </head>
+<style>
+    .started_message{
+    width: 50%; 
+    height: 30%; 
+    margin: 0 auto; 
+    padding: 20px; 
+    border: 2px solid #4CAF50; 
+    border-radius: 10px; 
+    background-color: #f9f9f9; 
+    text-align: center; 
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    font-family: Arial, sans-serif;
+    }
+</style>
 <body class="d-flex flex-column h-100">
   <div class="container mt-3">
     <div class="row">
@@ -23,10 +37,6 @@
           <div class="row mb-4">
             <div class="col-9">
               <h2>Communication Test</h2>
-            </div>
-            <div class="col-3">
-              <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
-              <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
             </div>
           </div>
           <div class="row" style="display: none;">
@@ -108,10 +118,15 @@
             </div>
           </div>
           <hr/>
-          <strong>3- Click Start. </strong><br/>
+          <div class="col-3" style = "display: flex; justify-content:space-between; width: 70%">
+            <strong><p style = "align-self: center;"> 3. Click start</p> </strong>
+            <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
+            <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
+          </div>
+
           <hr/>
           <strong>4- Talk. </strong></4-><br/><br/>
-          Can you hear your voice clearly in the headphones? Is the sound quality good and the microphone working? Is the sound to loud or to low? Is there background noise? Please perform the test multiple times until the setup is correct. At the end of the test, which lasts 45 seconds, you will be given a code showing that you succeeded the technical test. Use that code to proceed<br/>
+          Can you hear your voice clearly in the headphones? Is the sound quality good and the microphone working? Is the sound to loud or to low? Is there background noise? Please perform the test multiple times until the setup is correct. At the end of the test, which lasts 25 seconds, you will be given a code showing that you succeeded the technical test. Use that code to proceed<br/>
 
           <hr/>
           <strong>5- Results. </strong><br/>
@@ -177,8 +192,18 @@
           <p id="stopped-message"></p>
         </div>
         <div id="ducksoup-wrapper">
-          <div id="ducksoup-mount" class="show-when-running mb-3">The communication test started</div>
-          <div class='overlay overlay-bottom show-when-ending d-none'><div>The test will be ending soon</div></div>
+          <div id="ducksoup-mount" class="show-when-running mb-3" style = "display: flex; align-items: center; justify-content: center;">
+            <div class = started_message>
+            <p style="font-size: 24px; font-weight: bold; color: #4CAF50; margin: 0;">
+              The communication test has started
+            </p>
+            <p style="font-size: 20px; color: #333; margin: 10px 0;">
+              Start talking and ensure you can hear yourself clearly!
+            </p>
+          </div>
+          
+          </div>
+          <div class='overlay overlay-bottom show-when-ending d-none'><div><p style = "font-size: 18px;">The test will be ending soon</p></div></div>
         </div>
        
         

@@ -282,6 +282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+
 const clearMount = () => {
   const mountEl = document.getElementById("ducksoup-mount");
   while (mountEl.firstChild) {
@@ -290,8 +291,8 @@ const clearMount = () => {
 };
 
 const resetUX = () => {
-  // replace mountEl contents
-  clearMount();
+  // replace mountEl contents -- WHy?
+  //clearMount();
   // update UX
   show(".show-when-not-running");
   show(".show-when-ended");
@@ -396,3 +397,4 @@ const ducksoupListener = (options) => (message) => {
     replaceMessage("Error");
   }
 };
+
