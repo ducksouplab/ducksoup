@@ -67,8 +67,10 @@ RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
 FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10
-
 RUN apt-get update && apt-get upgrade -y
+
+#Install gst plugins
+RUN apt-get update && apt-get install -y gstreamer1.0-plugins-bad
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
