@@ -97,7 +97,7 @@ nv264:
       h264parse config-interval=-1 !
       h264timestamper
   decoder: >-
-    nvh264sldec
+    nvh264dec
     discard-corrupted-frames=true
     min-force-key-unit-interval=500000000
   encoder: >-

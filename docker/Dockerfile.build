@@ -1,4 +1,5 @@
-FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10 AS builder
+#FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10 AS builder
+FROM ducksouplab/debian-gstreamer:deb12-cuda12.2-plugins-gst1.24.10 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -66,7 +67,8 @@ COPY config/version.yml ./config/version.yml
 RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
-FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10
+#FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10
+FROM ducksouplab/debian-gstreamer:deb12-cuda12.2-plugins-gst1.24.10
 
 RUN apt-get update && apt-get upgrade -y
 
