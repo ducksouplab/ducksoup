@@ -1,5 +1,6 @@
 let state;
 
+
 const randomId = () =>
   Math.random()
     .toString(36)
@@ -64,6 +65,9 @@ const playControlFxSequence = (type, sequence) => {
   }, next.duration);
 };
 
+//set test duration
+test_duration = 25
+
 const start = async ({
   // not processed
   signalingUrl,
@@ -96,7 +100,7 @@ const start = async ({
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
   const framerate = parseIntWithFallback(fr, 25);
-  const duration = parseIntWithFallback(d, 30);
+  const duration = parseIntWithFallback(test_duration, 30);
   const gpu = !!g;
   const overlay = !!o;
   // initialize state
@@ -199,13 +203,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     if(targetVideoFx) targetVideoFx.value = settings.userId;
   });
 
+  var timeoutId;
   document.getElementById("stop").addEventListener("click", () => {
+    console.log("stop clicked")
     if (state.ducksoup) state.ducksoup.stop();
     //clearMount();
     show(".show-when-not-running");
     hide(".show-when-running");
-    const started_message = document.getElementById("started_message");
-    started_message.classList.add("d-none");
+
+    // Reset everything related to the test period
+    clearTimeout(timeoutId);
+    const signal_test = document.getElementById("signal_test");
+    const signal_text = document.getElementById("signal_text");
+    signal_test.classList.add("d-none");
+    signal_text.classList.add("d-none");
+    currentPhase = "noise";
 
 // Remove the 'd-none' class
     ducksoupMount.classList.remove("d-none");
@@ -318,6 +330,34 @@ const appendMessage = (message) => {
   document.getElementById("stopped-message").innerHTML += message + "<br/>";
 };
 
+//######################################################//
+//## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
+//######################################################//
+
+// Activate logging
+let volumeLevels = []; // Array to store volume levels
+let noiseLevels = []; // Array to store noise levels
+let volumeLoggingActive = false; // Flag to track logging state
+let currentPhase = "noise"
+let analyser, audioContext, dataArray;
+
+ // Log volume level
+ function logVolumeLevel() {
+  if (!volumeLoggingActive) return; // Stop logging if the flag is false
+  analyser.getByteFrequencyData(dataArray);
+  var volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+  
+  // Store the noise level
+  if (currentPhase == "noise"){noiseLevels.push(volume);}
+  // Store the volume level
+  if (currentPhase == "signal"){volumeLevels.push(volume);}
+  // Continue logging
+  requestAnimationFrame(logVolumeLevel);
+}
+//######################################################//
+//## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
+//######################################################//
+
 // communication with player
 const ducksoupListener = (options) => (message) => {
   const { kind, payload } = message;
@@ -380,12 +420,39 @@ const ducksoupListener = (options) => (message) => {
       el.autoplay = true;
       mountEl.appendChild(el);
       
-      const started_message = document.getElementById("started_message");
-      started_message.classList.remove("d-none");
+      //UI Control
+      const noise_test = document.getElementById("noise_test");
+      const signal_test = document.getElementById("signal_test");
+      const signal_text = document.getElementById("signal_text");
+      //Show noiste test ui when test starts.
+      noise_test.classList.remove("d-none");
+  
+      //Create new audio context 
+      audioContext = new window.AudioContext(); //Create a new audio context where we have the streams[0] as the audio input source.
+      analyser = audioContext.createAnalyser(); //Creates an analyser node to the audio context so that we can analyse properties of incoming signal.
+      source = audioContext.createMediaStreamSource(streams[0]); // Create the source
+      source.connect(analyser); // Connect the analyser method/node to the source. 
 
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      // Activate logging
+      volumeLoggingActive = true;
+      logVolumeLevel();
+      console.log(currentPhase)
+      timeout_id = setTimeout(() => {
+        currentPhase = "signal"
+        console.log(currentPhase)
+        //Remove noise test UI
+        noise_test.classList.add("d-none");
+        //Add signal test UI
+        signal_test.classList.remove("d-none")
+        signal_text.classList.remove("d-none")
+      }, 10000);
+    
     }
     // on remove
     streams[0].onremovetrack = ({ track }) => {
+      console.log("streams ending")
       const el = document.getElementById(track.id);
       if (el) el.parentNode.removeChild(el);
     };
@@ -393,10 +460,32 @@ const ducksoupListener = (options) => (message) => {
     show(".show-when-ending");
     if (state.ducksoup) state.ducksoup.serverLog("interaction_ending_received");
   } else if (kind === "files") {
+    // Deactivate logging
+    volumeLoggingActive = false;
+    // Calculate the average volume level
+    var averageVolume = volumeLevels.reduce((a, b) => a + b, 0) / volumeLevels.length || 0;
+    var averageNoise = noiseLevels.reduce((a, b) => a + b, 0) / noiseLevels.length || 0;
+    console.log("Average Volume Level:", averageVolume);
+    console.log("Average Noise Level:", averageNoise);
+    volumeLevels = []; //Reset volume sample
+    noiseLevels = []; //Reset volume sample
+    currentPhase = "noise";
+
+    const signal_test = document.getElementById("signal_test");
+    const signal_text = document.getElementById("signal_text");
+    signal_test.classList.add("d-none");
+    signal_text.classList.add("d-none");
+
     if (payload && payload[state.userId]) {
-      let html = "The test just finished. Were you able to hear yourself correctly, with good volume and without background noise? If not then you are not allowed to participate in the experiment. Please return your prolific submission using <a href=\"https://app.prolific.com/submissions/complete?cc=C1A9QE6C\">this link</a>. If you were able to hear yourself clearly and with a good volume, you can participate in the experiment. Please use the code <strong>2025</strong> to proceed. ";
-      // html += payload[state.userId].join("<br/>") + "<br/>";
+      if ((averageNoise < 1) && (averageVolume) > 10){
+        let html = "The test just finished. You <b>passed</b> the test and are allowed to continue with the experiment. Please use the code <b>2025</b> to proceed.";
       replaceMessage(html);
+      }else{let html = "The test just finished. You <b>failed</b> the audio test. If you followed the instructions correctly and still did not pass, you are not allowed to continue. Please <b>return</b> your Prolific submission using <a href=\"https://app.prolific.com/submissions/complete?cc=C1A9QE6C\">this link</a>. However, if you unintentionally failed to follow the instructions, you may start the test again.";
+
+      replaceMessage(html);
+      }
+      // html += payload[state.userId].join("<br/>") + "<br/>";
+
     } else {
       console.log(kind, payload);
       replaceMessage("Connection terminated");
