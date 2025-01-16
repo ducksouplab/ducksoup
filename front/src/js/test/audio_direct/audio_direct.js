@@ -95,7 +95,8 @@ const start = async ({
   const interactionName = isMirror ? randomId() : iName;
   const userId = isMirror ? randomId() : uId;
   const size = isMirror ? 1 : parseInt(s, 10);
-  const namespace = isMirror ? "test_mirror" : "test_interaction";
+  //const namespace = isMirror ? "test_mirror" : "test_interaction";
+  namespace = "audio_direct_test" //testing new namespace
   // parse
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
@@ -214,8 +215,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     clearTimeout(timeoutId);
     const signal_test = document.getElementById("signal_test");
     const signal_text = document.getElementById("signal_text");
+    const window      = document.getElementById("window_div");
     signal_test.classList.add("d-none");
     signal_text.classList.add("d-none");
+    window.classList.add("d-none");
     currentPhase = "noise";
 
 // Remove the 'd-none' class
@@ -487,7 +490,7 @@ const ducksoupListener = (options) => (message) => {
     signal_text.classList.add("d-none");
 
     if (payload && payload[state.userId]) {
-      if ((medianNoise < 2) && (medianVolume) > 8){
+      if ((medianNoise < 2) && (medianVolume) > 7){
         let html =  `
         <p id="stopped-message">
           The test just finished. Your microphone is of sufficient quality. Could you hear yourself <b>clearly</b> in your headphones?
