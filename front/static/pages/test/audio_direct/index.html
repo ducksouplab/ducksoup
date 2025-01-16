@@ -31,7 +31,7 @@
     #signal_test + p {
     width: 50%;
     margin: 20px auto 0;
-    padding: 10px;
+    padding: 20px;
     font-size: 18px;
     line-height: 1.6;
     color: #333;
@@ -42,6 +42,26 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     font-family: Arial, sans-serif;
 }
+
+#stop_col{
+  display:grid;
+}
+
+#stopped{
+  align-self: center;
+  justify-self:center;
+  width: 50%;
+}
+
+.window {
+    display: inline-block;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+    box-sizing: content-box; /* Ensures size matches content only */
+    background-color: #f9f9f9; /* Optional background color */
+  }
+
 
 </style>
 <body class="d-flex flex-column h-100">
@@ -120,7 +140,7 @@
               </div>
             </div>
           </div>
-          The aim of this page is to test the communication setting to ensure that conference quality will be good.<br/><br/>
+          The aim of this page is to test the communication setting to ensure that conference quality will be good. The test will assess the quality of your microphone as well as the functionality of your headphones.<br/><br/>
           <strong>1 - Put your headphones on. </strong><br/>
           <hr/>
           <strong>2 - Choose your microphone: </strong> Prefer the built-in microphone in your computer.
@@ -137,7 +157,7 @@
 
           <strong>3 - Instructions. </strong></4-><br/><br/>
           At the start of the test, you will be told to remain silent for approximately 10 seconds. After this, a message saying 'Read the text below!' will appear. 
-          When prompted, read the text <strong>aloud</strong> in a normal pace and tone of voice. You should be able to hear your own voice clearly. Upon completion, you will be notified of your test
+          When prompted, read the text <strong>aloud</strong> in a normal pace and tone of voice. You should now be able to hear your own voice <strong>clearly</strong>. Upon completion, you will be notified of your test
           result and given further instructions.
 
           <hr/>
@@ -147,7 +167,7 @@
           </p>
 
           <p>
-          If you fail the test you are <strong>not allowed to participate in the experiment</strong> and will be asked to return your prolific submission using <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>. You will be paid for the time you took setting up the experiment.
+            If after pressing start you cannot hear yourself, or if sound quality was bad, you are <strong>not allowed to participate in the experiment</strong>. Please return your prolific submission using <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>. You will be paid for the time you took setting up the experiment.
         
           </p>
           <hr/>
@@ -204,9 +224,12 @@
           </div>
         </form>
       </div>
-      <div class="col-8">
-        <div id="stopped" class="show-when-ended">
-          <p id="stopped-message"></p>
+      <div class="col-8" id = "stop_col">
+        <div class='show-when-ended' id="stopped" >
+          <div class="window" id = "window_div">
+            <p id="stopped-message"><p>
+          </div>
+
         </div>
         <div id="ducksoup-wrapper">
           

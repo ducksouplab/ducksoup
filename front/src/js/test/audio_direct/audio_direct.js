@@ -82,7 +82,7 @@ const start = async ({
   width: w,
   height: h,
   framerate: fr,
-  duration: d,
+  duration: test_duration,
   audioFx: afx,
   videoFx: vfx,
   audioDevice: ad,
@@ -177,7 +177,6 @@ const start = async ({
 
 document.addEventListener("DOMContentLoaded", async () => {
   resetUX();
-
   // Init signalingURL with default value
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
@@ -300,7 +299,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-
 const clearMount = () => {
   const mountEl = document.getElementById("ducksoup-mount");
   while (mountEl.firstChild) {
@@ -322,8 +320,8 @@ const clearMessage = () => {
   document.getElementById("stopped-message").innerHTML = "";
 };
 
-const replaceMessage = (message) => {
-  document.getElementById("stopped-message").innerHTML = message + "<br/>";
+const replaceMessage = (message, id = document.getElementById("stopped-message")) => {
+  id.innerHTML = message 
 };
 
 const appendMessage = (message) => {
@@ -353,6 +351,18 @@ let analyser, audioContext, dataArray;
   if (currentPhase == "signal"){volumeLevels.push(volume);}
   // Continue logging
   requestAnimationFrame(logVolumeLevel);
+}
+
+// Helper function to calculate median
+function calculateMedian(arr) {
+  if (arr.length === 0) return 0; // Handle empty array case
+
+  const sortedArr = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sortedArr.length / 2);
+
+  return sortedArr.length % 2 !== 0 
+      ? sortedArr[mid] 
+      : (sortedArr[mid - 1] + sortedArr[mid]) / 2;
 }
 //######################################################//
 //## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
@@ -426,7 +436,7 @@ const ducksoupListener = (options) => (message) => {
       const signal_text = document.getElementById("signal_text");
       //Show noiste test ui when test starts.
       noise_test.classList.remove("d-none");
-  
+
       //Create new audio context 
       audioContext = new window.AudioContext(); //Create a new audio context where we have the streams[0] as the audio input source.
       analyser = audioContext.createAnalyser(); //Creates an analyser node to the audio context so that we can analyse properties of incoming signal.
@@ -463,10 +473,10 @@ const ducksoupListener = (options) => (message) => {
     // Deactivate logging
     volumeLoggingActive = false;
     // Calculate the average volume level
-    var averageVolume = volumeLevels.reduce((a, b) => a + b, 0) / volumeLevels.length || 0;
-    var averageNoise = noiseLevels.reduce((a, b) => a + b, 0) / noiseLevels.length || 0;
-    console.log("Average Volume Level:", averageVolume);
-    console.log("Average Noise Level:", averageNoise);
+    var medianVolume = calculateMedian(volumeLevels)
+    var medianNoise = calculateMedian(noiseLevels)
+    console.log("Median Volume Level:", medianVolume);
+    console.log("Median Noise Level:", medianNoise);
     volumeLevels = []; //Reset volume sample
     noiseLevels = []; //Reset volume sample
     currentPhase = "noise";
@@ -477,12 +487,42 @@ const ducksoupListener = (options) => (message) => {
     signal_text.classList.add("d-none");
 
     if (payload && payload[state.userId]) {
-      if ((averageNoise < 1) && (averageVolume) > 10){
-        let html = "The test just finished. You <b>passed</b> the test and are allowed to continue with the experiment. Please use the code <b>2025</b> to proceed.";
-      replaceMessage(html);
-      }else{let html = "The test just finished. You <b>failed</b> the audio test. If you followed the instructions correctly and still did not pass, you are not allowed to continue. Please <b>return</b> your Prolific submission using <a href=\"https://app.prolific.com/submissions/complete?cc=C1A9QE6C\">this link</a>. However, if you unintentionally failed to follow the instructions, you may start the test again.";
+      if ((medianNoise < 2) && (medianVolume) > 8){
+        let html =  `
+        <p id="stopped-message">
+          The test just finished. Your microphone is of sufficient quality. Could you hear yourself <b>clearly</b> in your headphones?
+        </p>
+        <p>
+          If <b>no</b>, you are not allowed to continue. Please <b>return</b> your Prolific submission using 
+          <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
+        </p>
+        <p>
+          If you could hear yourself clearly, you are allowed to continue with the experiment. 
+          Please use the code <b>2025</b> to proceed.
+        </p>
+      `;
+      div = document.getElementById("window_div");
+      div.style.padding = "20px";
+      div.style.margin = "20px";
+      replaceMessage(html, div);
+      }else{let html =  `
+        <p id="stopped-message">
+          The test just finished. Unfortunately you <b>do not</b> meet the microphone quality requirements needed for this study. 
+          We are very sorry about this. You will be <b>compensated</b> for the time you spent setting up. 
+        </p>
 
-      replaceMessage(html);
+        <p>
+          If you <b>unintentionally</b> failed to follow the instructions you are allowed to redo the test. Otherwise we kindly ask you to <b>return</b> your Prolific submission using 
+          <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
+        </p>
+
+        <p>
+        </p>
+      `;
+      div = document.getElementById("window_div");
+      div.style.padding = "20px";
+      div.style.margin = "20px";
+      replaceMessage(html, div);
       }
       // html += payload[state.userId].join("<br/>") + "<br/>";
 
@@ -493,7 +533,18 @@ const ducksoupListener = (options) => (message) => {
   } else if (kind === "error-duplicate") {
     replaceMessage("Connection denied (already connected)");
   } else if (kind === "error") {
-    replaceMessage("Error");
+      let html =  `
+      <p id="stopped-message">
+        It was not possible to establish a connection with the server. Please <b>return</b> your Prolific submission using 
+        <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
+      </p>
+
+      <p>You will be compensated for the time you spent setting up.</p>
+    `;
+    div = document.getElementById("window_div");
+    div.style.padding = "20px";
+    div.style.margin = "20px";
+    replaceMessage(html, div);
   }
 };
 
