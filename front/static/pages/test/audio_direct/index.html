@@ -63,11 +63,20 @@
   }
 
 
+
+  .col-custom-4 {
+    width: 50%; /* Example: 30% width */
+  }
+  .col-custom-8 {
+    width: 50%; /* Ensure combined width is 100% */
+  }
+
+
 </style>
 <body class="d-flex flex-column h-100">
   <div class="container mt-3">
     <div class="row">
-      <div class="col-4">
+      <div class="col-custom-4">
         <form id="settings">
           <input type="hidden" name="isMirror" value="true">
           <div class="row mb-4">
@@ -157,8 +166,7 @@
 
           <strong>3 - Instructions. </strong></4-><br/><br/>
           At the start of the test, you will be told to remain silent for approximately 10 seconds. After this, a message saying 'Read the text below!' will appear. 
-          When prompted, read the text <strong>aloud</strong> in a normal pace and tone of voice. You should now be able to hear your own voice <strong>clearly</strong>. Upon completion, you will be notified of your test
-          result and given further instructions.
+          When prompted, read the text <strong>aloud</strong> in a normal pace and tone of voice. You should now be able to hear your own voice <strong>clearly</strong>.
 
           <hr/>
           <strong>4 - Notice. </strong><br/>
@@ -224,7 +232,7 @@
           </div>
         </form>
       </div>
-      <div class="col-8" id = "stop_col">
+      <div class="col-custom-8" id = "stop_col">
         <div class='show-when-ended' id="stopped" >
           <div class="window" id = "window_div">
             <p id="stopped-message"><p>

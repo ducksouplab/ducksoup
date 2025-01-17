@@ -497,7 +497,7 @@ const ducksoupListener = (options) => (message) => {
         </p>
         <p>
           If <b>no</b>, you are not allowed to continue. Please <b>return</b> your Prolific submission using 
-          <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
+          <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>. You will be paid for the time you took setting up the experiment.
         </p>
         <p>
           If you could hear yourself clearly, you are allowed to continue with the experiment. 
