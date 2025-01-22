@@ -144,11 +144,9 @@ Move to that repository
 cd experiment_templates
 ```
 
-create a new file called .env, this has the environment variables of the otree server:
-```touch .env```
-
-Write these configuration lines inside that .env file:
+The following command will create a new file called .env. This file will have the environment variables of the otree server:
 ```
+cat <<EOF > .env
 OTREE_DUCKSOUP_URL=http://localhost:8000
 OTREE_DUCKSOUP_FRONTEND_VERSION=latest
 OTREE_DUCKSOUP_REQUEST_GPU=false
@@ -156,17 +154,23 @@ OTREE_DUCKSOUP_FRAMERATE=30
 OTREE_DUCKSOUP_WIDTH=800
 OTREE_DUCKSOUP_HEIGHT=600
 OTREE_DUCKSOUP_FORMAT=H264
-OTREE_REST_KEY=...%  
+OTREE_REST_KEY=...%
+EOF  
 ```
 
-These are environement variables that will control otree's behavior. In particular, it will tell otree in which port to talk with DuckSoup (OTREE_DUCKSOUP_URL variable). If you remember above, we used port XXXXX. 
+Make sure it worked:
+```
+cat .env
+```
 
-Now, open the ```experiment_template``` folder inside vscode using the ```code .``` command. When prompted, in VS code click "Reopen in container".
+This files contains all the environement variables which control otree's behavior. In particular, it will tell otree in which port to communicate with DuckSoup (OTREE_DUCKSOUP_URL variable). If you remember above, we used port XXXXX to initialise DuckSoup. Therefore, we are using in the .env file OTREE_DUCKSOUP_URL=http://localhost:XXXX to ensure both applications can communicate.
 
-Now, to test the template experiments, in the the vscode command line— which should be inside the container at this point—, type:
+Now, open the ```experiment_template``` folder inside vscode using the ```code .``` command. When prompted in Vs Code click "Reopen in container".
+
+Now, to test the template experiments, in the the vscode command line— which should be inside vscode the container at this point—, type:
 ```make dev```
 
-This will open a new server running otree, which should communicate with DuckSoup. You can select here a new experiment as you would do for any otree experiment. Modify the otree code in the experiment_template to create your own experiment. Refer to the otree documentation to do this.
+This should start a new server running otree, which should communicate with DuckSoup. You can select here a new experiment as you would do for any otree experiment. Modify the otree code in the experiment_template to create your own experiment. Refer to the otree documentation to do this.
 
 
 
