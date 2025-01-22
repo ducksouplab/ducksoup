@@ -111,10 +111,7 @@ Now, inside the ```ducksoup_test``` folder—which should have the “plugins”
 docker run --name ducksoup_1 -u $(id -u arias):$(id -g arias) -p 8101:8100 -e DUCKSOUP_TEST_LOGIN=admin -e DUCKSOUP_TEST_PASSWORD=admin -e DUCKSOUP_NVCODEC=false -e DUCKSOUP_NVCUDA=false -e GST_DEBUG=3 -e DUCKSOUP_ALLOWED_WS_ORIGINS=http://localhost:8101 -e DUCKSOUP_JITTER_BUFFER=250 -e DUCKSOUP_GENERATE_PLOTS=true -e DUCKSOUP_GENERATE_TWCC=true -v $(pwd)/plugins:/app/plugins:ro -v $(pwd)/data:/app/data -v $(pwd)/log:/app/log --rm ducksoup:latest
 ```
 
-Now, this running version of ducksoup has access to the mozza manipulation plugin for real time smile manipulation.
-
-To check this is the case, go to:
-http://localhost:8101/test/mirror/
+Now, this running version of ducksoup has access to the mozza manipulation plugin for real time smile manipulation. To check this is the case, go to: http://localhost:8101/test/mirror/
 
 Add ```mozza deform=smile10 alpha=1.1 beta=0.001 fc=1.0``` in the “Video FX” field and click start. You should see yourself with an increased smile. Change alpha to increase or decrease your smile. Alpga usually goes from -1 to 1 for realistic transformations. You can change in real-time it to see its effect by changing the fields in the mirror page as follows:
 Property: alpha
