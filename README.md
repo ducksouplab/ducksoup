@@ -658,6 +658,17 @@ docker push ducksouplab/ducksoup:better-tag
 
 With this image, `root` is the user that launches and owns files in the Docker container. The project [deploy-ducksoup](https://github.com/ducksouplab/deploy-ducksoup) shows a way to build a lightweight image on top of this one with another user.
 
+### Mac build
+
+If you are using an ARM processor (e.g. an ARM based mac), consider building with the following command:
+```
+docker build -f docker/arm_Dockerfile.build -t ducksoup:mac_latest .
+docker tag ducksoup:arm_latest ducksouplab/ducksoup:arm_latest
+docker push ducksouplab/ducksoup:arm_latest
+```
+
+
+
 ### GPU-enabled Docker containers
 
 The nvcodec GStreamer plugin enables NVIDIA GPU accelerated encoding and decoding of H264 video streams.
