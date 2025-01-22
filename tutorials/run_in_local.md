@@ -83,8 +83,7 @@ docker pull ducksouplab/mozza:latest
 Now, copy the Mozza plugin and required files from that docker image:
 
 First, run the mozza image:
-```
-docker run -d --name mozza_runner mozza:latest
+```docker run -d --name mozza_runner mozza:latest```
 
 In another terminal window, go to your ducksoup_test folder (change path_to_ducksoup_test_folder in the command line below) and perform the following commands to copy the plugin and required files from mozza.
 ```
