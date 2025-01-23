@@ -126,7 +126,7 @@ Click send. You should see your changes visibly in your face.
 
 # Develop a new experiment using Ducksoup
 
-We have another tutorial which aims to show you how to code your own experiment using DuckSoup. To do this, we have another repository, which runs python code based on otree to make the interface with DuckSoup. You can find a tutorial explaning how to do this here : https://github.com/ducksouplab/experiment_templates/tutorial/tutorial.md
+We have another tutorial which aims to show you how to code your own experiment using DuckSoup. To do this, we have another repository, which runs python code based on otree to make the interface with DuckSoup. You can find a tutorial explaning how to do this here : https://github.com/ducksouplab/experiment_templates/blob/main/tutorial/tutorial.md
 
 
 
