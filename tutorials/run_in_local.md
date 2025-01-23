@@ -66,7 +66,9 @@ Once you tested DuckSoup and their plugins, you can stop it by doing Ctrl + C in
 You can run the previous image with different parameters depending on your requirements. For instance, to reduce the latency reduce DUCKSOUP_JITTER_BUFFER— you can use use ```DUCKSOUP_JITTER_BUFFER=25``` for very low latency, just replace this parameter in the command line above. This unit is in milliseconds and tells ducksoup how much time to wait before sending the pipeline. If you are running in local, this can be reduced. All DuckSoup parameters are described in the [main read me documentation file](https://github.com/ducksouplab/ducksoup).
 
 # Incorporate Mozza to perform real-time smile manipulation
-To perform real time smile manipulations, we need to integrate into Ducksoup our custom Mozza plugin. To do this, make sure you are in the ```ducksoup_test``` directory created above. Inside this directory, create a new folder called “plugins”:
+If you want to perform real time smile manipulations follow the steps below.
+
+To use our custom smile manipulation algorithm, we need to integrate into Ducksoup our custom Mozza plugin. To do this, make sure you are in the ```ducksoup_test``` directory created above. Inside this directory, create a new folder called “plugins”:
 ```mkdir plugins```
 
 Now, download the Mozza docker image.
@@ -120,53 +122,13 @@ Transition: 1000
 
 Click send. You should see your changes visibly in your face.
 
- Check the [Mozza repository](https://github.com/ducksouplab/mozza) for more information about the parameters that can be used.
+ Check the [Mozza repository](https://github.com/ducksouplab/mozza) for more information about the parameters that can be used, as well as [this tutorial](https://github.com/ducksouplab/mozza/blob/main/tutorials/Use_mozza_in_local.md) if you want to use mozza offline to transform videos.
 
 # Develop a new experiment using Ducksoup
 
----> This part is under construction and is currently incomplete. <-----
+We have another tutorial which aims to show you how to code your own experiment using DuckSoup. To do this, we have another repository, which runs python code based on otree to make the interface with DuckSoup. You can find a tutorial explaning how to do this here : https://github.com/ducksouplab/experiment_templates/tutorial/tutorial.md
 
 
-This part aims to show you how to code your own experiment using DuckSoup. To do this, this part creates a new Docker container, which will run otree python code and interface with DuckSoup.
-
-Start by downloading [https://code.visualstudio.com/](VScode). This will be the IDE we will use this for the development of our experiment. After installing Vscode, install the "WSL" as well as the "docker" extensions into vscode, clicking on the extension button on the left bar of vscode.
-
-Now, open a new terminal window and go inside your ducksoup_test folder. There, clone the experiment_templates repository, which has several experiment examples that we can use as a starting point:
-```
-git clone https://github.com/ducksouplab/experiment_templates.git
-```
-Move to that repository
-```
-cd experiment_templates
-```
-
-The following command will create a new file called .env. This file will have the environment variables of the otree server:
-```
-cat <<EOF > .env
-OTREE_DUCKSOUP_URL=http://localhost:8000
-OTREE_DUCKSOUP_FRONTEND_VERSION=latest
-OTREE_DUCKSOUP_REQUEST_GPU=false
-OTREE_DUCKSOUP_FRAMERATE=30
-OTREE_DUCKSOUP_WIDTH=800
-OTREE_DUCKSOUP_HEIGHT=600
-OTREE_DUCKSOUP_FORMAT=H264
-OTREE_REST_KEY=...%
-EOF  
-```
-
-Make sure it worked:
-```
-cat .env
-```
-
-This files contains all the environement variables which control otree's behavior. In particular, it will tell otree in which port to communicate with DuckSoup (OTREE_DUCKSOUP_URL variable). If you remember above, we used port XXXXX to initialise DuckSoup. Therefore, we are using in the .env file OTREE_DUCKSOUP_URL=http://localhost:XXXX to ensure both applications can communicate.
-
-Now, open the ```experiment_template``` folder inside vscode using the ```code .``` command. When prompted in Vs Code click "Reopen in container".
-
-Now, to test the template experiments, in the the vscode command line— which should be inside vscode the container at this point—, type:
-```make dev```
-
-This should start a new server running otree, which should communicate with DuckSoup. You can select here a new experiment as you would do for any otree experiment. Modify the otree code in the experiment_template to create your own experiment. Refer to the otree documentation to do this.
 
 
 
