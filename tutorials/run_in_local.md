@@ -68,7 +68,12 @@ You can run the previous image with different parameters depending on your requi
 # Incorporate Mozza to perform real-time smile manipulation
 If you want to perform real time smile manipulations follow the steps below.
 
-To use our custom smile manipulation algorithm, we need to integrate into Ducksoup our custom Mozza plugin. To do this, make sure you are in the ```ducksoup_test``` directory created above. Inside this directory, create a new folder called “plugins”:
+To use our custom smile manipulation algorithm, we need to integrate into Ducksoup our custom Mozza plugin. To do this, make sure you are inside the ```ducksoup_test``` directory created above: 
+```
+cd ducksoup_test
+```
+
+Inside this directory, create a new folder called “plugins”:
 ```mkdir plugins```
 
 Now, download the Mozza docker image.
@@ -82,20 +87,17 @@ In intel machines:
 docker pull ducksouplab/mozza:latest
 ```
 
-Now, copy the Mozza plugin and required files from that docker image:
-
-First, run the mozza image:
+Now, copy the Mozza plugin and required files from that docker image. To do this, first, run the mozza image:
 ```docker run -d --name mozza_runner mozza:latest```
 
-In another terminal window, go to your ducksoup_test folder (change path_to_ducksoup_test_folder in the command line below) and perform the following commands to copy the plugin and required files from mozza.
+Now that the container is running, perform the following commands to copy the plugin and required files from mozza.
 ```
-cd path_to_ducksoup_test_folder
 docker cp mozza_runner:gstmozza/build/libgstmozza.so plugins/libgstmozza.so
 docker cp mozza_runner:gstmozza/build/lib/imgwarp/libimgwarp.so plugins/libimgwarp.so
 docker cp mozza_runner:gstmozza/data/in/smile10.dfm plugins/smile10.dfm
 ```
 
-Finally, download the `shape_predictor_68_face_landmarks.dat` model file. It can be found online at [http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2](this link). Put that file inside the plugins/ folder.
+Finally, download the `shape_predictor_68_face_landmarks.dat` model file. It can be found online at  this link : [http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2). Put the downloaded file inside the plugins/ folder.
 
 Now, If you do: 
 ```ls plugins/```
