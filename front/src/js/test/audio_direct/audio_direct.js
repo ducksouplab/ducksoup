@@ -96,7 +96,7 @@ const start = async ({
   const userId = isMirror ? randomId() : uId;
   const size = isMirror ? 1 : parseInt(s, 10);
   //const namespace = isMirror ? "test_mirror" : "test_interaction";
-  namespace = "audio_direct_test" //testing new namespace
+  const namespace = "audio_direct_test" //testing new namespace
   // parse
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
@@ -105,7 +105,7 @@ const start = async ({
   const gpu = !!g;
   const overlay = !!o;
   // initialize state
-  state = { userId, width, height, isMirror, peerCount: 0 };
+  state = { namespace, interactionName, userId, width, height, isMirror, peerCount: 0 };
   // add name if fx is not empty
   let audioFx = afx;
   let videoFx = vfx;
@@ -367,6 +367,34 @@ function calculateMedian(arr) {
       ? sortedArr[mid] 
       : (sortedArr[mid - 1] + sortedArr[mid]) / 2;
 }
+
+// Sends audio test data to backend for storage
+const sendAudioData = async (namespace, interaction, data) => {
+  // Add timestamp to data
+  const enrichedData = {
+    ...data,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const response = await fetch('/POST_audio_test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        namespace,
+        interaction,
+        data: enrichedData
+      })
+    });
+    
+    if (!response.ok) throw new Error('Failed to save data');
+    return true;
+  } catch (error) {
+    console.error('Save error:', error);
+    return false;
+  }
+}
+
 //######################################################//
 //## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
 //######################################################//
@@ -489,8 +517,16 @@ const ducksoupListener = (options) => (message) => {
     signal_test.classList.add("d-none");
     signal_text.classList.add("d-none");
 
+    const passed = medianNoise < 2 && medianVolume > 7;
+    sendAudioData(state.namespace, state.interactionName, {
+      noiseLevels: medianNoise,
+      volumeLevels: medianVolume,
+      passed: passed
+    });
+
+
     if (payload && payload[state.userId]) {
-      if ((medianNoise < 2) && (medianVolume) > 7){
+      if (passed){
         let html =  `
         <p id="stopped-message">
           The test just finished. Your microphone is of sufficient quality. Could you hear yourself <b>clearly</b> in your headphones?
