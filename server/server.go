@@ -93,6 +93,7 @@ type AudioDataPayload struct {
 	Data        AudioData `json:"data"`
 }
 
+// Write struct
 type AudioData struct {
 	NoiseLevels  float64 `json:"noiseLevels"`
 	VolumeLevels float64 `json:"volumeLevels"`
@@ -100,7 +101,6 @@ type AudioData struct {
 	Timestamp    string  `json:"timestamp"`
 }
 
-// Handles saving audio test results to file
 func SaveAudioTestResult(w http.ResponseWriter, r *http.Request) {
 	// Ensure POST request
 	if r.Method != http.MethodPost {

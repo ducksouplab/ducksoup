@@ -1,6 +1,5 @@
 let state;
 
-
 const randomId = () =>
   Math.random()
     .toString(36)
@@ -65,9 +64,8 @@ const playControlFxSequence = (type, sequence) => {
   }, next.duration);
 };
 
-//set test duration
-test_duration = 25
 
+const test_duration = 26
 const start = async ({
   // not processed
   signalingUrl,
@@ -82,7 +80,7 @@ const start = async ({
   width: w,
   height: h,
   framerate: fr,
-  duration: test_duration,
+  duration: d,
   audioFx: afx,
   videoFx: vfx,
   audioDevice: ad,
@@ -96,7 +94,7 @@ const start = async ({
   const userId = isMirror ? randomId() : uId;
   const size = isMirror ? 1 : parseInt(s, 10);
   //const namespace = isMirror ? "test_mirror" : "test_interaction";
-  const namespace = "audio_direct_test" //testing new namespace
+  const namespace = "audio_direct_test"
   // parse
   const width = parseIntWithFallback(w, 800);
   const height = parseIntWithFallback(h, 600);
@@ -178,6 +176,7 @@ const start = async ({
 
 document.addEventListener("DOMContentLoaded", async () => {
   resetUX();
+
   // Init signalingURL with default value
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const pathPrefixhMatch = /(.*)test/.exec(window.location.pathname);
@@ -203,28 +202,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     if(targetVideoFx) targetVideoFx.value = settings.userId;
   });
 
-  var timeoutId;
   document.getElementById("stop").addEventListener("click", () => {
-    console.log("stop clicked")
     if (state.ducksoup) state.ducksoup.stop();
-    //clearMount();
+    
+        // RESET UI
+    clearMount();
     show(".show-when-not-running");
     hide(".show-when-running");
-
-    // Reset everything related to the test period
     clearTimeout(timeoutId);
-    const signal_test = document.getElementById("signal_test");
-    const signal_text = document.getElementById("signal_text");
-    const window      = document.getElementById("window_div");
-    signal_test.classList.add("d-none");
-    signal_text.classList.add("d-none");
-    window.classList.add("d-none");
-    currentPhase = "noise";
-
-// Remove the 'd-none' class
-    ducksoupMount.classList.remove("d-none");
+    // we need to hide the stopped_message manually since it is not part of the ducksoup-mount. 
+    const stop_message_div = document.getElementById("stopped_div");
+    stop_message_div.classList.add("d-none");
+    // Reset the logging phase to noise and stop the logVolumeLevel().
+    currentPhase = "noise"
+    volumeLoggingActive = false;
   });
-
 
   // /test/mirror/ control sequence fx
   const sequenceFxForms = document.querySelectorAll("form.fx-sequence");
@@ -310,8 +302,8 @@ const clearMount = () => {
 };
 
 const resetUX = () => {
-  // replace mountEl contents -- WHy?
-  //clearMount();
+  // replace mountEl contents
+  clearMount();
   // update UX
   show(".show-when-not-running");
   show(".show-when-ended");
@@ -331,11 +323,35 @@ const appendMessage = (message) => {
   document.getElementById("stopped-message").innerHTML += message + "<br/>";
 };
 
+
 //######################################################//
 //## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
 //######################################################//
 
+
+// Create test UI
+const addTestElements = (mountEl) => {
+  [
+    ['div', 'noise_test', `
+      <p style="font-size: 24px; font-weight: bold; color: #4CAF50; margin: 0;">The communication test has started</p>
+      <p style="font-size: 20px; color: #333; margin: 10px 0;">Remain completely silent until you are prompted to read a text below!</p>
+    `],
+    ['div', 'signal_test', `
+      <p style="font-size: 24px; font-weight: bold; color: #4CAF50; margin: 0;">The communication test has started</p>
+      <p style="font-size: 22px; color: red; margin: 10px 0;">Read the text below!</p>
+    `],
+    ['p', 'signal_text', 'The honeybee is an incredible insect, known for its role in pollination and producing honey. A single bee can visit hundreds of flowers in one day, collecting nectar and spreading pollen, helping plants grow and thrive.']
+  ].forEach(([tag, id, content]) => {
+    const el = document.createElement(tag);
+    el.id = id;
+    el.className = `${id} d-none`;
+    el[tag === 'p' ? 'textContent' : 'innerHTML'] = content;
+    mountEl.appendChild(el);
+  });
+};
+
 // Activate logging
+let timeoutId;
 let volumeLevels = []; // Array to store volume levels
 let noiseLevels = []; // Array to store noise levels
 let volumeLoggingActive = false; // Flag to track logging state
@@ -399,6 +415,7 @@ const sendAudioData = async (namespace, interaction, data) => {
 //## SETUP TO MONITOR VOLUME LEVELS DURING AUDIO TEST //##
 //######################################################//
 
+
 // communication with player
 const ducksoupListener = (options) => (message) => {
   const { kind, payload } = message;
@@ -455,13 +472,15 @@ const ducksoupListener = (options) => (message) => {
       mountEl.appendChild(container);
       hide(".show-when-ending");
     } else { // audio
-      let el = document.createElement(track.kind);
-      el.id = track.id;
-      el.srcObject = streams[0];
-      el.autoplay = true;
-      mountEl.appendChild(el);
-      
-      //UI Control
+      let audioEl = document.createElement(track.kind);
+      audioEl.id = track.id;
+      audioEl.srcObject = streams[0];
+      audioEl.autoplay = true;
+      mountEl.appendChild(audioEl);
+
+      //Initialize test elements
+      addTestElements(mountEl);
+      // UI DYNAMICS
       const noise_test = document.getElementById("noise_test");
       const signal_test = document.getElementById("signal_test");
       const signal_text = document.getElementById("signal_text");
@@ -479,21 +498,18 @@ const ducksoupListener = (options) => (message) => {
       // Activate logging
       volumeLoggingActive = true;
       logVolumeLevel();
-      console.log(currentPhase)
-      timeout_id = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         currentPhase = "signal"
-        console.log(currentPhase)
         //Remove noise test UI
         noise_test.classList.add("d-none");
         //Add signal test UI
         signal_test.classList.remove("d-none")
         signal_text.classList.remove("d-none")
-      }, 10000);
-    
+      }, 12000);
+
     }
     // on remove
     streams[0].onremovetrack = ({ track }) => {
-      console.log("streams ending")
       const el = document.getElementById(track.id);
       if (el) el.parentNode.removeChild(el);
     };
@@ -506,8 +522,6 @@ const ducksoupListener = (options) => (message) => {
     // Calculate the average volume level
     var medianVolume = calculateMedian(volumeLevels)
     var medianNoise = calculateMedian(noiseLevels)
-    console.log("Median Volume Level:", medianVolume);
-    console.log("Median Noise Level:", medianNoise);
     volumeLevels = []; //Reset volume sample
     noiseLevels = []; //Reset volume sample
     currentPhase = "noise";
@@ -524,7 +538,6 @@ const ducksoupListener = (options) => (message) => {
       passed: passed
     });
 
-
     if (payload && payload[state.userId]) {
       if (passed){
         let html =  `
@@ -540,7 +553,8 @@ const ducksoupListener = (options) => (message) => {
           Please use the code <b>2025</b> to proceed.
         </p>
       `;
-      div = document.getElementById("window_div");
+      div = document.getElementById("stopped_div");
+      div.classList.remove("d-none");
       div.style.padding = "20px";
       div.style.margin = "20px";
       replaceMessage(html, div);
@@ -550,7 +564,7 @@ const ducksoupListener = (options) => (message) => {
           We are very sorry about this. You will be <b>compensated</b> for the time you spent setting up. 
         </p>
 
-        <p>
+        <p id="stopped-message">
           If you <b>unintentionally</b> failed to follow the instructions you are allowed to redo the test. Otherwise we kindly ask you to <b>return</b> your Prolific submission using 
           <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
         </p>
@@ -558,7 +572,8 @@ const ducksoupListener = (options) => (message) => {
         <p>
         </p>
       `;
-      div = document.getElementById("window_div");
+      div = document.getElementById("stopped_div");
+      div.classList.remove("d-none");
       div.style.padding = "20px";
       div.style.margin = "20px";
       replaceMessage(html, div);
@@ -570,6 +585,7 @@ const ducksoupListener = (options) => (message) => {
       replaceMessage("Connection terminated");
     }
   } else if (kind === "error-duplicate") {
+    console.log("duplicate")
     replaceMessage("Connection denied (already connected)");
   } else if (kind === "error") {
       let html =  `
@@ -580,10 +596,10 @@ const ducksoupListener = (options) => (message) => {
 
       <p>You will be compensated for the time you spent setting up.</p>
     `;
-    div = document.getElementById("window_div");
+    div = document.getElementById("stopped_div");
+    div.classList.remove("d-none");
     div.style.padding = "20px";
     div.style.margin = "20px";
     replaceMessage(html, div);
   }
 };
-
