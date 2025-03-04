@@ -3,9 +3,12 @@ package server
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/json"
 	"flag"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -82,6 +85,62 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("context", "server").Str("URL", r.URL.String()).Msg("not_found")
 }
 
+// ################ Saving noise and volume level from test pages ########################//
+// Request payload structure
+type AudioDataPayload struct {
+	Namespace   string    `json:"namespace"`
+	Interaction string    `json:"interaction"`
+	Data        AudioData `json:"data"`
+}
+
+// Write struct
+type AudioData struct {
+	NoiseLevels  float64 `json:"noiseLevels"`
+	VolumeLevels float64 `json:"volumeLevels"`
+	Passed       bool    `json:"passed"`
+	Timestamp    string  `json:"timestamp"`
+}
+
+func SaveAudioTestResult(w http.ResponseWriter, r *http.Request) {
+	// Ensure POST request
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var payload AudioDataPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Format data as JSON for easy parsing later
+	formattedData, err := json.MarshalIndent(payload.Data, "", "  ")
+	if err != nil {
+		http.Error(w, "Data formatting failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Create directory path and ensure it exists
+	dirPath := filepath.Join("data", payload.Namespace, payload.Interaction)
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		http.Error(w, "Storage error", http.StatusInternalServerError)
+		return
+	}
+
+	// Write data to file
+	filePath := filepath.Join(dirPath, "audio_test_results.json")
+	if err := os.WriteFile(filePath, append(formattedData, '\n'), 0644); err != nil {
+		http.Error(w, "Write error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+//################ Saving noise and volume level from test pages ########################//
+
 // API
 
 func Start() {
@@ -93,6 +152,9 @@ func Start() {
 	router.NotFoundHandler = http.HandlerFunc(notFound)
 	// websocket handler
 	router.HandleFunc(webPrefix+"/ws", websocketHandler)
+
+	// handler for audio_test
+	router.HandleFunc("/POST_audio_test", SaveAudioTestResult)
 
 	// assets without basic auth
 	router.PathPrefix(webPrefix + "/assets/").Handler(http.StripPrefix(webPrefix+"/assets/", http.FileServer(http.Dir("./front/static/assets/"))))

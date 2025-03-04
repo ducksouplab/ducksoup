@@ -14,20 +14,78 @@
   <script src="../../assets/v1.93/js/ducksoup.js"></script>
   <script src="../../assets/v1.93/js/direct.js"></script>
 </head>
+
+<style>
+  /* Instructions column */
+ .col-custom-4 {
+    width: 55%; /* Example: 30% width */
+  }
+  /* video column */
+  .col-custom-8 {
+    width: 45%; /* Ensure combined width is 100% */
+  }
+
+
+.noise_test {
+  width: 50%; 
+  height: 30%; 
+  margin: 0 auto; 
+  padding: 20px; 
+  border: 2px solid #4CAF50; 
+  border-radius: 10px; 
+  background-color: #f9f9f9; 
+  text-align: center; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  font-family: Arial, sans-serif;
+  }
+
+  #signal_text {
+  width: 50%;
+  margin: 20px auto 0;
+  padding: 20px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #333;
+  text-align: justify;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+
+#stop_col{
+  display:grid;
+}
+
+#stopped{
+  align-self: center;
+  justify-self:center;
+  width: 80%;
+}
+
+.stopped_div {
+    display: inline-block;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+    box-sizing: content-box; /* Ensures size matches content only */
+    background-color: #f9f9f9; /* Optional background color */
+  }
+
+</style>
+
 <body class="d-flex flex-column h-100">
   <div class="container mt-3">
     <div class="row">
-      <div class="col-4">
+      <div class="col-custom-4">
         <form id="settings">
           <input type="hidden" name="isMirror" value="true">
           <div class="row mb-4">
             <div class="col-9">
               <h2>Communication Test</h2>
             </div>
-            <div class="col-3">
-              <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
-              <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
-            </div>
+    
           </div>
           <div class="row" style="display: none;">
             <div class="col-6">
@@ -94,7 +152,7 @@
               </div>
             </div>
           </div>
-          The aim of this page is to test the communication setting to ensure that conference quality will be good.<br/><br/>
+          The aim of this page is to test the communication setting to ensure that conference quality will be good. The test will assess the quality of your microphone as well as the functionality of your headphones and webcam.<br/><br/>
           <strong>1- Put your headphones on. </strong><br/>
           <hr/>
           <strong>2- Choose your microphone and camera: </strong><br/>
@@ -116,23 +174,26 @@
             </div>
           </div>
           <hr/>
-          <strong>3- Click Start. </strong><br/>
+          <strong>3 - Instructions. </strong></4-><br/><br/>
+          At the start of the test, you will be told to remain silent for approximately 10 seconds. After this, a message saying 'Read the text below!' will appear. 
+          When prompted, read the text <strong>aloud</strong> in a normal pace and tone of voice. You should now be able to hear your own voice <strong>clearly</strong>.
           <hr/>
-          <strong>4- Talk. </strong></4-><br/><br/>
-          Can you see and hear yourself correctly? Can you hear your voice clearly in the headphones? Is the sound quality good and the microphone working? Is the sound to loud or to low? Is there background noise? You can perform the test multiple times until the setup is correct.<br/>
-
-          <hr/>
-          <strong>5- Results. </strong><br/>
+          <strong>4 - Notice. </strong><br/>
           <p>
-          If you can see and hear yourself <strong>very well</strong>, it means you <strong>can</strong> participate in the experiment. <strong>Remember the settings you used for the test</strong>, you will be asked to use these during the experiment.
+          If you pass the test it means you <strong>can</strong> participate in the experiment and will be given a code to proceed. <strong>Remember the settings you used for the test</strong>, you will be asked to use these during the experiment.
           </p>
 
-          <p> If after pressing start you cannot hear OR see yourself on the screen, or if image/sound quality were bad, you are <strong>not allowed to participate in the experiment</strong>. Please go back to the consent page and return your prolific submission using the "technical error" link on that page. You will be paid for the time you took setting up the experiment.
+          <p>
+            If after pressing start you cannot hear yourself, not see yourself or if sound quality was bad, you are <strong>not allowed to participate in the experiment</strong>. Please return your prolific submission using <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>. You will be paid for the time you took setting up the experiment.
+        
           </p>
+          <hr/>
+          <div class="col-3" style = "display: flex; justify-content:space-between; width: 70%">
+            <strong><p style = "align-self: center;"> 5 - Click start when ready</p> </strong>
+            <button type="submit" class="float-end btn btn-outline-success show-when-not-running" id="start">Start</button>
+            <button type="button" class="float-end btn btn-outline-secondary show-when-running" id="stop">Stop</button>
+          </div>
 
-          
-
-          
 
           <div class="row" style="display: none;">
             <div class="col">
@@ -180,13 +241,32 @@
           </div>
         </form>
       </div>
-      <div class="col-8">
+      <div class="col-custom-8">
         <div id="stopped" class="show-when-ended">
+          <div class="stopped_div" id = "stopped_div"></div>
           <p id="stopped-message"></p>
         </div>
         <div id="ducksoup-wrapper">
-          <div id="ducksoup-mount" class="show-when-running mb-3"></div>
-          <div class='overlay overlay-bottom show-when-ending d-none'><div>Conversation ending soon</div></div>
+          <div id="ducksoup-mount" class="show-when-running mb-3">
+          </div>
+
+          <div id = "noise_test" class = "noise_test d-none" >
+            <p style="font-size: 24px; font-weight: bold; color: #4CAF50; margin: 0;">
+              The communication test has started
+            </p>
+            <p style="font-size: 20px; color: #333; margin: 10px 0;">
+              Remain completely silent until you are prompted to read a text below!
+            </p>
+          </div>
+          <div class='overlay overlay-bottom show-when-ending d-none'><div>Technical test ending soon</div></div>
+
+          <div id = "signal_test" class = "d-none">
+            <h5 style = "text-align: center; color: red;">Read the text below:</h5>
+          <p  id = "signal_text">The honeybee is an incredible insect, known for its role in pollination and producing honey. 
+            A single bee can visit hundreds of flowers in one day, collecting nectar and spreading pollen, 
+            helping plants grow and thrive.</p>
+          </div>
+
         </div>
        
         

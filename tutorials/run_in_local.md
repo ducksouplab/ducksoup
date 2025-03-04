@@ -54,14 +54,15 @@ Pswd : admin
 You will be asked to enable the webcam use by your webcam, click allow.:
 
 
-Now in the mirror web page click start. You should see and hear yourself twice (up and bottom of the page). This is Ducksoup Mirror mode, where a person can see themselves. You can add gstreamer plugins in the VideoFX and audioFX fields, to test different transformation plugins. For instance, try to put one of these in the VideoFx/AudioFx field and then click start:
+Now in the mirror web page click start. You should see and hear yourself twice (up and bottom of the page). This is Ducksoup Mirror mode, where a person can see themselves. You can add gstreamer plugins in the VideoFX and audioFX fields, to test different transformation plugins. The general syntax for g-streamer pipelines are 'plugin_name param1=value param2=value', each plugin specified by its name, followed by optional parameters. Some plugins, like fisheye, require no parameters. For instance, try to put one of these in the VideoFx/AudioFx field and then click start:
+
 VideoFX:
-- agingtv
+- agingtv scratch-lines = 1
 - fisheye
 
 AudioFX:
-- volume 0.5
-- pitch 0.9
+- volume volume=0.5
+- pitch pitch=0.9
 - webrtcdsp echo-cancel=false gain-control=false noise-suppression=true noise-suppression-level=high'
 
 The complete list of available plugins and their parameters can be found online in the gstreamer [website](https://gstreamer.freedesktop.org/documentation/plugins_doc.html?gi-language=c).
