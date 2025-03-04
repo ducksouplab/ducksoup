@@ -19,7 +19,10 @@ It might be useful for users to familiarize themselves with docker at this point
 Now that docker is installed, pull the latest version of the ducksoup docker image. To do this, paste this in the terminal.
 
 In Intel Machines:
-```docker pull ducksouplab/ducksoup:latest```
+```
+docker pull ducksouplab/ducksoup:latest
+docker tag ducksouplab/ducksoup:latest ducksoup:latest
+```
 
 In Mac Silicon machines:
 ```
