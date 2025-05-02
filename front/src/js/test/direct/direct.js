@@ -513,7 +513,7 @@ const ducksoupListener = (options) => (message) => {
       const signal_test = document.getElementById("signal_test");
       signal_test.classList.add("d-none");
 
-      const passed = medianNoise < 3 && medianVolume > 4.5;
+      const passed = medianNoise < 4.5 && medianVolume > 4.5;
       sendAudioData(state.namespace, state.interactionName, {
         noiseLevels: medianNoise,
         volumeLevels: medianVolume,
