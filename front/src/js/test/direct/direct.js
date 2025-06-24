@@ -523,33 +523,31 @@ const ducksoupListener = (options) => (message) => {
     if (payload && payload[state.userId]) {
       if (passed){
           let html =  `
-          <p id="stopped-message">
-            The test just finished. Your microphone is of sufficient quality. Could you hear yourself <b>clearly</b> in your headphones?  Could you see yourself on the screen?
-          </p>
-          <p>
-             If the answer is <b>no</b> to any of these questions, you are not allowed to continue. Please <b>return</b> your Prolific submission using 
-            <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>. You will be paid for the time you took setting up the experiment.
-          </p>
-          <p>
-            If you could hear and see yourself clearly, you are allowed to continue with the experiment. 
-            Please use the code <b>2025</b> to proceed.
-          </p>
-            `;
-            div = document.getElementById("stopped_div");
-            div.classList.remove("d-none");
-            div.style.padding = "20px";
-            div.style.margin = "20px";
-            replaceMessage(html, div);
-      }else{let html =  `
+            <p id="stopped-message">
+              The test just finished. Your microphone is of sufficient quality. Could you hear yourself <b>clearly</b> in your headphones? Could you see yourself on the screen?
+            </p>
+            <p>
+              If the answer is <b>no</b> to either of these questions you are <b>not allowed to continue</b>. Please return to the previous page where you clicked the link to access this test and follow the instructions to return your Prolific submission.
+            </p>
+            <p>
+              If you could hear and see yourself clearly, you are allowed to continue. Please enter the code <b>2025</b> on the previous page to proceed.
+            </p>
+          `;
+        div = document.getElementById("stopped_div");
+        div.classList.remove("d-none");
+        div.style.padding = "20px";
+        div.style.margin = "20px";
+        replaceMessage(html, div);
+      }else{let html = `
         <p id="stopped-message">
-          The test just finished. Unfortunately you <b>do not</b> meet the microphone quality requirements needed for this study. 
-          We are very sorry about this. You will be <b>compensated</b> for the time you spent setting up. 
+          The test just finished. Unfortunately, you <b>do not</b> meet the microphone quality requirements needed for this test. We are very sorry about this.
         </p>
 
         <p id="stopped-message">
-          If you <b>unintentionally</b> failed to follow the instructions you are allowed to redo the test. Otherwise we kindly ask you to <b>return</b> your Prolific submission using 
-          <a href="https://app.prolific.com/submissions/complete?cc=C1A9QE6C">this link</a>.
+          If you <b>unintentionally</b> failed to follow the instructions, you may refresh the page and redo the test.
         </p>
+
+        <p>Otherwise, please return to the previous page where you clicked the link to access this test and follow the instructions there to return your Prolific submission.</p>
       `;
       div = document.getElementById("stopped_div");
       div.classList.remove("d-none");
