@@ -1,0 +1,82 @@
+FROM ducksouplab/debian-gstreamer:deb12-with-plugins-gst1.22.6-intel-cpu-only AS builder
+
+# ── base tools + headers pkg-config needs ──────────────────────────
+RUN apt-get update && apt-get upgrade -y \
+ && apt-get install -y \
+      curl build-essential pkg-config \        
+      libglib2.0-dev libgirepository1.0-dev    
+
+# ── Go toolchain ───────────────────────────────────────────────────
+WORKDIR /tmp
+ENV GO_ARCHIVE=go1.22.1.linux-amd64.tar.gz
+ENV GO_ARCHIVE_CHECKSUM="aab8e15785c997ae20f9c88422ee35d962c4562212bb0f879d052a35c8307c7f"
+
+RUN curl -O https://dl.google.com/go/${GO_ARCHIVE} \
+ && echo "${GO_ARCHIVE_CHECKSUM}  ${GO_ARCHIVE}" | sha256sum -c - \
+ && tar -C /usr/local -xzf ${GO_ARCHIVE} \
+ && rm ${GO_ARCHIVE}
+
+ENV PATH=$PATH:/usr/local/go/bin
+ENV CGO_LDFLAGS="-L/opt/gstreamer/lib/x86_64-linux-gnu"
+ENV CGO_CFLAGS="-I/opt/gstreamer/include/gstreamer-1.0"
+ENV PKG_CONFIG_PATH="/opt/gstreamer/lib/x86_64-linux-gnu/pkgconfig:${PKG_CONFIG_PATH}"
+
+# ── deps & sources ────────────────────────────────────────────────
+WORKDIR /build
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+ && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
+ && apt-get update && apt-get install -y yarn
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Go sources
+COPY engine/       engine/
+COPY env/          env/
+COPY frontbuild/   frontbuild/
+COPY gst/          gst/
+COPY helpers/      helpers/
+COPY iceservers/   iceservers/
+COPY logger/       logger/
+COPY plot/         plot/
+COPY sequencing/   sequencing/
+COPY server/       server/
+COPY sfu/          sfu/
+COPY stats/        stats/
+COPY store/        store/
+COPY types/        types/
+
+COPY main.go .
+COPY config/load.go ./config/load.go
+
+RUN go build -o ducksoup .
+
+# ── front-end build ───────────────────────────────────────────────
+COPY front/src ./front/src
+COPY package.json .
+COPY config/version.yml ./config/version.yml
+RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
+
+##################
+# 2. final image #
+##################
+FROM ducksouplab/debian-gstreamer:deb12-with-plugins-gst1.22.6-intel-cpu-only
+
+RUN apt-get update && apt-get upgrade -y
+
+ENV LD_LIBRARY_PATH="/opt/gstreamer/lib/x86_64-linux-gnu:/app/plugins:${LD_LIBRARY_PATH}"
+ENV GST_PLUGIN_PATH="/opt/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0:/app/plugins"
+ENV GST_DEBUG=2
+ENV DUCKSOUP_NVCODEC=false
+
+WORKDIR /app
+
+COPY --from=builder /build/ducksoup .
+COPY front/static ./front/static
+COPY config ./config
+
+
+
+SHELL ["/bin/bash", "-c"]
+CMD if [[ -z "${CONTAINER_STDERR_FILE}" ]]; then ./ducksoup; \
+    else (date 1>&2; ./ducksoup) 2>>"${CONTAINER_STDERR_FILE}"; fi
