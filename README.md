@@ -667,6 +667,15 @@ docker tag ducksoup:arm_latest ducksouplab/ducksoup:arm_latest
 docker push ducksouplab/ducksoup:arm_latest
 ```
 
+### CPU Only build
+If you are using an INTEL processor and no GPU (e.g. an Intel based mac), consider building with the following command:
+```
+docker build -f docker/cpu_only_intel_Dockerfile.build -t ducksoup:cpu_only_latest .
+docker tag ducksoup:cpu_only_latest ducksouplab/ducksoup:cpu_only_latest
+docker push ducksouplab/ducksoup:cpu_only_latest
+```
+
+
 
 
 ### GPU-enabled Docker containers
