@@ -1,5 +1,5 @@
 #FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10 AS builder
-FROM ducksouplab/debian-gstreamer:deb12-cuda12.2-plugins-gst1.24.10 AS builder
+FROM ducksouplab/debian-gstreamer:deb12-with-plugins-cuda12.2-gst1.28.0 AS builder
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -68,7 +68,7 @@ RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 
 # (final) runner stage
 #FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10
-FROM ducksouplab/debian-gstreamer:deb12-cuda12.2-plugins-gst1.24.10
+FROM ducksouplab/debian-gstreamer:deb12-with-plugins-cuda12.2-gst1.28.0
 
 RUN apt-get update && apt-get upgrade -y
 

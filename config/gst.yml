@@ -71,6 +71,7 @@ x264:
     discard-corrupted-frames=true
     min-force-key-unit-interval=500000000
   encoder: >-
+    videoconvert !
     x264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
     pass=17
@@ -83,8 +84,9 @@ x264:
     b-adapt=false
     vbv-buf-capacity=120
     min-force-key-unit-interval=500000000 !
-    video/x-h264, profile=constrained-baseline ! 
+    video/x-h264,profile=constrained-baseline ! 
     h264parse
+
 nv264:
   encoding: "H264"
   muxer: "mp4mux"
@@ -101,6 +103,8 @@ nv264:
     discard-corrupted-frames=true
     min-force-key-unit-interval=500000000
   encoder: >-
+    queue leaky=2 max-size-buffers=0 max-size-bytes=0 max-size-time=200000000 !
+    videoconvert n-threads=0 !
     nvh264enc name={{.Name}}
     bitrate={{.DefaultKBitrate}}
     preset=low-latency-hp
@@ -108,5 +112,5 @@ nv264:
     zerolatency=true
     min-force-key-unit-interval=500000000
     rc-lookahead=0 !
-    video/x-h264, profile=constrained-baseline !
+    video/x-h264,profile=constrained-baseline !
     h264parse
