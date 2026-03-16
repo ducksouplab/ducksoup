@@ -70,7 +70,7 @@ RUN DUCKSOUP_MODE=FRONT_BUILD ./ducksoup
 #FROM ducksouplab/debian-gstreamer:deb11-cuda12.4-gst1.22.10
 FROM ducksouplab/debian-gstreamer:deb12-with-plugins-cuda12.2-gst1.28.0
 
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y && apt-get install -y xvfb
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app/plugins"
 ENV GST_PLUGIN_PATH="$GST_PLUGIN_PATH:/app/plugins"
@@ -87,6 +87,5 @@ COPY --from=builder /build/front/static/assets ./front/static/assets
 # add config files last not to refresh too many layers in case only config changes
 COPY config ./config
 
-# write date and then append err to file if CONTAINER_STDERR_FILE exists
 SHELL ["/bin/bash", "-c"]
 CMD if [[ -z "${CONTAINER_STDERR_FILE}" ]]; then ./ducksoup; else (date 1>&2; ./ducksoup) 2>>${CONTAINER_STDERR_FILE}; fi
