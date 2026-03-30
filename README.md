@@ -614,6 +614,12 @@ Build image:
 docker build -f docker/Dockerfile.build -t ducksoup:latest .
 ```
 
+Or to your latest version:
+```
+docker build -f docker/Dockerfile.build -t ducksoup:ducksoup_plugins_gst1.28.0 .
+docker tag ducksoup:ducksoup_plugins_gst1.28.0 ducksouplab/ducksoup:ducksoup_plugins_gst1.28.0
+```
+
 Supposing we use a `deploy` user to run the container, prepare `data` and `log` folders, to be mounted as volumes in the container:
 
 ```

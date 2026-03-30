@@ -65,7 +65,9 @@ func (mo mediaOptions) EncodeWithCache(name, folder, filePrefix string) (output 
 func (mo mediaOptions) ConstraintFormat() (output string) {
 	output = strings.Replace(gstConfig.Shared.Video.Constraint.Format, "{{.VideoFormat}}", gstConfig.Shared.Video.RawFormat, -1)
 	if mo.nvCuda {
-		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+		// FIX: Use videoconvert to avoid PCIe bus saturation (Memory Ping-Pong) 
+		// Revert to "cudaupload ! cudaconvertscale ! cudadownload" only if the FX plugin accepts NVMM memory.
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert", -1)
 	} else {
 		output = strings.Replace(output, "{{.Convert}}", "videoconvert", -1)
 	}
@@ -76,7 +78,8 @@ func (mo mediaOptions) ConstraintFormatFramerate(framerate int) (output string) 
 	caps := fmt.Sprintf("%v,framerate=%v/1", gstConfig.Shared.Video.RawFormat, framerate)
 	output = strings.Replace(gstConfig.Shared.Video.Constraint.FormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
 	if mo.nvCuda {
-		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+		// FIX: Use videoconvert to avoid PCIe bus saturation (Memory Ping-Pong)
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
 	} else {
 		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
 	}
@@ -87,7 +90,8 @@ func (mo mediaOptions) ConstraintFormatFramerateResolution(framerate, width, hei
 	caps := fmt.Sprintf("%v,framerate=%v/1,width=%v,height=%v", gstConfig.Shared.Video.RawFormat, framerate, width, height)
 	output = strings.Replace(gstConfig.Shared.Video.Constraint.FormatFramerateResolution, "{{.VideoFormatFramerateResolution}}", caps, -1)
 	if mo.nvCuda {
-		output = strings.Replace(output, "{{.Convert}}", "cudaupload ! cudaconvertscale ! cudadownload", -1)
+		// FIX: Use videoconvert to avoid PCIe bus saturation (Memory Ping-Pong)
+		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
 	} else {
 		output = strings.Replace(output, "{{.Convert}}", "videoconvert ! videoscale", -1)
 	}
