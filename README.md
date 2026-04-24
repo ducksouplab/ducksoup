@@ -721,3 +721,12 @@ docker run --name ducksoup_gpu_1 \
 Parts of DuckSoup result from interactions within the [pion](https://pion.ly/) commmunity in general, and from [Galène](https://github.com/jech/galene) in particular.
 
 The following STUN servers are used by the project: stun.l.google.com:19302 and stun:stun3.l.google.com:19302 (previously stun.stunprotocol.org:3478).
+
+## License
+
+DuckSoup is licensed under the **PolyForm Noncommercial License 1.0.0**.
+
+This project is available freely for academic, personal, and non-commercial research purposes. Commercial use is strictly prohibited. 
+
+For the full legal terms, please see the [LICENSE](LICENSE) file in this repository. 
+If you are interested in using DuckSoup for commercial purposes, please contact [Insert Your Contact Info Here].
